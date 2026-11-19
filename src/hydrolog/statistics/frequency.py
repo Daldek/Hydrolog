@@ -1,23 +1,64 @@
 """Distributions of annual extremes: sample statistics and parameter estimators.
 
-The estimators of the frequency analyses of annual maxima
+The formulas of the frequency analyses of annual maxima
 (:class:`~hydrolog.statistics.FloodFrequencyAnalysis`) and minima
-(:func:`~hydrolog.statistics.fit_fisher_tippett_minima`): the sample's product
-moments and L-moments, and the parameters of the log-normal, GEV, Pearson type III
-and Weibull distributions of :mod:`scipy.stats` by L-moments, moments, maximum
-likelihood and least squares.
+(:func:`~hydrolog.statistics.fit_fisher_tippett_minima`), declared by their specs
+(Nogat's computation standard, ADR-0050): the sample's product moments
+(:data:`MOMENTS`, ``sample_moments``) and L-moments (:data:`L_MOMENTS`,
+``sample_l_moments``), and the estimators of the parameters of the log-normal, GEV,
+Pearson type III and Weibull distributions of :mod:`scipy.stats` by L-moments,
+moments, maximum likelihood and least squares. ``docs/FORMULAS.md`` shows their
+equations, constants, ranges and sources.
+
+Examples
+--------
+>>> from hydrolog.statistics.frequency import sample_l_moments, sample_moments
+>>> sample_l_moments([1.0, 2.0, 3.0, 4.0, 10.0])
+SampleLMoments(l1=4.0, l2=2.0, t3=0.5)
+>>> sample_moments([1.0, 2.0, 3.0, 4.0, 5.0]).skewness
+0.0
 """
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
-from typing import Any, Final
+from fractions import Fraction
+from typing import Any, Final, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import brentq, minimize
 from scipy.special import erfinv, gamma, gammaln, zeta
 from scipy.stats import genextreme, lognorm, pearson3, weibull_min
+
+from hydrolog._formulas import checked_inputs, checked_outputs
+from hydrolog.nogat_formulas import (
+    Constraint,
+    FormulaSpec,
+    Limit,
+    Oracle,
+    Output,
+    Properties,
+    Range,
+    Scaling,
+    Source,
+    Symmetry,
+    Tolerance,
+    Values,
+    Variable,
+    assert_within,
+)
+
+__all__ = [
+    "L_MOMENTS",
+    "MOMENTS",
+    "SPECS",
+    "SampleLMoments",
+    "SampleMoments",
+    "sample_l_moments",
+    "sample_moments",
+]
 
 _DISTRIBUTIONS: Final[dict[str, Any]] = {
     "log_normal": lognorm,
@@ -147,40 +188,696 @@ def _require_positive(data: NDArray[np.float64]) -> None:
     )
 
 
-def _sample_moments(data: NDArray[np.float64]) -> tuple[float, float, float]:
-    """Mean, standard deviation and skewness of a sample, bias-corrected.
+# --- sources ---------------------------------------------------------------------
 
-    The standard deviation has the divisor n - 1 and the skewness is the adjusted
-    Fisher-Pearson coefficient G1 = √(n (n - 1)) / (n - 2) · m3 / m2^(3/2), where m2
-    and m3 are the central moments of the sample (divisor n).
+_B17B: Final = (
+    "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining "
+    "Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. "
+    "Geological Survey, Reston, Virginia"
+)
+_B17B_URL: Final = "https://pubs.usgs.gov/unnumbered/70275162/report.pdf"
+_WMO_168: Final = (
+    "WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of "
+    "Water Resources and Application of Hydrological Practices, WMO-No. 168"
+)
+_WMO_168_URL: Final = (
+    "https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf"
+)
+_WMO_1029: Final = (
+    "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology "
+    "Report No. 50, WMO-No. 1029"
+)
+_WMO_1029_URL: Final = "https://library.wmo.int/idurl/4/32176"
+_KZGW: Final = (
+    "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych "
+    "o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i "
+    "niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+)
+_KZGW_URL: Final = (
+    "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/"
+    "zal-2-do-OPZ-ujednolicony-1.pdf"
+)
+_HOSKING_1990: Final = Source(
+    citation="Hosking, J.R.M. (1990). L-moments: analysis and estimation of "
+    "distributions using linear combinations of order statistics. Journal of the "
+    "Royal Statistical Society, Series B 52(1), 105-124",
+    locator="sect. 2: probability-weighted moments and the sample L-moments of their "
+    "unbiased estimators",
+    access="author-provided",
+)
+_LMOM: Final = (
+    "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran "
+    "routines of Hosking and Wallis 1997)"
+)
+_LMOM_URL: Final = "https://cran.r-project.org/package=lmom"
+_LMOMCO: Final = (
+    "Asquith, W.H. lmomco: L-moments, censored L-moments, trimmed L-moments, "
+    "L-comoments, and many distributions, R package version 2.5.8, CRAN"
+)
+_LMOMCO_URL: Final = "https://cran.r-project.org/package=lmomco"
+_SCIPY_SKEW: Final = Source(
+    citation="Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for "
+    "scientific computing in Python. Nature Methods 17, 261-272",
+    locator="scipy.stats.skew with bias=False: the adjusted Fisher-Pearson "
+    "standardized moment coefficient G1 = sqrt(n (n - 1)) / (n - 2) m3 / m2**1.5",
+    url="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.skew.html",
+)
+_KZGW_MAXIMA: Final = Source(
+    citation=_KZGW,
+    locator="examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual "
+    "maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana)",
+    url=_KZGW_URL,
+)
+
+_UNIT: Final = "m3/s"
+"""The unit of the samples in the documents: the formulas are homogeneous (their
+scalings), so a sample in any unit, a stage in cm or logarithms of discharge, gives
+its statistics and parameters in that unit."""
+
+_ANY_VALUE: Final = Range(
+    test_low=-1.0e6,
+    test_high=1.0e6,
+    test_reason=(
+        "the formulas are homogeneous in the unit of the sample (their scalings), so "
+        "any bound tests their arithmetic: a million m3/s exceeds the discharge of "
+        "every river, and a stage may lie below its gauge's zero, so the same bound "
+        "holds below 0"
+    ),
+)
+"""Any finite value: an annual extreme of a discharge or of a stage."""
+
+_MAXIMA: Final = Range(low=0.81, high=111.0, source=_KZGW_MAXIMA)
+"""The annual maxima of the worked examples of Polish practice."""
+
+_POLANA: Final = (
+    10.2, 9.24, 58.8, 8.23, 16.2, 4.92, 26.8, 25.1, 97.2, 23.5, 22.3, 21.1, 59.9,
+    55.1, 16.2, 24.6, 14.8, 73.8, 28.9, 18.6, 18.2, 25.8, 14.5, 11.2, 54.5, 111.0,
+    35.1, 43.0, 52.0, 45.4, 8.90, 9.72, 57.4, 50.8,
+)  # fmt: skip
+"""The annual maxima of the Czarna at Polana [m3/s], 34 years (KZGW 2017, example
+3.2, table 3.5): the typical sample of the generated tests."""
+
+
+def _sample_variable(description: str) -> Variable:
+    return Variable(
+        name="values",
+        symbol="x_i",
+        unit=_UNIT,
+        kind="real_array",
+        description=description,
+        physical=_ANY_VALUE,
+        applicability="unstated",
+        typical=_MAXIMA,
+    )
+
+
+def _count(least: int, source: Source) -> Constraint:
+    """Return the precondition of at least ``least`` values."""
+    return Constraint(
+        name="enough_values",
+        cls="precondition",
+        check=lambda x: x.array("values").size >= least,
+        text=f"n >= {least}",
+        source=source,
+        satisfied={"values": [1.0, 2.0, 4.0, 8.0, 16.0][: least + 1]},
+        violated={"values": [1.0, 2.0, 4.0, 8.0][: least - 1]},
+        boundary={"values": [1.0, 2.0, 4.0, 8.0][:least]},
+    )
+
+
+def _not_constant(source: Source) -> Constraint:
+    """Return the precondition of values not all equal."""
+    return Constraint(
+        name="values_not_all_equal",
+        cls="precondition",
+        check=lambda x: bool(np.ptp(x.array("values")) > 0.0),
+        text="min(x) < max(x)",
+        source=source,
+        satisfied={"values": [5.0, 5.0, 5.0, 6.0]},
+        violated={"values": [5.0, 5.0, 5.0, 5.0]},
+    )
+
+
+def _normalised(data: NDArray[np.float64]) -> tuple[NDArray[np.float64], int]:
+    """Return the sample over the power of two bringing its largest into [½, 1).
+
+    The division is exact, so the sums of the statistics round as on the sample
+    itself but never underflow or overflow; the exponent multiplies them back.
     """
-    _require_spread(data)
+    largest = float(np.max(np.abs(data)))
+    exponent = math.frexp(largest)[1] if largest > 0.0 else 0
+    return np.ldexp(data, -exponent), exponent
+
+
+# --- product moments -------------------------------------------------------------
+
+
+class SampleMoments(NamedTuple):
+    """Mean, standard deviation and skewness of a sample (spec ``sample_moments``)."""
+
+    mean: float
+    std: float
+    skewness: float
+
+
+def _moments(data: NDArray[np.float64]) -> SampleMoments:
+    """Return the product moments of three values or more, not all equal.
+
+    The deviations are taken from the mean twice: the second pass removes the
+    rounding of the first mean, which a large mean makes large next to a small
+    spread (the corrected two-pass algorithm).
+    """
+    scaled, exponent = _normalised(data)
     n = data.size
-    mean = float(np.mean(data))
-    deviations = data - mean
+    centre = float(np.mean(scaled))
+    deviations = scaled - centre
+    residual = float(np.mean(deviations))
+    deviations -= residual
     m2 = float(np.mean(deviations**2))
     m3 = float(np.mean(deviations**3))
-    skewness = np.sqrt(n * (n - 1)) / (n - 2) * m3 / m2**1.5
-    return mean, float(np.sqrt(m2 * n / (n - 1))), float(skewness)
+    skewness = math.sqrt(n * (n - 1)) / (n - 2) * m3 / m2**1.5
+    std = math.sqrt(m2 * n / (n - 1))
+    return SampleMoments(
+        math.ldexp(centre + residual, exponent), math.ldexp(std, exponent), skewness
+    )
 
 
-def _sample_l_moments(data: NDArray[np.float64]) -> tuple[float, float, float]:
-    """L-moments λ1 and λ2 and L-skewness τ3 of a sample.
+def _sample_moments(data: NDArray[np.float64]) -> SampleMoments:
+    """Mean, standard deviation and skewness of a sample (:data:`MOMENTS`).
 
-    From the unbiased probability-weighted moments of the ascending sample
-    x(1) ≤ ... ≤ x(n) (Hosking and Wallis 1997): b0 = Σ x(j) / n,
-    b1 = Σ (j - 1) x(j) / (n (n - 1)), b2 = Σ (j - 1)(j - 2) x(j) / (n (n - 1)(n - 2));
-    λ1 = b0, λ2 = 2 b1 - b0 and τ3 = (6 b2 - 6 b1 + b0) / λ2.
+    Raises ``_NoParameters`` for fewer than 3 values or values all equal.
     """
     _require_spread(data)
+    return _moments(data)
+
+
+def _exact_moments(values: list[float]) -> tuple[float, float, float]:
+    """Return the mean, standard deviation and skewness in rational arithmetic.
+
+    Only the square roots round: s from the exact s², G from the exact G².
+    """
+    exact = [Fraction(value) for value in values]
+    n = len(exact)
+    mean = sum(exact, Fraction(0)) / n
+    m2 = sum(((v - mean) ** 2 for v in exact), Fraction(0)) / n
+    m3 = sum(((v - mean) ** 3 for v in exact), Fraction(0)) / n
+    squared = Fraction(n * (n - 1), (n - 2) ** 2) * m3**2 / m2**3
+    skewness = math.copysign(math.sqrt(float(squared)), float(m3))
+    return float(mean), math.sqrt(float(m2 * n / (n - 1))), skewness
+
+
+_RATIONAL_SAMPLES: Final = (
+    (1.0, 2.0, 3.0, 4.0, 10.0),
+    (0.1, 0.2, 0.3, 0.3, 0.7, 0.6),
+    _POLANA,
+    tuple(1.0e9 + value for value in (0.001, 0.002, 0.004, 0.0085, 0.016, 0.031)),
+)
+"""Samples of the exact oracles: integers, decimals, the Polana maxima and a large
+mean with a small spread (the trap of cancellation)."""
+
+
+def _rational_moments(run: Callable[..., Values]) -> None:
+    for sample in _RATIONAL_SAMPLES:
+        out = run(values=list(sample))
+        mean, std, skewness = _exact_moments(list(sample))
+        assert_within(
+            [out.real("mean"), out.real("std")],
+            [mean, std],
+            rel=1e-14,
+            reason="the exact rational mean and standard deviation; the code's "
+            "pairwise sums of a few tens of values round within a few ulp",
+        )
+        assert_within(
+            out.real("skewness"),
+            skewness,
+            abs=1e-12,
+            reason="the exact rational skewness; the third moment of deviations of "
+            "both signs loses digits to cancellation, by at most n ulp of the sum of "
+            "their absolute cubes over m2**1.5",
+        )
+
+
+def _mirrored(x: Values) -> dict[str, object]:
+    return {"values": -x.array("values")}
+
+
+_EXACT: Final = Tolerance(
+    abs=1e-300,
+    rel=4.5e-16,
+    reason="the statistics run on the sample scaled by a power of two, so doubling "
+    "or negating it changes no rounding; a result below the normal floats keeps fewer "
+    "bits",
+)
+
+
+MOMENTS: Final = FormulaSpec(
+    name="sample_moments",
+    title="Mean, standard deviation and skewness of a sample (product moments)",
+    function="hydrolog.statistics.frequency.sample_moments",
+    family="statistic",
+    equation=(
+        "mean = sum(x) / n; s = sqrt(sum((x - mean)**2) / (n - 1)); G = sqrt(n (n - "
+        "1)) / (n - 2) * m3 / m2**1.5 with m_k = sum((x - mean)**k) / n"
+    ),
+    latex=(
+        r"\bar{x} = \frac{1}{n}\sum_i x_i,\quad s = \sqrt{\frac{\sum_i (x_i - "
+        r"\bar{x})^2}{n - 1}},\quad G = \frac{\sqrt{n(n - 1)}}{n - 2}\,"
+        r"\frac{m_3}{m_2^{3/2}},\quad m_k = \frac{1}{n}\sum_i (x_i - \bar{x})^k"
+    ),
+    variables=(_sample_variable("The sample, annual maxima or minima."),),
+    outputs=(
+        Output(
+            name="mean",
+            unit=_UNIT,
+            symbol=r"\bar{x}",
+            description="Arithmetic mean.",
+            physical=Range(),
+        ),
+        Output(
+            name="std",
+            unit=_UNIT,
+            symbol="s",
+            description="Standard deviation with the divisor n - 1.",
+            physical=Range(low=0.0),
+        ),
+        Output(
+            name="skewness",
+            unit="-",
+            symbol="G",
+            description="Adjusted Fisher-Pearson coefficient of skewness.",
+            physical=Range(),
+        ),
+    ),
+    sources=(
+        Source(
+            citation=_B17B,
+            locator="eqs. 2, 3a and 4a (equal to 3b and 4b), pp. 9-10; appendix 12, "
+            "example 1, table 12-2 and eqs. 12-1 to 12-3",
+            url=_B17B_URL,
+        ),
+        Source(
+            citation=_WMO_1029,
+            locator="sect. 7.6.1, eqs. 7.7 and 7.8, p. 63 (its eq. 7.9 is the biased "
+            "skewness m3 / m2**1.5); table 7.1, p. 64",
+            url=_WMO_1029_URL,
+        ),
+        _SCIPY_SKEW,
+    ),
+    constraints=(
+        _count(
+            3,
+            Source(
+                citation=_B17B,
+                locator="eq. 4a: the skewness divides by (N - 1)(N - 2)",
+                url=_B17B_URL,
+            ),
+        ),
+        _not_constant(
+            Source(
+                citation=_B17B,
+                locator="eq. 4a: the skewness divides by S cubed, 0 for equal values",
+                url=_B17B_URL,
+            )
+        ),
+    ),
+    properties=Properties(
+        units="homogeneous",
+        monotonic={"values": 1},
+        scalings=(
+            Scaling(
+                name="unit_of_the_sample",
+                inputs={"values": 1.0},
+                outputs={"mean": 1.0, "std": 1.0},
+                tolerance=_EXACT,
+            ),
+        ),
+        symmetries=(
+            Symmetry(
+                name="mirror",
+                text="the negated sample has the negated mean and skewness and the "
+                "same standard deviation",
+                inputs=_mirrored,
+                outputs=lambda out: {
+                    "mean": -out.real("mean"),
+                    "std": out.real("std"),
+                    "skewness": -out.real("skewness"),
+                },
+                tolerance=_EXACT,
+            ),
+        ),
+        limits=(
+            Limit(
+                name="exact_rational",
+                text="the statistics of the definition in exact rational arithmetic",
+                check=_rational_moments,
+            ),
+        ),
+    ),
+    validation="none: the definitions of the sample statistics",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "the standard deviation with the divisor n - 1 (Bulletin 17B eq. 3a; WMO-No. "
+        "1029 eq. 7.8)",
+        "the skewness G of Bulletin 17B eq. 4a, N sum((X - mean)**3) / ((N - 1)(N - "
+        "2) S**3), which is the adjusted Fisher-Pearson coefficient G1 of "
+        "scipy.stats.skew with bias=False; WMO-No. 1029 eq. 7.9 is the biased "
+        "m3 / m2**1.5, G (n - 2) / sqrt(n (n - 1))",
+        "the sample in any unit: the mean and the standard deviation in its unit, the "
+        "skewness without one",
+        "the moments of the deviations from the mean (eqs. 3a and 4a, which Bulletin "
+        "17B p. 10 finds less sensitive to the digits carried than the sums of powers "
+        "of eqs. 3b and 4b), centred twice, on the sample divided by a power of two",
+    ),
+    traps={
+        "singular_at_bound": "constraint case values_not_all_equal-violated: m2 = 0 "
+        "of equal values is refused before the division by m2**1.5",
+        "gap_propagation": "type case values-nan_element: a gap is refused",
+        "many_small_terms": "test_long_samples_keep_their_moments",
+        "moment_cancellation": "limit exact_rational: a mean of 1e9 with a spread of "
+        "0.03 against rational arithmetic",
+    },
+    reference_cases=("tests/fixtures/formulas/flood-frequency-cases.json",),
+    oracles=(
+        Oracle(
+            kind="exact",
+            description="the mean, the standard deviation and the skewness in exact "
+            "rational arithmetic (fractions)",
+            test="tests/unit/test_formulas_flood_frequency.py (limit exact_rational)",
+        ),
+        Oracle(
+            kind="established",
+            description="numpy.mean, numpy.std with ddof=1 and scipy.stats.skew with "
+            "bias=False",
+            test="tests/unit/test_formulas_flood_frequency.py "
+            "(test_the_moments_are_numpys_and_scipys)",
+            conventions=(
+                "scipy.stats.skew(bias=False) is the adjusted Fisher-Pearson G1, the "
+                "skewness of the spec",
+                "numpy.std(ddof=1) has the divisor n - 1 of the spec",
+            ),
+        ),
+    ),
+    base={"values": list(_POLANA)},
+)
+
+
+def sample_moments(
+    values: NDArray[np.float64] | list[float] | tuple[float, ...],
+) -> SampleMoments:
+    """Return a sample's mean, standard deviation and skewness, spec sample_moments.
+
+    Parameters
+    ----------
+    values : array_like of float
+        The sample.
+
+    Returns
+    -------
+    SampleMoments
+        Its mean, standard deviation and skewness.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the sample is refused by the spec: too short, all equal or not finite.
+    """
+    x = checked_inputs(MOMENTS, values=values)
+    out = checked_outputs(MOMENTS, _moments(x.array("values"))._asdict())
+    return SampleMoments(out.real("mean"), out.real("std"), out.real("skewness"))
+
+
+# --- L-moments -------------------------------------------------------------------
+
+
+class SampleLMoments(NamedTuple):
+    """L-moments λ1, λ2 and L-skewness τ3 of a sample (spec ``sample_l_moments``)."""
+
+    l1: float
+    l2: float
+    t3: float
+
+
+def _l_moments(data: NDArray[np.float64]) -> SampleLMoments:
+    """Return the L-moments of a sample of three values or more, not all equal.
+
+    λ2 and λ3 are the weighted sums of the ordered deviations from the mean that the
+    probability-weighted moments make, 2 b1 - b0 and 6 b2 - 6 b1 + b0, with their
+    weights summed first: no difference of the large b_r rounds away the small
+    L-moments, and a large mean leaves the spread its digits. λ1 is the mean of
+    :func:`_moments`, centred twice.
+    """
+    scaled, exponent = _normalised(data)
     n = data.size
-    ascending = np.sort(data)
+    centre = float(np.mean(scaled))
+    deviations = scaled - centre
+    residual = float(np.mean(deviations))
+    ascending = np.sort(deviations)
     rank = np.arange(n, dtype=np.float64)  # j - 1
-    b0 = float(np.mean(ascending))
-    b1 = float(rank @ ascending) / (n * (n - 1))
-    b2 = float((rank * (rank - 1.0)) @ ascending) / (n * (n - 1) * (n - 2))
-    l2 = 2.0 * b1 - b0
-    return b0, l2, (6.0 * b2 - 6.0 * b1 + b0) / l2
+    weights_2 = (2.0 * rank - (n - 1)) / (n * (n - 1))
+    weights_3 = (
+        6.0 * rank * (rank - 1.0) / ((n - 1) * (n - 2)) - 6.0 * rank / (n - 1) + 1.0
+    ) / n
+    l2 = float(weights_2 @ ascending)
+    return SampleLMoments(
+        math.ldexp(centre + residual, exponent),
+        math.ldexp(l2, exponent),
+        float(weights_3 @ ascending) / l2,
+    )
+
+
+def _sample_l_moments(data: NDArray[np.float64]) -> SampleLMoments:
+    """L-moments λ1 and λ2 and L-skewness τ3 of a sample (:data:`L_MOMENTS`).
+
+    Raises ``_NoParameters`` for fewer than 3 values or values all equal.
+    """
+    _require_spread(data)
+    return _l_moments(data)
+
+
+def _exact_l_moments(values: list[float]) -> tuple[float, float, float]:
+    """λ1, λ2 and τ3 of the unbiased probability-weighted moments, rationally."""
+    ascending = sorted(Fraction(value) for value in values)
+    n = len(ascending)
+    b = [
+        sum(
+            (math.comb(j, r) * x for j, x in enumerate(ascending)),
+            Fraction(0),
+        )
+        / (n * math.comb(n - 1, r))
+        for r in range(3)
+    ]
+    l2 = 2 * b[1] - b[0]
+    return float(b[0]), float(l2), float((6 * b[2] - 6 * b[1] + b[0]) / l2)
+
+
+def _rational_l_moments(run: Callable[..., Values]) -> None:
+    for sample in _RATIONAL_SAMPLES:
+        out = run(values=list(sample))
+        assert_within(
+            [out.real("l1"), out.real("l2"), out.real("t3")],
+            list(_exact_l_moments(list(sample))),
+            rel=1e-13,
+            reason="the exact rational L-moments of b_r = n^-1 C(n - 1, r)^-1 sum "
+            "C(j - 1, r) x(j); the code's weighted sums of a few tens of deviations "
+            "round within tens of ulp",
+        )
+
+
+L_MOMENTS: Final = FormulaSpec(
+    name="sample_l_moments",
+    title="L-moments and L-skewness of a sample (unbiased probability-weighted "
+    "moments)",
+    function="hydrolog.statistics.frequency.sample_l_moments",
+    family="statistic",
+    equation=(
+        "b_r = n^-1 C(n - 1, r)^-1 sum_j C(j - 1, r) x(j) over the ascending sample "
+        "x(1) <= ... <= x(n); l1 = b0; l2 = 2 b1 - b0; t3 = (6 b2 - 6 b1 + b0) / l2"
+    ),
+    latex=(
+        r"b_r = \frac{1}{n}\binom{n - 1}{r}^{-1}\sum_{j=1}^{n}\binom{j - 1}{r}"
+        r"x_{(j)},\quad \lambda_1 = b_0,\quad \lambda_2 = 2b_1 - b_0,\quad "
+        r"\tau_3 = \frac{6b_2 - 6b_1 + b_0}{\lambda_2}"
+    ),
+    variables=(_sample_variable("The sample, annual maxima or minima."),),
+    outputs=(
+        Output(
+            name="l1",
+            unit=_UNIT,
+            symbol=r"\lambda_1",
+            description="First L-moment, the mean.",
+            physical=Range(),
+        ),
+        Output(
+            name="l2",
+            unit=_UNIT,
+            symbol=r"\lambda_2",
+            description="Second L-moment, half the mean difference of two values.",
+            physical=Range(low=0.0),
+        ),
+        Output(
+            name="t3",
+            unit="-",
+            symbol=r"\tau_3",
+            description="L-skewness; 1 (or -1) for values all equal but the largest "
+            "(the smallest).",
+            physical=Range(low=-1.0, high=1.0),
+            boundary_tolerance=1e-9,
+        ),
+    ),
+    sources=(
+        _HOSKING_1990,
+        Source(
+            citation=_LMOM,
+            locator="samlmu: the sample L-moments of Hosking (1990) from the unbiased "
+            "probability-weighted moments",
+            url=_LMOM_URL,
+        ),
+        Source(
+            citation=_LMOMCO,
+            locator="pwm.ub: beta_r = n^-1 C(n - 1, r)^-1 sum C(j - 1, r) x(j:n); "
+            "lmoms",
+            url=_LMOMCO_URL,
+        ),
+        Source(
+            citation=_WMO_168,
+            locator="sect. 5.5.1, eqs. 5.25 to 5.27 and table II.5.4, pp. II.5-11 to "
+            "II.5-12",
+            url=_WMO_168_URL,
+        ),
+        Source(
+            citation=_WMO_1029,
+            locator="sect. 7.6.2, eqs. 7.11 and 7.12, p. 64; table 7.1, p. 64",
+            url=_WMO_1029_URL,
+        ),
+    ),
+    constraints=(
+        _count(
+            3,
+            Source(
+                citation=_LMOMCO,
+                locator="pwm.ub: b2 divides by C(n - 1, 2), 0 for n < 3",
+                url=_LMOMCO_URL,
+            ),
+        ),
+        _not_constant(
+            Source(
+                citation=_WMO_168,
+                locator="table II.5.4: the L-skewness is lambda3 / lambda2, and "
+                "lambda2 is 0 for equal values",
+                url=_WMO_168_URL,
+            )
+        ),
+    ),
+    properties=Properties(
+        units="homogeneous",
+        monotonic={"values": 1},
+        scalings=(
+            Scaling(
+                name="unit_of_the_sample",
+                inputs={"values": 1.0},
+                outputs={"l1": 1.0, "l2": 1.0},
+                tolerance=_EXACT,
+            ),
+        ),
+        symmetries=(
+            Symmetry(
+                name="mirror",
+                text="the negated sample has the negated l1 and t3 and the same l2",
+                inputs=_mirrored,
+                outputs=lambda out: {
+                    "l1": -out.real("l1"),
+                    "l2": out.real("l2"),
+                    "t3": -out.real("t3"),
+                },
+                tolerance=Tolerance(
+                    abs=1e-13,
+                    rel=1e-13,
+                    reason="the negated sample has the negated mean exactly and "
+                    "sorts in the reverse order: l2 and l3 add the same terms in the "
+                    "other order, within n ulp of the mean absolute deviation, at "
+                    "most 2 l2, so t3 within 4 n ulp",
+                ),
+            ),
+        ),
+        limits=(
+            Limit(
+                name="exact_rational",
+                text="the L-moments of the definition in exact rational arithmetic",
+                check=_rational_l_moments,
+            ),
+        ),
+    ),
+    validation="none: the definitions of the sample statistics",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "the unbiased probability-weighted moments b_r of the ascending sample "
+        "(Hosking 1990; lmom samlmu; lmomco pwm.ub), not the biased estimators of "
+        "plotting positions",
+        "the L-skewness t3 = lambda3 / lambda2 (WMO-No. 168 table II.5.4)",
+        "the sample in any unit: l1 and l2 in its unit, t3 without one",
+        "lambda2 and lambda3 as the weighted sums of the ordered deviations from the "
+        "mean that the b_r make (their weights summed first), on the sample divided "
+        "by a power of two; l1 the mean centred twice",
+        "|t3| = 1 for values all equal but the largest or the smallest; the weighted "
+        "sums of n values round by up to n ulp, so a t3 within 1e-9 beyond 1 or -1 "
+        "is set to the bound (its boundary tolerance)",
+    ),
+    traps={
+        "singular_at_bound": "constraint case values_not_all_equal-violated: l2 = 0 "
+        "of equal values is refused before the division by l2",
+        "gap_propagation": "type case values-nan_element: a gap is refused",
+        "many_small_terms": "test_long_samples_keep_their_moments",
+        "moment_cancellation": "limit exact_rational: a mean of 1e9 with a spread of "
+        "0.03 against rational arithmetic",
+    },
+    reference_cases=("tests/fixtures/formulas/flood-frequency-cases.json",),
+    oracles=(
+        Oracle(
+            kind="exact",
+            description="the L-moments of the unbiased probability-weighted moments "
+            "in exact rational arithmetic (fractions)",
+            test="tests/unit/test_formulas_flood_frequency.py (limit exact_rational)",
+        ),
+        Oracle(
+            kind="frozen",
+            description="lmom 3.3 samlmu (Hosking) and lmomco 2.5.8 lmoms (Asquith) "
+            "on seven samples, R 4.5.3, 2026-11-18",
+            test="tests/oracles/frequency_lmom_r.csv",
+            conventions=(
+                "samlmu and lmoms give the L-moments of the unbiased "
+                "probability-weighted moments, as the spec",
+            ),
+        ),
+    ),
+    base={"values": list(_POLANA)},
+)
+
+
+def sample_l_moments(
+    values: NDArray[np.float64] | list[float] | tuple[float, ...],
+) -> SampleLMoments:
+    """Return the L-moments and the L-skewness of a sample, spec sample_l_moments.
+
+    Parameters
+    ----------
+    values : array_like of float
+        The sample.
+
+    Returns
+    -------
+    SampleLMoments
+        Its first and second L-moments and its L-skewness.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the sample is refused by the spec: too short, all equal or not finite.
+    """
+    x = checked_inputs(L_MOMENTS, values=values)
+    out = checked_outputs(L_MOMENTS, _l_moments(x.array("values"))._asdict())
+    return SampleLMoments(out.real("l1"), out.real("l2"), out.real("t3"))
 
 
 def _shape(
@@ -494,3 +1191,7 @@ def _by_maximum_likelihood(
     _require_spread(data, _PARAMETER_COUNTS[name] + 1)
     shape, _, scale = lognorm.fit(data, floc=0)
     return float(shape), 0.0, float(scale)
+
+
+SPECS: Final = (MOMENTS, L_MOMENTS)
+"""The Tier A formulas of the module, in the order of ``docs/FORMULAS.md``."""

@@ -255,16 +255,6 @@ class TestFitMethods:
             parameters, rel=0.01, abs=0.01
         )
 
-    def test_sample_l_moments_of_a_case_checked_by_hand(self):
-        from hydrolog.statistics.frequency import _sample_l_moments
-
-        # 1, 2, 3, 4, 10: l1 is the mean, 4; l2 is half the mean difference of the
-        # 10 pairs, 40 / (2 * 10) = 2; l3 is the mean of (x_k - 2 x_j + x_i) / 3 over
-        # the 10 ordered triples, 30 / (3 * 10) = 1; t3 = l3 / l2 = 0.5
-        l1, l2, t3 = _sample_l_moments(np.array([4.0, 10.0, 1.0, 3.0, 2.0]))
-
-        assert (l1, l2, t3) == pytest.approx((4.0, 2.0, 0.5))
-
     @pytest.mark.parametrize("distribution", list(_DISTRIBUTIONS))
     def test_moments_are_the_unbiased_moments_of_the_sample(self, distribution):
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis

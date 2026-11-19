@@ -1,0 +1,180 @@
+schema = "nogat-formula-card/1"
+name = "sample_moments"
+title = "Mean, standard deviation and skewness of a sample (product moments)"
+function = "hydrolog.statistics.frequency.sample_moments"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "mean = sum(x) / n; s = sqrt(sum((x - mean)**2) / (n - 1)); G = sqrt(n (n - 1)) / (n - 2) * m3 / m2**1.5 with m_k = sum((x - mean)**k) / n"
+latex = "\\bar{x} = \\frac{1}{n}\\sum_i x_i,\\quad s = \\sqrt{\\frac{\\sum_i (x_i - \\bar{x})^2}{n - 1}},\\quad G = \\frac{\\sqrt{n(n - 1)}}{n - 2}\\,\\frac{m_3}{m_2^{3/2}},\\quad m_k = \\frac{1}{n}\\sum_i (x_i - \\bar{x})^k"
+validation = "none: the definitions of the sample statistics"
+conventions = ["the standard deviation with the divisor n - 1 (Bulletin 17B eq. 3a; WMO-No. 1029 eq. 7.8)", "the skewness G of Bulletin 17B eq. 4a, N sum((X - mean)**3) / ((N - 1)(N - 2) S**3), which is the adjusted Fisher-Pearson coefficient G1 of scipy.stats.skew with bias=False; WMO-No. 1029 eq. 7.9 is the biased m3 / m2**1.5, G (n - 2) / sqrt(n (n - 1))", "the sample in any unit: the mean and the standard deviation in its unit, the skewness without one", "the moments of the deviations from the mean (eqs. 3a and 4a, which Bulletin 17B p. 10 finds less sensitive to the digits carried than the sums of powers of eqs. 3b and 4b), centred twice, on the sample divided by a power of two"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/flood-frequency-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+values = 1
+
+[[properties.scalings]]
+name = "unit_of_the_sample"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+mean = 1.0
+std = 1.0
+
+[properties.scalings.tolerance]
+reason = "the statistics run on the sample scaled by a power of two, so doubling or negating it changes no rounding; a result below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[properties.limits]]
+name = "exact_rational"
+text = "the statistics of the definition in exact rational arithmetic"
+
+[[properties.symmetries]]
+name = "mirror"
+text = "the negated sample has the negated mean and skewness and the same standard deviation"
+
+[properties.symmetries.tolerance]
+reason = "the statistics run on the sample scaled by a power of two, so doubling or negating it changes no rounding; a result below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[sources]]
+citation = "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia"
+access = "open"
+locator = "eqs. 2, 3a and 4a (equal to 3b and 4b), pp. 9-10; appendix 12, example 1, table 12-2 and eqs. 12-1 to 12-3"
+url = "https://pubs.usgs.gov/unnumbered/70275162/report.pdf"
+
+[[sources]]
+citation = "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029"
+access = "open"
+locator = "sect. 7.6.1, eqs. 7.7 and 7.8, p. 63 (its eq. 7.9 is the biased skewness m3 / m2**1.5); table 7.1, p. 64"
+url = "https://library.wmo.int/idurl/4/32176"
+
+[[sources]]
+citation = "Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272"
+access = "open"
+locator = "scipy.stats.skew with bias=False: the adjusted Fisher-Pearson standardized moment coefficient G1 = sqrt(n (n - 1)) / (n - 2) m3 / m2**1.5"
+url = "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.skew.html"
+
+[[variables]]
+name = "values"
+symbol = "x_i"
+unit = "m3/s"
+kind = "real_array"
+description = "The sample, annual maxima or minima."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0"
+
+[variables.typical]
+low = 0.81
+low_inclusive = true
+high = 111.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[constraints]]
+name = "enough_values"
+class = "precondition"
+text = "n >= 3"
+
+[constraints.source]
+citation = "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia"
+access = "open"
+locator = "eq. 4a: the skewness divides by (N - 1)(N - 2)"
+url = "https://pubs.usgs.gov/unnumbered/70275162/report.pdf"
+
+[[constraints]]
+name = "values_not_all_equal"
+class = "precondition"
+text = "min(x) < max(x)"
+
+[constraints.source]
+citation = "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia"
+access = "open"
+locator = "eq. 4a: the skewness divides by S cubed, 0 for equal values"
+url = "https://pubs.usgs.gov/unnumbered/70275162/report.pdf"
+
+[[outputs]]
+name = "mean"
+unit = "m3/s"
+kind = "real"
+symbol = "\\bar{x}"
+description = "Arithmetic mean."
+
+[outputs.physical]
+
+[[outputs]]
+name = "std"
+unit = "m3/s"
+kind = "real"
+symbol = "s"
+description = "Standard deviation with the divisor n - 1."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "skewness"
+unit = "-"
+kind = "real"
+symbol = "G"
+description = "Adjusted Fisher-Pearson coefficient of skewness."
+
+[outputs.physical]
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "constraint case values_not_all_equal-violated: m2 = 0 of equal values is refused before the division by m2**1.5"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case values-nan_element: a gap is refused"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_long_samples_keep_their_moments"
+
+[[traps]]
+name = "moment_cancellation"
+description = "Cancellation in moments computed as E[x^2] - E[x]^2."
+test = "limit exact_rational: a mean of 1e9 with a spread of 0.03 against rational arithmetic"
+
+[[oracles]]
+kind = "exact"
+description = "the mean, the standard deviation and the skewness in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_flood_frequency.py (limit exact_rational)"
+conventions = []
+
+[[oracles]]
+kind = "established"
+description = "numpy.mean, numpy.std with ddof=1 and scipy.stats.skew with bias=False"
+test = "tests/unit/test_formulas_flood_frequency.py (test_the_moments_are_numpys_and_scipys)"
+conventions = ["scipy.stats.skew(bias=False) is the adjusted Fisher-Pearson G1, the skewness of the spec", "numpy.std(ddof=1) has the divisor n - 1 of the spec"]

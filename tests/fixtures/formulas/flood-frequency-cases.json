@@ -1,0 +1,529 @@
+[
+ {
+  "formula": "sample_moments",
+  "case_id": "b17b-ex1-fishkill",
+  "source": {
+   "citation": "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia",
+   "url": "https://pubs.usgs.gov/unnumbered/70275162/report.pdf",
+   "access": "open",
+   "locator": "appendix 12, example 1, table 12-2 and eqs. 12-1 to 12-3, pp. 12-5 to 12-6 (Fishkill Creek at Beacon, NY, 1945-1968)"
+  },
+  "inputs": {
+   "values": [
+    3.35984,
+    3.16732,
+    3.34635,
+    3.47276,
+    3.48001,
+    3.08279,
+    3.3962,
+    3.50106,
+    3.50786,
+    3.24551,
+    3.94448,
+    3.91803,
+    3.11727,
+    3.39794,
+    3.29226,
+    3.33041,
+    3.63749,
+    3.48572,
+    3.25042,
+    3.13988,
+    2.99123,
+    3.01703,
+    3.19866,
+    3.55991
+   ]
+  },
+  "expected": {
+   "mean": 3.3684,
+   "std": 0.2456,
+   "skewness": 0.73
+  },
+  "printed_precision": {
+   "values": 1e-05,
+   "mean": 0.0001,
+   "std": 0.0001,
+   "skewness": 0.0001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "X**2 and X**3 of each logarithm printed to 5 decimals and summed (table 12-2); S and G from the sums (eqs. 12-2, 12-3): |dS| <= N 5e-6 / (2 (N - 1) S) = 1.06e-05, |dG| <= (N**2 N 5e-6 + 3 N sum(X) N 5e-6) / (N (N - 1)(N - 2) S**3) + 3 G dS / S = 0.00436",
+    "effect": {
+     "std": 1.062e-05,
+     "skewness": 0.004361
+    }
+   },
+   {
+    "step": "S**3 carried as .014816 in eq. 12-3 (exact S**3 of the printed logarithms 0.0148169)",
+    "effect": {
+     "skewness": 4.235e-05
+    }
+   }
+  ],
+  "conventions": [
+   "the values are the base-10 logarithms of the annual peaks as table 12-2 prints them (5 decimals); the peaks of table 12-1 give the same logarithms",
+   "S with the divisor N - 1 (eq. 3b); G of eq. 4b, the adjusted Fisher-Pearson coefficient"
+  ],
+  "second_source": {
+   "citation": "USGS National Water Information System, peak streamflow of site 01373500 (Fishkill Creek at Beacon, NY)",
+   "locator": "the 24 annual peaks of 1945-1968, as in table 12-1",
+   "url": "https://nwis.waterdata.usgs.gov/nwis/peak?site_no=01373500&agency_cd=USGS&format=rdb",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "sample_moments",
+  "case_id": "b17b-ex2-floyd",
+  "source": {
+   "citation": "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia",
+   "url": "https://pubs.usgs.gov/unnumbered/70275162/report.pdf",
+   "access": "open",
+   "locator": "appendix 12, example 2, step 1, p. 12-14 (Floyd River at James, IA, 1935-1973); peaks in table 12-1, p. 12-4"
+  },
+  "inputs": {
+   "values": [
+    3.16435,
+    3.60746,
+    3.55267,
+    3.31387,
+    3.11394,
+    3.14301,
+    3.23553,
+    3.79796,
+    3.13354,
+    3.87157,
+    3.72591,
+    3.14613,
+    3.51055,
+    3.43297,
+    3.65514,
+    3.68485,
+    3.92012,
+    4.14301,
+    4.85431,
+    3.79588,
+    3.35411,
+    2.50243,
+    3.12385,
+    2.98677,
+    3.2833,
+    4.17898,
+    3.45788,
+    4.31387,
+    3.58092,
+    2.86094,
+    3.87506,
+    3.85552,
+    3.30103,
+    2.91855,
+    4.23805,
+    3.67578,
+    4.1271,
+    3.46835,
+    3.75282
+   ]
+  },
+  "expected": {
+   "mean": 3.5553,
+   "std": 0.4642,
+   "skewness": 0.3566
+  },
+  "printed_precision": {
+   "values": 1e-05,
+   "mean": 0.0001,
+   "std": 0.0001,
+   "skewness": 0.0001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "the example omits its computations; done as in example 1, the X**2 and X**3 of the 5-decimal logarithms rounded to 5 decimals and summed: |dS| <= 5.53e-06, |dG| <= 0.000644 (the bounds of example 1 for N = 39)",
+    "effect": {
+     "std": 5.53e-06,
+     "skewness": 0.000644
+    }
+   }
+  ],
+  "conventions": [
+   "the values are the base-10 logarithms of the 39 annual peaks of table 12-1 rounded to 5 decimals, as table 12-2 of example 1 prints them",
+   "S with the divisor N - 1 (eq. 3b); G of eq. 4b"
+  ],
+  "second_source": {
+   "citation": "USGS National Water Information System, peak streamflow of site 06600500 (Floyd River at James, IA)",
+   "locator": "the 39 annual peaks of 1935-1973, as in table 12-1",
+   "url": "https://nwis.waterdata.usgs.gov/nwis/peak?site_no=06600500&agency_cd=USGS&format=rdb",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "sample_moments",
+  "case_id": "wmo1029-223204",
+  "inputs": {
+   "values": [
+    8.0,
+    13.0,
+    2.0,
+    2.7,
+    9.1,
+    0.0,
+    0.7,
+    21.6,
+    35.1,
+    12.7,
+    1.3,
+    9.1,
+    26.0,
+    22.7,
+    21.3,
+    7.9,
+    23.0,
+    6.0,
+    3.1,
+    4.1,
+    0.0,
+    4.9,
+    2.3,
+    12.4,
+    4.4,
+    2.1,
+    3.1,
+    7.6,
+    9.0,
+    9.0,
+    20.4,
+    13.6,
+    3.3,
+    10.3
+   ]
+  },
+  "expected": {
+   "mean": 9.765,
+   "std": 8.68
+  },
+  "printed_precision": {
+   "values": 0.1,
+   "mean": 0.001,
+   "std": 0.01
+  },
+  "intermediate_rounding": [
+   {
+    "step": "each value printed to 0.1 (1000 m3/d) rounds on its own, by up to 0.05, which a shift of all values together does not show: |ds| <= 0.05 sqrt(n / (n - 1)); |dl2| <= 0.05 sum|w_j| and |dl3| <= 0.05 sum|v_j| of the weights of l2 and l3 on the ordered values; |dt3| <= (|dl3| + |t3| |dl2|) / (l2 - |dl2|)",
+    "effect": {
+     "std": 0.050752
+    }
+   }
+  ],
+  "source": {
+   "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029",
+   "url": "https://library.wmo.int/idurl/4/32176",
+   "access": "open",
+   "locator": "sect. 7.2, p. 58 (the AM(7) series of station 223204) and table 7.1, p. 64 (F(x), all values)"
+  },
+  "conventions": [
+   "AM(7) annual minima of the 7-day mean flow in 1000 m3/d, as printed (to 0.1)",
+   "the standard deviation with the divisor n - 1 (eq. 7.8); the L-moments of eqs. 7.11 and 7.12"
+  ],
+  "second_source": {
+   "citation": "Koffler, D., Gauster, T. and Laaha, G. lfstat: calculation of low flow statistics for daily stream flow data, R package version 0.9.15, CRAN",
+   "locator": "tests/testthat/test-tyear.R: the AM(7) series of stations 223204 and 223207 of WMO-No. 1029, transcribed alike",
+   "url": "https://cran.r-project.org/package=lfstat",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "sample_l_moments",
+  "case_id": "wmo1029-223204",
+  "inputs": {
+   "values": [
+    8.0,
+    13.0,
+    2.0,
+    2.7,
+    9.1,
+    0.0,
+    0.7,
+    21.6,
+    35.1,
+    12.7,
+    1.3,
+    9.1,
+    26.0,
+    22.7,
+    21.3,
+    7.9,
+    23.0,
+    6.0,
+    3.1,
+    4.1,
+    0.0,
+    4.9,
+    2.3,
+    12.4,
+    4.4,
+    2.1,
+    3.1,
+    7.6,
+    9.0,
+    9.0,
+    20.4,
+    13.6,
+    3.3,
+    10.3
+   ]
+  },
+  "expected": {
+   "l1": 9.765,
+   "l2": 4.721,
+   "t3": 0.273
+  },
+  "printed_precision": {
+   "values": 0.1,
+   "l1": 0.001,
+   "l2": 0.001,
+   "t3": 0.001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "each value printed to 0.1 (1000 m3/d) rounds on its own, by up to 0.05, which a shift of all values together does not show: |ds| <= 0.05 sqrt(n / (n - 1)); |dl2| <= 0.05 sum|w_j| and |dl3| <= 0.05 sum|v_j| of the weights of l2 and l3 on the ordered values; |dt3| <= (|dl3| + |t3| |dl2|) / (l2 - |dl2|)",
+    "effect": {
+     "l2": 0.025758,
+     "t3": 0.005982
+    }
+   }
+  ],
+  "source": {
+   "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029",
+   "url": "https://library.wmo.int/idurl/4/32176",
+   "access": "open",
+   "locator": "sect. 7.2, p. 58 (the AM(7) series of station 223204) and table 7.1, p. 64 (F(x), all values)"
+  },
+  "conventions": [
+   "AM(7) annual minima of the 7-day mean flow in 1000 m3/d, as printed (to 0.1)",
+   "the standard deviation with the divisor n - 1 (eq. 7.8); the L-moments of eqs. 7.11 and 7.12"
+  ],
+  "second_source": {
+   "citation": "Koffler, D., Gauster, T. and Laaha, G. lfstat: calculation of low flow statistics for daily stream flow data, R package version 0.9.15, CRAN",
+   "locator": "tests/testthat/test-tyear.R: the AM(7) series of stations 223204 and 223207 of WMO-No. 1029, transcribed alike",
+   "url": "https://cran.r-project.org/package=lfstat",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "sample_moments",
+  "case_id": "wmo1029-223207",
+  "inputs": {
+   "values": [
+    27.3,
+    38.0,
+    72.9,
+    53.6,
+    45.7,
+    37.0,
+    21.7,
+    36.6,
+    43.1,
+    12.6,
+    20.7,
+    66.7,
+    76.6,
+    53.1,
+    15.7,
+    66.6,
+    78.0,
+    53.1,
+    62.6,
+    40.7,
+    51.6,
+    23.1,
+    23.4,
+    23.0,
+    6.0
+   ]
+  },
+  "expected": {
+   "mean": 41.977,
+   "std": 21.05
+  },
+  "printed_precision": {
+   "values": 0.1,
+   "mean": 0.001,
+   "std": 0.01
+  },
+  "intermediate_rounding": [
+   {
+    "step": "each value printed to 0.1 (1000 m3/d) rounds on its own, by up to 0.05, which a shift of all values together does not show: |ds| <= 0.05 sqrt(n / (n - 1)); |dl2| <= 0.05 sum|w_j| and |dl3| <= 0.05 sum|v_j| of the weights of l2 and l3 on the ordered values; |dt3| <= (|dl3| + |t3| |dl2|) / (l2 - |dl2|)",
+    "effect": {
+     "std": 0.051031
+    }
+   }
+  ],
+  "source": {
+   "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029",
+   "url": "https://library.wmo.int/idurl/4/32176",
+   "access": "open",
+   "locator": "sect. 7.2, p. 58 (the AM(7) series of station 223207) and table 7.1, p. 64 (F(x), all values)"
+  },
+  "conventions": [
+   "AM(7) annual minima of the 7-day mean flow in 1000 m3/d, as printed (to 0.1)",
+   "the standard deviation with the divisor n - 1 (eq. 7.8); the L-moments of eqs. 7.11 and 7.12"
+  ],
+  "second_source": {
+   "citation": "Koffler, D., Gauster, T. and Laaha, G. lfstat: calculation of low flow statistics for daily stream flow data, R package version 0.9.15, CRAN",
+   "locator": "tests/testthat/test-tyear.R: the AM(7) series of stations 223204 and 223207 of WMO-No. 1029, transcribed alike",
+   "url": "https://cran.r-project.org/package=lfstat",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "sample_l_moments",
+  "case_id": "wmo1029-223207",
+  "inputs": {
+   "values": [
+    27.3,
+    38.0,
+    72.9,
+    53.6,
+    45.7,
+    37.0,
+    21.7,
+    36.6,
+    43.1,
+    12.6,
+    20.7,
+    66.7,
+    76.6,
+    53.1,
+    15.7,
+    66.6,
+    78.0,
+    53.1,
+    62.6,
+    40.7,
+    51.6,
+    23.1,
+    23.4,
+    23.0,
+    6.0
+   ]
+  },
+  "expected": {
+   "l1": 41.977,
+   "l2": 12.305,
+   "t3": 0.045
+  },
+  "printed_precision": {
+   "values": 0.1,
+   "l1": 0.001,
+   "l2": 0.001,
+   "t3": 0.001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "each value printed to 0.1 (1000 m3/d) rounds on its own, by up to 0.05, which a shift of all values together does not show: |ds| <= 0.05 sqrt(n / (n - 1)); |dl2| <= 0.05 sum|w_j| and |dl3| <= 0.05 sum|v_j| of the weights of l2 and l3 on the ordered values; |dt3| <= (|dl3| + |t3| |dl2|) / (l2 - |dl2|)",
+    "effect": {
+     "l2": 0.026,
+     "t3": 0.001866
+    }
+   }
+  ],
+  "source": {
+   "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029",
+   "url": "https://library.wmo.int/idurl/4/32176",
+   "access": "open",
+   "locator": "sect. 7.2, p. 58 (the AM(7) series of station 223207) and table 7.1, p. 64 (F(x), all values)"
+  },
+  "conventions": [
+   "AM(7) annual minima of the 7-day mean flow in 1000 m3/d, as printed (to 0.1)",
+   "the standard deviation with the divisor n - 1 (eq. 7.8); the L-moments of eqs. 7.11 and 7.12"
+  ],
+  "second_source": {
+   "citation": "Koffler, D., Gauster, T. and Laaha, G. lfstat: calculation of low flow statistics for daily stream flow data, R package version 0.9.15, CRAN",
+   "locator": "tests/testthat/test-tyear.R: the AM(7) series of stations 223204 and 223207 of WMO-No. 1029, transcribed alike",
+   "url": "https://cran.r-project.org/package=lfstat",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "sample_l_moments",
+  "case_id": "wmo1029-223204-non-zero",
+  "source": {
+   "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029",
+   "url": "https://library.wmo.int/idurl/4/32176",
+   "access": "open",
+   "locator": "sect. 7.2, p. 58 (station 223204) and table 7.1, p. 64 (G(x): the values above 0, sect. 7.4.2)"
+  },
+  "inputs": {
+   "values": [
+    8.0,
+    13.0,
+    2.0,
+    2.7,
+    9.1,
+    0.7,
+    21.6,
+    35.1,
+    12.7,
+    1.3,
+    9.1,
+    26.0,
+    22.7,
+    21.3,
+    7.9,
+    23.0,
+    6.0,
+    3.1,
+    4.1,
+    4.9,
+    2.3,
+    12.4,
+    4.4,
+    2.1,
+    3.1,
+    7.6,
+    9.0,
+    9.0,
+    20.4,
+    13.6,
+    3.3,
+    10.3
+   ]
+  },
+  "expected": {
+   "l1": 10.375,
+   "l2": 4.67,
+   "t3": 0.276
+  },
+  "printed_precision": {
+   "values": 0.1,
+   "l1": 0.001,
+   "l2": 0.001,
+   "t3": 0.001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "each value printed to 0.1 (1000 m3/d) rounds on its own, by up to 0.05, which a shift of all values together does not show: |ds| <= 0.05 sqrt(n / (n - 1)); |dl2| <= 0.05 sum|w_j| and |dl3| <= 0.05 sum|v_j| of the weights of l2 and l3 on the ordered values; |dt3| <= (|dl3| + |t3| |dl2|) / (l2 - |dl2|)",
+    "effect": {
+     "l2": 0.025806,
+     "t3": 0.006092
+    }
+   }
+  ],
+  "conventions": [
+   "the 32 values above 0 of station 223204 (the two zeros left out, as G(x) of sect. 7.4.2)"
+  ],
+  "second_source": {
+   "citation": "Koffler, D., Gauster, T. and Laaha, G. lfstat: calculation of low flow statistics for daily stream flow data, R package version 0.9.15, CRAN",
+   "locator": "tests/testthat/test-tyear.R: the AM(7) series of stations 223204 and 223207 of WMO-No. 1029, transcribed alike",
+   "url": "https://cran.r-project.org/package=lfstat",
+   "access": "open"
+  },
+  "status": "second_source"
+ }
+]
