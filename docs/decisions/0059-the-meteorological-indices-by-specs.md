@@ -71,6 +71,9 @@ classes are ranges of whole percents while the code rounded the percentage with 
 - `meteo hydrothermal` gives the same coefficients and classes and carries `formula_versions` `sielianinov_coefficient`
   and `sielianinov_class`; a month or season whose sum of temperatures is not positive has no coefficient, as before
   (the precondition of the spec). The months, the season of Miś (2026) and the means are its Tier B.
+- `hydrolog.statistics._climate` and `meteo_snow` have no Tier A formula (`SPECS` is empty): their WMO-No. 1203 rules,
+  years, rounding and snow-season conventions are their Tier B tables, so `docs/FORMULAS.md` shows every rule of the
+  group with its source.
 - Breaking for library callers: `fit_gamma(sums_mm)` returns `(alpha, beta_mm, zero_probability)` and raises
   `InvalidParameterError` (`precondition_failed`) where it returned `None`; `spi_values` takes `beta_mm`;
   `year_precipitation_class` and `month_precipitation_class` take `percent_of_normal`, a number;
