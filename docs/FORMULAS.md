@@ -16,6 +16,13 @@
 | [Class of a month's precipitation in % of its normal](#month_precipitation_class) | `hydrolog.statistics.meteo_spi.month_precipitation_class` | referenced | 1 | not measured |
 | [Growing and heating degree days of each day](#degree_days) | `hydrolog.statistics.meteo_temperature.daily_degree_days` | referenced | 1 | not measured |
 | [The length of the dry or wet spell ending on each day](#spell_lengths) | `hydrolog.statistics.meteo_spells.spell_lengths` | oracle only | 1 | not measured |
+| [Simple daily intensity index: the mean precipitation of a wet day](#sdii) | `hydrolog.statistics.meteo_precipitation.wet_day_intensity` | oracle only | 1 | not measured |
+| [Percentile of the precipitation of the wet days (quantile type 8)](#wet_day_percentile) | `hydrolog.statistics.meteo_precipitation.wet_day_percentile` | referenced | 1 | not measured |
+| [Precipitation of the days above a threshold and its share of the wet days'](#heavy_precipitation_share) | `hydrolog.statistics.meteo_precipitation.heavy_precipitation_share` | referenced | 1 | not measured |
+| [Oliver's precipitation concentration index of twelve monthly totals](#precipitation_concentration_index) | `hydrolog.statistics.meteo_precipitation.precipitation_concentration_index` | referenced | 1 | not measured |
+| [Oliver's class of a precipitation concentration index](#pci_class) | `hydrolog.statistics.meteo_precipitation.pci_class` | referenced | 1 | not measured |
+| [Walsh and Lawler's class of a seasonality index](#si_class) | `hydrolog.statistics.meteo_precipitation.si_class` | referenced | 1 | not measured |
+| [Walsh and Lawler's seasonality index of twelve monthly totals](#seasonality_index) | `hydrolog.statistics.regime.seasonality_index` | referenced | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
 ### Potential maximum retention S of the SCS curve number
@@ -762,6 +769,509 @@ None.
 
 **Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
+<a id="sdii"></a>
+### Simple daily intensity index: the mean precipitation of a wet day
+
+`hydrolog.statistics.meteo_precipitation.wet_day_intensity` · family `index` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+W = \#\{i : P_i \ge P_w\},\quad \mathrm{PRCPTOT} = \sum_{P_i \ge P_w} P_i,\quad \mathrm{SDII} = \frac{\mathrm{PRCPTOT}}{W}
+$$
+
+Plain text: `W = the number of days with P >= Pw; PRCPTOT = the sum of their P; SDII = PRCPTOT / W`
+
+**Sources**
+
+- ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990 (open) <https://etccdi.pacificclimate.org/list_27_indices.shtml>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `precipitation_mm` | $P_i$ | mm | real_array | [0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [0.0, 75.8]: Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020, the daily precipitation: 0 to 75.8 mm |
+| `wet_day_mm` | $P_w$ | mm | real | (0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [1.0, 1.0]: ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990 |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `a_wet_day` | precondition | at least one day has P >= P_w | ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `sdii_mm` | mm | real | (0.0, inf) | 4 ulp of the bound |
+| `wet_days` | d | integer | [1.0, inf) | 4 ulp of the bound |
+| `wet_day_total_mm` | mm | real | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- a wet day has P >= Pw (RR >= 1 mm of the ETCCDI); a missing day (NaN) is left out
+- the series function takes the days of a complete month or year, or of a calendar month's complete months pooled, and rounds PRCPTOT to 1e-6 mm; a span without a wet day has no SDII (climdex.pcic gives 0)
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: an index of the daily precipitation
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `gap_propagation`: type case precipitation_mm-nan_element: a missing day is left out, never NaN in the outputs
+- `many_small_terms`: limit exact_oracle: PRCPTOT of 365 days against exact fractions to 1e-14
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `precipitation_in_another_unit`: inputs times 2^e (`precipitation_mm` e = 1.0, `wet_day_mm` e = 1.0) give outputs times 2^e (`sdii_mm` e = 1.0, `wet_day_total_mm` e = 1.0)
+- limit `exact_oracle`: W, PRCPTOT and SDII equal their values in exact fractions
+- limit `a_day_at_the_threshold_is_wet`: P = Pw counts as a wet day
+- conservation `intensity_times_days_is_the_total`: SDII W = PRCPTOT
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: W, PRCPTOT and SDII in exact fractions (fractions.Fraction) of hand-made and seeded series with gaps (`tests/unit/test_formulas_meteo_precipitation.py (limit exact_oracle)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="wet_day_percentile"></a>
+### Percentile of the precipitation of the wet days (quantile type 8)
+
+`hydrolog.statistics.meteo_precipitation.wet_day_percentile` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+h = \left(n + \tfrac{1}{3}\right)\frac{p}{100} + \tfrac{1}{3},\quad Q = x_{(k)} + (h - k)\left(x_{(k+1)} - x_{(k)}\right),\quad k = \lfloor h \rfloor
+$$
+
+Plain text: `x(1) <= ... <= x(n) the precipitation of the days with P >= Pw; h = (n + 1/3) p / 100 + 1/3, k its whole part; Q = x(1) for h <= 1, x(n) for h >= n, else x(k) + (h - k) (x(k + 1) - x(k))`
+
+**Sources**
+
+- Hyndman, R. J. and Fan, Y. (1996). Sample quantiles in statistical packages. The American Statistician 50(4), 361-365, definition 8: Q(p) = x(k) + (h - k) (x(k + 1) - x(k)), h = (n + 1/3) p + 1/3 and k its whole part, x(k) the k-th smallest of n values (author-provided)
+- NumPy 2 documentation, numpy.percentile, method 'median_unbiased': definition 8 of Hyndman and Fan (1996), virtual index n p + 1/3 + p / 3 - 1 counted from 0 (open) <https://numpy.org/doc/stable/reference/generated/numpy.percentile.html>
+- Bronaugh, D. (2020). climdex.pcic 1.1-11: PCIC implementation of Climdex routines, R package, R/climdex.r: the percentiles of the wet days (not NA, at least 1 mm) of the base period by quantile type 8 (open) <https://cran.r-project.org/src/contrib/Archive/climdex.pcic/>
+- ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990 (open) <https://etccdi.pacificclimate.org/list_27_indices.shtml>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `precipitation_mm` | $P_i$ | mm | real_array | [0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [0.0, 75.8]: Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020, the daily precipitation: 0 to 75.8 mm |
+| `wet_day_mm` | $P_w$ | mm | real | (0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [1.0, 1.0]: ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990 |
+| `percentile` | $p$ | % | real | (0.0, 100.0) | unstated | [95.0, 99.0]: ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990 |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `a_wet_day` | precondition | at least one day has P >= P_w | Hyndman, R. J. and Fan, Y. (1996). Sample quantiles in statistical packages. The American Statistician 50(4), 361-365, definition 8: Q(p) = x(k) + (h - k) (x(k + 1) - x(k)), h = (n + 1/3) p + 1/3 and k its whole part, x(k) the k-th smallest of n values |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `percentile_mm` | mm | real | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- quantile type 8 of Hyndman and Fan (1996), median-unbiased, as climdex.pcic 1.1-11 (quantile type 8) and NumPy's method median_unbiased
+- the wet days (P >= Pw) of the period given; a missing day (NaN) is left out
+- the series function gives the wet days of the reference period and needs at least 100 of them (too_few_wet_days, Hydrolog's minimum, ADR-0032)
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a sample quantile
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `gap_propagation`: type case precipitation_mm-nan_element: a missing day is left out
+- `singular_at_bound`: the percentile is in (0, 100): h is clipped to [1, n] by definition 8, limit exact_oracle at 0.5 and 99.9
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `percentile` increasing
+- scaling `precipitation_in_another_unit`: inputs times 2^e (`precipitation_mm` e = 1.0, `wet_day_mm` e = 1.0) give outputs times 2^e (`percentile_mm` e = 1.0)
+- limit `exact_oracle`: Q equals definition 8 of Hyndman and Fan in exact fractions
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/meteo-indices-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: definition 8 of Hyndman and Fan in exact fractions (fractions.Fraction), written from the paper's equation (`tests/unit/test_formulas_meteo_precipitation.py (limit exact_oracle)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="heavy_precipitation_share"></a>
+### Precipitation of the days above a threshold and its share of the wet days'
+
+`hydrolog.statistics.meteo_precipitation.heavy_precipitation_share` · family `index` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+R = \sum_{P_i > P_t} P_i,\quad \mathrm{PRCPTOT} = \sum_{P_i \ge P_w} P_i,\quad s = \frac{100\,R}{\mathrm{PRCPTOT}},\quad P_t \ge P_w
+$$
+
+Plain text: `R = the sum of P over the days with P > Pt (R95p for the 95th percentile of the wet days), D their number, PRCPTOT the sum of P over the days with P >= Pw; share = 100 R / PRCPTOT (R95pTOT); Pt >= Pw`
+
+**Sources**
+
+- ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990 (open) <https://etccdi.pacificclimate.org/list_27_indices.shtml>
+- ClimPACT2, the indices of the Expert Team on Sector-specific Climate Indices (ET-SCI), climate.indices.csv: R95p, the annual sum of the precipitation of the days above the 95th percentile of the wet days; R95pTOT = 100 R95p / PRCPTOT (open) <https://github.com/ARCCSS-extremes/climpact>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `precipitation_mm` | $P_i$ | mm | real_array | [0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [0.0, 75.8]: Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020, the daily precipitation: 0 to 75.8 mm |
+| `wet_day_mm` | $P_w$ | mm | real | (0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [1.0, 1.0]: ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990 |
+| `threshold_mm` | $P_t$ | mm | real | (0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [16.8, 29.43]: Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020, the 95th and 99th percentiles of the wet days of 1991-2020: 16.8 and 29.43 mm |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `a_wet_day` | precondition | at least one day has P >= P_w | ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990 |
+| `threshold_of_a_wet_day` | precondition | Pt >= Pw: a day above the threshold is a wet day | ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `heavy_mm` | mm | real | [0.0, inf) | 4 ulp of the bound |
+| `heavy_days` | d | integer | [0.0, inf) | 4 ulp of the bound |
+| `wet_day_total_mm` | mm | real | (0.0, inf) | 4 ulp of the bound |
+| `share_percent` | % | real | [0.0, 100.0] | 1e-09 |
+
+**Conventions (CMP-2.3)**
+
+- a day counts above the threshold when P > Pt (strictly), a wet day when P >= Pw; a missing day (NaN) is left out
+- R is R95p of ClimPACT and of the ETCCDI's list (a sum in mm), the share R95pTOT of ClimPACT (100 R / PRCPTOT); ECA&D's R95pTOT divides by the precipitation of every day
+- the series function takes the days of a complete year, the threshold of wet_day_percentile, and rounds R and PRCPTOT to 1e-6 mm; a year without a wet day has no share
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: an index of the daily precipitation
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `difference_denominator`: precondition a_wet_day: PRCPTOT > 0, the sum of values of at least Pw > 0
+- `gap_propagation`: type case precipitation_mm-nan_element: a missing day is left out
+- `many_small_terms`: limit exact_oracle: the sums of 365 days against exact fractions to 1e-14
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `precipitation_mm` increasing, `threshold_mm` decreasing
+- scaling `precipitation_in_another_unit`: inputs times 2^e (`precipitation_mm` e = 1.0, `wet_day_mm` e = 1.0, `threshold_mm` e = 1.0) give outputs times 2^e (`heavy_mm` e = 1.0, `wet_day_total_mm` e = 1.0)
+- limit `exact_oracle`: R, D and the share equal their values in exact fractions
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/meteo-indices-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: R, D and the share in exact fractions (fractions.Fraction) of the wet days 1 to 100 mm and of seeded series with gaps (`tests/unit/test_formulas_meteo_precipitation.py (limit exact_oracle)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="precipitation_concentration_index"></a>
+### Oliver's precipitation concentration index of twelve monthly totals
+
+`hydrolog.statistics.meteo_precipitation.precipitation_concentration_index` · family `index` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\mathrm{PCI} = 100\,\frac{\sum_{i=1}^{12} p_i^2}{\left(\sum_{i=1}^{12} p_i\right)^2}
+$$
+
+Plain text: `PCI = 100 sum(p_i^2) / (sum p_i)^2 over the twelve monthly totals p_i`
+
+**Sources**
+
+- de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265, eq. 1, p. 1260: PCI = 100 sum p_i^2 / (sum p_i)^2 of the twelve monthly totals; 8.3 for equal months, 100 for all in one month (open) <https://nhess.copernicus.org/articles/11/1259/2011/>
+- Oliver, J. E. (1980). Monthly precipitation distribution: a comparative index. Professional Geographer 32(3), 300-309, the index and its classes; not opened here: as de Luis et al. (2011) print them (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `monthly_mm` | $p_i$ | mm | real_array | [0.0, inf), test bound high 26470.0 (a month holds less than the world's greatest 12-month rainfall, 26,470 mm at Cherrapunji, 1 August 1860 - 31 July 1861 (WMO Archive of Weather and Climate Extremes)) | unstated | [0.4, 295.0]: Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020, the monthly sums of 1991-2020: 0.4 to 295.0 mm |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `a_positive_total` | precondition | the total of the twelve months is positive | Oliver, J. E. (1980). Monthly precipitation distribution: a comparative index. Professional Geographer 32(3), 300-309, the index and its classes; not opened here: as de Luis et al. (2011) print them |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `pci` | - | real | [8.333333333333334, 100.0] | 1e-12 |
+
+**Conventions (CMP-2.3)**
+
+- computed from the shares p_i / sum p, which equals the equation without squaring a sum (no overflow or underflow of the squares)
+- the series function gives the twelve normals of the reference period or the twelve monthly sums of a year with all of them; a total of 0 has no index
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: an index of the monthly totals
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `difference_denominator`: precondition a_positive_total: the total divides
+- `singular_at_bound`: limit exact_oracle: a single month of 1e-300 mm, whose square underflows, gives 100
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `totals_in_another_unit`: inputs times 2^e (`monthly_mm` e = 1.0) give outputs times 2^e (none)
+- limit `exact_oracle`: PCI equals 100 sum p^2 / (sum p)^2 in exact fractions
+- limit `equal_months`: twelve equal months give 100/12
+- symmetry `months_in_another_order`: the months in reverse order give the same index
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/meteo-indices-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the equation in exact fractions (fractions.Fraction) of the normals of Warszawa and of seeded monthly totals (`tests/unit/test_formulas_meteo_precipitation.py (limit exact_oracle)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="pci_class"></a>
+### Oliver's class of a precipitation concentration index
+
+`hydrolog.statistics.meteo_precipitation.pci_class` · family `classification` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\mathrm{PCI} \le 10,\ (10, 15],\ (15, 20],\ > 20
+$$
+
+Plain text: `PCI <= 10 uniform, (10, 15] moderate, (15, 20] irregular, above 20 strongly irregular`
+
+**Sources**
+
+- de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265, p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate concentration, 16-20 irregular, above 20 strong irregularity (open) <https://nhess.copernicus.org/articles/11/1259/2011/>
+- Oliver, J. E. (1980). Monthly precipitation distribution: a comparative index. Professional Geographer 32(3), 300-309, the index and its classes; not opened here: as de Luis et al. (2011) print them (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `pci` | $\mathrm{PCI}$ | - | real | [8.333333333333334, 100.0] | unstated | [9.4, 27.3]: Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020, the yearly PCI of 1991-2020: 9.4 to 27.3 |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `uniform_to` | $10$ | 10.0 | - | de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265, p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate concentration, 16-20 irregular, above 20 strong irregularity |
+| `moderate_to` | $15$ | 15.0 | - | de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265, p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate concentration, 16-20 irregular, above 20 strong irregularity |
+| `irregular_to` | $20$ | 20.0 | - | de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265, p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate concentration, 16-20 irregular, above 20 strong irregularity |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `index_class` | - | choice | – | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the source's classes are of whole numbers (below 10, 11-15, 16-20, above 20); the gaps between them go to the class above: 10 is uniform, 10.5 moderate, 15 moderate and 15.5 irregular
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a classification
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `class_limit`: reference cases pci-class-*: each limit and just beyond it
+- `gap_propagation`: type case pci-nan: NaN is refused; a year without an index has no class
+
+**Properties (CMP-6.5)**
+
+- units: unit_specific
+- limit `ordered_classes`: a larger index never gives a more uniform class
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/meteo-indices-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+None.
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="si_class"></a>
+### Walsh and Lawler's class of a seasonality index
+
+`hydrolog.statistics.meteo_precipitation.si_class` · family `classification` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\mathrm{SI} < 0.2,\ [0.2, 0.4),\ [0.4, 0.6),\ [0.6, 0.8),\ [0.8, 1.0),\ [1.0, 1.2),\ \ge 1.2
+$$
+
+Plain text: `SI < 0.2 very equable, [0.2, 0.4) equable with a wetter season, [0.4, 0.6) rather seasonal, [0.6, 0.8) seasonal, [0.8, 1.0) markedly seasonal, [1.0, 1.2) most in three months, from 1.2 extreme`
+
+**Sources**
+
+- Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247, Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, 0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme (open)
+- Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN), si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its seven classes (open) <https://cran.r-project.org/package=hydroTSM>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `si` | $\mathrm{SI}$ | - | real | [0.0, 1.8333333333333333] | unstated | [0.31, 0.85]: Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020, the yearly SI of 1991-2020: 0.31 to 0.85 |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `very_equable_below` | $0.2$ | 0.2 | - | Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247, Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, 0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme |
+| `equable_wetter_season_below` | $0.4$ | 0.4 | - | Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247, Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, 0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme |
+| `rather_seasonal_below` | $0.6$ | 0.6 | - | Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247, Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, 0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme |
+| `seasonal_below` | $0.8$ | 0.8 | - | Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247, Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, 0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme |
+| `markedly_seasonal_below` | $1$ | 1.0 | - | Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247, Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, 0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme |
+| `most_in_three_months_below` | $1.2$ | 1.2 | - | Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247, Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, 0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `index_class` | - | choice | – | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the table's classes are of two decimals (<= 0.19, 0.20-0.39 ... >= 1.20); each class runs up to the next limit: 0.199 is very equable, 0.2 equable with a wetter season, 1.2 extreme
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a classification
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `class_limit`: reference cases si-class-*: each limit and just below it
+- `gap_propagation`: type case si-nan: NaN is refused; a year without an index has no class
+
+**Properties (CMP-6.5)**
+
+- units: unit_specific
+- limit `ordered_classes`: a larger index never gives a more equable class
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/meteo-indices-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+None.
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="seasonality_index"></a>
+### Walsh and Lawler's seasonality index of twelve monthly totals
+
+`hydrolog.statistics.regime.seasonality_index` · family `index` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\mathrm{SI} = \frac{1}{R}\sum_{n=1}^{12}\left|x_n - \frac{R}{12}\right|,\quad R = \sum_{n=1}^{12} x_n
+$$
+
+Plain text: `SI = (1/R) sum |x_n - R/12| over the twelve monthly totals x_n, R = sum x_n`
+
+**Sources**
+
+- Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247, eq. 1, p. 225: SI = (1/R) sum |x_n - R/12|, R the annual total; 0 when every month has the same total, 1.83 when one month has all of it (open)
+- Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN), si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83 (open) <https://cran.r-project.org/package=hydroTSM>
+- Walsh, R. P. D. and Lawler, D. M. (1981). Rainfall seasonality: description, spatial patterns and change through time. Weather 36(7), 201-208, the index; not opened here: as Sumner et al. (2001) and hydroTSM print it (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `monthly_mm` | $x_n$ | mm | real_array | [0.0, inf), test bound high 26470.0 (a month holds less than the world's greatest 12-month rainfall, 26,470 mm at Cherrapunji, 1 August 1860 - 31 July 1861 (WMO Archive of Weather and Climate Extremes)) | unstated | [0.4, 295.0]: Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020, the monthly sums of 1991-2020: 0.4 to 295.0 mm |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `a_positive_total` | precondition | the total of the twelve months is positive | Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247, eq. 1, p. 225: SI = (1/R) sum \|x_n - R/12\|, R the annual total; 0 when every month has the same total, 1.83 when one month has all of it |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `si` | - | real | [0.0, 1.8333333333333333] | 1e-12 |
+
+**Conventions (CMP-2.3)**
+
+- computed as the sum of |x_n / R - 1/12|, which equals the equation without R/12, which underflows for a subnormal R
+- precipitation_seasonality gives the twelve normals of a reference period or the twelve monthly sums of a year with all of them, flow_regime the monthly volumes of a discharge series; a total of 0 has no index
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: an index of the monthly totals
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `difference_denominator`: precondition a_positive_total: R divides
+- `singular_at_bound`: limit exact_oracle: a single month of 1e-300 mm gives 11/6
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `totals_in_another_unit`: inputs times 2^e (`monthly_mm` e = 1.0) give outputs times 2^e (none)
+- limit `exact_oracle`: SI equals the equation in exact fractions
+- limit `one_wet_month`: one month with all the precipitation gives 11/6
+- symmetry `months_in_another_order`: the months in reverse order give the same index
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/meteo-indices-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the equation in exact fractions (fractions.Fraction) of the normals of Warszawa and of seeded monthly totals (`tests/unit/test_formulas_meteo_precipitation.py (limit exact_oracle)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
 ## Tier B
 
 | Formula | Function | Definition | Constants | Convention | Source |
@@ -771,3 +1281,10 @@ None.
 | `relative_precipitation` | `hydrolog.statistics.meteo_spi.standardized_precipitation_index` | 100 P / N: a month's sum in % of the normal of its calendar month, a year's in % of the sum of the twelve monthly normals (classed by month_precipitation_class and kaczorowska_class) | – | the normals of the reference period; no percentage without a normal or with a normal of 0 | Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119 (after Tomaszewska 1994), eq. 1, p. 109: RPI = P / P-bar 100 % |
 | `spell_year` | `hydrolog.statistics.meteo_spells.precipitation_spells` | a spell (spell_lengths) counts, whole, in the year of its last day: a spell over the start of a year is not cut, and a year wholly inside a spell that ends later has no longest spell | – | the year of the spell's end, as climdex.pcic 1.1-11 (its default spells.can.span.years = TRUE) and ECA&D; the ETCCDI's definition read literally cuts a spell at the start of the year (ADR-0044) | ECA&D (2021). European Climate Assessment & Dataset, Algorithm Theoretical Basis Document (ATBD), version 11. KNMI, De Bilt, section 5.1, p. 20: a spell can continue into the next year and is counted against the year in which the spell ends |
 | `spell_summaries` | `hydrolog.statistics.meteo_spells.precipitation_spells` | per year with a value on every day: the spells that end in it, the longest of them (CDD, CWD) with its days, and the spells of at least 10, 15 and 20 days; per period: their means over those years and the distribution of the durations of their spells that are not open, per year | – | a year needs every day (climdex.pcic accepts up to 15 missing days); an open spell, beside a missing day or an end of the series, is left out of the distribution of durations only; min_duration_days shortens the list of spells, not the summaries | ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, CDD: the largest number of consecutive days with RR < 1 mm; CWD: the largest number of consecutive days with RR >= 1 mm (RR the daily precipitation) |
+| `precipitation_sums` | `hydrolog.statistics.meteo_precipitation.precipitation_sums` | the sum of the daily precipitation of a month, needing every day or accumulated totals that cover the missing days; of a half-year (XI-IV, V-X), a season (DJF with the December before, MAM, JJA, SON) and a year, the sum of its months, needing each; a sum in % of its normal, 100 P / N | – | every sum of daily precipitation rounded to 1e-6 mm (round_sums); no percentage without a normal or with a normal of 0 | WMO (2017). WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203, Geneva, section 4.3.1 (c) and 4.4.1 (c), pp. 5-8: a sum needs complete data or accumulated observations covering the missing days |
+| `precipitation_normals` | `hydrolog.statistics.meteo_precipitation.precipitation_sums` | the normal of a calendar month: the mean of its sums in the years of the reference period that have one, when they are at least 80 % of its years; of a half-year, a season or the year: the sum of the normals of its months | normal_share = 4/5 - (WMO (2017). WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203, Geneva, section 4.4.2) | the reference period is by default the analysed years; its years without data count among its years | WMO (2017). WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203, Geneva, section 4.4.2, pp. 8-9: values in at least 80 % of the years; section 4.3.3, p. 6: the normal of several months from the monthly normals |
+| `precipitation_maxima` | `hydrolog.statistics.meteo_precipitation.precipitation_maxima` | Rx1day and the largest n-day sums (Rx5day for 5): the n-day sum of a day is the sum of the n days ending on it, credited to the year of its last day and missing unless all n are known; a month's maximum takes the days it has, a year's needs every day of the year | – | the first of equal maxima, with its dates; climdex.pcic 1.1-11 credits a 5-day window to its middle day and takes a missing day as 0 | ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, Rx1day, the largest daily precipitation of a period; Rx5day, the largest precipitation of 5 consecutive days (the interval ending on a day) |
+| `precipitation_days` | `hydrolog.statistics.meteo_precipitation.precipitation_days` | the days with P at or above each threshold (R10mm and R20mm for 10 and 20 mm); a month's count scaled to its days when fewer than 11 days, and fewer than 5 in a row, are missing; a year's the sum of its twelve months | – | P >= threshold; with gaps a month's count is not a whole number (climdex.pcic counts the days it has) | ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, R10mm and R20mm: the annual count of days with RR >= 10 mm and >= 20 mm |
+| `precipitation_intensity` | `hydrolog.statistics.meteo_precipitation.precipitation_intensity` | sdii of each month and year with every day, and of each calendar month over those months of the period together; the mean annual sum and the mean SDII of the years with one | – | an accumulated total is a missing day for sdii and counts in the annual sum; PRCPTOT rounded to 1e-6 mm; a month or year without a wet day has W = 0 and no SDII | ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990 |
+| `heavy_precipitation_thresholds` | `hydrolog.statistics.meteo_precipitation.heavy_precipitation` | the thresholds: wet_day_percentile of the wet days of the reference period at each percentile, from at least 100 wet days; each year with every day: heavy_precipitation_share at each threshold, and the mean share of those years | – | the reference period is by default the analysed years (the ETCCDI's base is 1961-1990); the minimum of 100 wet days is Hydrolog's (ADR-0032), no source gives one | Bronaugh, D. (2020). climdex.pcic 1.1-11: PCIC implementation of Climdex routines, R package, R/climdex.r: the percentiles of the wet days (not NA, at least 1 mm) of the base period by quantile type 8 |
+| `precipitation_regime` | `hydrolog.statistics.meteo_precipitation.precipitation_seasonality` | each monthly normal of the reference period in % of their sum and over their mean; precipitation_concentration_index and seasonality_index, with their classes, of the twelve normals and of each year with its twelve monthly sums, and the means of the yearly indices | – | the indices of the normals and the means of the yearly indices differ and both are given (Sumner et al. 2001); a total of 0 has no index | Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247, p. 225: the SI of the mean monthly totals and the mean of the yearly SI |

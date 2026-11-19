@@ -59,9 +59,17 @@ classes are ranges of whole percents while the code rounded the percentage with 
 - `meteo spells` gives the same spells and carries `formula_versions` `spell_lengths` (the length of the spell ending
   on each day, from which `precipitation_spells` builds its spells); the year a spell counts in (ADR-0044) and the
   yearly summaries are its Tier B.
+- `meteo precipitation` (`intensity`, `heavy`, `seasonality`) and `stats regime` give the same results but for the
+  last digits of the ratios (SDII, R95pTOT, PCI, SI: at most 5·10⁻¹⁶ relative) and carry `formula_versions` `sdii`,
+  `wet_day_percentile`, `heavy_precipitation_share`, `precipitation_concentration_index`, `pci_class`,
+  `seasonality_index` and `si_class`. A ratio comes from the unrounded sums; the sums a result shows are rounded to
+  1e-6 mm as before (Tier B). The gaps between the published classes (Oliver's whole numbers, Walsh and Lawler's two
+  decimals) go to the class above, as before.
 - Breaking for library callers: `fit_gamma(sums_mm)` returns `(alpha, beta_mm, zero_probability)` and raises
   `InvalidParameterError` (`precondition_failed`) where it returned `None`; `spi_values` takes `beta_mm`;
-  `year_precipitation_class` and `month_precipitation_class` take `percent_of_normal`, a number.
+  `year_precipitation_class` and `month_precipitation_class` take `percent_of_normal`, a number;
+  `precipitation_concentration_index` returns a number and refuses a total of 0, `pci_class` and `si_class` take a
+  number, and `seasonality_index` takes `monthly_mm`.
 - `docs/FORMULAS.md` lists the specs with their sources, ranges and reference cases; the frozen output of
   climate_indices 3.2.0 on Warszawa-Okęcie 1991–2020 (`tests/oracles/spi_climate_indices_warszawa.csv`) checks the
   whole pipeline of the SPI.

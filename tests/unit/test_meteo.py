@@ -15,11 +15,8 @@ import pytest
 from hydrolog.catalog import get_command, run_command, validate_command
 from hydrolog.exceptions import CalculationError, InputDataError, InvalidParameterError
 from hydrolog.statistics import (
-    pci_class,
-    precipitation_concentration_index,
     precipitation_spells,
     precipitation_sums,
-    si_class,
     sielianinov_class,
 )
 
@@ -196,14 +193,6 @@ class TestPrecipitationIndices:
         assert heavy["years"][0]["shares_percent"][0] == pytest.approx(
             100 * above / sum(wet)
         )
-
-    def test_pci_of_equal_months_and_of_one_month_and_the_classes(self):
-        assert precipitation_concentration_index([10.0] * 12) == pytest.approx(100 / 12)
-        assert precipitation_concentration_index([0.0] * 11 + [50.0]) == 100.0
-        assert pci_class(10.0) == "uniform"
-        assert pci_class(10.5) == "moderate"
-        assert si_class(0.19) == "very_equable"
-        assert si_class(1.2) == "extreme"
 
 
 class TestSpells:

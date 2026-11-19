@@ -1,0 +1,130 @@
+schema = "nogat-formula-card/1"
+name = "precipitation_concentration_index"
+title = "Oliver's precipitation concentration index of twelve monthly totals"
+function = "hydrolog.statistics.meteo_precipitation.precipitation_concentration_index"
+family = "index"
+formula_version = 1
+status = "referenced"
+equation = "PCI = 100 sum(p_i^2) / (sum p_i)^2 over the twelve monthly totals p_i"
+latex = "\\mathrm{PCI} = 100\\,\\frac{\\sum_{i=1}^{12} p_i^2}{\\left(\\sum_{i=1}^{12} p_i\\right)^2}"
+validation = "none: an index of the monthly totals"
+conventions = ["computed from the shares p_i / sum p, which equals the equation without squaring a sum (no overflow or underflow of the squares)", "the series function gives the twelve normals of the reference period or the twelve monthly sums of a year with all of them; a total of 0 has no index"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/meteo-indices-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "totals_in_another_unit"
+
+[properties.scalings.inputs]
+monthly_mm = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "doubling every total leaves each share exact"
+abs = 0.0
+
+[[properties.limits]]
+name = "exact_oracle"
+text = "PCI equals 100 sum p^2 / (sum p)^2 in exact fractions"
+
+[[properties.limits]]
+name = "equal_months"
+text = "twelve equal months give 100/12"
+
+[[properties.symmetries]]
+name = "months_in_another_order"
+text = "the months in reverse order give the same index"
+
+[properties.symmetries.tolerance]
+reason = "twelve shares summed in another order"
+abs = 1e-12
+
+[[sources]]
+citation = "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265"
+access = "open"
+locator = "eq. 1, p. 1260: PCI = 100 sum p_i^2 / (sum p_i)^2 of the twelve monthly totals; 8.3 for equal months, 100 for all in one month"
+url = "https://nhess.copernicus.org/articles/11/1259/2011/"
+
+[[sources]]
+citation = "Oliver, J. E. (1980). Monthly precipitation distribution: a comparative index. Professional Geographer 32(3), 300-309"
+access = "author-provided"
+locator = "the index and its classes; not opened here: as de Luis et al. (2011) print them"
+
+[[variables]]
+name = "monthly_mm"
+symbol = "p_i"
+unit = "mm"
+kind = "real_array"
+description = "The twelve monthly totals of a year or the twelve monthly normals, in any order."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 12
+max_length = 12
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 26470.0
+test_reason = "a month holds less than the world's greatest 12-month rainfall, 26,470 mm at Cherrapunji, 1 August 1860 - 31 July 1861 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 0.4
+low_inclusive = true
+high = 295.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the monthly sums of 1991-2020: 0.4 to 295.0 mm"
+
+[[constraints]]
+name = "a_positive_total"
+class = "precondition"
+text = "the total of the twelve months is positive"
+
+[constraints.source]
+citation = "Oliver, J. E. (1980). Monthly precipitation distribution: a comparative index. Professional Geographer 32(3), 300-309"
+access = "author-provided"
+locator = "the index and its classes; not opened here: as de Luis et al. (2011) print them"
+
+[[outputs]]
+name = "pci"
+unit = "-"
+kind = "real"
+symbol = "\\mathrm{PCI}"
+description = "The index: 100/12 for equal months, 100 for one wet month."
+boundary_tolerance = 1e-12
+
+[outputs.physical]
+low = 8.333333333333334
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "precondition a_positive_total: the total divides"
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "limit exact_oracle: a single month of 1e-300 mm, whose square underflows, gives 100"
+
+[[oracles]]
+kind = "exact"
+description = "the equation in exact fractions (fractions.Fraction) of the normals of Warszawa and of seeded monthly totals"
+test = "tests/unit/test_formulas_meteo_precipitation.py (limit exact_oracle)"
+conventions = []

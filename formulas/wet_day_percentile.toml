@@ -1,0 +1,182 @@
+schema = "nogat-formula-card/1"
+name = "wet_day_percentile"
+title = "Percentile of the precipitation of the wet days (quantile type 8)"
+function = "hydrolog.statistics.meteo_precipitation.wet_day_percentile"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "x(1) <= ... <= x(n) the precipitation of the days with P >= Pw; h = (n + 1/3) p / 100 + 1/3, k its whole part; Q = x(1) for h <= 1, x(n) for h >= n, else x(k) + (h - k) (x(k + 1) - x(k))"
+latex = "h = \\left(n + \\tfrac{1}{3}\\right)\\frac{p}{100} + \\tfrac{1}{3},\\quad Q = x_{(k)} + (h - k)\\left(x_{(k+1)} - x_{(k)}\\right),\\quad k = \\lfloor h \\rfloor"
+validation = "none: a sample quantile"
+conventions = ["quantile type 8 of Hyndman and Fan (1996), median-unbiased, as climdex.pcic 1.1-11 (quantile type 8) and NumPy's method median_unbiased", "the wet days (P >= Pw) of the period given; a missing day (NaN) is left out", "the series function gives the wet days of the reference period and needs at least 100 of them (too_few_wet_days, Hydrolog's minimum, ADR-0032)"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/meteo-indices-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+percentile = 1
+
+[[properties.scalings]]
+name = "precipitation_in_another_unit"
+
+[properties.scalings.inputs]
+precipitation_mm = 1.0
+wet_day_mm = 1.0
+
+[properties.scalings.outputs]
+percentile_mm = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling every value is exact in binary"
+abs = 0.0
+
+[[properties.limits]]
+name = "exact_oracle"
+text = "Q equals definition 8 of Hyndman and Fan in exact fractions"
+
+[[sources]]
+citation = "Hyndman, R. J. and Fan, Y. (1996). Sample quantiles in statistical packages. The American Statistician 50(4), 361-365"
+access = "author-provided"
+locator = "definition 8: Q(p) = x(k) + (h - k) (x(k + 1) - x(k)), h = (n + 1/3) p + 1/3 and k its whole part, x(k) the k-th smallest of n values"
+
+[[sources]]
+citation = "NumPy 2 documentation, numpy.percentile"
+access = "open"
+locator = "method 'median_unbiased': definition 8 of Hyndman and Fan (1996), virtual index n p + 1/3 + p / 3 - 1 counted from 0"
+url = "https://numpy.org/doc/stable/reference/generated/numpy.percentile.html"
+
+[[sources]]
+citation = "Bronaugh, D. (2020). climdex.pcic 1.1-11: PCIC implementation of Climdex routines, R package"
+access = "open"
+locator = "R/climdex.r: the percentiles of the wet days (not NA, at least 1 mm) of the base period by quantile type 8"
+url = "https://cran.r-project.org/src/contrib/Archive/climdex.pcic/"
+
+[[sources]]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[variables]]
+name = "precipitation_mm"
+symbol = "P_i"
+unit = "mm"
+kind = "real_array"
+description = "Daily precipitation of the days of a period; NaN on a missing day, which is left out."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 75.8
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the daily precipitation: 0 to 75.8 mm"
+
+[[variables]]
+name = "wet_day_mm"
+symbol = "P_w"
+unit = "mm"
+kind = "real"
+description = "The least precipitation of a wet day."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[variables]]
+name = "percentile"
+symbol = "p"
+unit = "%"
+kind = "real"
+description = "The percentile."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+high = 100.0
+high_inclusive = false
+
+[variables.typical]
+low = 95.0
+low_inclusive = true
+high = 99.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[constraints]]
+name = "a_wet_day"
+class = "precondition"
+text = "at least one day has P >= P_w"
+
+[constraints.source]
+citation = "Hyndman, R. J. and Fan, Y. (1996). Sample quantiles in statistical packages. The American Statistician 50(4), 361-365"
+access = "author-provided"
+locator = "definition 8: Q(p) = x(k) + (h - k) (x(k + 1) - x(k)), h = (n + 1/3) p + 1/3 and k its whole part, x(k) the k-th smallest of n values"
+
+[[outputs]]
+name = "percentile_mm"
+unit = "mm"
+kind = "real"
+symbol = "Q"
+description = "The percentile of the precipitation of the wet days."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case precipitation_mm-nan_element: a missing day is left out"
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "the percentile is in (0, 100): h is clipped to [1, n] by definition 8, limit exact_oracle at 0.5 and 99.9"
+
+[[oracles]]
+kind = "exact"
+description = "definition 8 of Hyndman and Fan in exact fractions (fractions.Fraction), written from the paper's equation"
+test = "tests/unit/test_formulas_meteo_precipitation.py (limit exact_oracle)"
+conventions = []

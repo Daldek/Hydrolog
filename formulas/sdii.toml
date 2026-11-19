@@ -1,0 +1,179 @@
+schema = "nogat-formula-card/1"
+name = "sdii"
+title = "Simple daily intensity index: the mean precipitation of a wet day"
+function = "hydrolog.statistics.meteo_precipitation.wet_day_intensity"
+family = "index"
+formula_version = 1
+status = "oracle only"
+equation = "W = the number of days with P >= Pw; PRCPTOT = the sum of their P; SDII = PRCPTOT / W"
+latex = "W = \\#\\{i : P_i \\ge P_w\\},\\quad \\mathrm{PRCPTOT} = \\sum_{P_i \\ge P_w} P_i,\\quad \\mathrm{SDII} = \\frac{\\mathrm{PRCPTOT}}{W}"
+validation = "none: an index of the daily precipitation"
+conventions = ["a wet day has P >= Pw (RR >= 1 mm of the ETCCDI); a missing day (NaN) is left out", "the series function takes the days of a complete month or year, or of a calendar month's complete months pooled, and rounds PRCPTOT to 1e-6 mm; a span without a wet day has no SDII (climdex.pcic gives 0)"]
+assumptions = []
+notices = []
+reference_cases = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "precipitation_in_another_unit"
+
+[properties.scalings.inputs]
+precipitation_mm = 1.0
+wet_day_mm = 1.0
+
+[properties.scalings.outputs]
+sdii_mm = 1.0
+wet_day_total_mm = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling every value is exact in binary"
+abs = 0.0
+
+[[properties.limits]]
+name = "exact_oracle"
+text = "W, PRCPTOT and SDII equal their values in exact fractions"
+
+[[properties.limits]]
+name = "a_day_at_the_threshold_is_wet"
+text = "P = Pw counts as a wet day"
+
+[properties.limits.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[properties.conservation]]
+name = "intensity_times_days_is_the_total"
+text = "SDII W = PRCPTOT"
+
+[properties.conservation.tolerance]
+reason = "one division and one multiplication of a total below 1e5 mm, each rounding 1.1e-16 of it"
+abs = 1e-10
+
+[[sources]]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[variables]]
+name = "precipitation_mm"
+symbol = "P_i"
+unit = "mm"
+kind = "real_array"
+description = "Daily precipitation of the days of a period; NaN on a missing day, which is left out."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 75.8
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the daily precipitation: 0 to 75.8 mm"
+
+[[variables]]
+name = "wet_day_mm"
+symbol = "P_w"
+unit = "mm"
+kind = "real"
+description = "The least precipitation of a wet day."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[constraints]]
+name = "a_wet_day"
+class = "precondition"
+text = "at least one day has P >= P_w"
+
+[constraints.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[outputs]]
+name = "sdii_mm"
+unit = "mm"
+kind = "real"
+symbol = "\\mathrm{SDII}"
+description = "The mean precipitation of a wet day."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "wet_days"
+unit = "d"
+kind = "integer"
+symbol = "W"
+description = "The wet days."
+
+[outputs.physical]
+low = 1.0
+low_inclusive = true
+
+[[outputs]]
+name = "wet_day_total_mm"
+unit = "mm"
+kind = "real"
+symbol = "\\mathrm{PRCPTOT}"
+description = "The precipitation of the wet days."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case precipitation_mm-nan_element: a missing day is left out, never NaN in the outputs"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "limit exact_oracle: PRCPTOT of 365 days against exact fractions to 1e-14"
+
+[[oracles]]
+kind = "exact"
+description = "W, PRCPTOT and SDII in exact fractions (fractions.Fraction) of hand-made and seeded series with gaps"
+test = "tests/unit/test_formulas_meteo_precipitation.py (limit exact_oracle)"
+conventions = []

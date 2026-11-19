@@ -876,5 +876,1194 @@
    "url": "https://www.cire.pl/pliki/2/Dopke273blstometoeurostat1963129496.pdf",
    "access": "open"
   }
+ },
+ {
+  "formula": "wet_day_percentile",
+  "case_id": "type8-analytic-1-to-100-p95",
+  "source": {
+   "citation": "Hyndman, R. J. and Fan, Y. (1996). Sample quantiles in statistical packages. The American Statistician 50(4), 361-365",
+   "access": "author-provided",
+   "locator": "definition 8, h = (n + 1/3) p + 1/3: on the wet days 1, 2, ..., 100 mm h = 95.65 for p = 0.95 and 99.6633 for p = 0.99, so Q = x(95) + 0.65 and x(99) + 0.6633"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    11.0,
+    12.0,
+    13.0,
+    14.0,
+    15.0,
+    16.0,
+    17.0,
+    18.0,
+    19.0,
+    20.0,
+    21.0,
+    22.0,
+    23.0,
+    24.0,
+    25.0,
+    26.0,
+    27.0,
+    28.0,
+    29.0,
+    30.0,
+    31.0,
+    32.0,
+    33.0,
+    34.0,
+    35.0,
+    36.0,
+    37.0,
+    38.0,
+    39.0,
+    40.0,
+    41.0,
+    42.0,
+    43.0,
+    44.0,
+    45.0,
+    46.0,
+    47.0,
+    48.0,
+    49.0,
+    50.0,
+    51.0,
+    52.0,
+    53.0,
+    54.0,
+    55.0,
+    56.0,
+    57.0,
+    58.0,
+    59.0,
+    60.0,
+    61.0,
+    62.0,
+    63.0,
+    64.0,
+    65.0,
+    66.0,
+    67.0,
+    68.0,
+    69.0,
+    70.0,
+    71.0,
+    72.0,
+    73.0,
+    74.0,
+    75.0,
+    76.0,
+    77.0,
+    78.0,
+    79.0,
+    80.0,
+    81.0,
+    82.0,
+    83.0,
+    84.0,
+    85.0,
+    86.0,
+    87.0,
+    88.0,
+    89.0,
+    90.0,
+    91.0,
+    92.0,
+    93.0,
+    94.0,
+    95.0,
+    96.0,
+    97.0,
+    98.0,
+    99.0,
+    100.0
+   ],
+   "wet_day_mm": 1.0,
+   "percentile": 95.0
+  },
+  "expected": {
+   "percentile_mm": 95.65
+  },
+  "tolerance": {
+   "abs": 1e-12,
+   "reason": "the exact value is a decimal with a recurring third; float interpolation rounds it"
+  },
+  "conventions": [
+   "quantile type 8 (median-unbiased) of the wet days, P >= 1 mm"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "NumPy 2 documentation, numpy.percentile",
+   "locator": "method 'median_unbiased': definition 8 of Hyndman and Fan (1996)",
+   "url": "https://numpy.org/doc/stable/reference/generated/numpy.percentile.html",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "wet_day_percentile",
+  "case_id": "type8-analytic-1-to-100-p99",
+  "source": {
+   "citation": "Hyndman, R. J. and Fan, Y. (1996). Sample quantiles in statistical packages. The American Statistician 50(4), 361-365",
+   "access": "author-provided",
+   "locator": "definition 8, h = (n + 1/3) p + 1/3: on the wet days 1, 2, ..., 100 mm h = 95.65 for p = 0.95 and 99.6633 for p = 0.99, so Q = x(95) + 0.65 and x(99) + 0.6633"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    11.0,
+    12.0,
+    13.0,
+    14.0,
+    15.0,
+    16.0,
+    17.0,
+    18.0,
+    19.0,
+    20.0,
+    21.0,
+    22.0,
+    23.0,
+    24.0,
+    25.0,
+    26.0,
+    27.0,
+    28.0,
+    29.0,
+    30.0,
+    31.0,
+    32.0,
+    33.0,
+    34.0,
+    35.0,
+    36.0,
+    37.0,
+    38.0,
+    39.0,
+    40.0,
+    41.0,
+    42.0,
+    43.0,
+    44.0,
+    45.0,
+    46.0,
+    47.0,
+    48.0,
+    49.0,
+    50.0,
+    51.0,
+    52.0,
+    53.0,
+    54.0,
+    55.0,
+    56.0,
+    57.0,
+    58.0,
+    59.0,
+    60.0,
+    61.0,
+    62.0,
+    63.0,
+    64.0,
+    65.0,
+    66.0,
+    67.0,
+    68.0,
+    69.0,
+    70.0,
+    71.0,
+    72.0,
+    73.0,
+    74.0,
+    75.0,
+    76.0,
+    77.0,
+    78.0,
+    79.0,
+    80.0,
+    81.0,
+    82.0,
+    83.0,
+    84.0,
+    85.0,
+    86.0,
+    87.0,
+    88.0,
+    89.0,
+    90.0,
+    91.0,
+    92.0,
+    93.0,
+    94.0,
+    95.0,
+    96.0,
+    97.0,
+    98.0,
+    99.0,
+    100.0
+   ],
+   "wet_day_mm": 1.0,
+   "percentile": 99.0
+  },
+  "expected": {
+   "percentile_mm": 99.66333333333333
+  },
+  "tolerance": {
+   "abs": 1e-12,
+   "reason": "the exact value is a decimal with a recurring third; float interpolation rounds it"
+  },
+  "conventions": [
+   "quantile type 8 (median-unbiased) of the wet days, P >= 1 mm"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "NumPy 2 documentation, numpy.percentile",
+   "locator": "method 'median_unbiased': definition 8 of Hyndman and Fan (1996)",
+   "url": "https://numpy.org/doc/stable/reference/generated/numpy.percentile.html",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "heavy_precipitation_share",
+  "case_id": "type8-analytic-1-to-100-r95p",
+  "source": {
+   "citation": "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices",
+   "url": "https://etccdi.pacificclimate.org/list_27_indices.shtml",
+   "access": "open",
+   "locator": "R95pTOT: the total of the days with RR > RRwn95; on the wet days 1, 2, ..., 100 mm with RRwn95 = 95.65 mm: 96 + 97 + 98 + 99 + 100 = 490 mm on 5 days, of PRCPTOT 5050 mm"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    11.0,
+    12.0,
+    13.0,
+    14.0,
+    15.0,
+    16.0,
+    17.0,
+    18.0,
+    19.0,
+    20.0,
+    21.0,
+    22.0,
+    23.0,
+    24.0,
+    25.0,
+    26.0,
+    27.0,
+    28.0,
+    29.0,
+    30.0,
+    31.0,
+    32.0,
+    33.0,
+    34.0,
+    35.0,
+    36.0,
+    37.0,
+    38.0,
+    39.0,
+    40.0,
+    41.0,
+    42.0,
+    43.0,
+    44.0,
+    45.0,
+    46.0,
+    47.0,
+    48.0,
+    49.0,
+    50.0,
+    51.0,
+    52.0,
+    53.0,
+    54.0,
+    55.0,
+    56.0,
+    57.0,
+    58.0,
+    59.0,
+    60.0,
+    61.0,
+    62.0,
+    63.0,
+    64.0,
+    65.0,
+    66.0,
+    67.0,
+    68.0,
+    69.0,
+    70.0,
+    71.0,
+    72.0,
+    73.0,
+    74.0,
+    75.0,
+    76.0,
+    77.0,
+    78.0,
+    79.0,
+    80.0,
+    81.0,
+    82.0,
+    83.0,
+    84.0,
+    85.0,
+    86.0,
+    87.0,
+    88.0,
+    89.0,
+    90.0,
+    91.0,
+    92.0,
+    93.0,
+    94.0,
+    95.0,
+    96.0,
+    97.0,
+    98.0,
+    99.0,
+    100.0
+   ],
+   "wet_day_mm": 1.0,
+   "threshold_mm": 95.65
+  },
+  "expected": {
+   "heavy_mm": 490.0,
+   "heavy_days": 5,
+   "wet_day_total_mm": 5050.0,
+   "share_percent": 9.702970297029703
+  },
+  "tolerance": {
+   "abs": 1e-12,
+   "reason": "a ratio of exact sums rounded once"
+  },
+  "conventions": [
+   "R95p a sum in mm, its share 100 R95p / PRCPTOT (ClimPACT's R95pTOT)",
+   "a day counts above the threshold when P > Pt"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "ClimPACT2, the indices of the Expert Team on Sector-specific Climate Indices (ET-SCI)",
+   "locator": "climate.indices.csv: R95pTOT = 100 R95p / PRCPTOT",
+   "url": "https://github.com/ARCCSS-extremes/climpact",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "heavy_precipitation_share",
+  "case_id": "type8-analytic-1-to-100-r99p",
+  "source": {
+   "citation": "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices",
+   "url": "https://etccdi.pacificclimate.org/list_27_indices.shtml",
+   "access": "open",
+   "locator": "R99pTOT: the total of the days with RR > RRwn99; on the wet days 1, 2, ..., 100 mm with RRwn99 = 99.6633 mm: 100 mm on 1 day"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    11.0,
+    12.0,
+    13.0,
+    14.0,
+    15.0,
+    16.0,
+    17.0,
+    18.0,
+    19.0,
+    20.0,
+    21.0,
+    22.0,
+    23.0,
+    24.0,
+    25.0,
+    26.0,
+    27.0,
+    28.0,
+    29.0,
+    30.0,
+    31.0,
+    32.0,
+    33.0,
+    34.0,
+    35.0,
+    36.0,
+    37.0,
+    38.0,
+    39.0,
+    40.0,
+    41.0,
+    42.0,
+    43.0,
+    44.0,
+    45.0,
+    46.0,
+    47.0,
+    48.0,
+    49.0,
+    50.0,
+    51.0,
+    52.0,
+    53.0,
+    54.0,
+    55.0,
+    56.0,
+    57.0,
+    58.0,
+    59.0,
+    60.0,
+    61.0,
+    62.0,
+    63.0,
+    64.0,
+    65.0,
+    66.0,
+    67.0,
+    68.0,
+    69.0,
+    70.0,
+    71.0,
+    72.0,
+    73.0,
+    74.0,
+    75.0,
+    76.0,
+    77.0,
+    78.0,
+    79.0,
+    80.0,
+    81.0,
+    82.0,
+    83.0,
+    84.0,
+    85.0,
+    86.0,
+    87.0,
+    88.0,
+    89.0,
+    90.0,
+    91.0,
+    92.0,
+    93.0,
+    94.0,
+    95.0,
+    96.0,
+    97.0,
+    98.0,
+    99.0,
+    100.0
+   ],
+   "wet_day_mm": 1.0,
+   "threshold_mm": 99.66333333333333
+  },
+  "expected": {
+   "heavy_mm": 100.0,
+   "heavy_days": 1,
+   "share_percent": 1.9801980198019802
+  },
+  "tolerance": {
+   "abs": 1e-12,
+   "reason": "a ratio of exact sums rounded once"
+  },
+  "conventions": [
+   "R99p a sum in mm, its share 100 R99p / PRCPTOT"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "ClimPACT2, the indices of the Expert Team on Sector-specific Climate Indices (ET-SCI)",
+   "locator": "climate.indices.csv: R95pTOT = 100 R95p / PRCPTOT",
+   "url": "https://github.com/ARCCSS-extremes/climpact",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "precipitation_concentration_index",
+  "case_id": "de-luis-equal-months",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260: PCI is 8.3 when the precipitation is the same in every month"
+  },
+  "inputs": {
+   "monthly_mm": [
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0
+   ]
+  },
+  "expected": {
+   "pci": 8.3
+  },
+  "printed_precision": {
+   "pci": 0.1
+  },
+  "conventions": [
+   "twelve monthly totals"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "precipitation_concentration_index",
+  "case_id": "de-luis-one-month",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260: PCI is 100 when all the precipitation falls in one month"
+  },
+  "inputs": {
+   "monthly_mm": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    50.0
+   ]
+  },
+  "expected": {
+   "pci": 100.0
+  },
+  "conventions": [
+   "twelve monthly totals"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "seasonality_index",
+  "case_id": "sumner-equal-months",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "eq. 1, p. 225: SI = 0 when every month has the same total"
+  },
+  "inputs": {
+   "monthly_mm": [
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0
+   ]
+  },
+  "expected": {
+   "si": 0.0
+  },
+  "conventions": [
+   "twelve monthly totals"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "seasonality_index",
+  "case_id": "sumner-one-month",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "eq. 1, p. 225: SI = 1.83 when one month has all the precipitation"
+  },
+  "inputs": {
+   "monthly_mm": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    50.0
+   ]
+  },
+  "expected": {
+   "si": 1.83
+  },
+  "printed_precision": {
+   "si": 0.01
+  },
+  "conventions": [
+   "twelve monthly totals"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-9.9",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 9.9
+  },
+  "expected": {
+   "index_class": "uniform"
+  },
+  "conventions": [
+   "below 10"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-10",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 10.0
+  },
+  "expected": {
+   "index_class": "uniform"
+  },
+  "conventions": [
+   "the source's classes are of whole numbers; the gaps between them go to the class above (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-10.5",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 10.5
+  },
+  "expected": {
+   "index_class": "moderate"
+  },
+  "conventions": [
+   "the source's classes are of whole numbers; the gaps between them go to the class above (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-11",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 11.0
+  },
+  "expected": {
+   "index_class": "moderate"
+  },
+  "conventions": [
+   "11-15"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-15",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 15.0
+  },
+  "expected": {
+   "index_class": "moderate"
+  },
+  "conventions": [
+   "11-15"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-15.5",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 15.5
+  },
+  "expected": {
+   "index_class": "irregular"
+  },
+  "conventions": [
+   "the source's classes are of whole numbers; the gaps between them go to the class above (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-16",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 16.0
+  },
+  "expected": {
+   "index_class": "irregular"
+  },
+  "conventions": [
+   "16-20"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-20",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 20.0
+  },
+  "expected": {
+   "index_class": "irregular"
+  },
+  "conventions": [
+   "16-20"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-20.5",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 20.5
+  },
+  "expected": {
+   "index_class": "strongly_irregular"
+  },
+  "conventions": [
+   "above 20"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.19",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.19
+  },
+  "expected": {
+   "index_class": "very_equable"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.195",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.195
+  },
+  "expected": {
+   "index_class": "very_equable"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.2",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.2
+  },
+  "expected": {
+   "index_class": "equable_wetter_season"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.39",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.39
+  },
+  "expected": {
+   "index_class": "equable_wetter_season"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.4",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.4
+  },
+  "expected": {
+   "index_class": "rather_seasonal"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.59",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.59
+  },
+  "expected": {
+   "index_class": "rather_seasonal"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.6",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.6
+  },
+  "expected": {
+   "index_class": "seasonal"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.79",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.79
+  },
+  "expected": {
+   "index_class": "seasonal"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.8",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.8
+  },
+  "expected": {
+   "index_class": "markedly_seasonal"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.99",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.99
+  },
+  "expected": {
+   "index_class": "markedly_seasonal"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-1",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 1.0
+  },
+  "expected": {
+   "index_class": "most_in_three_months"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-1.19",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 1.19
+  },
+  "expected": {
+   "index_class": "most_in_three_months"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-1.2",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 1.2
+  },
+  "expected": {
+   "index_class": "extreme"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
  }
 ]
