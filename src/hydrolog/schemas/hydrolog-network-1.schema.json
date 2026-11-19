@@ -487,12 +487,12 @@
             "n": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Number of reservoirs in series; > 0, need not be whole. n = 1 is one reservoir (the most attenuation), a large n is a pure delay of the wave."
+              "description": "Number of reservoirs in series; > 0, need not be whole. At the same n K a smaller n attenuates more, a large n is a pure delay of the wave."
             },
             "k_min": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Storage constant K of one reservoir [min]; > 0; the reach delays the wave by n K. Instead of `length_km` and `celerity_m_per_s`."
+              "description": "Storage constant K of one reservoir [min]; > 0; the centroid of the wave moves by n K. Instead of `length_km` and `celerity_m_per_s`."
             },
             "length_km": {
               "type": "number",
@@ -568,7 +568,7 @@
                 "minimum": 0
               },
               "minItems": 1,
-              "description": "Storage of each row of the table [m3], not decreasing, not negative; from the empty state. With `outflow_m3s`, instead of `rating_file`."
+              "description": "Storage of each row of the table [m3], not decreasing, not negative; from the lowest state. With `outflow_m3s`, instead of `rating_file`."
             },
             "outflow_m3s": {
               "type": "array",
@@ -658,7 +658,7 @@
                 "minimum": 0
               },
               "minItems": 1,
-              "description": "Storage of each row of the table [m3], not decreasing, not negative; from the empty state. With `outflow_m3s`, instead of `rating_file`."
+              "description": "Storage of each row of the table [m3], not decreasing, not negative; from the lowest state. With `outflow_m3s`, instead of `rating_file`."
             },
             "outflow_m3s": {
               "type": "array",

@@ -1011,7 +1011,8 @@ COMMANDS: tuple[Command, ...] = (
                 ),
                 description=(
                     "Storage constant K of one reservoir [min]; > 0; the centroid of "
-                    "the wave moves by n K. Instead of `length_km` and `celerity_m_per_s`."
+                    "the wave moves by n K. Instead of `length_km` and "
+                    "`celerity_m_per_s`."
                 ),
                 exclusive_minimum=0,
                 unit="min",
@@ -1137,8 +1138,8 @@ COMMANDS: tuple[Command, ...] = (
             "zbiornika lub odcinka z tabelą pojemność-odpływ: w treści (`storage_m3`, "
             "`outflow_m3s`, `stage_m`) albo `rating_file`; `subreaches` to "
             "pododcinki. "
-            "Krok dłuższy niż 2·min(dS/dO)/subreaches jest dzielony. Zwraca szczyty, objętości, "
-            "bilans i szereg."
+            "Krok dłuższy niż 2·min(dS/dO)/subreaches jest dzielony. Zwraca "
+            "szczyty, objętości, bilans i szereg."
         ),
         description=(
             "Level-pool routing (modified Puls, NEH-630 ch. 17) through a reservoir or "
@@ -1155,8 +1156,8 @@ COMMANDS: tuple[Command, ...] = (
                 type="number_list",
                 description_pl=(
                     "Pojemność (woda w zbiorniku) w kolejnych wierszach tabeli [m3], "
-                    "niemalejąca, nieujemna; od stanu najniższego. Razem z `outflow_m3s`, "
-                    "zamiast `rating_file`."
+                    "niemalejąca, nieujemna; od stanu najniższego. Razem z "
+                    "`outflow_m3s`, zamiast `rating_file`."
                 ),
                 description=(
                     "Storage of each row of the table [m3], not decreasing, not "
