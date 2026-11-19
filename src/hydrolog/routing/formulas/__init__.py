@@ -13,5 +13,7 @@ sub-reaches, the sub-steps, the time axis, ADR-0008) and compute through them.
 * :mod:`~hydrolog.routing.formulas.manning` -- ``manning_normal_flow``, the normal flow
   of a prismatic channel and its kinematic celerity;
 * :mod:`~hydrolog.routing.formulas.cunge` -- ``muskingum_cunge``, Muskingum-Cunge with
-  constant coefficients on equal distance steps.
+  constant coefficients on equal distance steps;
+* :mod:`~hydrolog.routing.formulas.level_pool` -- ``level_pool``, storage indication
+  (the modified Puls method) through equal pools of a storage-outflow table.
 """

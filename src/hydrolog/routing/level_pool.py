@@ -18,9 +18,11 @@ table, and the outflow of the new step is read from it by linear interpolation
 (NEH-630 chapter 17, example 17-1; HEC-HMS "Modified Puls"). The table is a polyline:
 its rows ``(S_i, O_i)`` are given in increasing order of both, so ``Y`` rises along it
 and a dead zone, a stretch of storage with no outflow below a crest or an invert, is
-allowed. The optional stage column rides along the same polyline and only reports the
-water level. Only differences of storage enter the method, so the datum of the storage
-column is free; row 0 is the lowest state of the table.
+allowed. The optional stage column only reports the water level: the stage of the last
+pool, read from the table at its storage. Only differences of storage enter the
+method, so the datum of the storage column is free (row 0 is the lowest state of the
+table, not necessarily an empty one); the storages a run reports, at both ends and at
+the peak, are measured from it.
 
 **Step rule.** Where the storage constant of the table, ``K = dS / dO``, is shorter
 than half the time step, the weight of the previous outflow of the linear reservoir of
@@ -51,20 +53,36 @@ highest storage of a flat stretch of the outflow: a reservoir sits at its crest)
 table must cover the run: an initial outflow outside it is a validation error, and a
 flood that fills the reservoir beyond its last row (``table_exceeded``) or empties it
 below its first (``table_emptied``) is a calculation error, never an extrapolation.
+
+The scheme on the chosen step is the formula
+:func:`~hydrolog.routing.formulas.level_pool.level_pool_route` (spec ``level_pool``),
+whose preconditions are the step rule and the range of the table; the reach reports a
+flood beyond the table as the calculation errors above. The division of the step, the
+initial outflow at an end of the table and the stage are this module's Tier B rules
+``level_pool_substeps``, ``level_pool_initial_outflow`` and ``level_pool_stage``
+(ADR-0061).
 """
 
 from __future__ import annotations
 
 import math
-from bisect import bisect_right
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Final
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from hydrolog.exceptions import CalculationError, InvalidParameterError
+from hydrolog.nogat_formulas import FormulaSpec, TierBSpec
 from hydrolog.routing._checks import as_array, whole_number
+from hydrolog.routing.formulas._shared import SECONDS_PER_MINUTE, hec_hms, neh630_17
+from hydrolog.routing.formulas.level_pool import (
+    ROUNDING,
+    TableExit,
+    level_pool_route,
+    step_limit_s,
+    table_exit,
+)
 from hydrolog.routing.hydrograph import Hydrograph, TableProblem
 from hydrolog.routing.muskingum import MAX_SUBSTEPS
 from hydrolog.routing.parameters import Parameter, ParameterValue, parameter
@@ -77,11 +95,14 @@ from hydrolog.routing.reach import (
     RoutingResult,
 )
 
-__all__ = ["LevelPoolReach", "check_rating", "rating_arrays", "timestep_limit_min"]
-
-_SECONDS_PER_MINUTE = 60.0
-_TOLERANCE = 1e-9
-"""Relative slack of the table ends and of the step rule: rounding, not data."""
+__all__ = [
+    "SPECS",
+    "TIER_B",
+    "LevelPoolReach",
+    "check_rating",
+    "rating_arrays",
+    "timestep_limit_min",
+]
 
 
 def check_rating(
@@ -242,7 +263,10 @@ def timestep_limit_min(
 
     Only the segments the run can use count: from the state at rest under the lowest
     flow (a flat stretch of the table rests at its highest storage, the pool full to
-    the crest) up to the first row that reaches the largest flow.
+    the crest) up to the first row that reaches the largest flow. It is the limit of
+    the precondition ``timestep_within_limit`` of the spec ``level_pool``
+    (:func:`~hydrolog.routing.formulas.level_pool.step_limit_s`), in minutes; the
+    reach divides a longer step by it (Tier B rule ``level_pool_substeps``).
 
     Parameters
     ----------
@@ -267,18 +291,10 @@ def timestep_limit_min(
     """
     storage = np.asarray(storage_m3, dtype=np.float64)
     outflow = np.asarray(outflow_m3s, dtype=np.float64)
-    floor = outflow[0] if outflow_floor_m3s is None else outflow_floor_m3s
-    first = int(_position(outflow.tolist(), max(float(floor), float(outflow[0]))))
-    last = len(outflow) - 1
-    if outflow_cap_m3s is not None:
-        last = min(int(np.searchsorted(outflow, outflow_cap_m3s, side="left")), last)
-    rise = np.diff(outflow)[first:last]
-    held = np.diff(storage)[first:last]
-    counted = rise > 0.0
-    if not counted.any():
-        return math.inf
-    seconds = 2.0 * float((held[counted] / rise[counted]).min()) / subreaches
-    return seconds / _SECONDS_PER_MINUTE
+    floor = float(outflow[0]) if outflow_floor_m3s is None else outflow_floor_m3s
+    cap = math.inf if outflow_cap_m3s is None else outflow_cap_m3s
+    limit_s = step_limit_s(storage, outflow, subreaches, float(floor), float(cap))
+    return limit_s / SECONDS_PER_MINUTE
 
 
 @dataclass(frozen=True)
@@ -290,94 +306,6 @@ class _Plan:
     notices: tuple[RoutingNotice, ...] = ()
 
 
-class _TableExit(Exception):
-    """The state of a run left the working curve (internal; ends the run)."""
-
-    def __init__(self, above: bool, index: int, working: float) -> None:
-        super().__init__()
-        self.above = above
-        self.index = index
-        self.working = working
-
-
-def _position(outflow: list[float], value: float) -> float:
-    """Return the row coordinate of the highest-storage point with this outflow.
-
-    The coordinate is ``i + f``: row ``i`` and the fraction ``f`` of the way to row
-    ``i + 1``. ``value`` is clamped to the outflows of the table; a flat stretch of the
-    outflow rests at its last row.
-    """
-    index = bisect_right(outflow, value)
-    if index == 0:
-        return 0.0
-    if index >= len(outflow):
-        return float(len(outflow) - 1)
-    low, high = outflow[index - 1], outflow[index]
-    if low == value:
-        return float(index - 1)
-    return (index - 1) + (value - low) / (high - low)
-
-
-def _route_pool(
-    inflow: list[float],
-    working: list[float],
-    outflow: list[float],
-    start: tuple[float, float, float],
-    slack: float,
-) -> tuple[list[float], list[float]]:
-    """Route one pool: the recurrence of the working curve, ordinate by ordinate.
-
-    Parameters
-    ----------
-    inflow : list of float
-        Inflow ordinates [m3/s].
-    working, outflow : list of float
-        The working curve ``S/dt + O/2`` of each row (strictly rising) and the outflow.
-    start : tuple of float
-        Row coordinate, working-curve value and outflow of the first ordinate.
-    slack : float
-        How far beyond the first or last row the working curve may stray (rounding)
-        before the run is ended; the value is then held at the end.
-
-    Returns
-    -------
-    tuple of list
-        The outflow and the row coordinate of every ordinate.
-
-    Raises
-    ------
-    _TableExit
-        When the working curve falls below the first row or rises above the last.
-    """
-    last = len(working) - 1
-    bottom, top = working[0], working[last]
-    position, state, discharge = start
-    count = len(inflow)
-    routed = [0.0] * count
-    where = [0.0] * count
-    routed[0], where[0] = discharge, position
-    previous = inflow[0]
-    for k in range(1, count):
-        current = inflow[k]
-        state += 0.5 * (previous + current) - discharge
-        previous = current
-        if state >= top:
-            if state > top + slack:
-                raise _TableExit(True, k, state)
-            state, row = top, last - 1
-        elif state <= bottom:
-            if state < bottom - slack:
-                raise _TableExit(False, k, state)
-            state, row = bottom, 0
-        else:
-            row = bisect_right(working, state) - 1
-        low = working[row]
-        fraction = (state - low) / (working[row + 1] - low)
-        discharge = outflow[row] + fraction * (outflow[row + 1] - outflow[row])
-        routed[k], where[k] = discharge, row + fraction
-    return routed, where
-
-
 @REACH_METHODS.register
 class LevelPoolReach(Reach):
     """Route a hydrograph through a reservoir or a reach by storage indication.
@@ -387,15 +315,17 @@ class LevelPoolReach(Reach):
     from a hydraulic model, arrives; see the module docstring for the method, the step
     rule and the range of the table. ``route`` returns the outflow and the storage at
     both ends; ``parameters`` of the result hold the numbers of sub-reaches and
-    sub-steps, the longest step that meets the rule of NEH-630, the peak storage and
-    its time and, with a stage, the peak stage and its time (the stage of the last
-    sub-reach: the pool of a reservoir).
+    sub-steps, the longest step that meets the step rule (per segment, stricter than
+    NEH-630's for the whole curve), the peak storage and its time and, with a stage,
+    the peak stage and its time (the stage of the last sub-reach: the pool of a
+    reservoir).
 
     Parameters
     ----------
     storage_m3 : array_like
-        Storage [m3] of each row of the table, not decreasing, not negative; measured
-        from the first row, which is the empty state.
+        Storage [m3] of each row of the table, not decreasing, not negative. Only its
+        differences enter the routing, so its datum is free (row 0, the lowest state of
+        the table, need not be empty); the storages a run reports are measured from it.
     outflow_m3s : array_like
         Outflow [m3/s] of each row, not decreasing, not negative; ``0`` below a crest.
     stage_m : array_like, optional
@@ -410,9 +340,12 @@ class LevelPoolReach(Reach):
         If the table breaks a rule of :func:`check_rating` (``details.option``
         ``storage_m3``, ``outflow_m3s`` or ``stage_m``, ``details.reason`` the rule) or
         ``subreaches`` is not a whole number of at least 1. Routing raises it, with
-        ``details.reason`` ``unstable_timestep``, when more than 100 sub-steps would be
-        needed, and with ``details.option`` ``initial_outflow_m3s`` when the initial
-        outflow is outside the table.
+        ``details.reason`` ``unstable_timestep``, when more than 100 sub-steps (or more
+        ordinates than the limit) would be needed, with ``details.option``
+        ``storage_m3`` when a segment the run reaches holds no storage
+        (``working_curve``) or two rows give the same working curve at the step
+        (``repeated_row``), and with ``details.option`` ``initial_outflow_m3s`` when
+        the initial outflow is outside the table.
     CalculationError
         When routing fills the reservoir beyond the last row of the table
         (``details.reason`` ``table_exceeded``) or empties it below the first
@@ -450,7 +383,6 @@ class LevelPoolReach(Reach):
             if table is not None:
                 table.flags.writeable = False
         self._outflow_values = outflow.tolist()
-        self._rows = np.arange(len(outflow), dtype=np.float64)
 
     def options(self) -> dict[str, Any]:
         """Return the tables and ``subreaches``, the arguments that rebuild it."""
@@ -475,10 +407,10 @@ class LevelPoolReach(Reach):
             parameter("outflow_max_m3s", float(self.outflow_m3s[-1]), "computed"),
         ]
 
-    def _start(self, initial_outflow_m3s: float) -> float:
-        """Return the row coordinate of the state at rest with this outflow."""
+    def _initial(self, initial_outflow_m3s: float) -> float:
+        """Return the initial outflow, at an end of the table if just beyond it."""
         lowest, highest = self._outflow_values[0], self._outflow_values[-1]
-        slack = _TOLERANCE * max(highest, 1.0)
+        slack = ROUNDING * max(highest, 1.0)
         given = (
             f"The initial outflow of {initial_outflow_m3s:g} m3/s (the first inflow "
             "ordinate unless initial_outflow_m3s is given)"
@@ -508,8 +440,7 @@ class LevelPoolReach(Reach):
                 },
                 hint="Give an initial outflow inside the table, or extend the table.",
             )
-        clamped = min(max(initial_outflow_m3s, lowest), highest)
-        return _position(self._outflow_values, clamped)
+        return float(min(max(initial_outflow_m3s, lowest), highest))
 
     def _plan(self, inflow: Hydrograph, initial_outflow_m3s: float) -> _Plan:
         """Divide the step when the table has a storage constant shorter than it."""
@@ -536,9 +467,9 @@ class LevelPoolReach(Reach):
                 },
                 hint="Give the table some storage where the outflow rises.",
             )
-        if step_min <= limit * (1.0 + _TOLERANCE):
+        if step_min <= limit * (1.0 + ROUNDING):
             return _Plan(1, limit)
-        substeps = math.ceil(step_min / limit * (1.0 - _TOLERANCE))
+        substeps = math.ceil(step_min / limit * (1.0 - ROUNDING))
         reaches = (
             f"each of {self.subreaches} sub-reaches"
             if self.subreaches > 1
@@ -592,13 +523,13 @@ class LevelPoolReach(Reach):
         )
         return _Plan(substeps, limit, (notice,))
 
-    def _exit_error(
-        self, leave: _TableExit, fine: Hydrograph, reach: int
-    ) -> CalculationError:
+    def _exit_error(self, leave: TableExit, fine: Hydrograph) -> CalculationError:
         """Describe a run that left the table."""
         time = float(fine.times_min[leave.index])
         where = (
-            f" in sub-reach {reach} of {self.subreaches}" if self.subreaches > 1 else ""
+            f" in sub-reach {leave.pool} of {self.subreaches}"
+            if self.subreaches > 1
+            else ""
         )
         if leave.above:
             row = len(self._outflow_values) - 1
@@ -629,64 +560,151 @@ class LevelPoolReach(Reach):
             "inflow that stays above the first outflow of the table.",
         )
 
-    def _run(self, inflow: Hydrograph, initial_outflow_m3s: float) -> ReachRun:
-        reaches = self.subreaches
-        start = self._start(initial_outflow_m3s)
-        plan = self._plan(inflow, initial_outflow_m3s)
-        fine = inflow.refined(plan.substeps)
-        step_s = fine.timestep_min * _SECONDS_PER_MINUTE
+    def _refusal(
+        self, refused: InvalidParameterError, fine: Hydrograph, initial: float
+    ) -> Exception:
+        """Return the reach's own error for a refusal of the spec ``level_pool``.
 
-        # the working curve of one sub-reach, which holds S / N
-        held = self.storage_m3 / reaches
-        working = held / step_s + 0.5 * self.outflow_m3s
-        if not (np.diff(working) > 0.0).all():
-            raise InvalidParameterError(
+        The planned step meets the step rule and the initial outflow lies in the
+        table, so the formula refuses only rows that its step cannot tell apart and a
+        flood that leaves the table: they keep the words of the reach (ADR-0061).
+        """
+        constraint = refused.details.get("constraint")
+        if constraint == "working_curve_rises":
+            return InvalidParameterError(
                 "Option 'storage_m3': two rows of the table give the same working "
                 f"curve at a step of {fine.timestep_min:g} min (rows too close to tell "
                 "apart)",
                 details={"option": "storage_m3", "reason": "repeated_row"},
                 hint="Remove the near-duplicate row.",
             )
-        first = (
-            start,
-            float(np.interp(start, self._rows, working)),
-            initial_outflow_m3s,
-        )
-        slack = _TOLERANCE * max(float(working[-1]), 1.0)
+        if constraint in ("flood_below_table_top", "flood_above_table_bottom"):
+            leave = table_exit(
+                fine.discharge_m3s,
+                fine.timestep_min,
+                self.storage_m3,
+                self.outflow_m3s,
+                self.subreaches,
+                initial,
+            )
+            if leave is not None:
+                return self._exit_error(leave, fine)
+        return refused
 
-        series = fine.discharge_m3s.tolist()
-        stored = np.zeros(len(fine))
-        where: list[float] = []
-        for reach in range(1, reaches + 1):
-            try:
-                series, where = _route_pool(
-                    series, working.tolist(), self._outflow_values, first, slack
-                )
-            except _TableExit as leave:
-                raise self._exit_error(leave, fine, reach) from None
-            stored += np.interp(where, self._rows, held)
-        outflow = np.array(series)
-
-        steady = _position(self._outflow_values, float(fine.discharge_m3s[-1]))
+    def _run(self, inflow: Hydrograph, initial_outflow_m3s: float) -> ReachRun:
+        initial = self._initial(initial_outflow_m3s)
+        plan = self._plan(inflow, initial)
+        fine = inflow.refined(plan.substeps)
+        try:
+            run = level_pool_route(
+                fine.discharge_m3s,
+                fine.timestep_min,
+                self.storage_m3,
+                self.outflow_m3s,
+                self.subreaches,
+                initial,
+            )
+        except InvalidParameterError as refused:
+            raise self._refusal(refused, fine, initial) from None
         parameters: dict[str, ParameterValue] = {
-            "subreaches": reaches,
+            "subreaches": self.subreaches,
             "substeps": plan.substeps,
         }
         if math.isfinite(plan.limit_min):
             parameters["timestep_limit_min"] = plan.limit_min
-        peak = int(np.argmax(stored))
-        parameters["storage_peak_m3"] = float(stored[peak])
+        peak = int(np.argmax(run.storage_m3))
+        parameters["storage_peak_m3"] = run.storage_peak_m3
         parameters["storage_peak_time_min"] = float(fine.times_min[peak])
         if self.stage_m is not None:
-            levels = np.interp(where, self._rows, self.stage_m)
+            levels = _levels(
+                run.last_pool_storage_m3,
+                self.storage_m3 / self.subreaches,
+                self.stage_m,
+            )
             top = int(np.argmax(levels))
             parameters["stage_peak_m"] = float(levels[top])
             parameters["stage_peak_time_min"] = float(fine.times_min[top])
         return ReachRun(
-            outflow_m3s=outflow[:: plan.substeps],
-            storage_start_m3=reaches * float(np.interp(start, self._rows, held)),
-            storage_end_m3=float(stored[-1]),
-            storage_steady_m3=reaches * float(np.interp(steady, self._rows, held)),
+            outflow_m3s=run.outflow_m3s[:: plan.substeps],
+            storage_start_m3=float(run.storage_m3[0]),
+            storage_end_m3=float(run.storage_m3[-1]),
+            storage_steady_m3=run.storage_steady_m3,
             parameters=parameters,
             notices=plan.notices,
         )
+
+
+def _levels(
+    pool_storage_m3: NDArray[np.float64],
+    held_m3: NDArray[np.float64],
+    stage_m: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """Return the stage of a pool at its storage: the table's, linear between rows.
+
+    Where a run can go the storage of a pool rises along the table (the spec
+    ``level_pool`` refuses a segment it reaches without storage), so the storage gives
+    the row; of rows of equal storage, which only the outflow tells apart, the last.
+    """
+    return np.interp(pool_storage_m3, held_m3, stage_m)
+
+
+SPECS: Final[tuple[FormulaSpec, ...]] = ()
+"""The module computes through the spec ``level_pool``; it declares none itself."""
+
+TIER_B: Final = (
+    TierBSpec(
+        name="level_pool_substeps",
+        function="hydrolog.routing.level_pool.timestep_limit_min",
+        definition="the longest step a storage-outflow table allows a run, "
+        "2 min(dS/dO) / N over the segments from the state at rest under the lowest "
+        "flow of the run to the first row that reaches its largest, in min (the "
+        "precondition timestep_within_limit of the spec level_pool); LevelPoolReach "
+        "divides a longer step into the fewest equal sub-steps that meet it, each end "
+        "to 1e-9 of itself, the inflow linear between the ordinates, and reads the "
+        "outflow back at the original ordinates (notice timestep_refined)",
+        convention="the rule per segment is stricter than NEH 630's for the whole "
+        "curve, dt <= 2 S/O at every row (the working curve right of the line of equal "
+        "values), which lets the outflow overshoot the inflow peak on a table whose "
+        "slope changes sharply (ADR-0008); more than 100 sub-steps or more ordinates "
+        "than the limit are refused (unstable_timestep), and so is a segment the run "
+        "reaches without storage (working_curve)",
+        source=neh630_17(
+            "pp. 17-10 to 17-11: negative outflows whenever dt > 2 S2/O2; a working "
+            "curve left of the line of equal values is discarded and computed again "
+            "with a smaller dt, which WinTR-20 adjusts internally"
+        ),
+    ),
+    TierBSpec(
+        name="level_pool_initial_outflow",
+        function="hydrolog.routing.level_pool.LevelPoolReach._initial",
+        definition="the outflow the pools start at rest with: the run's initial "
+        "outflow (routing_initial_state), taken at the end of the table when it lies "
+        "beyond it by at most 1e-9 of the table's largest outflow (at least 1e-9 "
+        "m3/s); further beyond, it is refused (initial_outflow_m3s, minimum or "
+        "maximum)",
+        convention="the table covers the run, never an extrapolation; the beyond is "
+        "rounding, not data",
+        source=hec_hms(
+            "Modified Puls Model",
+            "modified-puls-model",
+            "Required Parameters: the initial storage is computed from the initial "
+            "outflow and the storage vs. discharge relationship",
+        ),
+    ),
+    TierBSpec(
+        name="level_pool_stage",
+        function="hydrolog.routing.level_pool._levels",
+        definition="the stage of the last pool at every ordinate: the table's stage "
+        "column at the pool's storage, linear between the rows; the peak stage and its "
+        "time are its largest value and the first ordinate that has it, as the peak "
+        "storage and its time are of the storage of all pools",
+        convention="the stage only reports, it does not enter the routing: for a "
+        "reservoir (one pool) the level of the pool, for sub-reaches the level of the "
+        "last",
+        source=neh630_17(
+            "example 17-2, p. 17-25: the peak elevation and storage interpolated from "
+            "the elevation-discharge and elevation-storage data of table 17-11"
+        ),
+    ),
+)
+"""The rules of the step, the initial state and the stage of a level pool (CMP-2.2)."""

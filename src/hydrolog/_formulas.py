@@ -73,6 +73,8 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.routing.formulas.manning",
     "hydrolog.routing.formulas.cunge",
     "hydrolog.routing.cunge",
+    "hydrolog.routing.formulas.level_pool",
+    "hydrolog.routing.level_pool",
     "hydrolog.routing.network",
 )
 """The modules whose ``SPECS`` (and ``TIER_B``) declare Hydrolog's formulas, in the

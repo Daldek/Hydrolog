@@ -27,28 +27,43 @@ reference module (CMP-3.5), and no `calculation_error` for accepted inputs (CMP-
 
 1. **The formulas are the schemes on a given grid,** in the package `hydrolog.routing.formulas`, one module per scheme,
    each with its spec and its function; `hydrolog.routing.formulas._shared` holds what they share (the inflow, the step
-   and the initial outflow as inputs, the sources, the volume by the trapezoid rule). The first is `muskingum`
-   (`muskingum_route(inflow_m3s, timestep_min, k_min, x, subreaches, initial_outflow_m3s)`): the window of non-negative
-   weights, 2KX/N ≤ Δt ≤ 2K(1 − X)/N to the planner's slack of 10⁻⁹, is its precondition `nonnegative_weights`.
+   and the initial outflow as inputs, the sources, the volume by the trapezoid rule). The specs, `formula_version` 1:
+   `muskingum` (`muskingum_route`, N equal sub-reaches; the window of non-negative weights 2KX/N ≤ Δt ≤ 2K(1 − X)/N to
+   the planner's slack of 10⁻⁹ is its precondition `nonnegative_weights`), `muskingum_cunge`
+   (`muskingum_cunge_route`, N equal distance steps; the window |cΔt − D| ≤ Δx ≤ cΔt + D), `manning_normal_flow`
+   (`normal_flow`, the normal depth by `brentq`, a delegated computation), `linear_reservoir_cascade`
+   (`cascade_route`, the exact gamma kernel), `level_pool` (`level_pool_route`, storage indication through N pools)
+   and `lag` (`lag_route`). A precondition `representable` (or `finite_grid`, `representable_flow`) refuses inputs
+   whose weights, grid or storage float64 cannot hold, which gave NaN, an exception or a lost volume before.
 2. **The reaches keep their options, their plans and their refusals.** `MuskingumReach` and the other reaches check
    their options with the catalog's vocabulary when they are made, choose the grid, extend the time axis and compute
    through the formulas, so that a network document is still refused node by node when it is read and Sieć keeps its
-   words for `unstable_timestep`; the rules of the grids are their modules' Tier B formulas (`muskingum_subreaches`).
-   The formula modules hold no check of their own; a caller of a formula gets the standard's refusals.
+   words for `unstable_timestep`, `table_exceeded` and `table_emptied` (the level pool maps the formula's refusals of a
+   flood beyond its table back to them); the rules of the grids and the shared conventions (initial state, tail,
+   balance, refinement, extension, the junction's sum) are their modules' Tier B formulas. The formula modules hold no
+   check of their own; a caller of a formula gets the standard's refusals.
 3. **Rounding never gives a negative outflow.** The three-point recurrence starts after the first ordinate, from
    `c_previous I[0] + c_outflow O[0]`, so `O[0]` is the initial outflow itself and no difference of inputs is taken; a
    weight that rounding puts below zero on a border of the window is set to zero and the others are divided by their
    sum (`_kernels.nonnegative_coefficients`). With non-negative weights every outflow is then a sum of non-negative
    terms, non-decreasing in every input, as the spec's monotonicity asserts.
 4. **Evidence.** The published cases with their roundings in `tests/fixtures/formulas/<family>-cases.json` (the
-   University of Iowa's and NPTEL's Muskingum examples), oracles in exact rational arithmetic and the moments of the
-   impulse response, limits and the volume balance as a conservation law, and the generated tests, with a strategy of
-   points inside the window for the properties (`tests/unit/test_formulas_muskingum.py`).
+   University of Iowa's and NPTEL's Muskingum examples; NEH 630 examples 17-1, 17-2, 17-4 and 17-5 and Table 17-16),
+   two discrepancies by design (ADR-0062), oracles in exact rational and 50-digit decimal arithmetic, SciPy's
+   `gammainc`, `expm` and `solve_ivp`, the moments of the impulse responses, limits and the volume balance as a
+   conservation law, and the generated tests, with strategies of valid grids and tables for the properties
+   (`tests/unit/test_formulas_<family>.py`). The cascade and the lag are `oracle only`: no source publishes a routed
+   table of either.
 
 ## Consequences
 
-- `route muskingum` and a network with a Muskingum reach carry `"formula_versions": {"muskingum": 1}`; their outflows
-  change by rounding only (at most 1.4·10⁻¹² relative over 20,000 random runs).
+- Every `route` command and `route network` carry the `formula_versions` of the schemes they ran (`muskingum`,
+  `muskingum_cunge` with `manning_normal_flow` for a section and `linear_reservoir_cascade` for a reach without a grid,
+  `linear_reservoir_cascade`, `level_pool`, `lag`); their outflows change by rounding only (Muskingum at most
+  1.4·10⁻¹² relative over 20,000 random runs; Muskingum-Cunge, the cascade, the lag and the level pool identical or
+  within 10⁻⁹ relative over thousands of random runs).
+- The end storage of a cascade that has released nothing yet was a third too low in one case (a kernel that had not
+  started counted as one that had ended); it is fixed.
 - A reach's refusal and a formula's refusal of the same value differ in vocabulary: `MuskingumReach(k_min=-1)` is
   `exclusive_minimum` (catalog), `muskingum_route(..., k_min=-1, ...)` `outside_physical_range` (standard).
 

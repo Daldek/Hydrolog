@@ -43,6 +43,7 @@ MODULES = (
     "hydrolog.routing.formulas.cascade",
     "hydrolog.routing.formulas.cunge",
     "hydrolog.routing.formulas.lag",
+    "hydrolog.routing.formulas.level_pool",
     "hydrolog.routing.formulas.manning",
     "hydrolog.routing.formulas.muskingum",
     "hydrolog.routing.hydrograph",

@@ -23,6 +23,7 @@
 | [Lag routing: the inflow translated by a fixed time, linear between the ordinates](#lag) | `hydrolog.routing.formulas.lag.lag_route` | oracle only | 1 | not measured |
 | [Normal flow of a trapezoidal, rectangular or triangular channel by Manning's equation, with the kinematic celerity dQ/dA](#manning_normal_flow) | `hydrolog.routing.formulas.manning.normal_flow` | referenced | 1 | not measured |
 | [Muskingum-Cunge routing with constant coefficients on N equal distance steps (Cunge's K and X)](#muskingum_cunge) | `hydrolog.routing.formulas.cunge.muskingum_cunge_route` | referenced | 1 | not measured |
+| [Level-pool routing by storage indication (modified Puls) through N equal pools](#level_pool) | `hydrolog.routing.formulas.level_pool.level_pool_route` | referenced | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
 ### Potential maximum retention S of the SCS curve number
@@ -1460,6 +1461,109 @@ Plain text: `D = Q / (T S0 c), dx = L / N, K = dx / c, X = (1 - D / dx) / 2; in 
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
+<a id="level_pool"></a>
+### Level-pool routing by storage indication (modified Puls) through N equal pools
+
+`hydrolog.routing.formulas.level_pool.level_pool_route` · family `scheme` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\frac{s_t}{\Delta t} + \frac{O_t}{2} = \frac{I_{t-1} + I_t}{2} + \frac{s_{t-1}}{\Delta t} - \frac{O_{t-1}}{2},\quad s = \frac{S(O)}{N}
+$$
+
+Plain text: `in each of N pools in series, holding s = S(O) / N of the table for the same outflow: s[t] / dt + O[t] / 2 = (I[t-1] + I[t]) / 2 + s[t-1] / dt - O[t-1] / 2, O[t] read from the working curve s / dt + O / 2 of the table, linear between its rows; O[0] = O0 in every pool, at rest at the highest storage the table gives O0`
+
+**Sources**
+
+- USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), eqs. 17-1 to 17-3, pp. 17-9 to 17-10 (a working curve of O2 against S2/dt + O2/2 is necessary); examples 17-1 and 17-2, tables 17-5 to 17-12, pp. 17-11 to 17-25 (open) <https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf>
+- US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model, eq. 3; Required Parameters: the initial outflow, a storage vs. discharge relationship and the number of subreaches (open) <https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/modified-puls-model>
+- US Army Corps of Engineers (1994). Engineering and Design: Flood-Runoff Analysis, EM 1110-2-1417, chapter 9, modified Puls, eq. 9-12 (open) <https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-1417.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `inflow_m3s` | $I_t$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic) | unstated | [0.0, 100.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s |
+| `timestep_min` | $\Delta t$ | min | real | (0.0, inf), test bound high 1440.0 (a day, the step of a series of daily discharges (IMGW-PIB)) | unstated | [5.0, 720.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), steps of 5 min (Hydrograf's networks, tests/fixtures/handoff_hydrograf_network*.json) to 12 h (the Iowa example and NEH 630 ch. 17 example 17-2, 0.5 d) |
+| `table_storage_m3` | $S_i$ | m3 | real_array | [0.0, inf), test bound high 30000000.0 (ten times the largest table of Hydrolog's routing tests (NEH 630 ch. 17 example 17-2, 2.87e6 m3); the scheme is homogeneous in the storage and the discharge (scaling discharge), so any bound tests its arithmetic) | unstated | [0.0, 3000000.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), tables up to 2.87e6 m3: NEH 630 ch. 17 example 17-2, 1,174.5 ft3/s-d; the catalog's pond, 255,000 m3 (tests/fixtures/pond_rating.csv) |
+| `table_outflow_m3s` | $O_i$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic) | unstated | [0.0, 300.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), tables up to 283.2 m3/s: NEH 630 ch. 17 example 17-1, 10,000 ft3/s; the catalog's pond, 27.17 m3/s |
+| `subreaches` | $N$ | - | integer | [1.0, inf), test bound high 1000.0 (HEC-HMS's estimate L / (c dt) for a reach of 100 km, a celerity of 1 m/s and a step of 100 s) | unstated | [1.0, 6.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 1 (a pond or a reservoir, the default of LevelPoolReach) to 6 pools in the tests of the reach |
+| `initial_outflow_m3s` | $O_0$ | m3/s | real | [0.0, inf), test bound high 1000000.0 (a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic) | unstated | [0.0, 100.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `table_columns_paired` | physical | the storage and the outflow columns have as many rows | US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model, Required Parameters: the storage vs. discharge relationship is a paired data object whose storages cover the entire range met in a simulation; the initial storage is computed from the initial outflow and that relationship |
+| `table_not_decreasing` | physical | S[i] <= S[i+1] and O[i] <= O[i+1]: storage and outflow rise together with the water level | USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), tables 17-4 and 17-9 to 17-11: storage and discharge accumulated with the elevation, both rising with it |
+| `table_rows_distinct` | physical | no row repeats the one before it: the working curve rises from row to row | USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), eqs. 17-1 to 17-3, pp. 17-9 to 17-10 (a working curve of O2 against S2/dt + O2/2 is necessary); examples 17-1 and 17-2, tables 17-5 to 17-12, pp. 17-11 to 17-25 |
+| `initial_outflow_in_table` | precondition | O[0] <= O0 <= O[-1]: the pools start at rest at a state of the table | US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model, Required Parameters: the storage vs. discharge relationship is a paired data object whose storages cover the entire range met in a simulation; the initial storage is computed from the initial outflow and that relationship |
+| `storage_where_outflow_rises` | precondition | dS > 0 on every segment where the outflow rises, from the state at rest under the lowest flow of the run to the first row that reaches its largest: no step meets the step rule on a segment without storage | USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), pp. 17-10 to 17-11: negative outflows whenever dt > 2 S2/O2 (O2/2 > S2/dt); a working curve with any part left of the line of equal values is discarded and computed again with a smaller dt, as WinTR-20 does internally |
+| `timestep_within_limit` | precondition | dt <= 2 min(dS/dO) / N over the segments the run can reach (from the state at rest under its lowest flow to the first row that reaches its largest), to 1e-9 of itself: the weight (2K - dt) / (2K + dt) of the previous state is not negative on any of them, so the outflow stays between the lowest and the highest flow of the run | Hydrolog ADR-0008: routing conventions, docs/decisions/0008-routing-conventions.md, Stability: a level-pool step of at most twice the shortest dS/dO of the segments between the lowest and the highest flow of the run, over the number of sub-reaches; NEH's rule for the whole curve let the outflow exceed the inflow peak on 201 of 1,499 random tables |
+| `working_curve_rises` | precondition | S / (N dt) + O / 2 is finite and rises from row to row in float64: the outflow is read from it | USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), eqs. 17-1 to 17-3, pp. 17-9 to 17-10 (a working curve of O2 against S2/dt + O2/2 is necessary); examples 17-1 and 17-2, tables 17-5 to 17-12, pp. 17-11 to 17-25 |
+| `flood_below_table_top` | precondition | no pool fills beyond the last row (its working curve above the last row's by more than 1e-9 of it): the table covers the flood, never an extrapolation | US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model, Required Parameters: the storage vs. discharge relationship is a paired data object whose storages cover the entire range met in a simulation; the initial storage is computed from the initial outflow and that relationship |
+| `flood_above_table_bottom` | precondition | no pool empties below the first row (its working curve below the first row's by more than 1e-9 of the last row's): an inflow below the first outflow of the table must not drain it | US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model, Required Parameters: the storage vs. discharge relationship is a paired data object whose storages cover the entire range met in a simulation; the initial storage is computed from the initial outflow and that relationship |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `outflow_m3s` | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic) | 4 ulp of the bound |
+| `storage_m3` | m3 | real_array | [0.0, inf) | 4 ulp of the bound |
+| `last_pool_storage_m3` | m3 | real_array | [0.0, inf) | 4 ulp of the bound |
+| `storage_peak_m3` | m3 | real | [0.0, inf) | 4 ulp of the bound |
+| `storage_steady_m3` | m3 | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- SI units: discharge in m3/s, storage in m3, the step in min (S / dt with the 60 s of a minute of the units table)
+- the outflow is read from the working curve S / (N dt) + O / 2 by linear interpolation between the rows of the table, as the table is linear between them (NEH 630 interpolates its working table, HEC-HMS solves the same equation by trial and error)
+- N pools in series each hold S / N for the same outflow (HEC-HMS subreaches); every pool starts at rest with O0, at the highest storage the table gives that outflow, so a pool with a dead zone below a crest starts full to the crest
+- the datum of the storage column is free: only differences of storage enter the outflow, and the storages reported are measured from it
+- a state that rounding puts beyond an end of the table by at most 1e-9 of the working curve's top is held at that end; further beyond, the pool has left the table, which the preconditions flood_below_table_top and flood_above_table_bottom refuse
+- the storage at rest under the last inflow ordinate is read at the end row of the table for a flow beyond it
+- only the given ordinates are routed: LevelPoolReach divides a longer step into sub-steps, the inflow linear between the ordinates, extends the time axis and reads the stage of the last pool (Tier B, ADR-0008)
+
+**Assumptions**
+
+- the storage is a single-valued function of the outflow: a level water surface, or a reach whose storage follows its outflow, without hysteresis (NEH 630: the water surface is level or nearly level)
+- for a channel NEH 630 asks for a travel time through the reach of about half the inflow's time of rise or less (not an input: not checked)
+- the inflow is linear between its ordinates (the trapezoid rule)
+
+**Validation:** none: the storage-outflow relation of a reach or a reservoir comes from water-surface profiles, the reservoir's topography or observed floods (HEC-HMS TRM, Modified Puls; NEH 630 ch. 17); the sources report no agreement of the scheme itself with observations
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `difference_denominator`: the fraction (Y - W[r]) / (W[r+1] - W[r]) of a segment of the working curve: rows whose working curve is equal in float64 are refused by the precondition working_curve_rises (test_rows_the_working_curve_cannot_tell_apart_are_refused); K = dS/dO of the step rule is taken only where the outflow rises
+- `stability_bound`: dt <= 2 min(dS/dO) / N on the segments the run reaches: precondition timestep_within_limit with its satisfied, boundary and violated points, limit bounded_by_its_flows (a kinked table on the step of its steep segment) and test_a_step_that_the_rule_for_the_whole_curve_allows_is_refused
+- `gap_propagation`: type cases inflow_m3s-nan_element, table_storage_m3-nan_element and table_outflow_m3s-nan_element: a gap is refused, the recurrence would carry it to every later ordinate
+- `many_small_terms`: test_a_long_steady_inflow_stays_steady: 200,000 ordinates of a steady inflow stay steady to 1e-12
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `discharge`: inputs times 2^e (`inflow_m3s` e = 1.0, `table_storage_m3` e = 1.0, `table_outflow_m3s` e = 1.0, `initial_outflow_m3s` e = 1.0) give outputs times 2^e (`outflow_m3s` e = 1.0, `storage_m3` e = 1.0, `last_pool_storage_m3` e = 1.0, `storage_peak_m3` e = 1.0, `storage_steady_m3` e = 1.0)
+- scaling `time`: inputs times 2^e (`timestep_min` e = 1.0, `table_storage_m3` e = 1.0) give outputs times 2^e (`storage_m3` e = 1.0, `last_pool_storage_m3` e = 1.0, `storage_peak_m3` e = 1.0, `storage_steady_m3` e = 1.0)
+- limit `steady_state`: an inflow equal to the initial outflow passes unchanged, and the pools hold what the table gives it at rest
+- limit `exact_recurrence`: every outflow equals the recurrence of the pools in exact rational arithmetic
+- limit `muskingum_without_weight`: a table S = K O is the linear reservoir: the outflow and the storage of the spec muskingum with X = 0 and the same K, N and step
+- limit `bounded_by_its_flows`: every outflow lies between the least and the largest of the inflow and the initial outflow, a kinked table on the step its steep segment allows included; the scheme is non-decreasing in the inflow and the initial outflow to the rounding of its working curve, larger than four units in the last place of the outflow on a short step (test_the_outflow_rises_with_its_inflow_and_initial_outflow)
+- limit `datum_free`: a constant added to the storage column changes no outflow and adds itself to the storage
+- conservation `volume`: the trapezoid continuity holds in every pool: inflow volume - outflow volume = storage at the end - storage at the start
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/level-pool-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the recurrence of the pools and their state at rest in exact rational arithmetic (fractions), ordinate by ordinate (`tests/unit/test_formulas_level_pool.py (limit exact_recurrence)`)
+- algorithm: a table S = K O is the linear reservoir: the spec muskingum with X = 0 and the same K, N and step, its three-point recurrence (scipy.signal.lfilter) (`tests/unit/test_formulas_level_pool.py (limit muskingum_without_weight)`)
+- established: scipy.integrate.solve_ivp (RK45, rtol 1e-11) of dS/dt = I(t) - O(S) through a weir's table: the scheme's error falls as the step squared (`tests/unit/test_formulas_level_pool.py::test_the_scheme_converges_to_the_integrated_equation`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
 ## Tier B
 
 | Formula | Function | Definition | Constants | Convention | Source |
@@ -1476,6 +1580,9 @@ Plain text: `D = Q / (T S0 c), dx = L / N, K = dx / c, X = (1 - D / dx) / 2; in 
 | `muskingum_cunge_rise` | `hydrolog.routing.cunge.rise_steps` | the steps from the ordinate before the first one above 5 % of the inflow peak to the first peak of at least half of it; a rise of 1 to 9 steps divides each step of a grid into ceil(10 / rise) equal sub-steps (at most 100), the inflow linear between the ordinates (notice timestep_refined) | – | NEH 630 re-interpolates the hydrograph to exactly 10 intervals on the rise; Hydrolog divides into whole sub-steps, 10 intervals or more, and keeps the original ordinates; the reservoirs of a reach without a grid are exact at any step and are not refined | USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), Muskingum-Cunge method, step 1: at least 10 time intervals from the point of 5 percent of the peak on the rise to the peak, p. 17-32 |
 | `muskingum_cunge_grid` | `hydrolog.routing.cunge.MuskingumCungeReach._grid` | the reference discharge is the inflow peak unless one is given; the NRCS distance step dx_c = (c dt + D) / 2 with D = Q / (T S0 c) gives ceil(L / dx_c) steps, changed to the nearest number inside the window of non-negative weights \|c dt - D\| <= L / N <= c dt + D, each end to 1e-9 of itself (hydrolog.routing.formulas.cunge.distance_step_window); a step without a whole number in the window is divided into the fewest of 2 to 100 equal sub-steps that have one, the inflow linear between the ordinates (notices subreaches_adjusted, substeps_added); the notice accuracy_limit reports an NRCS grid whose Dg = D / dx exceeds exp(2.3 Cg) | – | one reference for every distance step, where WinTR-20 takes the peak at the upstream end of each; a grid with a negative weight, which NEH accepts (example 17-5), is replaced (ADR-0008); a grid that needs more than a million ordinates is refused (unstable_timestep) | USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), steps 2 to 4 of the Muskingum-Cunge method and eqs. 17-21 and 17-36, pp. 17-32 to 17-33 |
 | `muskingum_cunge_fallback` | `hydrolog.routing.cunge._reservoirs` | a reach without a grid within 100 sub-steps is routed as n = L / D linear reservoirs (rounded a half up, at least 1) of K = L / (n c) through the cascade of CascadeReach (notice diffusion_dominated) | – | the n reservoirs, of mean n K and variance n K^2, keep the mean travel time L / c of the diffusion wave and, as nearly as a whole n can, its variance D L / c^2 = 2 mu L / c^3 with mu = Q / (2 T S0) (HEC-HMS TRM, Muskingum-Cunge model, eq. 5) | Hydrolog ADR-0026: a reach without a Muskingum-Cunge grid, linear reservoirs with a warning, not a refusal, Decision, points 1 and 2 (docs/decisions/0026-a-reach-without-a-muskingum-cunge-grid.md) |
+| `level_pool_substeps` | `hydrolog.routing.level_pool.timestep_limit_min` | the longest step a storage-outflow table allows a run, 2 min(dS/dO) / N over the segments from the state at rest under the lowest flow of the run to the first row that reaches its largest, in min (the precondition timestep_within_limit of the spec level_pool); LevelPoolReach divides a longer step into the fewest equal sub-steps that meet it, each end to 1e-9 of itself, the inflow linear between the ordinates, and reads the outflow back at the original ordinates (notice timestep_refined) | – | the rule per segment is stricter than NEH 630's for the whole curve, dt <= 2 S/O at every row (the working curve right of the line of equal values), which lets the outflow overshoot the inflow peak on a table whose slope changes sharply (ADR-0008); more than 100 sub-steps or more ordinates than the limit are refused (unstable_timestep), and so is a segment the run reaches without storage (working_curve) | USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), pp. 17-10 to 17-11: negative outflows whenever dt > 2 S2/O2; a working curve left of the line of equal values is discarded and computed again with a smaller dt, which WinTR-20 adjusts internally |
+| `level_pool_initial_outflow` | `hydrolog.routing.level_pool.LevelPoolReach._initial` | the outflow the pools start at rest with: the run's initial outflow (routing_initial_state), taken at the end of the table when it lies beyond it by at most 1e-9 of the table's largest outflow (at least 1e-9 m3/s); further beyond, it is refused (initial_outflow_m3s, minimum or maximum) | – | the table covers the run, never an extrapolation; the beyond is rounding, not data | US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model, Required Parameters: the initial storage is computed from the initial outflow and the storage vs. discharge relationship |
+| `level_pool_stage` | `hydrolog.routing.level_pool._levels` | the stage of the last pool at every ordinate: the table's stage column at the pool's storage, linear between the rows; the peak stage and its time are its largest value and the first ordinate that has it, as the peak storage and its time are of the storage of all pools | – | the stage only reports, it does not enter the routing: for a reservoir (one pool) the level of the pool, for sub-reaches the level of the last | USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), example 17-2, p. 17-25: the peak elevation and storage interpolated from the elevation-discharge and elevation-storage data of table 17-11 |
 | `junction_sum` | `hydrolog.routing.network._sum` | the hydrograph of a junction: the sum of its inflows ordinate by ordinate on the longest of their axes, a shorter one held at its last value | – | one time step and one start for every source of a network, no resampling; holding a truncated outflow (tail_truncated) at a value above zero adds volume downstream, which the upstream warning names | Hydrolog's computation paths, section 3.9.7, and ADR-0008, docs/COMPUTATION_PATHS.md, Time axes: a junction holds a shorter hydrograph at its last value; one step, nothing resampled |
 
 ## Delegated computations (CMP-1.2)
