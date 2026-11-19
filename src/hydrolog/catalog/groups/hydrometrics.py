@@ -44,7 +44,7 @@ COMMANDS: tuple[Command, ...] = (
         ),
         result_schema="hydrolog-hydrometrics-rating-curve/1",
         rules=(
-            "Pass levels and discharges as equal-length lists, or a file's columns.",
+            "Pass levels and discharges as equal-length lists or a file's columns.",
             "Check `r_squared`, `n_outliers_removed` and `notices` before use.",
             "`h0` is in the unit of H, `a` in m³/s per (unit of H)^b; Q in m³/s.",
         ),

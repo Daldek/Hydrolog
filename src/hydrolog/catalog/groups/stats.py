@@ -1058,7 +1058,7 @@ COMMANDS: tuple[Command, ...] = (
         rules=(
             "Give dates with the values, or a file with a date column.",
             "Check `notices` for skipped missing values.",
-            "Days without observations are absent from the arrays.",
+            "Days without observations are not in the arrays.",
         ),
         rules_pl=(
             "Podaj daty z wartościami albo plik z kolumną dat.",
