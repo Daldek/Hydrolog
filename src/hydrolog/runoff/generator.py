@@ -162,6 +162,7 @@ class HydrographGenerator:
     ... )
     >>>
     >>> print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
+    Qmax: 68.22 m³/s
     """
 
     # Supported unit hydrograph models
@@ -337,7 +338,10 @@ class HydrographGenerator:
             For a time step longer than its share of the time to peak of the unit
             hydrograph (method the unit hydrograph model, parameter
             ``timestep_min``; the range is relative to ``uh_time_to_peak_min``:
-            :data:`hydrolog._ranges.TYPICAL_RANGES`).
+            :data:`hydrolog._ranges.TYPICAL_RANGES`): NEH 630's 0.25 Tp of the SCS
+            unit hydrograph; for ``nash``, ``clark`` and ``snyder`` the same share
+            is a rule of thumb without a published source, and the warning is its
+            subclass ``OutsideUnverifiedRange``.
 
         Examples
         --------
@@ -347,6 +351,7 @@ class HydrographGenerator:
         ...     timestep_min=10.0
         ... )
         >>> print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
+        Qmax = 56.16 m³/s
         """
         # Extract precipitation array and timestep
         if isinstance(precipitation, HietogramResult):

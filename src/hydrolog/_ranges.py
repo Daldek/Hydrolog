@@ -172,6 +172,18 @@ _TIMESTEP = (
         "jednostkowego (krok) nie odwzorowuje szczytu hydrogramu jednostkowego"
     ),
 )
+_TIMESTEP_RULE = (
+    (
+        "Hydrolog: the rule of NEH 630 ch. 16 for the SCS unit hydrograph (D at most "
+        "0.25 Tp) taken as a rule of thumb; no published source for this model, to "
+        "be verified"
+    ),
+    (
+        "Hydrolog: reguła NEH 630 rozdz. 16 dla hydrogramu SCS (D najwyżej 0,25 Tp) "
+        "przyjęta jako reguła praktyczna; brak opublikowanego źródła dla tego modelu, "
+        "do weryfikacji"
+    ),
+)
 
 _SOURCE_PL: Final[Mapping[tuple[str, str], str]] = {
     ("scs_cn_runoff", "cn"): (
@@ -228,6 +240,22 @@ _SOURCE_PL: Final[Mapping[tuple[str, str], str]] = {
     ("kerby_kirpich", "flow_path_slope_m_per_m"): (
         "Roussel i in. (2005), suplement, s. 29: spadki cieków głównych od działu "
         "wodnego do przekroju, ok. 0,002–0,02"
+    ),
+    ("scs", "area_km2"): (
+        "USDA-NRCS (2007), NEH 630, rozdz. 16, s. 16-4: zlewnia cząstkowa nie większa "
+        "niż 20 mil kw. (51,8 km²), największa najwyżej 10 razy większa od najmniejszej"
+    ),
+    ("snyder", "area_km2"): (
+        "Rajagopalan, notatki do wykładu według Chow i in. (1988), s. 76: zlewnie "
+        "Snydera w Appalachach, od 30 do 30 000 km² (10–10 000 mil kw.)"
+    ),
+    ("snyder", "ct"): (
+        "KZGW (2017), zał. 2, s. 90, wzór 6.5: Ct od 1,35 do 1,65 w jednostkach SI, "
+        "0,75 wartości Snydera 1,8–2,2"
+    ),
+    ("snyder", "cp"): (
+        "KZGW (2017), zał. 2, s. 91, wzór 6.7: Cp od 0,4 do 0,8; HEC-HMS 2000, model "
+        "Snydera, s. 54: od 0,4 do 0,8"
     ),
 }
 """The Polish text of the source of each range of a formula with a spec."""
@@ -306,17 +334,7 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
     *_specified("scs_cn_runoff"),
     *_specified("scs_cn_amc"),
     # --- unit hydrographs --------------------------------------------------------
-    TypicalRange(
-        "scs",
-        "area_km2",
-        0.0,
-        52.0,
-        "km2",
-        "Sorrell (2010), Michigan DNRE: the NRCS unit hydrograph for watersheds up to "
-        "about 20 mi², over which the rainfall is uniform; a larger one is divided",
-        "Sorrell (2010), Michigan DNRE: hydrogram jednostkowy NRCS dla zlewni do ok. "
-        "20 mi², na których opad jest równomierny; większą się dzieli",
-    ),
+    *_specified("scs"),
     TypicalRange(
         "nash",
         "n",
@@ -354,41 +372,24 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
         0.2,
         1.5,
         "-",
-        "0.2-0.4 steep, urban; 0.4-0.8 average natural; 0.8-1.5 flat, swampy "
-        "catchments (USACE, HEC-HMS Technical Reference Manual; engineering practice)",
-        "0,2–0,4 zlewnie strome, zurbanizowane; 0,4–0,8 przeciętne naturalne; "
-        "0,8–1,5 płaskie, podmokłe (USACE, HEC-HMS Technical Reference Manual; "
-        "praktyka inżynierska)",
+        "Hydrolog; no published source, to be verified: the HEC-HMS Technical "
+        "Reference Manual gives no R/tc, and the Polish calibrations of the Stobnica "
+        "give 1.7-2.3 (Wałęga and Cupak 2013, table 2)",
+        "Hydrolog; brak opublikowanego źródła, do weryfikacji: podręcznik techniczny "
+        "HEC-HMS nie podaje R/tc, a kalibracje Stobnicy dały 1,7–2,3 (Wałęga i Cupak "
+        "2013, tabl. 2)",
+        notice="outside_unverified_range",
+        verified=False,
     ),
+    *_specified("snyder"),
     TypicalRange(
-        "snyder",
-        "ct",
-        1.35,
-        1.65,
-        "-",
-        "KZGW (2017), annex 2, eq. 6.5; Snyder's (1938) 1.8-2.2 in English units "
-        "times 0.75 in SI (Chow et al. 1988, 7.7)",
-        "KZGW (2017), zał. 2, wzór 6.5; 1,8–2,2 Snydera (1938) w jednostkach "
-        "angielskich razy 0,75 w SI (Chow i in. 1988, 7.7)",
-    ),
-    TypicalRange(
-        "snyder",
-        "cp",
-        0.4,
-        0.8,
-        "-",
-        "KZGW (2017), annex 2, eq. 6.7; Snyder (1938): 0.56-0.69 (USACE 2000, HEC-HMS)",
-        "KZGW (2017), zał. 2, wzór 6.7; Snyder (1938): 0,56–0,69 (USACE 2000, HEC-HMS)",
-    ),
-    TypicalRange(
-        "snyder",
-        "area_km2",
-        26.0,
-        26000.0,
-        "km2",
-        "Snyder (1938): watersheds of the Appalachian Highlands, 10-10,000 mi² (Chow "
-        "et al. 1988, 7.7)",
-        "Snyder (1938): zlewnie Appalachów, 10–10 000 mi² (Chow i in. 1988, 7.7)",
+        "scs",
+        "timestep_min",
+        0.0,
+        _TIMESTEP_SHARE,
+        "min",
+        *_TIMESTEP,
+        relative_to="uh_time_to_peak_min",
     ),
     *(
         TypicalRange(
@@ -397,10 +398,13 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
             0.0,
             _TIMESTEP_SHARE,
             "min",
-            *_TIMESTEP,
+            *_TIMESTEP_RULE,
             relative_to="uh_time_to_peak_min",
+            notice="outside_unverified_range",
+            verified=False,
         )
         for model in UH_MODELS
+        if model != "scs"
     ),
     # --- statistics --------------------------------------------------------------
     TypicalRange(

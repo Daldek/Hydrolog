@@ -64,7 +64,7 @@ export const uhInfo = {
       "50&nbsp;m³/s z 10&nbsp;mm w jednym kroku. Dłuższy t<sub>c</sub> opóźnia i obniża szczyt, bo objętość " +
       "zostaje ta sama.</p>",
     guide: "metoda-uh-scs",
-    sources: "Mockus 1957 (za NEH 630-16); USDA-SCS 1986 (TR-55); USDA-NRCS 2007 (NEH 630-16)",
+    sources: "Mockus 1957 (za NEH 630-16); USDA-NRCS 2007 (NEH 630-16); USACE-HEC 2000 (HEC-HMS)",
   },
 
   "uh-nash": {
@@ -225,8 +225,9 @@ export const uhInfo = {
     ],
     symbols: { r_tc_ratio: "R/tc" },
     note:
-      "<p>Większe R/t<sub>c</sub> daje szczyt niższy i późniejszy. Stosunek jest mały w zlewniach stromych " +
-      "i zurbanizowanych, duży w płaskich i podmokłych, które dłużej zatrzymują wodę.</p>",
+      "<p>Większe R/t<sub>c</sub> daje szczyt niższy i późniejszy. Zakres R/t<sub>c</sub> od 0,2 do 1,5, " +
+      "poza którym Hydrolog ostrzega, nie ma opublikowanego źródła (do weryfikacji): podręcznik HEC-HMS " +
+      "nie podaje R/t<sub>c</sub>, a kalibracje Stobnicy dały 1,7–2,3 (Wałęga i Cupak 2013).</p>",
     guide: "metoda-uh-clark",
     sources: "Clark 1945; USACE, HEC-HMS Technical Reference Manual",
   },

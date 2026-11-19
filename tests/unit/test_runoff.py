@@ -1,11 +1,12 @@
-"""Tests for runoff generation module."""
+"""Tests for runoff generation module.
 
-import warnings
+The SCS unit hydrograph and the convolution are tested against their specs in
+``test_formulas_unit_hydrographs.py``.
+"""
 
 import numpy as np
 import pytest
 
-from hydrolog._warnings import UhSubsteps
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.precipitation import BetaHietogram, BlockHietogram
 from hydrolog.runoff import (
@@ -16,175 +17,6 @@ from hydrolog.runoff import (
     SnyderUH,
     convolve_discrete,
 )
-from hydrolog.runoff.unit_hydrograph import SCS_DIMENSIONLESS_UH
-
-
-class TestSCSUnitHydrograph:
-    """Tests for SCS Unit Hydrograph generation."""
-
-    def test_lag_time(self):
-        """Test lag time calculation."""
-        uh = SCSUnitHydrograph(area_km2=45.0, tc_min=90.0)
-        # tlag = 0.6 * tc = 54 min
-        assert abs(uh.lag_time_min - 54.0) < 0.1
-
-    def test_time_to_peak(self):
-        """Test time to peak calculation."""
-        uh = SCSUnitHydrograph(area_km2=45.0, tc_min=90.0)
-        tp = uh.time_to_peak(timestep_min=10.0)
-        # tp = D/2 + tlag = 5 + 54 = 59 min
-        assert abs(tp - 59.0) < 0.1
-
-    def test_peak_discharge(self):
-        """Test peak discharge calculation."""
-        uh = SCSUnitHydrograph(area_km2=45.0, tc_min=90.0)
-        qp = uh.peak_discharge(timestep_min=10.0)
-        # qp = 0.208 * A / tp_h = 0.208 * 45 / (59/60) = 9.52 m³/s per mm
-        assert 9 < qp < 10
-
-    def test_generate_hydrograph(self):
-        """Test unit hydrograph generation."""
-        uh = SCSUnitHydrograph(area_km2=45.0, tc_min=90.0)
-        result = uh.generate(timestep_min=5.0)
-
-        assert result.n_steps > 0
-        assert result.peak_discharge_m3s > 0
-        assert result.time_to_peak_min > 0
-        assert len(result.times_min) == len(result.ordinates_m3s)
-
-    def test_hydrograph_starts_at_zero(self):
-        """Test that hydrograph starts at zero."""
-        uh = SCSUnitHydrograph(area_km2=45.0, tc_min=90.0)
-        result = uh.generate(timestep_min=5.0)
-        assert result.ordinates_m3s[0] == 0.0
-
-    def test_hydrograph_ends_near_zero(self):
-        """Test that hydrograph ends near zero."""
-        uh = SCSUnitHydrograph(area_km2=45.0, tc_min=90.0)
-        result = uh.generate(timestep_min=5.0)
-        assert result.ordinates_m3s[-1] < 0.01 * result.peak_discharge_m3s
-
-    def test_peak_at_expected_time(self):
-        """Test that peak occurs at expected time."""
-        uh = SCSUnitHydrograph(area_km2=45.0, tc_min=90.0)
-        result = uh.generate(timestep_min=5.0)
-
-        peak_idx = np.argmax(result.ordinates_m3s)
-        peak_time = result.times_min[peak_idx]
-
-        # Peak should be near tp
-        assert abs(peak_time - result.time_to_peak_min) < 10.0
-
-    def test_invalid_area(self):
-        """Test that non-positive area raises error."""
-        with pytest.raises(InvalidParameterError, match="area_km2"):
-            SCSUnitHydrograph(area_km2=0, tc_min=90.0)
-
-    def test_invalid_tc(self):
-        """Test that non-positive tc raises error."""
-        with pytest.raises(InvalidParameterError, match="tc_min"):
-            SCSUnitHydrograph(area_km2=45.0, tc_min=-10.0)
-
-    def test_invalid_timestep(self):
-        """Test that non-positive timestep raises error."""
-        uh = SCSUnitHydrograph(area_km2=45.0, tc_min=90.0)
-        with pytest.raises(InvalidParameterError, match="timestep_min"):
-            uh.generate(timestep_min=0)
-
-    def test_a_step_on_the_bound_of_its_range_is_sampled_as_before(self):
-        """tc 70 min, step 12 min: 0.25 tp = 0.25 (6 + 42) = 12 min, the bound
-        itself. The ordinates are the dimensionless curve at the step times, with no
-        sub-steps (E5b-07 changes only steps beyond the range)."""
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", UhSubsteps)
-            result = SCSUnitHydrograph(area_km2=45.3, tc_min=70.0).generate(12.0)
-        table = SCS_DIMENSIONLESS_UH
-        sampled = np.interp(
-            result.times_min / result.time_to_peak_min,
-            table[:, 0],
-            table[:, 1],
-            left=0.0,
-            right=0.0,
-        )
-        assert np.array_equal(result.ordinates_m3s, sampled * result.peak_discharge_m3s)
-        assert result.times_min[-1] >= result.time_base_min
-
-    def test_a_step_beyond_the_bound_is_computed_on_sub_steps(self):
-        """tc 69.9 min, step 12 min: 0.25 tp = 11.985 min, so the step is divided in
-        two; the unit hydrograph keeps its 1 mm, tp and qp stay those of D = 12 min."""
-        unit = SCSUnitHydrograph(area_km2=45.3, tc_min=69.9)
-        with pytest.warns(UhSubsteps) as caught:
-            result = unit.generate(12.0)
-        assert caught[0].message.details == {
-            "timestep_min": 12.0,
-            "maximum_min": pytest.approx(11.985),
-            "substeps": 2,
-            "substep_min": 6.0,
-        }
-        volume_mm = result.ordinates_m3s.sum() * 12.0 * 60.0 / (45.3 * 1000.0)
-        assert volume_mm == pytest.approx(1.0, abs=2e-3)
-        assert result.ordinates_m3s[0] == result.ordinates_m3s[-1] == 0.0
-        assert result.time_to_peak_min == pytest.approx(6.0 + 0.6 * 69.9)
-        assert result.peak_discharge_m3s == unit.peak_discharge(12.0)
-
-
-class TestConvolution:
-    """Tests for discrete convolution."""
-
-    def test_convolution_simple(self):
-        """Test simple convolution."""
-        pe = np.array([0.0, 5.0, 10.0, 5.0, 0.0])
-        uh = np.array([0.0, 0.5, 1.0, 0.5, 0.0])
-
-        result = convolve_discrete(pe, uh, timestep_min=5.0)
-
-        # Result length should be len(pe) + len(uh) - 1
-        assert result.n_steps == 9
-
-    def test_convolution_peak(self):
-        """Test that convolution produces a peak."""
-        pe = np.array([0.0, 5.0, 10.0, 5.0, 0.0])
-        uh = np.array([0.0, 0.5, 1.0, 0.5, 0.0])
-
-        result = convolve_discrete(pe, uh, timestep_min=5.0)
-
-        assert result.peak_discharge_m3s > 0
-
-    def test_convolution_volume(self):
-        """Test that convolution preserves volume."""
-        pe = np.array([5.0, 10.0, 5.0])  # 20 mm total
-        uh = np.array([0.5, 1.0, 0.5])  # Simple unit hydrograph
-
-        result = convolve_discrete(pe, uh, timestep_min=10.0)
-
-        # Volume should be positive
-        assert result.total_volume_m3 > 0
-
-    def test_convolution_time_array(self):
-        """Test that time array is correct."""
-        pe = np.array([5.0, 10.0, 5.0])
-        uh = np.array([0.5, 1.0])
-
-        result = convolve_discrete(pe, uh, timestep_min=10.0)
-
-        # Check time increments
-        expected_times = np.array([0.0, 10.0, 20.0, 30.0])
-        np.testing.assert_array_almost_equal(result.times_min, expected_times)
-
-    def test_convolution_empty_precip_raises(self):
-        """Test that empty precipitation raises error."""
-        with pytest.raises(InvalidParameterError, match="cannot be empty"):
-            convolve_discrete(np.array([]), np.array([1.0]), timestep_min=5.0)
-
-    def test_convolution_empty_uh_raises(self):
-        """Test that empty unit hydrograph raises error."""
-        with pytest.raises(InvalidParameterError, match="cannot be empty"):
-            convolve_discrete(np.array([1.0]), np.array([]), timestep_min=5.0)
-
-    def test_convolution_invalid_timestep(self):
-        """Test that invalid timestep raises error."""
-        with pytest.raises(InvalidParameterError, match="timestep_min"):
-            convolve_discrete(np.array([1.0]), np.array([1.0]), timestep_min=0)
 
 
 class TestHydrographGenerator:
