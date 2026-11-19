@@ -161,8 +161,8 @@ class TestTheNotices:
         assert caught.value.details["reason"] == "not_multiple"
 
     def test_a_warning_of_the_library_is_a_notice_and_is_not_printed(self):
-        """Kirpich on 12 km2 with 10 m over 12 km: the area and the slope are outside
-        his data."""
+        """Kirpich on 12 km2 with 10 m over 12 km: the area, the length and the slope
+        are outside his data."""
         flat = {
             **WATERSHED,
             "length_km": 12.0,
@@ -177,12 +177,13 @@ class TestTheNotices:
             notices = route_network(network=content).notices
 
         warned = [n for n in notices if n.code == "outside_typical_range"]
-        assert [n.level for n in warned] == ["warning", "warning"]
+        assert [n.level for n in warned] == ["warning"] * 3
         assert [n.message.split(" is outside typical range")[0] for n in warned] == [
             "A: kirpich: area_km2=12.0",
+            "A: kirpich: length_km=12.0",
             f"A: kirpich: slope_m_per_m={10.0 / 12000.0}",
         ]
-        assert [n.details for n in warned] == [{"node_id": "A"}, {"node_id": "A"}]
+        assert [n.details for n in warned] == [{"node_id": "A"}] * 3
 
 
 class TestTheTables:

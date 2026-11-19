@@ -49,7 +49,7 @@ hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023 --json
 ```
 
 ```json output
-{"schema": "hydrolog-result/1", "tool": "hydrolog", "command": "tc kirpich", "check": false, "status": "ok", "result": {"schema": "hydrolog-tc-kirpich/1", "method": "kirpich", "tc_min": 85.97330594494066, "tc_h": 1.4328884324156776}, "notices": [{"level": "warning", "code": "outside_typical_range", "message": "kirpich: slope_m_per_m=0.023 is outside typical range [0.03, 0.1]. Results may be unreliable.", "details": {"method": "kirpich", "parameter": "slope_m_per_m", "field": "slope_m_per_m", "value": 0.023, "minimum": 0.03, "maximum": 0.1}}], "inputs": {"length_km": 8.2, "slope_m_per_m": 0.023}}
+{"schema": "hydrolog-result/1", "tool": "hydrolog", "command": "tc kirpich", "check": false, "status": "ok", "result": {"schema": "hydrolog-tc-kirpich/1", "method": "kirpich", "tc_min": 85.85676702638006, "tc_h": 1.4309461171063342}, "notices": [{"level": "warning", "code": "outside_typical_range", "message": "kirpich: length_km=8.2 is outside typical range [0.10668, 1.2192]. Results may be unreliable.", "details": {"method": "kirpich", "parameter": "length_km", "field": "length_km", "value": 8.2, "minimum": 0.10668, "maximum": 1.2192}}, {"level": "warning", "code": "outside_typical_range", "message": "kirpich: slope_m_per_m=0.023 is outside typical range [0.025, 0.1]. Results may be unreliable.", "details": {"method": "kirpich", "parameter": "slope_m_per_m", "field": "slope_m_per_m", "value": 0.023, "minimum": 0.025, "maximum": 0.1}}], "inputs": {"length_km": 8.2, "slope_m_per_m": 0.023}}
 ```
 
 The envelope keys are `schema`, `tool`, `version`, `command`, `check`, `status`, `result`,
@@ -61,7 +61,8 @@ domain result has its own `schema`
 (`hydrolog-<group>-<command>/1`); units follow from field names (`tc_min`, `area_ha`); `NaN` and
 infinities are `null`. `inputs` echoes the options after normalisation (defaults filled in, paths
 made absolute). `notices` carries non-fatal warnings (a short series, a value outside the typical
-range of a formula, here a slope below the 3–10 % of Kirpich's data): read it next to the result.
+range of a formula, here a flow path of 8.2 km and a slope of 2.3 %, outside the 0.107–1.22 km and
+2.5–10 % of Kirpich's data, Mota and Kobiyama 2015, p. 58): read it next to the result.
 `--schema` of a command lists the typical ranges it checks, each with its source, in
 `typical_ranges`.
 
@@ -119,7 +120,7 @@ hydrolog tc watershed --watershed-file tests/fixtures/watershed_example.json --m
 ```
 
 ```json output
-{"result": {"method": "kirpich", "tc_min": 135.89384108269536, "parameters": {"length_km": 14.2, "slope_m_per_m": 0.021}, "watershed_name": "Zlewnia Przykładowa"}}
+{"result": {"method": "kirpich", "tc_min": 135.7096336580214, "parameters": {"length_km": 14.2, "slope_m_per_m": 0.021}, "watershed_name": "Zlewnia Przykładowa"}}
 ```
 
 ```python
@@ -274,7 +275,7 @@ hydrolog hydrograph generate --watershed-file tests/fixtures/watershed_example.j
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 47.0297763952486, "time_to_peak_min": 110.0, "total_volume_m3": 321254.9494884561, "runoff_coefficient": 0.1417936234546637, "cn": 72.0, "tc_method": "kirpich", "uh_model": "scs"}}
+{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 47.085556895452896, "time_to_peak_min": 110.0, "total_volume_m3": 321262.2510405811, "runoff_coefficient": 0.14179362345466384, "cn": 72.0, "tc_method": "kirpich", "uh_model": "scs"}}
 ```
 
 ```python
@@ -293,22 +294,26 @@ print(f"Qmax {result.peak_discharge_m3s:.1f} m3/s at {result.time_to_peak_min:.0
 
 Nash's n and K can come from the watershed instead (`--nash-estimation lutz`,
 [ADR-0024](decisions/0024-nash-by-lutz-from-the-watershed.md)): the Lutz method (Lutz 1984, after
-KZGW 2017) reads the main stream from the divide, that is the longest flow path
-(`flow_path_length_km` and `flow_path_slope_m_per_m`, as Kirpich does), with `Lc_km`, `manning_n`,
-`urban_pct` and `forest_pct` (0 when missing). One run gives what `uh nash` with those inputs
-followed by `hydrograph generate` with its n and K gives; the result says `nash_estimation` and
-`uh_parameters` holds the estimate, which is not checked against the ranges of given n and K (a
-watershed above Lutz's 236 km2 gives `outside_typical_range`). A missing field is `missing_field`
-with `details.method` `lutz`; `nash_n` or `nash_k_min` beside it is `conflict`; another model or a
-run without a watershed (`--area-km2` with `--cn`) is `not_applicable`. `report generate` takes the
-same option and shows the steps of the estimation.
+KZGW 2017) reads the main stream from the divide, that is the longest flow path: its length
+(`flow_path_length_km`, as Kirpich does) and the equal-area slope of its longitudinal profile
+(`flow_path_equal_area_slope_m_per_m`, [ADR-0053](decisions/0053-lutz-jg-is-the-equal-area-slope.md);
+`hydrolog.morphometry.equal_area_slope` gives it from the profile), not the slope between its ends
+(`flow_path_slope_m_per_m`, which Kirpich takes and which is larger on a concave profile), with
+`Lc_km`, `manning_n`, `urban_pct` and `forest_pct` (0 when missing). One run gives what `uh nash`
+with those inputs followed by `hydrograph generate` with its n and K gives; the result says
+`nash_estimation` and `uh_parameters` holds the estimate, which is not checked against the ranges of
+given n and K (a watershed above Lutz's 236 km2 gives `outside_typical_range`). A missing field is
+`missing_field` with `details.method` `lutz`, also when the watershed has only the end-point slope;
+`nash_n` or `nash_k_min` beside it is `conflict`; another model or a run without a watershed
+(`--area-km2` with `--cn`) is `not_applicable`. `report generate` takes the same option and shows
+the steps of the estimation.
 
 ```bash
 hydrolog hydrograph generate --watershed-file tests/fixtures/kamiennik.json --uh-model nash --nash-estimation lutz --hietogram-type beta --total-mm 101.82 --duration-min 720 --timestep-min 10 --json
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 35.024890171959335, "time_to_peak_min": 550.0, "uh_model": "nash", "nash_estimation": "lutz", "uh_parameters": {"n": 3.609988774159906, "k_min": 92.13086997441953}}}
+{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 32.16743953158132, "time_to_peak_min": 580.0, "uh_model": "nash", "nash_estimation": "lutz", "uh_parameters": {"n": 3.5874242939910337, "k_min": 104.30248837604633}}}
 ```
 
 ### Flood routing
@@ -630,8 +635,9 @@ Path("network.svg").write_text(schematic_svg(schematic), encoding="utf-8")   # t
 
 **Nash's n and K from the watershed.** `CurveNumberRunoff(uh_model="nash", nash_estimation="lutz")`
 estimates them for the watershed of each subcatchment by Lutz, as `hydrograph generate --nash-estimation lutz` does
-([ADR-0024](decisions/0024-nash-by-lutz-from-the-watershed.md)): the watershed needs the longest flow path,
-`Lc_km` and `manning_n`, or the subcatchment is refused (`missing_field`, `details.method` `lutz`). The document
+([ADR-0024](decisions/0024-nash-by-lutz-from-the-watershed.md)): the watershed needs the longest flow path's length
+and the equal-area slope of its profile, `Lc_km` and `manning_n`, or the subcatchment is refused (`missing_field`,
+`details.method` `lutz`). The document
 says `"nash_estimation": "lutz"` instead of `nash_n` and `nash_k_min`, and `describe()` lists the estimate as
 `computed`:
 
@@ -642,15 +648,15 @@ from hydrolog.routing import CurveNumberRunoff
 
 kamiennik = WatershedParameters(
     area_km2=37.22, cn=65, Lc_km=6.76, manning_n=0.035, urban_pct=1.0, forest_pct=57.4,
-    flow_path_length_km=15.88, flow_path_slope_m_per_m=0.0114,   # Lutz's L and J
+    flow_path_length_km=15.88, flow_path_equal_area_slope_m_per_m=0.00848,   # Lutz's L and Jg
 )
 model = CurveNumberRunoff(uh_model="nash", nash_estimation="lutz")
 print(model.to_document())   # {'model': 'curve-number', 'uh_model': 'nash', 'nash_estimation': 'lutz'}
 rain = BetaHietogram().generate(total_mm=101.82, duration_min=720.0, timestep_min=10.0)
 flood = model.hydrograph(rain, kamiennik, timestep_min=10.0)
-print(round(flood.peak_discharge_m3s, 2))   # 35.03 m3/s, as hydrograph generate --nash-estimation lutz
+print(round(flood.peak_discharge_m3s, 2))   # 32.17 m3/s, as hydrograph generate --nash-estimation lutz
 estimate = {p.name: p.value for p in model.describe(kamiennik) if p.source == "computed"}
-print(round(estimate["nash_n"], 3), round(estimate["nash_k_min"], 2))   # 3.61 92.13: Lutz's n and K [min]
+print(round(estimate["nash_n"], 3), round(estimate["nash_k_min"], 2))   # 3.587 104.3: Lutz's n and K [min]
 ```
 
 **The schematic.** `network.schematic(result)` draws the network like a metro map
@@ -1139,7 +1145,7 @@ hydrolog report generate --output report.md --watershed-file tests/fixtures/wate
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-report-generate/1", "peak_discharge_m3s": 47.0297763952486, "files": [{"path": "...", "status": "written"}]}}
+{"result": {"schema": "hydrolog-report-generate/1", "peak_discharge_m3s": 47.085556895452896, "files": [{"path": "...", "status": "written"}]}}
 ```
 
 ## 3. Writing files
@@ -1303,20 +1309,24 @@ print(round(lutz.n, 2), round(lutz.k_min, 1))
 ```
 
 `WatershedParameters` is the exchange format with Hydrograf (`from_dict`, `from_json`,
-`to_dict`, `to_json`, `width_km`, `relief_m`, `calculate_tc(method=...)`). The statistics and the
-rating curve take NumPy arrays; the soil functions take numbers or raster paths:
+`to_dict`, `to_json`, `width_km`, `relief_m`, `calculate_tc(method=...)`), and `equal_area_slope`
+gives the equal-area slope of a longitudinal profile ordered from the outlet upstream, Lutz's Jg
+(`flow_path_equal_area_slope_m_per_m`, [ADR-0053](decisions/0053-lutz-jg-is-the-equal-area-slope.md)).
+The statistics and the rating curve take NumPy arrays; the soil functions take numbers or raster
+paths:
 
 ```python
 import numpy as np
 
 from hydrolog.hydrometrics import RatingCurve
-from hydrolog.morphometry import WatershedParameters
+from hydrolog.morphometry import WatershedParameters, equal_area_slope
 from hydrolog.soil import classify_usda_texture, texture_to_hsg
 from hydrolog.statistics import FloodFrequencyAnalysis, homogeneity_tests, mann_kendall_test
 
 with open("tests/fixtures/watershed_example.json", encoding="utf-8") as handle:
     watershed = WatershedParameters.from_json(handle.read())
 print(watershed.width_km, watershed.relief_m, watershed.calculate_tc(method="kirpich"))
+print(equal_area_slope([0.0, 1000.0, 2000.0], [300.0, 302.0, 340.0]))  # 0.011; its ends: 0.02
 
 maxima = np.loadtxt("tests/fixtures/annual_maxima.csv", delimiter=",", skiprows=1, usecols=1)
 gev = FloodFrequencyAnalysis(maxima, return_periods=np.array([10.0, 100.0])).fit_gev()

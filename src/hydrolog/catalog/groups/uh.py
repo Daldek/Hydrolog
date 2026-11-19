@@ -224,8 +224,18 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="lutz_slope_m_per_m",
                 type="number",
-                description_pl="Lutz: średni spadek cieku głównego J [m/m]; > 0.",
-                description="Lutz: mean slope of the main stream J [m/m]; > 0.",
+                description_pl=(
+                    "Lutz: spadek wyrównany Jg profilu podłużnego cieku głównego "
+                    "[m/m], spadek prostej z przekroju zamykającego, nad i pod którą "
+                    "pola profilu są równe (`equal_area_slope`), nie spadek między "
+                    "końcami cieku; > 0."
+                ),
+                description=(
+                    "Lutz: equal-area slope Jg of the main stream's longitudinal "
+                    "profile [m/m], the slope of the line from the outlet with equal "
+                    "areas of the profile above and below it (`equal_area_slope`), not "
+                    "the slope between the stream's ends; > 0."
+                ),
                 exclusive_minimum=0,
                 unit="m/m",
             ),
@@ -338,6 +348,7 @@ COMMANDS: tuple[Command, ...] = (
                 "rejected."
             ),
             "Lutz needs lutz_centroid_length_km <= lutz_length_km.",
+            "Lutz needs lutz_urban_pct + lutz_forest_pct <= 100.",
             "Check `notices` in the result.",
         ),
         rules_pl=(
@@ -346,6 +357,7 @@ COMMANDS: tuple[Command, ...] = (
                 "odrzucane."
             ),
             "Lutz wymaga lutz_centroid_length_km <= lutz_length_km.",
+            "Lutz wymaga lutz_urban_pct + lutz_forest_pct <= 100.",
             "Sprawdź `notices` w wyniku.",
         ),
         errors=("validation_error",),

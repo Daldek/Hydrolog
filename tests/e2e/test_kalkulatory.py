@@ -48,7 +48,7 @@ def open_section(tab: Tab, path: str = "") -> Page:
     expect(page.locator(f"{SECTION} .cmd-list .cmd-item")).to_have_count(16)
     expect(
         page.locator('section[data-section="hydrogram"] [data-kpi="q"] .v')
-    ).to_have_text(re.compile(r"^57,88\s*m³/s$"))
+    ).to_have_text(re.compile(r"^57,90\s*m³/s$"))
     page.evaluate(
         "async (ws) => (await import('./src/store.js')).setStore('watershed', ws)",
         KAMIENNIK,
@@ -91,7 +91,8 @@ def test_the_tc_comparison_lists_six_methods_with_their_range_words(tab: Tab) ->
         expect(row.locator("td").first).to_have_text(tc)
         expect(row.locator("td").last).to_have_text(str(len(expected["notices"])))
     expect(rows.first.locator(".kc-range")).to_have_text(
-        "A = 37,22 poza 0,005–0,45 km²; S = 0,0114 poza 0,03–0,1"
+        "A = 37,22 poza 0,005–0,45 km²; L = 15,88 poza 0,10668–1,2192 km;"
+        " S = 0,0114 poza 0,025–0,1"
     )
     expect(rows.nth(2).locator(".kc-range")).to_have_text(
         "A = 37,22 poza 170–70\u00a0000 km²"
@@ -120,7 +121,7 @@ def test_the_tc_comparison_lists_six_methods_with_their_range_words(tab: Tab) ->
 
     # Hydrolog's notices in Polish, once each; the loop of the calls
     notices = page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
-    expect(notices).to_have_count(6)
+    expect(notices).to_have_count(7)
     expect(notices.first).to_contain_text(
         "kirpich: area_km2 = 37,22 poza typowym zakresem od 0,005 do 0,45."
     )
@@ -143,7 +144,7 @@ def test_the_tc_comparison_lists_six_methods_with_their_range_words(tab: Tab) ->
     expect(page.locator(f"{hydrogram} #hg-tc_method")).to_have_value("nrcs")
     expect(
         page.locator(f'{hydrogram} .view-panel.right [data-kpi="q"] .v')
-    ).to_have_text(re.compile(r"^41,63\s*m³/s$"))
+    ).to_have_text(re.compile(r"^41,66\s*m³/s$"))
     page.go_back()
     expect(bars.nth(3)).to_have_attribute("class", "hbar warn used")
     expect(bars.first).to_have_attribute("class", "hbar warn")
@@ -188,15 +189,16 @@ def test_the_list_filters_and_routes_the_calculators(tab: Tab) -> None:
     assert page.evaluate("location.hash") == "#kalkulatory/uh/nash"
     form = page.locator(f"{SECTION} .cmd-form")
     expect(form.locator(".cmd-head code")).to_have_text("uh nash")
-    # Lutz from the watershed: the pane of Lutz, filled with its fields (L and J of the
-    # longest flow path, as `hydrograph generate` estimates n and K)
+    # Lutz from the watershed: the pane of Lutz, filled with its fields (L of the
+    # longest flow path and J the equal-area slope of its profile, as `hydrograph
+    # generate` estimates n and K)
     expect(form.locator('.one-of [role="radio"][aria-checked="true"]')).to_have_text(
         "Lutz"
     )
     for name, text in {
         "lutz_length_km": "15,88",
         "lutz_centroid_length_km": "6,76",
-        "lutz_slope_m_per_m": "0,0114",
+        "lutz_slope_m_per_m": "0,00848",
     }.items():
         expect(form.locator(f'[data-option="{name}"] input')).to_have_value(text)
 

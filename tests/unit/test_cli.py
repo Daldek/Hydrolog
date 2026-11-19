@@ -232,7 +232,7 @@ class TestRunning:
         assert lines[0] == f"tc kirpich: {_command('tc kirpich').summary_pl}"
         assert "Wejście:" in lines and "Wynik:" in lines
         assert "  length_km:     8.2 km" in lines
-        assert any(line.startswith("  tc_min:") and "85.9733" in line for line in lines)
+        assert any(line.startswith("  tc_min:") and "85.8568" in line for line in lines)
         assert not any(line.startswith("  schema:") for line in lines)
 
     def test_json_is_the_envelope_on_one_line(self, capsys):
@@ -766,7 +766,7 @@ class TestSchema:
         assert [
             (served["parameter"], served["minimum"], served["maximum"])
             for served in entry["typical_ranges"]
-        ] == [("slope_m_per_m", 0.03, 0.1)]
+        ] == [("length_km", 0.10668, 1.2192), ("slope_m_per_m", 0.025, 0.1)]
         for argv in (["tc", "--schema"], ["--schema"]):
             _, out, _ = _run(capsys, *argv)
             entries = json.loads(out)["commands"]

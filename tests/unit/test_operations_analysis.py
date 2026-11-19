@@ -2796,12 +2796,15 @@ class TestReportGenerate:
         output = tmp_path / "raport.md"
         assert [record.path for record in result.files] == [str(output)]
         assert result.files[0].sha256 == sha256_file(output)
-        # Kirpich on 45.3 km2 with a flow path slope of 0.021: outside his data
+        # Kirpich on 45.3 km2 with a flow path of 14.2 km at 0.021: outside his data
+        # in the area, then in the length and the slope (Mota and Kobiyama 2015,
+        # ADR-0052), in the order of the checks
         assert [
             (notice.code, notice.details.get("parameter"), notice.details.get("field"))
             for notice in result.notices
         ] == [
             ("outside_typical_range", "area_km2", "area_km2"),
+            ("outside_typical_range", "length_km", "flow_path_length_km"),
             ("outside_typical_range", "slope_m_per_m", "flow_path_slope_m_per_m"),
         ]
         document = _json_roundtrip(result)

@@ -180,7 +180,7 @@ export function rangeUnit(range) {
 }
 
 /**
- * The words of a range: „od 0,03 do 0,1 m/m”, „najwyżej 52 km²” (a range from 0), „co
+ * The words of a range: „od 0,025 do 0,1 m/m”, „najwyżej 52 km²” (a range from 0), „co
  * najmniej 30 lat”; with `relative_to` the bounds are shares of its symbol, „najwyżej
  * 0,25·tp”, followed by their value when the quantity is known, „najwyżej 0,25·tp = 47,5
  * min”.
