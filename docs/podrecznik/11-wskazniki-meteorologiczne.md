@@ -29,8 +29,8 @@ IMGW-PIB: https://danepubliczne.imgw.pl/regulations
 kończy rano dnia następnego (od 06.01 do 06.00 UTC); data w pliku to dzień jej rozpoczęcia. Temperatura maksymalna i
 minimalna dotyczą doby termicznej kończącej się wieczorem danego dnia (od 18.01 UTC dnia poprzedniego do 18.00 UTC),
 a grubość pokrywy śnieżnej mierzy się rano (IMGW-PIB, Rocznik Meteorologiczny). Hydrolog przyjmuje daty takie, jakie
-ma plik, i niczego nie przesuwa. W rocznikach IMGW-PIB „0,0” oznacza ślad opadu (opad, który wystąpił, ale był za mały
-do zmierzenia), a „–” brak opadu; dzień ze śladem opadu nie jest dniem z opadem mierzalnym (WMO 2023, rozdz. 6).
+ma plik, i niczego nie przesuwa. W rocznikach IMGW-PIB „0,0” oznacza ślad opadu (*trace*: opad, który wystąpił, ale był
+za mały do zmierzenia), a „–” brak opadu; dzień ze śladem opadu nie jest dniem z opadem mierzalnym (WMO 2023, rozdz. 6).
 
 **Rok.** Polecenia `meteo precipitation`, `meteo spells`, `meteo spi` i `meteo temperature` liczą lata kalendarzowe
 albo – z opcją `--year-type hydrological` – lata hydrologiczne. `meteo snow` liczy zimy, a `meteo hydrothermal` lata
@@ -42,8 +42,8 @@ kalendarzowe:
 **Braki danych.** Hydrolog stosuje zasady WMO-No. 1203 (WMO 2017, rozdz. 4.4.1). Średnia miesięczna i liczba dni ze
 zjawiskiem znoszą kilka rozproszonych braków, ale nie dłuższą przerwę; liczbę dni ze zjawiskiem w miesiącu z brakami
 przelicza się na pełny miesiąc. Suma miesięczna wymaga kompletu dni, chyba że brakujące dni obejmuje suma zbiorcza
-(opad zmierzony po kilku dniach bez pomiaru i zapisany pod ostatnim dniem). Ekstremum miesiąca liczy się z tylu dni,
-ile jest. Progi tych reguł podają ramki:
+(*accumulated total*: opad zmierzony po kilku dniach bez pomiaru i zapisany pod ostatnim dniem). Ekstremum miesiąca
+liczy się z tylu dni, ile jest. Progi tych reguł podają ramki:
 
 <!-- spec:wmo_monthly_mean -->
 <!-- /spec:wmo_monthly_mean -->
@@ -311,9 +311,10 @@ ma PCI 11,65 (umiarkowana koncentracja) i SI 0,467 (dość sezonowy; pole `years
 
 ## 11.8. Ciągi dni suchych i mokrych
 
-**Idea.** CDD to najdłuższy w roku ciąg kolejnych dni suchych, a CWD – najdłuższy ciąg dni mokrych (ETCCDI 2009). Długi
-ciąg suchy wiosną lub latem zapowiada suszę rolniczą; zimą, przy małym parowaniu, ma mniejsze znaczenie. Dzień bez
-pomiaru przerywa ciąg, a Hydrolog oznacza taki ciąg jako otwarty (mógł być dłuższy).
+**Idea.** CDD (*consecutive dry days*) to najdłuższy w roku ciąg kolejnych dni suchych (*dry spell*), a CWD
+(*consecutive wet days*) – najdłuższy ciąg dni mokrych (ETCCDI 2009). Długi ciąg suchy wiosną lub latem zapowiada
+suszę rolniczą; zimą, przy małym parowaniu, ma mniejsze znaczenie. Dzień bez pomiaru przerywa ciąg, a Hydrolog
+oznacza taki ciąg jako otwarty (mógł być dłuższy).
 
 <!-- spec:spell_lengths -->
 <!-- /spec:spell_lengths -->
@@ -445,9 +446,10 @@ najzimniejszy rok 1996: 6,83 °C. Najwyższa temperatura okresu to 37,0 °C (8
 
 ## 11.11. Dni charakterystyczne
 
-**Idea.** Dni charakterystyczne liczą dni, w których temperatura przekroczyła próg: dni z przymrozkiem (FD), mroźne
-(ID), gorące (SU), upalne i noce tropikalne (TR). Hydrolog stosuje domyślnie definicje ETCCDI z ostrymi nierównościami
-(ETCCDI 2009); każdy próg można zmienić opcją.
+**Idea.** Dni charakterystyczne liczą dni, w których temperatura przekroczyła próg: dni z przymrozkiem (*frost days*,
+FD), mroźne (*ice days*, ID), gorące (*summer days*, SU), upalne (*hot days*) i noce tropikalne (*tropical nights*,
+TR). Hydrolog stosuje domyślnie definicje ETCCDI z ostrymi nierównościami (ETCCDI 2009); każdy próg można zmienić
+opcją.
 
 <!-- spec:threshold_days -->
 <!-- /spec:threshold_days -->
@@ -527,9 +529,10 @@ Hydrolog nie wycina okresu wegetacyjnego ani sezonu grzewczego.
 
 ## 11.13. Pokrywa śnieżna
 
-**Idea.** Pokrywa śnieżna według IMGW-PIB to warstwa śniegu zalegająca na ponad połowie terenu wokół stacji; jej
-grubość mierzy się codziennie rano (IMGW-PIB, Rocznik Meteorologiczny). Liczba dni z pokrywą, jej największa grubość
-oraz pierwszy i ostatni dzień z pokrywą opisują zimę i zasoby wody w śniegu, ważne dla wezbrań roztopowych.
+**Idea.** Pokrywa śnieżna (*snow cover*) według IMGW-PIB to warstwa śniegu zalegająca na ponad połowie terenu wokół
+stacji; jej grubość mierzy się codziennie rano (IMGW-PIB, Rocznik Meteorologiczny). Liczba dni z pokrywą, jej
+największa grubość oraz pierwszy i ostatni dzień z pokrywą opisują zimę i zasoby wody w śniegu, ważne dla wezbrań
+roztopowych.
 
 <!-- spec:snow_cover_day -->
 <!-- /spec:snow_cover_day -->

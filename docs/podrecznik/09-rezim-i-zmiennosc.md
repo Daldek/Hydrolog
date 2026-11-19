@@ -324,13 +324,14 @@ zależność ta jest bliska funkcji potęgowej (WMO 2010, równ. 1.4; ISO 1100-2
 <!-- spec:rating_curve -->
 <!-- /spec:rating_curve -->
 
-**Znaczenie parametrów.** $H_0$ to stan, przy którym przepływ ustaje (dla nieregularnego przekroju – stan przepływu
-zerowego „efektywnego”). **To nie jest zero wodowskazu**, czyli poziom odniesienia łaty wodowskazowej (rzędna „P.z.”
-w rocznikach IMGW-PIB); stany wody poniżej zera wodowskazu są czymś zwyczajnym. Współczynnik $a$ to przepływ przy
-głębokości $H - H_0$ równej jednostce stanu, a jego jednostka zależy od jednostki stanu: ta sama krzywa ze stanami w
-metrach ma inne $a$ niż ze stanami w centymetrach (ramka). Wykładnik $b$ zależy od rodzaju kontroli przepływu: inny
-jest dla kontroli przekrojowej (próg, przelew, przewężenie), inny dla kontroli korytowej, gdzie o przepływie decyduje
-opór całego odcinka koryta (WMO 2010, s. II.1-2 i II.1-8).
+**Znaczenie parametrów.** $H_0$ to stan, przy którym przepływ ustaje (stan przepływu zerowego, *gauge height of zero
+flow*; dla nieregularnego przekroju – stan przepływu zerowego „efektywnego”). **To nie jest zero wodowskazu** (*gauge
+datum*), czyli poziom odniesienia łaty wodowskazowej (rzędna „P.z.” w rocznikach IMGW-PIB); stany wody poniżej zera
+wodowskazu są czymś zwyczajnym. Współczynnik $a$ to przepływ przy głębokości $H - H_0$ równej jednostce stanu, a jego
+jednostka zależy od jednostki stanu: ta sama krzywa ze stanami w metrach ma inne $a$ niż ze stanami w centymetrach
+(ramka). Wykładnik $b$ zależy od rodzaju kontroli przepływu: inny jest dla kontroli przekrojowej (próg, przelew,
+przewężenie), inny dla kontroli korytowej, gdzie o przepływie decyduje opór całego odcinka koryta (WMO 2010,
+s. II.1-2 i II.1-8).
 
 **Dopasowanie.** Hydrolog dopasowuje krzywą metodą najmniejszych kwadratów na przepływach. WMO (2010, rozdz. 1.12.2)
 opisuje metodę najmniejszych kwadratów na logarytmach, w której krzywa jest prostą na papierze logarytmicznym. Obie

@@ -8,7 +8,8 @@ obliczeniem przepływów o zadanym prawdopodobieństwie przewyższenia.
 
 Rozdział opisuje testy, którymi Hydrolog bada szereg wartości rocznych: test Manna–Kendalla (trend monotoniczny) z
 nachyleniem Sena (wielkość zmiany), testy dwóch prób Manna–Whitneya i Kołmogorowa–Smirnowa (różnica między częściami
-szeregu) oraz test Pettitta (punkt zmiany). Zaczyna od tego, jak czytać wynik każdego testu statystycznego.
+szeregu) oraz test Pettitta (punkt zmiany, *change point*). Zaczyna od tego, jak czytać wynik każdego testu
+statystycznego.
 
 ## Dane przykładów
 
@@ -177,7 +178,7 @@ regresji liniowej. Wyraz wolny prostej to wyraz Conovera (Conover 1980), czyli w
 <!-- spec:sen_slope -->
 <!-- /spec:sen_slope -->
 
-Przedział ufności nachylenia wyznacza się z rang uporządkowanych nachyleń, przesuniętych o wielkość zależną od wariancji
+Przedział ufności (*confidence interval*) nachylenia wyznacza się z rang uporządkowanych nachyleń, przesuniętych o wielkość zależną od wariancji
 $S$ tego samego testu (Gilbert 1987, rozdz. 16.5). Hydrolog interpoluje między rangami, jak w przykładzie 16.5 i
 programie Gilberta; pakiet R `trend` zaokrągla rangi, przez co dla krótkich szeregów granice różnią się o kilka
 procent. Przedział ma ten sam poziom ufności $1 - \alpha$ co test, a dla szeregu krótszego niż $n_0$ wartości nie jest
