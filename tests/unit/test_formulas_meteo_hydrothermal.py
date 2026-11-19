@@ -9,7 +9,7 @@ assertions through :func:`as_standard` (ADR-0050, point 3).
 from pathlib import Path
 
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 
 from hydrolog._formulas import ERRORS
 from hydrolog.catalog import run_command
@@ -78,6 +78,9 @@ def test_limits_and_oracles(spec: FormulaSpec, function):
 
 
 @given(inputs=strategies(SIELIANINOV))
+@example(  # 0.52 mm over 1.6e-308 °C·d: P / sum t is finite, 10 P / sum t is not
+    inputs={"precipitation_mm": 0.0, "temperature_sum_c_days": 1.5998008356143734e-308}
+)
 def test_coefficient_properties(inputs):
     function = as_standard(sielianinov_coefficient)
     assert_property_contract(SIELIANINOV, function, inputs, ERRORS)

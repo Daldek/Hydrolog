@@ -161,9 +161,17 @@ _WARSZAWA_K = (
 _TENTH = Fraction(1, 10)
 
 
+def _coefficient(x: Values) -> float:
+    """Return k = P / (0.1 sum t) as 10 P / sum t, the factor exact."""
+    return (
+        float(1 / _TENTH)
+        * x.real("precipitation_mm")
+        / x.real("temperature_sum_c_days")
+    )
+
+
 def _finite_coefficient(x: Values) -> bool:
-    total = x.real("temperature_sum_c_days")
-    return not total > 0.0 or math.isfinite(x.real("precipitation_mm") / total)
+    return not x.real("temperature_sum_c_days") > 0.0 or math.isfinite(_coefficient(x))
 
 
 def _coefficient_oracle(run: Callable[..., Values]) -> None:
@@ -351,9 +359,9 @@ def sielianinov_coefficient(
         precipitation_mm=precipitation_mm,
         temperature_sum_c_days=temperature_sum_c_days,
     )
-    value = float(1 / _TENTH) * x.real("precipitation_mm")
-    value /= x.real("temperature_sum_c_days")
-    return checked_outputs(SIELIANINOV, {"coefficient": value}).real("coefficient")
+    return checked_outputs(SIELIANINOV, {"coefficient": _coefficient(x)}).real(
+        "coefficient"
+    )
 
 
 _CLASS_TO = tuple(f"{name}_to" for name in SIELIANINOV_CLASSES[:-1])
