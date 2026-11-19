@@ -1,0 +1,112 @@
+schema = "nogat-formula-card/1"
+name = "areal_mean_precipitation"
+title = "Areal precipitation by the arithmetic mean of the gauges"
+function = "hydrolog.precipitation.interpolation.areal_mean_precipitation"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "P = (P_1 + ... + P_n) / n over the gauges in the watershed"
+latex = "\\bar{P} = \\frac{1}{n}\\sum_{i=1}^{n} P_i"
+validation = "Chow et al. (1988, p. 78) find the method satisfactory where the gauges are uniformly spread over flat terrain; no error statistic"
+conventions = ["depths in mm; only the gauges within the watershed are given (Chow et al. 1988 leave out the gauges outside it)", "the sum by math.fsum, correctly rounded"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/areal-precipitation-cases.json"]
+constraints = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+precipitation_mm = 1
+
+[[properties.scalings]]
+name = "depth"
+
+[properties.scalings.inputs]
+precipitation_mm = 1.0
+
+[properties.scalings.outputs]
+areal_precipitation_mm = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling the depths doubles every product exactly in binary; the sums round once, but for subnormal values"
+abs = 1e-300
+rel = 1e-15
+
+[[properties.limits]]
+name = "exact_rational"
+text = "the mean equals the mean in exact rational arithmetic"
+
+[[properties.symmetries]]
+name = "order"
+text = "the order of the gauges does not matter"
+
+[properties.symmetries.tolerance]
+reason = "the same terms summed in another order: correctly rounded sums of products that each round once"
+abs = 1e-12
+rel = 1e-12
+
+[[sources]]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 3.4, Fig. 3.4.3(a), p. 78: the arithmetic mean of the gauges within the watershed"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[variables]]
+name = "precipitation_mm"
+symbol = "P_i"
+unit = "mm"
+kind = "real_array"
+description = "Depth at each gauge."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 6.96
+low_inclusive = true
+high = 341.27
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's areal PMAXTP depth (Thiessen cells of the PMAXTP grid points of a catchment) over the depths of Hydrolog's PMAXTP fixtures for Kamiennik and Warsaw (POT, recorded in November 2026)"
+access = "open"
+locator = "tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm"
+
+[[outputs]]
+name = "areal_precipitation_mm"
+unit = "mm"
+kind = "real"
+symbol = "\\bar{P}"
+description = "Mean precipitation over the watershed."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case precipitation_mm-nan_element: a gap is refused"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "limit exact_rational: seven depths of 0.1 mm against the exact rational mean"
+
+[[oracles]]
+kind = "exact"
+description = "the mean in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_areal_precipitation.py (limit exact_rational)"
+conventions = []

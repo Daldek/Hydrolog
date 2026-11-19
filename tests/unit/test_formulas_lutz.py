@@ -31,7 +31,13 @@ from hydrolog.nogat_formulas import (
     type_cases,
 )
 from hydrolog.runoff import NashIUH
-from hydrolog.runoff.nash_iuh import LUTZ, _peak_product, lutz_parameters
+from hydrolog.runoff.nash_iuh import (
+    LUTZ,
+    URBAN,
+    _peak_product,
+    lutz_parameters,
+    urban_regression_parameters,
+)
 
 from ._formula_checks import as_standard
 
@@ -176,3 +182,41 @@ def test_from_lutz_gives_the_estimate_of_the_spec():
 
     assert (cascade.n, cascade.k_min) == (estimate.n, estimate.k_min)
     assert versions == {"lutz": 1}
+
+
+# --- the urban regression of Rao, Delleur and Sarma (spec nash_urban_regression) ---
+
+
+@pytest.mark.parametrize("case", range_cases(URBAN) + type_cases(URBAN))
+def test_urban_ranges_and_types(case: Case):
+    run_case(URBAN, as_standard(urban_regression_parameters), case, ERRORS)
+
+
+def test_urban_limits_and_oracles():
+    assert_limits(URBAN, as_standard(urban_regression_parameters), ERRORS)
+
+
+@given(inputs=strategies(URBAN))
+def test_urban_properties(inputs):
+    function = as_standard(urban_regression_parameters)
+    assert_property_contract(URBAN, function, inputs, ERRORS)
+    assert_properties(URBAN, function, inputs, ERRORS)
+
+
+def test_from_urban_regression_gives_the_estimate_of_the_spec():
+    with recording() as used:
+        cascade = NashIUH.from_urban_regression(
+            area_km2=26.9, effective_precip_mm=10.0, duration_h=1.0, urban_fraction=0.32
+        )
+    estimate = urban_regression_parameters(26.9, 10.0, 1.0, 0.32)
+
+    assert (cascade.n, cascade.k_min) == (estimate.n, estimate.k_min)
+    assert used == {"nash_urban_regression": URBAN.formula_version}
+
+
+def test_an_impervious_fraction_of_one_is_refused():
+    with pytest.raises(InvalidParameterError) as caught:
+        NashIUH.from_urban_regression(1.3, 1.305, 0.167, urban_fraction=1.0)
+
+    assert caught.value.details["reason"] == "outside_physical_range"
+    assert caught.value.details["option"] == "urban_fraction"

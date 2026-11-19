@@ -1,0 +1,371 @@
+schema = "nogat-formula-card/1"
+name = "euler_ii_hyetograph"
+title = "Euler type II design storm of ATV-DVWK-A 118 from a depth-duration curve"
+function = "hydrolog.precipitation.hietogram.euler_ii_hyetograph"
+family = "scheme"
+formula_version = 1
+status = "referenced"
+equation = "h(t) of the curve at t = j dt (depth_duration_interpolation); increments dh_j = h(j dt) - h((j - 1) dt), j = 1..n, n = Td / dt; peak block k = floor(0.3 n) (from 0, the interval from 0.3 Td rounded down to a step); block k holds dh_1, blocks k - 1 .. 0 hold dh_2 .. dh_(k+1), blocks k + 1 .. n - 1 hold dh_(k+2) .. dh_n; the total is h(Td)"
+latex = "\\Delta h_j = h(j\\,\\Delta t) - h((j-1)\\,\\Delta t),\\quad k = \\lfloor 0.3\\,n \\rfloor,\\quad P_{k-i} = \\Delta h_{i+1}\\ (i = 0..k),\\quad P_{i-1} = \\Delta h_i\\ (i = k+2..n)"
+validation = "none: a design storm of drainage design (A 118); Licznar and Szeląg (2014, abstract) find its shape departs from observed storms beyond 180 min"
+conventions = ["depths in mm per step; t_j the end of step j", "the increments keep the order of their durations and are not sorted, so the m steps that end with the peak hold h(m dt) also where interpolation makes an increment grow (ADR-0042, as the itwh software); for a curve whose increments decrease this is the sorted arrangement of A 118 and DWD", "the peak starts at 0.3 Td rounded down to a whole step (A 118 as quoted: to a multiple of 5 min); the itwh software puts the peak of 15 min in the second step and Kaźmierczak and Kotowski (2012) end it at Td / 3, a step later for Td of 165 and 180 min", "the total is h(Td) of the curve; the curve is of one probability", "the storm is made of whole steps: Td = n dt (ADR-0046)"]
+assumptions = ["A 118 asks for a duration of at least twice the longest flow time; the Polish models of Wartalska and Kotowski (2020) span 30 to 180 min; the sources state no range of the formula's inputs, so none gives a notice"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/hyetographs-cases.json"]
+tables = []
+
+[properties]
+units = "homogeneous"
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "depth"
+
+[properties.scalings.inputs]
+depths_mm = 1.0
+
+[properties.scalings.outputs]
+intensities_mm = 1.0
+total_mm = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling a total or a time is exact in binary; one rounding of a quotient but for subnormal values"
+abs = 1e-300
+rel = 1e-15
+
+[[properties.scalings]]
+name = "time"
+
+[properties.scalings.inputs]
+durations_min = 1.0
+duration_min = 1.0
+timestep_min = 1.0
+
+[properties.scalings.outputs]
+times_min = 1.0
+peak_start_min = 1.0
+
+[properties.scalings.tolerance]
+reason = "the logarithms of doubled durations round differently; the interpolated depths move by a few units in the last place of a depth over the logarithm of a ratio of durations"
+abs = 1e-09
+rel = 1e-09
+
+[[properties.limits]]
+name = "a118_sorted"
+text = "for a curve whose increments decrease, the storm DWD describes: the largest increment at the peak, the next larger ones before it in ascending order, the rest after it in descending order"
+
+[properties.limits.source]
+citation = "Malitz, G. (2009). Stark- und Extremniederschlag im Kurzzeitbereich. Deutscher Wetterdienst, Hydrometeorologie; slides of the 2. Trierer Workshop zur Niederschlag-Abfluss-Modellierung"
+access = "open"
+locator = "slide 17: the highest 5-min value at position 4, the three next higher to its left, the rest decreasing to its right, the sum of the three largest the depth of 15 min; slides 18 and 19: two storms of 60 min"
+url = "https://www.uni-trier.de/fileadmin/fb6/prof/PHY/PDF-Dateien/AG_ModSim/N-A-Workshop_2009/Malitz.pdf"
+
+[[properties.limits]]
+name = "peak_start"
+text = "the peak interval starts at 0.3 Td rounded down to a step: 0, 0, 15, 45, 45, 50 and 160 min for 5 to 540 min in steps of 5 min"
+
+[properties.limits.source]
+citation = "ATV-DVWK (2001). Arbeitsblatt ATV-DVWK-A 118, Kap. 5.2.2.1, as quoted by Thewes, K. (2005). Diplomarbeit, Fachhochschule Trier"
+access = "open"
+locator = "p. 10: the interval of the highest intensity begins at 0.3 of the duration rounded down to a multiple of 5 min; the next lower intervals follow to the left back to t = 0, the others to the right"
+url = "https://www.hochschule-trier.de/fileadmin/Hauptcampus/Fachbereich_BL/BI/Personen/Erzmann/Abschlussarbeiten/DA-Thewes.pdf"
+
+[[properties.conservation]]
+name = "steps_add_up"
+text = "the steps hold h(Td), the total"
+
+[properties.conservation.tolerance]
+reason = "the steps are rounded products or differences of a total below 2 m; their exact sum (fsum) differs from it by a few units in its last place per million steps"
+abs = 1e-09
+
+[[properties.conservation]]
+name = "windows_hold_design_depths"
+text = "the m steps around the peak (back to t = 0, then onward) hold h(m dt) of the curve for every m (Malitz 2009, slide 17)"
+
+[properties.conservation.tolerance]
+reason = "sums of up to a million differences of the interpolated depths against the interpolation in another form"
+abs = 1e-09
+
+[[sources]]
+citation = "ATV-DVWK (2001). Arbeitsblatt ATV-DVWK-A 118, Kap. 5.2.2.1, as quoted by Thewes, K. (2005). Diplomarbeit, Fachhochschule Trier"
+access = "open"
+locator = "p. 10: the interval of the highest intensity begins at 0.3 of the duration rounded down to a multiple of 5 min; the next lower intervals follow to the left back to t = 0, the others to the right"
+url = "https://www.hochschule-trier.de/fileadmin/Hauptcampus/Fachbereich_BL/BI/Personen/Erzmann/Abschlussarbeiten/DA-Thewes.pdf"
+
+[[sources]]
+citation = "Malitz, G. (2009). Stark- und Extremniederschlag im Kurzzeitbereich. Deutscher Wetterdienst, Hydrometeorologie; slides of the 2. Trierer Workshop zur Niederschlag-Abfluss-Modellierung"
+access = "open"
+locator = "slide 17: the highest 5-min value at position 4, the three next higher to its left, the rest decreasing to its right, the sum of the three largest the depth of 15 min; slides 18 and 19: two storms of 60 min"
+url = "https://www.uni-trier.de/fileadmin/fb6/prof/PHY/PDF-Dateien/AG_ModSim/N-A-Workshop_2009/Malitz.pdf"
+
+[[sources]]
+citation = "Kaźmierczak, B. and Kotowski, A. (2012). Weryfikacja przepustowości kanalizacji deszczowej w modelowaniu hydrodynamicznym. Oficyna Wydawnicza Politechniki Wrocławskiej, Wrocław"
+access = "open"
+locator = "pp. 31-32 (the construction); Tab. 4.6, pp. 65-66 (eight storms of 75 to 180 min)"
+url = "https://www.dbc.wroc.pl/Content/19608/PDF/kazmierczak_weryfikacja.pdf"
+
+[[variables]]
+name = "durations_min"
+symbol = "D_i"
+unit = "min"
+kind = "real_array"
+description = "Durations of the points of the depth-duration curve, increasing."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 43200.0
+test_reason = "ten times the longest duration of the PMAXTP tables, 72 h"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 4320.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, ISBN 978-83-64979-48-4"
+access = "open"
+locator = "p. 10: the tables give 16 durations, 5 min to 72 h"
+url = "https://klimat.imgw.pl/opady-maksymalne/"
+
+[[variables]]
+name = "depths_mm"
+symbol = "h_i"
+unit = "mm"
+kind = "real_array"
+description = "Depths of the curve at those durations, of one probability."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 6.96
+low_inclusive = true
+high = 341.27
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixtures: the PMAXTP depths of IMGW-PIB for Kamiennik (51.015 N, 15.890 E) and Warsaw (52.23 N, 21.01 E), POT, recorded in November 2026"
+access = "open"
+locator = "tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm over durations of 5 min to 72 h and probabilities of 0.01 to 99.9 %"
+
+[[variables]]
+name = "duration_min"
+symbol = "T_d"
+unit = "min"
+kind = "real"
+description = "Duration of the storm, a whole number of steps."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 43200.0
+test_reason = "ten times the longest duration of the PMAXTP tables, 72 h"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 4320.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, ISBN 978-83-64979-48-4"
+access = "open"
+locator = "p. 10: the tables give 16 durations, 5 min to 72 h"
+url = "https://klimat.imgw.pl/opady-maksymalne/"
+
+[[variables]]
+name = "timestep_min"
+symbol = "\\Delta t"
+unit = "min"
+kind = "real"
+description = "Time step: the length of each block of the storm."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 43200.0
+test_reason = "ten times the longest duration of the PMAXTP tables, 72 h"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 60.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "The steps of the design storms of the sources: 5 min (DWD, Malitz 2009, slide 17; the shortest duration of the PMAXTP tables) to 1 h (KZGW 2017, example 6.1, p. 92)"
+access = "open"
+locator = "Malitz 2009 slide 17; KZGW 2017 p. 92"
+
+[[constraints]]
+name = "depths_not_decreasing"
+class = "physical"
+text = "h_(i+1) >= h_i: the depth of a longer duration is never smaller"
+
+[constraints.source]
+citation = "Malitz, G. (2009). Stark- und Extremniederschlag im Kurzzeitbereich. Deutscher Wetterdienst, Hydrometeorologie; slides of the 2. Trierer Workshop zur Niederschlag-Abfluss-Modellierung"
+access = "open"
+locator = "slide 17: the highest 5-min value at position 4, the three next higher to its left, the rest decreasing to its right, the sum of the three largest the depth of 15 min; slides 18 and 19: two storms of 60 min"
+url = "https://www.uni-trier.de/fileadmin/fb6/prof/PHY/PDF-Dateien/AG_ModSim/N-A-Workshop_2009/Malitz.pdf"
+
+[[constraints]]
+name = "curve_lengths"
+class = "precondition"
+text = "one depth for each duration of the curve"
+
+[constraints.source]
+citation = "ATV-DVWK (2001). Arbeitsblatt ATV-DVWK-A 118, Kap. 5.2.2.1, as quoted by Thewes, K. (2005). Diplomarbeit, Fachhochschule Trier"
+access = "open"
+locator = "p. 10: the interval of the highest intensity begins at 0.3 of the duration rounded down to a multiple of 5 min; the next lower intervals follow to the left back to t = 0, the others to the right"
+url = "https://www.hochschule-trier.de/fileadmin/Hauptcampus/Fachbereich_BL/BI/Personen/Erzmann/Abschlussarbeiten/DA-Thewes.pdf"
+
+[[constraints]]
+name = "durations_increasing"
+class = "precondition"
+text = "D_(i+1) > D_i: each duration of the curve once, in order"
+
+[constraints.source]
+citation = "ATV-DVWK (2001). Arbeitsblatt ATV-DVWK-A 118, Kap. 5.2.2.1, as quoted by Thewes, K. (2005). Diplomarbeit, Fachhochschule Trier"
+access = "open"
+locator = "p. 10: the interval of the highest intensity begins at 0.3 of the duration rounded down to a multiple of 5 min; the next lower intervals follow to the left back to t = 0, the others to the right"
+url = "https://www.hochschule-trier.de/fileadmin/Hauptcampus/Fachbereich_BL/BI/Personen/Erzmann/Abschlussarbeiten/DA-Thewes.pdf"
+
+[[constraints]]
+name = "step_within_duration"
+class = "precondition"
+text = "dt <= Td: the storm holds at least one step"
+
+[constraints.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[constraints]]
+name = "steps_representable"
+class = "precondition"
+text = "Td / dt <= 1,000,000: at most a million steps"
+
+[constraints.source]
+citation = "Hydrolog, ADR-0067: the precipitation formulas by specs"
+access = "open"
+locator = "docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3"
+
+[[constraints]]
+name = "whole_steps"
+class = "precondition"
+text = "Td = n dt for a whole n, to 1e-9 of Td: the storm is made of whole steps"
+
+[constraints.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[constraints]]
+name = "curve_covers"
+class = "precondition"
+text = "D_1 <= dt and D_m >= Td: the curve reaches from the step to the duration, nothing is extrapolated"
+
+[constraints.source]
+citation = "Hydrolog, ADR-0067: the precipitation formulas by specs"
+access = "open"
+locator = "docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3"
+
+[[constants]]
+name = "peak_start_share"
+value = 0.3
+unit = "-"
+symbol = "0.3"
+exact = "3/10"
+
+[constants.source]
+citation = "ATV-DVWK (2001). Arbeitsblatt ATV-DVWK-A 118, Kap. 5.2.2.1, as quoted by Thewes, K. (2005). Diplomarbeit, Fachhochschule Trier"
+access = "open"
+locator = "p. 10: the interval of the highest intensity begins at 0.3 of the duration rounded down to a multiple of 5 min; the next lower intervals follow to the left back to t = 0, the others to the right"
+url = "https://www.hochschule-trier.de/fileadmin/Hauptcampus/Fachbereich_BL/BI/Personen/Erzmann/Abschlussarbeiten/DA-Thewes.pdf"
+
+[[outputs]]
+name = "intensities_mm"
+unit = "mm"
+kind = "real_array"
+symbol = "P_j"
+description = "Depth of each step (the field keeps its name of earlier versions; the result's intensity_mm_per_h is the rate)."
+boundary_tolerance = 1e-09
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "times_min"
+unit = "min"
+kind = "real_array"
+symbol = "t_j"
+description = "End of each step from the start of the storm."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "total_mm"
+unit = "mm"
+kind = "real"
+symbol = "h(T_d)"
+description = "Total depth of the storm, the depth of the curve at Td."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "peak_start_min"
+unit = "min"
+kind = "real"
+symbol = "k\\,\\Delta t"
+description = "Start of the interval of the peak from the start of the storm."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "durations_increasing refuses equal durations, whose ln ratio is 0; a step end within 1e-9 of a point takes its depth"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases durations_min-nan_element and depths_mm-nan_element: a gap is refused"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "conservation steps_add_up and windows_hold_design_depths"
+
+[[oracles]]
+kind = "algorithm"
+description = "the arrangement DWD describes (sorted increments) on a curve interpolated in ln D at 40 digits (decimal), for curves whose increments decrease"
+test = "tests/unit/test_formulas_hyetographs.py (limit a118_sorted)"
+conventions = []

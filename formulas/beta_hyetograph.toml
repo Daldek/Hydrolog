@@ -1,0 +1,281 @@
+schema = "nogat-formula-card/1"
+name = "beta_hyetograph"
+title = "Beta design hyetograph: block integrals of the Beta density"
+function = "hydrolog.precipitation.hietogram.beta_hyetograph"
+family = "scheme"
+formula_version = 1
+status = "oracle only"
+equation = "P_j = P (I_(j / n)(alpha, beta) - I_((j - 1) / n)(alpha, beta)), n = Td / dt, I the regularised incomplete Beta function: the integral of the density u**(alpha - 1) (1 - u)**(beta - 1) / B(alpha, beta) over the step, u = t / Td"
+latex = "P_j = P\\left[I_{j/n}(\\alpha, \\beta) - I_{(j-1)/n}(\\alpha, \\beta)\\right],\\quad I_u(\\alpha, \\beta) = \\frac{1}{B(\\alpha, \\beta)}\\int_0^u s^{\\alpha - 1}(1 - s)^{\\beta - 1}\\,ds"
+validation = "KZGW (2017, p. 26) fits alpha and beta so that the peak of the hydrograph of the storm equals the flow of the same probability; the sources give no error statistic of the shape against observed storms"
+conventions = ["depths in mm per step; t_j the end of step j", "each step holds the integral of the density over it (ADR-0046); KZGW (2017, eq. 2.20) evaluates the density at the ends of the steps, which shifts the storm by half a step and is not followed", "the storm is made of whole steps: Td = n dt (ADR-0046)"]
+assumptions = ["KZGW (2017) splits a daily total into hourly steps of a hypothetical flood; Hydrolog takes any duration and step"]
+notices = []
+reference_cases = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+
+[properties.monotonic]
+total_mm = 1
+
+[[properties.scalings]]
+name = "depth"
+
+[properties.scalings.inputs]
+total_mm = 1.0
+
+[properties.scalings.outputs]
+intensities_mm = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling a total or a time is exact in binary; one rounding of a quotient but for subnormal values"
+abs = 1e-300
+rel = 1e-15
+
+[[properties.scalings]]
+name = "time"
+
+[properties.scalings.inputs]
+duration_min = 1.0
+timestep_min = 1.0
+
+[properties.scalings.outputs]
+times_min = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling a total or a time is exact in binary; one rounding of a quotient but for subnormal values"
+abs = 1e-300
+rel = 1e-15
+
+[[properties.limits]]
+name = "uniform"
+text = "alpha = beta = 1 gives the block storm"
+
+[[properties.limits]]
+name = "exact_integrals"
+text = "the steps equal the integrals of the density in exact arithmetic: rational for whole alpha and beta, a closed form at 50 digits for alpha = 1/2"
+
+[[properties.conservation]]
+name = "steps_add_up"
+text = "the steps hold the total"
+
+[properties.conservation.tolerance]
+reason = "the steps are rounded products or differences of a total below 2 m; their exact sum (fsum) differs from it by a few units in its last place per million steps"
+abs = 1e-09
+
+[[properties.symmetries]]
+name = "swap"
+text = "swapping alpha and beta gives the steps in reverse order"
+
+[properties.symmetries.tolerance]
+reason = "I_u(a, b) = 1 - I_(1-u)(b, a) holds to SciPy's precision of the incomplete Beta function, a few units in the last place"
+abs = 1e-09
+
+[[sources]]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "ch. II.3, eqs. 2.20-2.22, p. 25 (after Węglarczyk 1993); Fig. 2.7, p. 26"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[sources]]
+citation = "Węglarczyk, S. (1993), as cited by KZGW (2017)"
+access = "author-provided"
+
+[[variables]]
+name = "total_mm"
+symbol = "P"
+unit = "mm"
+kind = "real"
+description = "Total depth of the storm."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 6.96
+low_inclusive = true
+high = 341.27
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixtures: the PMAXTP depths of IMGW-PIB for Kamiennik (51.015 N, 15.890 E) and Warsaw (52.23 N, 21.01 E), POT, recorded in November 2026"
+access = "open"
+locator = "tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm over durations of 5 min to 72 h and probabilities of 0.01 to 99.9 %"
+
+[[variables]]
+name = "duration_min"
+symbol = "T_d"
+unit = "min"
+kind = "real"
+description = "Duration of the storm, a whole number of steps."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 43200.0
+test_reason = "ten times the longest duration of the PMAXTP tables, 72 h"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 4320.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, ISBN 978-83-64979-48-4"
+access = "open"
+locator = "p. 10: the tables give 16 durations, 5 min to 72 h"
+url = "https://klimat.imgw.pl/opady-maksymalne/"
+
+[[variables]]
+name = "timestep_min"
+symbol = "\\Delta t"
+unit = "min"
+kind = "real"
+description = "Time step: the length of each block of the storm."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 43200.0
+test_reason = "ten times the longest duration of the PMAXTP tables, 72 h"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 60.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "The steps of the design storms of the sources: 5 min (DWD, Malitz 2009, slide 17; the shortest duration of the PMAXTP tables) to 1 h (KZGW 2017, example 6.1, p. 92)"
+access = "open"
+locator = "Malitz 2009 slide 17; KZGW 2017 p. 92"
+
+[[variables]]
+name = "alpha"
+symbol = "\\alpha"
+unit = "-"
+kind = "real"
+description = "First shape parameter (r of KZGW): the rise of the storm."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000.0
+test_reason = "a hundred times the largest parameter of KZGW (2017) Fig. 2.7, 10"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 10.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "Fig. 2.7, p. 26: typical Beta shapes (1, 10), (2, 10), (6, 6) and (10, 2); Hydrolog's default (2, 5)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "beta"
+symbol = "\\beta"
+unit = "-"
+kind = "real"
+description = "Second shape parameter (s of KZGW): the fall of the storm."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000.0
+test_reason = "a hundred times the largest parameter of KZGW (2017) Fig. 2.7, 10"
+
+[variables.typical]
+low = 2.0
+low_inclusive = true
+high = 10.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "Fig. 2.7, p. 26: typical Beta shapes (1, 10), (2, 10), (6, 6) and (10, 2); Hydrolog's default (2, 5)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[constraints]]
+name = "step_within_duration"
+class = "precondition"
+text = "dt <= Td: the storm holds at least one step"
+
+[constraints.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[constraints]]
+name = "steps_representable"
+class = "precondition"
+text = "Td / dt <= 1,000,000: at most a million steps"
+
+[constraints.source]
+citation = "Hydrolog, ADR-0067: the precipitation formulas by specs"
+access = "open"
+locator = "docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3"
+
+[[constraints]]
+name = "whole_steps"
+class = "precondition"
+text = "Td = n dt for a whole n, to 1e-9 of Td: the storm is made of whole steps"
+
+[constraints.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[outputs]]
+name = "intensities_mm"
+unit = "mm"
+kind = "real_array"
+symbol = "P_j"
+description = "Depth of each step (the field keeps its name of earlier versions; the result's intensity_mm_per_h is the rate)."
+boundary_tolerance = 1e-09
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "times_min"
+unit = "min"
+kind = "real_array"
+symbol = "t_j"
+description = "End of each step from the start of the storm."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "conservation steps_add_up and test_a_storm_of_a_million_steps_holds_its_total"
+
+[[oracles]]
+kind = "exact"
+description = "the block integrals in exact rational arithmetic for whole alpha and beta (the binomial sum of I_u) and in closed form at 50 digits (decimal) for alpha = 1/2"
+test = "tests/unit/test_formulas_hyetographs.py (limit exact_integrals)"
+conventions = []

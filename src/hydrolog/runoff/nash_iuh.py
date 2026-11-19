@@ -44,7 +44,9 @@ from hydrolog.nogat_formulas import (
     Output,
     Properties,
     Range,
+    Scaling,
     Source,
+    Tolerance,
     Values,
     Variable,
     assert_within,
@@ -917,49 +919,13 @@ class NashIUH:
         >>> print(f"N = {nash.n:.3f}, k = {nash.k_min:.1f} min")
         N = 1.621, k = 23.7 min
         """
-        # Validate inputs
-        if area_km2 <= 0:
-            raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
-        if effective_precip_mm <= 0:
-            raise InvalidParameterError(
-                f"effective_precip_mm must be positive, got {effective_precip_mm}"
-            )
-        if duration_h <= 0:
-            raise InvalidParameterError(
-                f"duration_h must be positive, got {duration_h}"
-            )
-        if urban_fraction < 0 or urban_fraction >= 1:
-            raise InvalidParameterError(
-                f"urban_fraction must be in [0, 1), got {urban_fraction}"
-            )
-
-        # Step 1: Lag time [hours]
-        # Metric constant 1.28 from imperial 0.831 (Sarma et al. 1969)
-        tL_h = (
-            1.28
-            * (area_km2**0.46)
-            * ((1 + urban_fraction) ** -1.66)
-            * (effective_precip_mm**-0.27)
-            * (duration_h**0.37)
+        estimate = urban_regression_parameters(
+            area_km2=area_km2,
+            effective_precip_mm=effective_precip_mm,
+            duration_h=duration_h,
+            urban_fraction=urban_fraction,
         )
-
-        # Step 2: Storage coefficient [hours]
-        # Metric constant 0.56 from imperial ~0.569 (Sarma et al. 1969)
-        k_h = (
-            0.56
-            * (area_km2**0.39)
-            * ((1 + urban_fraction) ** -0.62)
-            * (effective_precip_mm**-0.11)
-            * (duration_h**0.22)
-        )
-
-        # Step 3: Number of reservoirs
-        N = tL_h / k_h
-
-        # Convert k to minutes
-        k_min = k_h * 60.0
-
-        return cls._estimated(n=N, k_min=k_min, area_km2=area_km2)
+        return cls._estimated(n=estimate.n, k_min=estimate.k_min, area_km2=area_km2)
 
 
 # --- Lutz's estimation of n and K: the spec lutz -------------------------------------
@@ -1632,7 +1598,444 @@ LUTZ: Final = FormulaSpec(
     base={"urban_pct": 0.0, "forest_pct": 0.0},
 )
 
-SPECS: Final[tuple[FormulaSpec, ...]] = (LUTZ,)
+# --- the urban regression of Rao, Delleur and Sarma: the spec nash_urban_regression ---
+
+_URBAN_POINTS: Final[tuple[dict[str, float], ...]] = (
+    # the catalog's example of uh nash (urban regression)
+    {
+        "area_km2": 1.3,
+        "effective_precip_mm": 1.305,
+        "duration_h": 0.167,
+        "urban_fraction": 0.05,
+    },
+    # the Służew Creek of Sikorska et al. (2012, p. 1227): 26.9 km2, 32 % impervious
+    {
+        "area_km2": 26.9,
+        "effective_precip_mm": 10.0,
+        "duration_h": 1.0,
+        "urban_fraction": 0.32,
+    },
+    # KZGW's largest urbanized watershed, a long and heavy storm
+    {
+        "area_km2": 52.0,
+        "effective_precip_mm": 80.0,
+        "duration_h": 6.0,
+        "urban_fraction": 0.6,
+    },
+)
+"""Inputs of the decimal oracle, inside the typical ranges or at their ends."""
+
+
+def _urban(x: Values) -> dict[str, object]:
+    area, depth = x.real("area_km2"), x.real("effective_precip_mm")
+    duration, urban = x.real("duration_h"), 1.0 + x.real("urban_fraction")
+
+    def power_law(prefix: str) -> float:
+        return float(
+            URBAN.constant(f"{prefix}_coefficient")
+            * area ** URBAN.constant(f"{prefix}_area_exponent")
+            * urban ** URBAN.constant(f"{prefix}_urban_exponent")
+            * depth ** URBAN.constant(f"{prefix}_depth_exponent")
+            * duration ** URBAN.constant(f"{prefix}_duration_exponent")
+        )
+
+    lag_h, k_h = power_law("lag"), power_law("k")
+    return {"lag_time_h": lag_h, "n": lag_h / k_h, "k_min": convert(k_h, "h", "min")}
+
+
+def _urban_decimal(point: dict[str, float]) -> tuple[Decimal, Decimal]:
+    """LAG and k of eqs. 6.26-6.27 at 50 digits, from the exact inputs [h]."""
+    with localcontext(prec=_DIGITS):
+        area, depth, duration = (
+            Decimal(point[name])
+            for name in ("area_km2", "effective_precip_mm", "duration_h")
+        )
+        urban = 1 + Decimal(point["urban_fraction"])
+        lag = (
+            Decimal("1.28")
+            * area ** Decimal("0.46")
+            * urban ** Decimal("-1.66")
+            * depth ** Decimal("-0.27")
+            * duration ** Decimal("0.37")
+        )
+        k = (
+            Decimal("0.56")
+            * area ** Decimal("0.39")
+            * urban ** Decimal("-0.62")
+            * depth ** Decimal("-0.11")
+            * duration ** Decimal("0.22")
+        )
+        return lag, k
+
+
+def _urban_oracle(run: Callable[..., Values]) -> None:
+    for point in _URBAN_POINTS:
+        result = run(**point)
+        lag, k = _urban_decimal(point)
+        assert_within(
+            result.real("lag_time_h"),
+            float(lag),
+            rel=1e-13,
+            reason="float64 powers and products against eq. 6.26 in decimal arithmetic "
+            "at 50 digits: a few units in the last place of each factor, the "
+            "constants one rounding from their decimal values",
+        )
+        assert_within(
+            result.real("k_min"),
+            float(k * 60),
+            rel=1e-13,
+            reason="eq. 6.27 likewise, and the exact 60 min/h",
+        )
+        assert_within(
+            result.real("n"),
+            float(lag / k),
+            rel=1e-13,
+            reason="eq. 6.28, the quotient of the two above",
+        )
+
+
+def _urban_source(locator: str) -> Source:
+    return _kzgw(f"eqs. 6.26-6.28, p. 107{locator}; the same in Sikorska et al. 2012")
+
+
+def _urban_constant(name: str, value: float, unit: str) -> Constant:
+    return Constant(
+        name=name,
+        value=value,
+        unit=unit,
+        symbol=f"{value:g}",
+        source=_urban_source("; Sikorska et al. (2012), Table 1, p. 1226"),
+    )
+
+
+URBAN: Final = FormulaSpec(
+    name="nash_urban_regression",
+    title="Nash's n and K of an urbanized watershed by the regression of Rao, Delleur "
+    "and Sarma (1972)",
+    function="hydrolog.runoff.nash_iuh.urban_regression_parameters",
+    family="empirical",
+    equation=(
+        "LAG = 1.28 * A**0.46 * (1 + U)**-1.66 * H**-0.27 * D**0.37 [h]; k = 0.56 * "
+        "A**0.39 * (1 + U)**-0.62 * H**-0.11 * D**0.22 [h]; N = LAG / k"
+    ),
+    latex=(
+        r"LAG = 1.28\,A^{0.46}(1+U)^{-1.66}H^{-0.27}D^{0.37},\quad k = 0.56\,A^{0.39}"
+        r"(1+U)^{-0.62}H^{-0.11}D^{0.22},\quad N = \frac{LAG}{k}"
+    ),
+    variables=(
+        Variable(
+            name="area_km2",
+            symbol="A",
+            unit="km2",
+            description="Area of the watershed.",
+            physical=Range(
+                low=0.0,
+                low_inclusive=False,
+                test_high=1.49e8,
+                test_reason="the land area of the Earth, about 149 million km2",
+            ),
+            applicability=Range(
+                low=0.0,
+                high=52.0,
+                source=_kzgw(
+                    "p. 107: the relations for urbanized watersheds of up to 52 km2"
+                ),
+            ),
+            typical=Range(
+                low=1.3,
+                high=52.0,
+                source=Source(
+                    citation=f"{_KZGW_CITATION}; {_SIKORSKA_CITATION}; Hydrolog's "
+                    "catalog example of uh nash (urban regression)",
+                    locator="KZGW p. 107 (up to 52 km2); Sikorska et al. p. 1227 (the "
+                    "Służew Creek, 26.9 km2); src/hydrolog/catalog/groups/uh.py "
+                    "(1.3 km2)",
+                    url=_KZGW_URL,
+                ),
+            ),
+        ),
+        Variable(
+            name="effective_precip_mm",
+            symbol="H",
+            unit="mm",
+            description="Depth of the effective (excess) rainfall of the storm.",
+            physical=Range(
+                low=0.0,
+                low_inclusive=False,
+                test_high=1825.0,
+                test_reason="the world's largest daily rainfall, 1,825 mm at Foc-Foc, "
+                "La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate "
+                "Extremes)",
+            ),
+            applicability="unstated",
+            typical=Range(
+                low=1.0,
+                high=100.0,
+                source=Source(
+                    citation=f"{_KZGW_CITATION}; Hydrolog's catalog example of uh nash",
+                    locator="KZGW Ex. 6.4, p. 109: effective depths of steps of 1.4 to "
+                    "2.1 mm; Ex. 6.1, p. 93: 15.3 mm in an hour; "
+                    "the catalog's 1.305 mm",
+                    url=_KZGW_URL,
+                ),
+            ),
+        ),
+        Variable(
+            name="duration_h",
+            symbol="D",
+            unit="h",
+            description="Duration of the effective rainfall.",
+            physical=Range(
+                low=0.0,
+                low_inclusive=False,
+                test_high=72.0,
+                test_reason="72 h, the longest duration of the PMAXTP tables",
+            ),
+            applicability="unstated",
+            typical=Range(
+                low=0.167,
+                high=24.0,
+                source=Source(
+                    citation=f"{_KZGW_CITATION}; Hydrolog's catalog example of uh nash",
+                    locator="KZGW ch. II.3, p. 25: a daily design storm split into "
+                    "hours; the catalog's 10 min (0.167 h)",
+                    url=_KZGW_URL,
+                ),
+            ),
+        ),
+        Variable(
+            name="urban_fraction",
+            symbol="U",
+            unit="-",
+            description="Fraction of impervious area of the watershed.",
+            physical=Range(low=0.0, high=1.0, high_inclusive=False),
+            applicability=Range(
+                low=0.05,
+                high=1.0,
+                source=_kzgw(
+                    "p. 102 (zlewnia zurbanizowana: more than 5 % impervious) and p. "
+                    "107 (the relations for urbanized watersheds)"
+                ),
+            ),
+            typical=Range(
+                low=0.05,
+                high=0.32,
+                source=Source(
+                    citation=f"{_SIKORSKA_CITATION}; Hydrolog's catalog example",
+                    locator="p. 1227: 32 % impervious in the Służew Creek; the "
+                    "catalog's 0.05",
+                    url=_SIKORSKA_URL,
+                ),
+            ),
+        ),
+    ),
+    outputs=(
+        Output(
+            name="lag_time_h",
+            unit="h",
+            symbol="LAG",
+            description="Lag time of the instantaneous unit hydrograph, N K.",
+            physical=Range(low=0.0),
+        ),
+        Output(
+            name="n",
+            unit="-",
+            symbol="N",
+            description="Number of reservoirs of Nash's cascade.",
+            physical=Range(low=0.0),
+        ),
+        Output(
+            name="k_min",
+            unit="min",
+            symbol="k",
+            description="Storage constant of each reservoir.",
+            physical=Range(low=0.0),
+        ),
+    ),
+    sources=(
+        _urban_source(" (U the fraction of impervious area, dimensionless)"),
+        _sikorska(
+            "Table 1, p. 1226: the same equations, U the fraction of the impervious "
+            "area, Lag and k in h"
+        ),
+        Source(
+            citation="Rao, A.R., Delleur, J.W. and Sarma, B.S.P. (1972). Conceptual "
+            "hydrologic models for urbanizing basins. Journal of the Hydraulics "
+            "Division, ASCE 98(HY7), 1205-1220",
+            access="author-provided",
+        ),
+    ),
+    constants=(
+        _urban_constant("lag_coefficient", 1.28, "h km^-0.92 mm^0.27 h^-0.37"),
+        _urban_constant("lag_area_exponent", 0.46, "-"),
+        _urban_constant("lag_urban_exponent", -1.66, "-"),
+        _urban_constant("lag_depth_exponent", -0.27, "-"),
+        _urban_constant("lag_duration_exponent", 0.37, "-"),
+        _urban_constant("k_coefficient", 0.56, "h km^-0.78 mm^0.11 h^-0.22"),
+        _urban_constant("k_area_exponent", 0.39, "-"),
+        _urban_constant("k_urban_exponent", -0.62, "-"),
+        _urban_constant("k_depth_exponent", -0.11, "-"),
+        _urban_constant("k_duration_exponent", 0.22, "-"),
+    ),
+    properties=Properties(
+        units="homogeneous",
+        monotonic={
+            "area_km2": 1,
+            "effective_precip_mm": -1,
+            "duration_h": 1,
+            "urban_fraction": -1,
+        },
+        scalings=(
+            Scaling(
+                name="area",
+                inputs={"area_km2": 1},
+                outputs={"lag_time_h": 0.46, "k_min": 0.39, "n": 0.07},
+                tolerance=Tolerance(
+                    rel=1e-14,
+                    reason="a product of powers: doubling A multiplies LAG by 2^0.46 "
+                    "and k by 2^0.39 but for a few units in the last place of the "
+                    "powers",
+                ),
+            ),
+            Scaling(
+                name="rainfall",
+                inputs={"effective_precip_mm": 1, "duration_h": 1},
+                outputs={"lag_time_h": 0.1, "k_min": 0.11, "n": -0.01},
+                tolerance=Tolerance(
+                    rel=1e-14,
+                    reason="doubling H and D multiplies LAG by 2^(0.37 - 0.27) and k "
+                    "by 2^(0.22 - 0.11) but for a few units in the last place",
+                ),
+            ),
+        ),
+        limits=(
+            Limit(
+                name="decimal_equations",
+                text="LAG, k and N equal eqs. 6.26-6.28 evaluated in decimal "
+                "arithmetic at 50 digits",
+                check=_urban_oracle,
+            ),
+        ),
+    ),
+    validation=(
+        "Rao et al. (1972) fitted the relations to storms on urbanizing watersheds "
+        "near "
+        "Indianapolis (as KZGW and Sikorska et al. 2012 report them, without error "
+        "statistics); KZGW (2017, p. 107) recommends them only where the parameters "
+        "cannot be fitted to measured rainfall and runoff"
+    ),
+    formula_version=1,
+    status="oracle only",
+    conventions=(
+        (
+            "A in km2, H in mm, D in h, U dimensionless; LAG and k in h, K returned in "
+            "min by the exact 60 min/h: the constants 1.28 and 0.56 hold for these "
+            "units only (KZGW 2017, p. 107)"
+        ),
+        (
+            "U is the fraction of impervious area (KZGW 2017, p. 107; Sikorska et al. "
+            "2012, Table 1), not the share of built-up land"
+        ),
+        (
+            "a product of powers of A, H and D: the scalings state it, and the "
+            "constants carry the units (the property is not dimensional homogeneity)"
+        ),
+        "H and D are those of the storm: the parameters change with every storm",
+    ),
+    assumptions=(
+        (
+            "urbanized watersheds of up to 52 km2 whose parameters cannot be fitted to "
+            "measured rainfall and runoff (KZGW 2017, p. 107)"
+        ),
+    ),
+    traps={
+        "singular_at_bound": "range cases effective_precip_mm-physical_low_* and "
+        "duration_h-physical_low_*: H^-0.27 grows without bound as H tends to 0 and "
+        "stays finite at the smallest positive float",
+    },
+    oracles=(
+        Oracle(
+            kind="exact",
+            description="LAG, k and N of eqs. 6.26-6.28 with the decimal constants, "
+            "evaluated with the decimal module at 50 digits",
+            test="tests/unit/test_formulas_lutz.py (limit decimal_equations of "
+            "test_urban_limits_and_oracles)",
+        ),
+    ),
+    base={"urban_fraction": 0.2},
+)
+
+
+@dataclass(frozen=True)
+class UrbanEstimate(JsonResultMixin):
+    """Nash's n and K of an urbanized watershed, spec nash_urban_regression.
+
+    Attributes
+    ----------
+    lag_time_h : float
+        Lag time of the instantaneous unit hydrograph, LAG [h].
+    n : float
+        Number of reservoirs, N [-].
+    k_min : float
+        Storage constant of each reservoir, K [min].
+    """
+
+    lag_time_h: float
+    n: float
+    k_min: float
+
+
+def urban_regression_parameters(
+    area_km2: float,
+    effective_precip_mm: float,
+    duration_h: float,
+    urban_fraction: float,
+) -> UrbanEstimate:
+    """Return Nash's n and K of an urbanized watershed, spec nash_urban_regression.
+
+    The first input is the area of the watershed in square kilometres (its name
+    carries the unit, so the standard's check of this docstring, which allows no
+    digit, keeps it out of the list below).
+
+    Parameters
+    ----------
+    effective_precip_mm : float
+        Depth of the effective rainfall of the storm [mm].
+    duration_h : float
+        Duration of the effective rainfall [h].
+    urban_fraction : float
+        Fraction of impervious area of the watershed.
+
+    Returns
+    -------
+    UrbanEstimate
+        LAG, N and K.
+
+    Raises
+    ------
+    InvalidParameterError
+        If an input is refused by the spec.
+
+    Warns
+    -----
+    OutsideTypicalRange
+        If the area or the impervious fraction is outside the watersheds the
+        relations are for.
+    """
+    x = checked_inputs(
+        URBAN,
+        area_km2=area_km2,
+        effective_precip_mm=effective_precip_mm,
+        duration_h=duration_h,
+        urban_fraction=urban_fraction,
+    )
+    out = checked_outputs(URBAN, _urban(x))
+    return UrbanEstimate(
+        lag_time_h=out.real("lag_time_h"), n=out.real("n"), k_min=out.real("k_min")
+    )
+
+
+SPECS: Final[tuple[FormulaSpec, ...]] = (LUTZ, URBAN)
 """The specs of the module, in the order of ``docs/FORMULAS.md``."""
 
 

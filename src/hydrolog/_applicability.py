@@ -213,6 +213,34 @@ APPLICABILITY: Final[tuple[Applicability, ...]] = (
         ),
     ),
     Applicability(
+        method="nash_urban_regression",
+        parameter="area_km2",
+        minimum=0.0,
+        maximum=52.0,
+        unit="km2",
+        source=(
+            "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów "
+            "maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni"
+            " kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja "
+            "ujednolicona), p. 107: the relations for urbanized watersheds of up to"
+            " 52 km2"
+        ),
+    ),
+    Applicability(
+        method="nash_urban_regression",
+        parameter="urban_fraction",
+        minimum=0.05,
+        maximum=1.0,
+        unit="-",
+        source=(
+            "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów "
+            "maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni"
+            " kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja "
+            "ujednolicona), p. 102 (zlewnia zurbanizowana: more than 5 % "
+            "impervious) and p. 107 (the relations for urbanized watersheds)"
+        ),
+    ),
+    Applicability(
         method="scs",
         parameter="area_km2",
         minimum=0.0,
