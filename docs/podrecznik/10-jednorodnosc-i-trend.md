@@ -362,7 +362,6 @@ tego roku nie mają.
 - Hirsch R.M., Slack J.R., Smith R.A. (1982) Techniques of trend analysis for monthly water quality data. Water
   Resources Research 18(1), 107–121; wersja otwarta: USGS Open-File Report 81-488 (1981).
   https://pubs.usgs.gov/of/1981/0488/report.pdf
-- Hussain M.M. pyHomogeneity: pakiet Pythona testów jednorodności. https://github.com/mmhs013/pyHomogeneity
 - Hydrolog, decyzje architektoniczne: ADR-0022 (testy jednorodności), ADR-0033 (wartości równe w teście
   Manna–Kendalla), ADR-0049 (dokładne $p$ małych prób), ADR-0063 (statystyki stacji według specyfikacji), katalog
   `docs/decisions/`.

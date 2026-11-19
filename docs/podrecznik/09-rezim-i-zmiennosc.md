@@ -193,8 +193,8 @@ razem ze współczynnikami Pardégo.
 maksimum z 30 grudnia i maksimum z 2 stycznia dają „średni termin” na początku lipca. Statystyka kołowa (*circular
 statistics*) zamienia każdą datę na kąt na okręgu roku i uśrednia wektory jednostkowe. Kierunek wektora średniego
 wskazuje średni termin, a jego długość $r$ – koncentrację (skupienie) terminów: od zera, gdy terminy rozkładają się
-równomiernie w roku, do jedności, gdy wszystkie przypadają na ten sam dzień (Bayliss i Jones 1993; Burn 1997; Hall i
-Blöschl 2018).
+równomiernie w roku, do jedności, gdy wszystkie przypadają na ten sam dzień (Bayliss i Jones 1993; Burn 1997; Robson
+i Reed 1999; Hall i Blöschl 2018).
 
 <!-- spec:circular_mean -->
 <!-- /spec:circular_mean -->
@@ -295,7 +295,7 @@ Wynik dla całego okresu (pole `period`, 10 593 dni; 29 lat, uwaga `short_refer
 | Dzień maksimum (roku hydrologicznego) | 258,9 (około 17 lipca) | 76,7 |
 | Udział w wariancji | 0,782 | 0,00003 |
 
-Średnia okresu wynosi 9,04 °C (lata hydrologiczne 1992–2020, więc nieco inny okres niż norma 1991–2020 z rozdziału
+Średnia okresu wynosi 9,04 °C (lata hydrologiczne 1992–2020, więc nieco inny okres niż norma 1991–2020 z rozdziału
 11), a obie harmoniki wyjaśniają razem 78,2% zmienności temperatur dobowych ($R^2 = 0{,}782$). Cykl jest prawie
 sinusoidą: druga harmonika ma pomijalną amplitudę, więc jej termin nic nie znaczy. Maksimum cyklu przypada niespełna
 cztery tygodnie po przesileniu letnim – to skutek bezwładności cieplnej podłoża i atmosfery. Pozostałe
@@ -319,7 +319,7 @@ opisu rytmu odpływu służą współczynniki Pardégo (p. 9.2).
 okresowych pomiarów hydrometrycznych. Przepływy dobowe IMGW-PIB oblicza ze stanów wody za pomocą krzywej natężenia
 przepływu (krzywej przepływu, krzywej konsumcyjnej; *rating curve, stage–discharge relation*), a gdy krzywa się
 zmienia, poprawia przepływy archiwalne (IMGW-PIB, Rocznik Hydrologiczny). Dla stabilnego profilu kontrolnego
-zależność ta jest bliska funkcji potęgowej (WMO 2010, równ. 1.4).
+zależność ta jest bliska funkcji potęgowej (WMO 2010, równ. 1.4; ISO 1100-2:2010).
 
 <!-- spec:rating_curve -->
 <!-- /spec:rating_curve -->

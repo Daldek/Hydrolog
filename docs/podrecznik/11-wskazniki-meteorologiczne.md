@@ -151,8 +151,8 @@ lat kalendarzowych i hydrologicznych.
 
 ### Przykład: lata suche i wilgotne w Warszawie
 
-Procent normy i klasy podaje polecenie `meteo spi` (pola `years[]` i `months[]`; same sumy – `meteo precipitation
---index sums`):
+Procent normy i klasy podaje polecenie `meteo spi` (pola `years[]` i `months[]`; same sumy podaje także
+`meteo precipitation --index sums`):
 
 ```bash
 hydrolog meteo spi --input-file tests/fixtures/warszawa_okecie_1991_2020.csv
@@ -461,7 +461,7 @@ samej nazwie” – Kossowska-Cezak 2014). Najważniejsza różnica dotyczy dni 
 - *Słownik meteorologiczny* (2003), IMGW-PIB (normy 1991–2020, serwis agrometeorologiczny): **dzień przymrozkowy** to
   dzień z przymrozkiem, w którym temperatura maksymalna przekracza próg dnia mroźnego, czyli dzień z odwilżą w ciągu
   doby. Dni przymrozkowe i mroźne są wtedy rozłączne. W Hydrologu to pole `freeze_thaw_days`.
-- *Atlas klimatu Polski* (2005) i KLIMADA 2.0 (2020): dniem przymrozkowym nazywa się każdy dzień z przymrozkiem (FD
+- *Atlas klimatu Polski* (2005) i KLIMADA 2.0 (Strużewska i in. 2020): dniem przymrozkowym nazywa się każdy dzień z przymrozkiem (FD
   ETCCDI). W Hydrologu to pole `frost_days`, w polskich etykietach „dni z przymrozkiem” (ADR-0044).
 
 Roczniki IMGW-PIB liczą dni z nierównościami nieostrymi (temperatura „nie wyższa niż” albo „nie niższa niż” próg).
@@ -534,8 +534,8 @@ oraz pierwszy i ostatni dzień z pokrywą opisują zimę i zasoby wody w śniegu
 <!-- spec:snow_cover_day -->
 <!-- /spec:snow_cover_day -->
 
-**Zima.** Hydrolog liczy zimy jako sezony od lata do lata, nazwane rokiem, w którym się kończą, tak jak Urban (2015)
-za Falarz; dzięki temu śnieg z października należy do zimy, którą zaczyna. W literaturze spotyka się też sezony od
+**Zima.** Hydrolog liczy zimy jako sezony od lata do lata, nazwane rokiem, w którym się kończą, tak jak Urban (2015);
+dzięki temu śnieg z października należy do zimy, którą zaczyna. W literaturze spotyka się też sezony od
 października do maja, od listopada do marca i od grudnia do lutego, więc porównując wyniki, sprawdź, jaki sezon
 przyjęto. Normy IMGW-PIB liczą dni z pokrywą w latach kalendarzowych.
 
@@ -623,6 +623,8 @@ współczynnik sezonu w latach 1991–2020 wynosi 1,15 (`period.mean_season_coef
 
 Źródła oznaczone „niedostępne” nie są w otwartym dostępie; ich treść znamy z cytowań w źródłach otwartych.
 
+- Atlas klimatu Polski (2005), red. H. Lorenc. IMGW, Warszawa. Nie otwierano; definicję dnia przymrozkowego podaje
+  ADR-0044.
 - Bronaugh D. (2020) climdex.pcic 1.1-11: PCIC implementation of Climdex routines, pakiet R. https://cran.r-project.org/package=climdex.pcic
 - Chmist-Sikorska J., Kępińska-Kasprzak M., Struzik P. (2022) Agricultural drought assessment on the base of
   Hydro-thermal Coefficient of Selyaninov in Poland. Italian Journal of Agrometeorology (1), 3–12.
@@ -656,6 +658,8 @@ współczynnik sezonu w latach 1991–2020 wynosi 1,15 (`period.mean_season_coef
   https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf
 - Kossowska-Cezak U. (2014) Zmiany wieloletnie liczby termicznych dni charakterystycznych w Warszawie (1951–2010).
   Prace Geograficzne 136, 9–30.
+- Łabędzki L. (2006): klasy SPI stosowane w Polsce; cytowane za Gąsiorek i Musiał (2011, tab. 2), pracy nie
+  otwierano.
 - Łabędzki L., Bąk B. (2004) Standaryzowany klimatyczny bilans wodny jako wskaźnik suszy. Acta Agrophysica 3(1),
   117–124.
 - McKee T.B., Doesken N.J., Kleist J. (1993) The relationship of drought frequency and duration to time scales. 8th
@@ -666,16 +670,19 @@ współczynnik sezonu w latach 1991–2020 wynosi 1,15 (`period.mean_season_coef
   for drought intensity assessment. Meteorological Applications 16(3), 381–389; wersja otwarta arXiv:1509.04808.
 - Oliver J.E. (1980) Monthly precipitation distribution: a comparative index. Professional Geographer 32(3), 300–309.
   Niedostępne.
-- Selyaninov G.T. (1928) O sel'skokhozyaystvennoy otsenke klimata. Trudy po sel'skokhozyaystvennoy meteorologii 20,
-  165–177. Niedostępne.
+- Selyaninov (Sielianinow) G.T. (1928) O sel'skokhozyaystvennoy otsenke klimata. Trudy po sel'skokhozyaystvennoy
+  meteorologii 20, 165–177. Niedostępne.
 - Skowera B. (2014) Zmiany warunków hydrotermicznych na obszarze Polski (1971–2010). Fragmenta Agronomica 31(2), 74–87.
 - Skowera B., Puła J. (2004) Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach
   1971–2000. Acta Agrophysica 3(1), 171–177.
+- Słownik meteorologiczny (2003). Nie otwierano; cytowany za Kossowska-Cezak (2014, s. 14).
 - Strużewska J. i in. (2020) Raport skrócony: Zmiany temperatury i opadu na obszarze Polski w warunkach przyszłego
   klimatu do roku 2100 (KLIMADA 2.0). IOŚ-PIB, Warszawa.
 - Sumner G., Homar V., Ramis C. (2001) Precipitation seasonality in eastern and southern coastal Spain. International
   Journal of Climatology 21, 219–247.
 - Thom H.C.S. (1958) A note on the gamma distribution. Monthly Weather Review 86(4), 117. Niedostępne.
+- Tomaszewska (1994): klasy miesięcznego opadu względnego; cytowane za Gąsiorek i Musiał (2011, tab. 1), pracy nie
+  otwierano.
 - Urban G. (2015) Zaleganie pokrywy śnieżnej i jego zmienność w polskiej części Sudetów i na ich przedpolu. Przegląd
   Geograficzny 87(3), 497–516.
 - Walsh R.P.D., Lawler D.M. (1981) Rainfall seasonality: description, spatial patterns and change through time.
