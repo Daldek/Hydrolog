@@ -161,11 +161,11 @@ Te same cztery wywołania `stats regime` co w p. 9.2 (pole `regime_type`):
 | 1951–2025 | IV | 1,563 | VI | 1,004 | 4 – niwalno-pluwialny |
 
 Wynik dla lat 1971–2015 zgadza się z oceną Perza (2019, s. 79), który zalicza Nysę Kłodzką poniżej Międzylesia w tym
-okresie do typu niwalno-pluwialnego. Czerwcowy współczynnik (1,00013) przekracza jednak próg wzrostu letniego zaledwie
-o 0,00013 – znacznie mniej, niż wynosi dokładność przepływów dobowych (trzy cyfry znaczące). Przy minimalnie mniejszym przepływie
-czerwca typ byłby niwalny średnio wykształcony, jak w latach 1991–2020. Zmiana typu między okresami nie dowodzi więc
-sama zmiany reżimu: w tabeli z p. 9.2 widać, że kształt rocznego rytmu zmieniał się stopniowo, a typ przeskoczył,
-gdy jeden współczynnik przekroczył próg.
+okresie do typu niwalno-pluwialnego. Czerwcowy współczynnik (1,00013) przekracza jednak próg wzrostu letniego
+zaledwie o 0,00013 – znacznie mniej, niż wynosi dokładność przepływów dobowych (trzy cyfry znaczące). Przy minimalnie
+mniejszym przepływie czerwca typ byłby niwalny średnio wykształcony, jak w latach 1991–2020. Zmiana typu między
+okresami nie dowodzi więc sama zmiany reżimu: w tabeli z p. 9.2 widać, że kształt rocznego rytmu zmieniał się
+stopniowo, a typ przeskoczył, gdy jeden współczynnik przekroczył próg.
 
 ## 9.4. Wskaźnik sezonowości Walsha i Lawlera
 
@@ -217,8 +217,8 @@ według półroczy roku hydrologicznego:
 **Założenia i zakres.** Jedno ekstremum na rok i niezależne zdarzenia. Przy małym $r$ średni termin traci sens:
 gdy wezbrania mają dwie pory, średni kierunek może wskazać miesiąc, w którym wezbrań prawie nie ma. Hall i Blöschl
 (2018) analizują tylko stacje, na których test Rayleigha odrzuca równomierny rozkład terminów; Hydrolog tego testu nie
-liczy. Maksimum z przepływów dobowych (średnich z doby) jest niższe od maksimum chwilowego IMGW-PIB i może wystąpić
-innego dnia (rozdział 8).
+liczy. Maksimum z przepływów dobowych (średnich z doby) jest zwykle niższe od maksimum IMGW-PIB wyznaczonego ze
+wszystkich obserwacji i może wystąpić innego dnia (rozdział 8).
 
 **Typowe błędy.** Średnia arytmetyczna numerów dni. Podawanie średniego terminu bez koncentracji $r$. Wybieranie
 maksimów w latach kalendarzowych, gdy wezbrania zimowe przechodzą przez przełom roku.
@@ -295,9 +295,10 @@ Wynik dla całego okresu (pole `period`, 10 593 dni; 29 lat, uwaga `short_refer
 | Dzień maksimum (roku hydrologicznego) | 258,9 (około 17 lipca) | 76,7 |
 | Udział w wariancji | 0,782 | 0,00003 |
 
-Średnia okresu wynosi 9,04 °C, a obie harmoniki wyjaśniają razem 78,2% zmienności temperatur dobowych ($R^2 = 0{,}782$).
-Cykl jest prawie sinusoidą: druga harmonika ma pomijalną amplitudę, więc jej termin nic nie znaczy. Maksimum cyklu
-przypada mniej więcej cztery tygodnie po przesileniu letnim – to bezwładność cieplna podłoża i atmosfery. Pozostałe
+Średnia okresu wynosi 9,04 °C (lata hydrologiczne 1992–2020, więc nieco inny okres niż norma 1991–2020 z rozdziału
+11), a obie harmoniki wyjaśniają razem 78,2% zmienności temperatur dobowych ($R^2 = 0{,}782$). Cykl jest prawie
+sinusoidą: druga harmonika ma pomijalną amplitudę, więc jej termin nic nie znaczy. Maksimum cyklu przypada niespełna
+cztery tygodnie po przesileniu letnim – to skutek bezwładności cieplnej podłoża i atmosfery. Pozostałe
 22% zmienności to zmiany pogody z dnia na dzień, których cykl roczny nie opisuje. Pojedynczy rok jest mniej regularny:
 dla roku hydrologicznego 1992 (pierwszy element listy `years`) amplituda pierwszej harmoniki wynosi 10,99 °C, drugiej
 1,59 °C, a $R^2 = 0{,}862$.
