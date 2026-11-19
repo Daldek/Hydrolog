@@ -27,6 +27,11 @@
 | [Baseflow of a daily series by the Lyne and Hollick filter (standard approach of Ladson et al. 2013)](#lyne_hollick) | `hydrolog.statistics.baseflow.lyne_hollick_filter` | referenced | 1 | not measured |
 | [Baseflow index: the volume of baseflow over the volume of flow](#baseflow_index) | `hydrolog.statistics.baseflow.baseflow_index` | referenced | 1 | not measured |
 | [Recession constant of the total flow: the median daily ratio of runs of falling flow](#recession_constant) | `hydrolog.statistics.baseflow.recession_ratio` | oracle only | 1 | not measured |
+| [Pardé's coefficients: the mean discharge of each month over the mean annual discharge](#parde_coefficients) | `hydrolog.statistics.regime.parde_coefficients` | referenced | 1 | not measured |
+| [The March-April share of the annual volume of the mean monthly flows](#spring_share) | `hydrolog.statistics.regime.spring_share` | oracle only | 1 | not measured |
+| [Dynowska's type of a Polish river regime from Pardé's coefficients](#dynowska_regime_type) | `hydrolog.statistics.regime.dynowska_regime_type` | referenced | 1 | not measured |
+| [Mean direction and concentration of times on the circles of their years (Bayliss and Jones)](#circular_mean) | `hydrolog.statistics.seasonality.circular_mean` | oracle only | 1 | not measured |
+| [Least squares fit of the mean and the harmonics of the annual cycle](#harmonic_fit) | `hydrolog.statistics.harmonics.harmonic_fit` | oracle only | 1 | not measured |
 | [Standard deviation of a sample, with the divisor n - 1](#sample_standard_deviation) | `hydrolog.statistics.characteristic.sample_standard_deviation` | referenced | 1 | not measured |
 | [Coefficient of variation of a sample of a quantity with a true zero](#coefficient_of_variation) | `hydrolog.statistics.characteristic.coefficient_of_variation` | oracle only | 1 | not measured |
 | [Fisher-Pearson coefficient of skewness g1 of a sample](#fisher_pearson_skewness) | `hydrolog.statistics.characteristic.fisher_pearson_skewness` | oracle only | 1 | not measured |
@@ -1724,6 +1729,415 @@ None.
 
 **Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
 
+<a id="parde_coefficients"></a>
+### Pardé's coefficients: the mean discharge of each month over the mean annual discharge
+
+`hydrolog.statistics.regime.parde_coefficients` · family `index` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+K_m = \frac{\bar{Q}_m}{\bar{Q}},\quad \bar{Q}_m = \frac{1}{n_m}\sum_{d \in m} Q_d,\quad \bar{Q} = \frac{1}{N}\sum_{d} Q_d
+$$
+
+Plain text: `K_m = Qbar_m / Qbar, Qbar_m the mean of the days with a value of calendar month m over the period, Qbar the mean of all days with a value`
+
+**Sources**
+
+- Bundesanstalt für Wasserbau, BAWiki glossary: Parde coefficient, the quotient of the long-term mean monthly discharge and the long-term mean annual runoff (open) <http://wiki.baw.de/en/index.php/Parde_coefficient>
+- Wrzesiński, D. (2017). Typologia reżimu odpływu rzek w Polsce w podejściu nadzorowanym i nienadzorowanym. Badania Fizjograficzne, Seria A, R. VIII (A68), 253-264. doi:10.14746/bfg.2017.8.19, p. 254: Dynowska's (1997) types read from the monthly flow coefficients W (miesięczne współczynniki przepływu); Table 1, p. 260, in % of the mean annual flow (open) <https://repozytorium.amu.edu.pl/server/api/core/bitstreams/2a303457-aae6-4476-a766-985a3a4ac0b6/content>
+- Pardé, M. (1933). Fleuves et rivières. Armand Colin, Paris, the monthly coefficient of discharge; not opened (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $Q_d$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (a million m3/s, about five times the mean discharge of the Amazon (about 2.1e5 m3/s), the largest of any river) | unstated | [1.24, 522.0]: IMGW-PIB, public hydrological data: the monthly characteristics of station 150160180 Kłodzko on the Nysa Kłodzka, hydrological years 1971-2015 but 1997 (tests/fixtures/imgw_klodzko/imgw_150160180_mies_1971_2015.csv), the smallest monthly minimum 1.24 m3/s and the largest monthly maximum 522 m3/s of discharge, which bound its daily means |
+| `month` | $m_d$ | - | real_array | [1.0, 12.0] | unstated | [1.0, 12.0]: IMGW-PIB, MIES_publiczne_format.txt, the format of the public monthly files, the calendar month of a row, 1 to 12 |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `same_length` | physical | one month per day | Bundesanstalt für Wasserbau, BAWiki glossary: Parde coefficient, the quotient of the long-term mean monthly discharge and the long-term mean annual runoff |
+| `whole_months` | physical | each month is a whole number, a calendar month 1 to 12 | Bundesanstalt für Wasserbau, BAWiki glossary: Parde coefficient, the quotient of the long-term mean monthly discharge and the long-term mean annual runoff |
+| `every_month_has_a_value` | precondition | every calendar month has a day with a value: twelve means exist | Bundesanstalt für Wasserbau, BAWiki glossary: Parde coefficient, the quotient of the long-term mean monthly discharge and the long-term mean annual runoff |
+| `positive_mean` | precondition | 0 < Qbar < inf: some day has a positive discharge, and float64 holds the mean and its sum | Bundesanstalt für Wasserbau, BAWiki glossary: Parde coefficient, the quotient of the long-term mean monthly discharge and the long-term mean annual runoff |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `monthly_mean` | m3/s | real_array | [0.0, inf) | 4 ulp of the bound |
+| `annual_mean` | m3/s | real | (0.0, inf) | 4 ulp of the bound |
+| `parde` | - | real_array | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- Qbar_m the mean of the days with a value of calendar month m over the whole period (the month's days of every year together), Qbar the mean of all days with a value, as IMGW-PIB's monthly and annual means of a year: the twelve coefficients weighted by the days of their months average one and sum to 12 only when every month has as many days (a gapless year: about 11.96 for a strong spring flood); the mean of the twelve monthly means would make them sum to 12
+- a day without a value (NaN) counts in neither mean; with gaps gathered in some months Qbar leans towards the better observed ones
+- the input months are calendar months (January = 1), the outputs run from November to October, the months of the hydrological year
+- discharge in m3/s or any unit (the coefficients have none); Wrzesiński's tables print them in % of the mean annual flow
+
+**Assumptions**
+
+- the period's days represent its months: a period of a few years describes those years, not the climate (the regime of Polish rivers is read from 30 to 40 years, Wrzesiński 2017)
+
+**Validation:** none: Pardé's coefficients describe the mean annual cycle of discharge; their sources compare them with no observations
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: Qbar -> 0 divides every coefficient: the precondition positive_mean refuses a series without a positive day and a mean that underflows (test_a_tiny_or_vanishing_mean)
+- `gap_propagation`: type case values-nan_element and test_gaps_are_left_out_of_both_means: a NaN day is left out, never propagated
+- `many_small_terms`: test_a_century_of_days_keeps_the_exact_means: 36,525 days of math.fsum against exact fractions
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `values` increasing
+- scaling `discharge_in_another_unit`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`monthly_mean` e = 1.0, `annual_mean` e = 1.0)
+- limit `constant_discharge`: a constant discharge gives every coefficient one
+- limit `exact_rational`: the means and coefficients of the float inputs in exact rational arithmetic
+- conservation `day_weighted_mean_of_one`: the coefficients weighted by the days with a value of their months average one, sum(n_m K_m) = N; they sum to twelve only when every month has as many days
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/regime-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the monthly and annual means and the coefficients of the float inputs in exact rational arithmetic (fractions) (`tests/unit/test_formulas_regime.py (limit exact_rational, trap many_small_terms)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="spring_share"></a>
+### The March-April share of the annual volume of the mean monthly flows
+
+`hydrolog.statistics.regime.spring_share` · family `index` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+s = \frac{V_{III} + V_{IV}}{\sum_{m} V_m},\quad V_m = \bar{Q}_m\,d_m
+$$
+
+Plain text: `s = (V_III + V_IV) / sum(V_m) with V_m = Qbar_m * d_m, d_m the days of month m, February 28.25`
+
+**Sources**
+
+- Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063, point 1: spring_share, the March-April share of the annual volume, the monthly means times the days of the month (open)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `monthly_mean` | $\bar{Q}_m$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (a million m3/s, about five times the mean discharge of the Amazon (about 2.1e5 m3/s), the largest of any river) | unstated | [2.67, 58.9]: IMGW-PIB, public hydrological data: the monthly characteristics of station 150160180 Kłodzko on the Nysa Kłodzka, hydrological years 1971-2015 but 1997 (tests/fixtures/imgw_klodzko/imgw_150160180_mies_1971_2015.csv), the monthly means of discharge, 2.67 to 58.9 m3/s |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `positive_volume` | precondition | 0 < sum(V_m) < inf: some month has a positive mean, and float64 holds the volumes | Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063, point 1: spring_share, the March-April share of the annual volume, the monthly means times the days of the month |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `february_days` | $d_{II}$ | 113/4 | day | Hydrolog, ADR-0031 (2026), restated in ADR-0063, February of the mean year of 1901-2099, in which every fourth year is a leap year: 28 + 1/4 days, so the twelve months make 365.25 days; the other months have their days of a common year |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `spring_share` | - | real | [0.0, 1.0] | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the volumes are the long-term monthly means times the days of the month, February 28.25 days (the mean year of 365.25 days), not the days of the period's years
+- the inputs run from November to October, as the outputs of parde_coefficients; March and April are the fifth and sixth
+- the volumes in m3/s times days, a unit that cancels in the share
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: Hydrolog's descriptive index of the regime (ADR-0031)
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: sum(V_m) -> 0 divides the share: the precondition positive_volume refuses twelve zero means (constraint case positive_volume-violated); a single month of 1e-300 m3/s gives a finite share (limit exact_rational)
+- `gap_propagation`: type case monthly_mean-nan_element: a gap is refused, the twelve means need values
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `discharge_in_another_unit`: inputs times 2^e (`monthly_mean` e = 1.0) give outputs times 2^e (none)
+- limit `equal_months`: equal monthly means give the 61 days of March and April in the 365.25 of the mean year
+- limit `all_in_spring`: flow in March and April only gives a share of one
+- limit `exact_rational`: the share of the float inputs in exact rational arithmetic
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the share of the float inputs in exact rational arithmetic (fractions), February 113/4 days (`tests/unit/test_formulas_regime.py (limit exact_rational)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="dynowska_regime_type"></a>
+### Dynowska's type of a Polish river regime from Pardé's coefficients
+
+`hydrolog.statistics.regime.dynowska_regime_type` · family `classification` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+S = \max(K_{III}, K_{IV}),\ L = \max(K_{VI}, K_{VII}, K_{VIII});\ \text{type} = \begin{cases} 5 & L \ge 0.95\,S \\ 4 & L \ge 1.00 \\ 1 & S \le 1.30 \\ 2 & S \le 1.80 \\ 3 & \text{otherwise} \end{cases}
+$$
+
+Plain text: `S = max(K_III, K_IV), L = max(K_VI, K_VII, K_VIII); type 5 if L >= 0.95 S, else 4 if L >= 1.00, else 1 if S <= 1.30, 2 if S <= 1.80, 3 otherwise`
+
+**Sources**
+
+- Wrzesiński, D. (2017). Typologia reżimu odpływu rzek w Polsce w podejściu nadzorowanym i nienadzorowanym. Badania Fizjograficzne, Seria A, R. VIII (A68), 253-264. doi:10.14746/bfg.2017.8.19, p. 255: Dynowska's (1997) five types: the spring month's mean flow at most 130 % of the mean annual flow (1), 130-180 % (2), above 180 % (3); as a rule 130-180 % with a summer rise of at least 100 % (4); the summer month's mean flow higher than or nearly equal to the spring month's (5) (open) <https://repozytorium.amu.edu.pl/server/api/core/bitstreams/2a303457-aae6-4476-a766-985a3a4ac0b6/content>
+- Wrzesiński, D. (2018). Typologia reżimu odpływu rzek w Polsce w różnych fazach oscylacji północnoatlantyckiej. Badania Fizjograficzne, Seria A, 9 (A69), 249-261. doi:10.14746/bfg.2018.9.19, p. 250: the five types in the words of Wrzesiński (2017, p. 255); Table 1, pp. 253-254: the mean coefficients of each type, 516 gauges, 1971-2010 (open) <https://pressto.amu.edu.pl/index.php/bfg/article/download/24472/22684/50308>
+- Perz, A. (2019). Cechy reżimu odpływu rzek Kotliny Kłodzkiej. Badania Fizjograficzne, Seria A, 10 (A70), 65-83. doi:10.14746/bfg.2019.10.6, p. 79: Dynowska's criteria, 130-180 % and at least 100 % of the mean annual flow, the spring month March or April (marzec-kwiecień) (open) <https://pressto.amu.edu.pl/index.php/bfg/article/download/23873/22299/>
+- Dynowska, I. (1997). Reżim odpływu rzecznego. In: Atlas Rzeczypospolitej Polskiej. Główny Geodeta Kraju, Warszawa, the five types of the river regime; not opened: as Wrzesiński (2017, 2018) and Perz (2019) quote them (author-provided)
+- Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063, point 1: where the sources name no month and no number, the spring month is the larger of March and April, the summer month the largest of June to August and 'nearly equal' at least 0.95 of the spring coefficient (the mockup's REGIME_RULE) (open)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `parde` | $K_m$ | - | real_array | [0.0, inf), test bound high 30.0 (ten times the largest monthly coefficient of Polish rivers in Wrzesiński's (2017) Table 1, 2.819 (March, type 3), rounded up; a coefficient grows without a bound only through gaps) | unstated | [0.224, 2.819]: Wrzesiński, D. (2017). Typologia reżimu odpływu rzek w Polsce w podejściu nadzorowanym i nienadzorowanym. Badania Fizjograficzne, Seria A, R. VIII (A68), 253-264. doi:10.14746/bfg.2017.8.19, Table 1, p. 260: the smallest coefficient 22.4 % (February, type 5) and the largest 281.9 % (March, type 3) of 516 gauges, 1971-2010 |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `weakly_nival` | $S_1$ | 13/10 | - | Wrzesiński, D. (2017). Typologia reżimu odpływu rzek w Polsce w podejściu nadzorowanym i nienadzorowanym. Badania Fizjograficzne, Seria A, R. VIII (A68), 253-264. doi:10.14746/bfg.2017.8.19, p. 255: Dynowska's (1997) five types: the spring month's mean flow at most 130 % of the mean annual flow (1), 130-180 % (2), above 180 % (3); as a rule 130-180 % with a summer rise of at least 100 % (4); the summer month's mean flow higher than or nearly equal to the spring month's (5) |
+| `moderately_nival` | $S_2$ | 9/5 | - | Wrzesiński, D. (2017). Typologia reżimu odpływu rzek w Polsce w podejściu nadzorowanym i nienadzorowanym. Badania Fizjograficzne, Seria A, R. VIII (A68), 253-264. doi:10.14746/bfg.2017.8.19, p. 255: Dynowska's (1997) five types: the spring month's mean flow at most 130 % of the mean annual flow (1), 130-180 % (2), above 180 % (3); as a rule 130-180 % with a summer rise of at least 100 % (4); the summer month's mean flow higher than or nearly equal to the spring month's (5) |
+| `summer_rise` | $L_1$ | 1 | - | Wrzesiński, D. (2017). Typologia reżimu odpływu rzek w Polsce w podejściu nadzorowanym i nienadzorowanym. Badania Fizjograficzne, Seria A, R. VIII (A68), 253-264. doi:10.14746/bfg.2017.8.19, p. 255: Dynowska's (1997) five types: the spring month's mean flow at most 130 % of the mean annual flow (1), 130-180 % (2), above 180 % (3); as a rule 130-180 % with a summer rise of at least 100 % (4); the summer month's mean flow higher than or nearly equal to the spring month's (5) |
+| `nearly_equal` | $r$ | 19/20 | - | Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063, point 1: where the sources name no month and no number, the spring month is the larger of March and April, the summer month the largest of June to August and 'nearly equal' at least 0.95 of the spring coefficient (the mockup's REGIME_RULE) |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `code` | - | integer | [1.0, 5.0] | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the coefficients are Pardé's of the months November to October, as 1.30 for 130 % of the mean annual flow
+- the spring month is the larger of March and April (Perz 2019, p. 79), the summer month the largest of June to August (Hydrolog's reading); of equal coefficients the earlier month
+- the types are tested in the order 5, 4, then 1 to 3: 'higher than or nearly equal' reads as at least 0.95 of the spring coefficient (Hydrolog's reading, no source gives a number); the sources' 'as a rule 130-180 %' of types 4 and 5 is not tested
+- inclusive limits as the sources word them: 'at most 130 %' is type 1, 'above 180 %' type 3, so 180 % is type 2, 'at least 100 %' type 4; the limits are compared as the floats 1.3, 1.8 and 1.0, and summer with the float 0.95 times spring, which keeps every printed three-decimal tie inside its class
+
+**Assumptions**
+
+- the coefficients describe a long period, 30 to 40 years in the sources; the type of a few years or of coefficients near a limit is not robust: Kłodzko's June of 1971-2015 lies 0.05 % above 100 % (Perz's case)
+- Wrzesiński's two classifications of the same 516 gauges of 1971-2010 count 24 (2017) and 33 (2018) pluvio-nival rivers: the reading of 'nearly equal' is not settled in the sources either
+
+**Validation:** none: a typology; Wrzesiński (2017, 2018) classified 516 gauges of 1971-2010 and Perz (2019) the rivers of the Kłodzko basin by it, without a measure of agreement
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `class_limit`: limit class_limits: 1.30, 1.80, 1.00 and 0.95 of spring, each exactly and just beyond (math.nextafter, or the next printed thousandth)
+- `gap_propagation`: type case parde-nan_element: a gap is refused, the twelve coefficients need values
+
+**Properties (CMP-6.5)**
+
+- units: unit_specific
+- limit `class_limits`: a coefficient exactly at a limit of a class and just beyond it gives the class of the criteria's inclusive limit and the next one
+- limit `decision_table`: the type of three-decimal coefficients is that of the criteria applied to their printed decimals in exact fractions
+- symmetry `months_that_do_not_decide`: the coefficients of the months other than March, April and June to August leave the type as it is
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/regime-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the criteria applied to the printed decimals of the coefficients in exact fractions, 'nearly equal' as 20 L >= 19 S (`tests/unit/test_formulas_regime.py (limit decision_table)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="circular_mean"></a>
+### Mean direction and concentration of times on the circles of their years (Bayliss and Jones)
+
+`hydrolog.statistics.seasonality.circular_mean` · family `statistic` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+\theta_i = \frac{2\pi t_i}{L_i},\quad \bar{x} = \frac{1}{n}\sum_i \cos\theta_i,\quad \bar{y} = \frac{1}{n}\sum_i \sin\theta_i,\quad f = \frac{\operatorname{atan2}(\bar{y}, \bar{x}) \bmod 2\pi}{2\pi},\quad r = \sqrt{\bar{x}^2 + \bar{y}^2}
+$$
+
+Plain text: `theta_i = 2 pi t_i / L_i; xbar = sum(cos theta_i) / n, ybar = sum(sin theta_i) / n; f = (atan2(ybar, xbar) mod 2 pi) / (2 pi); r = sqrt(xbar^2 + ybar^2)`
+
+**Sources**
+
+- Bayliss, A.C. and Jones, R.C. (1992). The peaks-over-threshold database at the Institute of Hydrology. Report to MAFF, Institute of Hydrology, Wallingford, March 1992 (published as IH Report No. 121, 1993), section 3.2, pp. 18-19: theta_i = day 2 pi / LENYR - ADJUST with ADJUST = (1/2)(2 pi / 365) for the middle of the day, LENYR 365 or 366; xbar, ybar the means of cos and sin; tan(thetabar) = ybar / xbar with pi or 2 pi added by their signs; MPD = thetabar 365 / (2 pi) + 0.5; section 3.3, p. 21: r = sqrt(xbar^2 + ybar^2), MPD less meaningful when r is close to zero (open) <https://nora.nerc.ac.uk/id/eprint/14407/>
+- Robson, A. and Reed, D. (1999). Flood Estimation Handbook, Volume 3: Statistical procedures for flood frequency estimation. Institute of Hydrology, Wallingford, Additional Note 16.1, pp. 177-179: theta = (day no. - 0.5) 2 pi / LENYR, LENYR 365 or 366, the 0.5 for the middle of the day; XFLOOD and YFLOOD the means of cos theta and sin theta; thetabar by their quadrant, r their length; when r is small the direction is less meaningful (open) <https://www.ceh.ac.uk/sites/default/files/2021-11/Flood-Estimation-Handbook-3-Statistical-Procedures-For-Flood-Frequency-Estimation_Alice-Robson_Duncan-Reed.pdf>
+- Hall, J. and Blöschl, G. (2018). Spatial patterns and characteristics of flood seasonality in Europe. Hydrology and Earth System Sciences 22, 3883-3901, eqs. 1-5: theta_i = D_i 2 pi / m_i (D_i = 1 on 1 January, m_i 365 or 366); the mean date by the quadrant rules times m / (2 pi), m the mean number of days per year, undefined for xbar = ybar = 0; R = sqrt(xbar^2 + ybar^2) (open) <https://hess.copernicus.org/articles/22/3883/2018/hess-22-3883-2018.pdf>
+- Burn, D.H. (1997). Catchment similarity for regional flood frequency analysis using seasonality measures. Journal of Hydrology 202, 212-230, the seasonality measures of flood dates; not opened (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `elapsed_days` | $t_i$ | day | real_array | [0.0, inf), test bound high 1000000000.0 (a year in seconds is about 3.2e7: the bound leaves room for times in any unit down to the second) | unstated | [2.5, 336.5]: IMGW-PIB, public hydrological data: the half-year characteristics of discharge at station 150160180 Kłodzko on the Nysa Kłodzka, hydrological years 1971-2015 but 1997, the dates of the 44 annual maxima, the larger of the half-year maxima: days 3 to 337 of their calendar years |
+| `year_days` | $L_i$ | day | real_array | (0.0, inf), test bound high 1000000000.0 (a year in seconds is about 3.2e7: the bound leaves room for times in any unit down to the second) | unstated | [365.0, 366.0]: Robson, A. and Reed, D. (1999). Flood Estimation Handbook, Volume 3: Statistical procedures for flood frequency estimation. Institute of Hydrology, Wallingford, Additional Note 16.1: LENYR, 365 or 366 days |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `same_length` | physical | one year length per time | Robson, A. and Reed, D. (1999). Flood Estimation Handbook, Volume 3: Statistical procedures for flood frequency estimation. Institute of Hydrology, Wallingford, Additional Note 16.1, pp. 177-179: theta = (day no. - 0.5) 2 pi / LENYR, LENYR 365 or 366, the 0.5 for the middle of the day; XFLOOD and YFLOOD the means of cos theta and sin theta; thetabar by their quadrant, r their length; when r is small the direction is less meaningful |
+| `within_its_year` | physical | 0 <= t_i < L_i: each time lies in its year | Robson, A. and Reed, D. (1999). Flood Estimation Handbook, Volume 3: Statistical procedures for flood frequency estimation. Institute of Hydrology, Wallingford, Additional Note 16.1, pp. 177-179: theta = (day no. - 0.5) 2 pi / LENYR, LENYR 365 or 366, the 0.5 for the middle of the day; XFLOOD and YFLOOD the means of cos theta and sin theta; thetabar by their quadrant, r their length; when r is small the direction is less meaningful |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `mean_fraction` | - | real | [0.0, 1.0] | 4 ulp of the bound |
+| `concentration` | - | real | [0.0, 1.0] | 1e-13 |
+
+**Conventions (CMP-2.3)**
+
+- the times and the lengths of their years in one unit of time, days for dates; the angle 2 pi t / L of a time t from the start of its year of L
+- for dates t is the day of the year minus a half, the middle of the day, and L 365 or 366 (Bayliss and Jones's ADJUST, FEH's day no. - 0.5); Hall and Blöschl (2018) take the day itself, D 2 pi / m_i
+- the mean direction atan2(ybar, xbar) taken into [0, 2 pi): Bayliss and Jones and the FEH add pi or 2 pi to arctan(ybar / xbar) by the signs, the same angle; at xbar = ybar = 0 the direction is undefined (Hall and Blöschl) and the formula gives 0, as scipy.stats.circmean does
+- near r = 0 the direction is ill-conditioned: a rounding moves it; read the mean with r (Bayliss and Jones, section 3.3; the FEH)
+
+**Assumptions**
+
+- the times are the dates of independent events, one annual extreme per year; Hall and Blöschl keep the stations where a Rayleigh test rejects uniform dates, which Hydrolog does not compute
+
+**Validation:** none: a description of the timing of floods; Bayliss and Jones (1992) and the FEH map it for British rivers, Hall and Blöschl (2018) for Europe
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: atan2 at xbar = ybar = 0 has no direction: limit opposite_times and test_no_direction_gives_the_start_of_the_year
+- `gap_propagation`: type cases elapsed_days-nan_element and year_days-nan_element: a gap is refused
+- `many_small_terms`: test_many_dates_keep_their_sums: 100,000 dates against math.fsum of the cosines and sines
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `time_in_another_unit`: inputs times 2^e (`elapsed_days` e = 1.0, `year_days` e = 1.0) give outputs times 2^e (none)
+- limit `one_time`: a single time is its own mean, with r = 1
+- limit `opposite_times`: two times half a year apart have no direction: r = 0
+- limit `quadrant_rules`: the direction and length equal Bayliss and Jones's arctan with the quadrant rules and their r, of sums by math.fsum
+- symmetry `reversed_order`: the times in reverse order give the same concentration
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: Bayliss and Jones's (1992) and the FEH's arctan(ybar / xbar) with pi or 2 pi added by the signs, and r, of sums by math.fsum (`tests/unit/test_formulas_regime.py (limit quadrant_rules)`)
+- established: scipy.stats.circmean of the angles (SciPy 1.18) (`tests/unit/test_formulas_regime.py (test_the_mean_direction_is_scipys)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="harmonic_fit"></a>
+### Least squares fit of the mean and the harmonics of the annual cycle
+
+`hydrolog.statistics.harmonics.harmonic_fit` · family `statistic` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+x(t) = A_0 + \sum_{k=1}^{K}\left(a_k \cos\frac{2\pi k t}{P} + b_k \sin\frac{2\pi k t}{P}\right),\quad C_k = \sqrt{a_k^2 + b_k^2},\quad d_k = \frac{(\operatorname{atan2}(b_k, a_k) \bmod 2\pi)\,P}{2\pi k} + 1
+$$
+
+Plain text: `x(t) = A0 + sum_k (a_k cos(2 pi k t / P) + b_k sin(2 pi k t / P)), k = 1 ... K, by least squares with t = day - 1; C_k = sqrt(a_k^2 + b_k^2); phase day = (atan2(b_k, a_k) mod 2 pi) P / (2 pi k) + 1; share_k = R2(1..k) - R2(1..k-1) of the nested fits`
+
+**Sources**
+
+- Wilks, D.S. (2011). Statistical Methods in the Atmospheric Sciences, 3rd ed. Academic Press, Oxford, section 9.4: the harmonic functions of a periodic series, their amplitude, phase and share of the variance, fitted by regression; not opened (author-provided)
+- Feichtinger, H.G., Gröchenig, K. and Strohmer, T. (1995). Efficient numerical methods in non-uniform sampling theory. Numerische Mathematik 69, 423-440, section 4, Propositions 1 and 2, pp. 429-430: a trigonometric polynomial of degree M on a period of 1 sampled with a largest gap delta < 1/(2M) (on the circle) is a stable sampling set, its condition number at most ((1 + 2 delta M) / (1 - 2 delta M))^2; for larger gaps no estimate is known (after Gröchenig 1992, Math. Comp. 59, 181-194) (open) <http://www.math.ucdavis.edu/~strohmer/papers/1995/fgs0195.ps.gz>
+- Draper, N.R. and Smith, H. (1998). Applied Regression Analysis, 3rd ed. Wiley, New York, section 6.1: the extra sum of squares of terms added to a fitted model, which never increases the residual sum of squares; not opened (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `day_of_year` | $d$ | day | real_array | [1.0, 366.0] | unstated | [1.0, 366.0]: IMGW-PIB, hydrologia_info_ogolne.txt of the public hydrological data, the hydrological year from 1 November to 31 October: days 1 to 365, or 366 when it ends in a leap year |
+| `values` | $x$ | degC | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (a million in the series' unit: a thousand times the largest water and air temperatures and Polish discharges, and above any river stage in cm) | unstated | [-22.2, 29.3]: IMGW-PIB, synoptic station Warszawa-Okęcie (352200375), daily data 1991-2020 (tests/fixtures/warszawa_okecie_1991_2020.csv.gz), the daily mean air temperature, -22.2 to 29.3 degC |
+| `n_harmonics` | $K$ | - | integer | [1.0, 4.0] | unstated | [1.0, 4.0]: Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063, point 3: harmonics 1 to 4 (default 2: the annual and the half-year one), as the option of stats harmonics |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `same_length` | physical | one day per value | Wilks, D.S. (2011). Statistical Methods in the Atmospheric Sciences, 3rd ed. Academic Press, Oxford, section 9.4: the harmonic functions of a periodic series, their amplitude, phase and share of the variance, fitted by regression; not opened |
+| `enough_values` | precondition | at least 4 K + 2 values: twice the 2 K + 1 coefficients (Hydrolog's rule) | Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063, point 3: too_few_values |
+| `year_covered` | precondition | the longest gap between days with a value, on the circle of the year, is shorter than P / (2 K): the harmonics are resolved | Feichtinger, H.G., Gröchenig, K. and Strohmer, T. (1995). Efficient numerical methods in non-uniform sampling theory. Numerische Mathematik 69, 423-440, section 4, Propositions 1 and 2, pp. 429-430: a trigonometric polynomial of degree M on a period of 1 sampled with a largest gap delta < 1/(2M) (on the circle) is a stable sampling set, its condition number at most ((1 + 2 delta M) / (1 - 2 delta M))^2; for larger gaps no estimate is known (after Gröchenig 1992, Math. Comp. 59, 181-194) |
+| `values_not_all_equal` | precondition | 0 < sum((x - mean)^2) < inf: the values are not all equal and float64 holds their variance, so R2 and the phases exist | Wilks, D.S. (2011). Statistical Methods in the Atmospheric Sciences, 3rd ed. Academic Press, Oxford, section 9.4: the harmonic functions of a periodic series, their amplitude, phase and share of the variance, fitted by regression; not opened |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `period_days` | $P$ | 1461/4 | day | Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063, point 3: the period P = 365.25 d, the mean year of 1901-2099, in which every fourth year is a leap year (the Julian year) |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `mean` | degC | real | (-inf, inf) | 4 ulp of the bound |
+| `amplitudes` | degC | real_array | [0.0, inf) | 4 ulp of the bound |
+| `phase_days` | day | real_array | [1.0, 366.25] | 4 ulp of the bound |
+| `explained_variances` | - | real_array | [0.0, 1.0] | 1e-12 |
+| `r_squared` | - | real | [0.0, 1.0] | 1e-12 |
+
+**Conventions (CMP-2.3)**
+
+- t is the day of the hydrological year minus one (1 November = 0), P = 365.25 days: a leap year's 31 October is t = 365, so t jumps by 1.25 days at the turn of the year
+- the phase day is the day of the hydrological year whose value the harmonic peaks at: a day's value sits at t = day - 1 and the phase day is t + 1
+- a harmonic's share of the variance is the increase of R2 when it joins the least squares fit of the harmonics before it (nested fits, the extra sum of squares of Draper and Smith); for a whole number of years of equally spaced days the harmonics are orthogonal and the share is Wilks's (n/2) C_k^2 / ((n - 1) s^2); Hydrolog 0.8 cut the coefficients of the whole fit instead, which gave negative shares on years with gaps
+- R2 = 1 - SSR / SST with SST the sum of squared deviations from the mean of the values
+- the values in any unit (degC in the documents): the mean and the amplitudes come in that unit
+
+**Assumptions**
+
+- the annual cycle is periodic with the mean year; a trend or a change of regime over the period is spread over the harmonics
+- a harmonic of no amplitude has no phase: its phase day is then noise of the rounding, read it only with its amplitude
+
+**Validation:** none: a description of the mean annual cycle; Wilks (2011) gives no measure of its agreement with observations
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: atan2 of a harmonic without amplitude: the precondition values_not_all_equal refuses a constant series (test_a_constant_series_is_refused); a harmonic missing from the signal keeps a finite phase in range (test_a_missing_harmonic_has_a_finite_phase)
+- `unbounded_iteration`: the least squares are LAPACK's divide and conquer singular value decomposition (numpy.linalg.lstsq, delegated), bounded by its own count; the precondition year_covered keeps the design well conditioned (test_a_season_of_values_is_refused)
+- `gap_propagation`: a NaN day is left out of the fit: type case values-nan_element and test_gaps_are_left_out_of_the_fit
+- `many_small_terms`: test_thirty_years_of_temperature_match_the_normal_equations: 10,958 days of Warszawa-Okęcie
+- `moment_cancellation`: SST from the deviations from the mean, not as E[x^2] - E[x]^2: test_a_large_offset_keeps_the_amplitudes, a signal on top of 1e6
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `values_in_another_unit`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`mean` e = 1.0, `amplitudes` e = 1.0)
+- limit `two_harmonics`: an exact signal of two harmonics is recovered: mean 10, amplitudes 5 and 2, days 101 and 31, R2 = 1
+- limit `normal_equations`: the mean and the amplitudes equal those of the normal equations of the same design solved in exact fractions
+- conservation `shares_add_up_to_r_squared`: the shares of the harmonics add up to R2 of the whole fit
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: exact signals of one or two harmonics recovered: their mean, amplitudes, phase days and R2 = 1 (`tests/unit/test_formulas_regime.py (limit two_harmonics)`)
+- algorithm: the normal equations of the same design, summed by math.fsum and solved in exact fractions (`tests/unit/test_formulas_regime.py (limit normal_equations, trap many_small_terms)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
 <a id="sample_standard_deviation"></a>
 ### Standard deviation of a sample, with the divisor n - 1
 
@@ -2376,6 +2790,12 @@ None.
 | `baseflow_spans` | `hydrolog.statistics.baseflow.baseflow_separation` | the daily series is laid on a calendar of consecutive days (an absent date is a day without a value); each gapless span of at least 60 days is filtered on its own (spec lyne_hollick), reflected at both of its ends; a day of a shorter span has no baseflow; series_baseflow is the baseflow of each day of series_year, by default the last complete hydrological year | min_span_days = 60.0 d (Hydrolog's own rules, ADR-0031: Regime, seasonality, harmonics, Sen's slope and baseflow of a station, point 5: the filter on each gapless span of at least 60 days, a year's index from 300 days with a baseflow (no published source; Ladson et al. 2013 filter every segment longer than the 30 reflected values, sect. 2.1 and 2.4)) | spans of at least 60 days are Hydrolog's own rule; Ladson et al. (2013, sect. 2.4) filter every segment of non-missing values and their BFI.R every one longer than the 30 reflected values | Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript), sect. 2.4, p. 9: 'Flow data should be divided into segments of non-missing values ... data should be reflected at each end of each segment' |
 | `baseflow_index_by_year` | `hydrolog.statistics.baseflow.baseflow_separation` | the baseflow index of the period and of each hydrological year (1 November - 31 October, named after its end) is the index (spec baseflow_index) of their days with a baseflow; a year needs 300 such days for an index of its own, and a year without flow on them has none (null); a period without flow on them is refused | min_year_days = 300.0 d (Hydrolog's own rules, ADR-0031: Regime, seasonality, harmonics, Sen's slope and baseflow of a station, point 5: the filter on each gapless span of at least 60 days, a year's index from 300 days with a baseflow (no published source; Ladson et al. 2013 filter every segment longer than the 30 reflected values, sect. 2.1 and 2.4)) | the ratio of the volumes over the days with a baseflow (Ladson et al., sect. 2.4; WMO-No. 1029, sect. 5.2), not BFI.R's mean of the spans' indices weighted by their lengths; 300 days a year is Hydrolog's own rule | WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 5.2, p. 44: 'Annual BFI values can be determined by summing up the base-flow and total-flow volume separately for each year' |
 | `recession_without_segment` | `hydrolog.statistics.baseflow.recession_constant` | the recession constant of a series (spec recession_constant) with k and the half-life null and no segments when the series has no recession segment | – | the recession of baseflow_separation is that of the whole daily calendar of the series, gaps included as ends of segments | WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 5.3, p. 45 |
+| `flow_regime_of_a_daily_series` | `hydrolog.statistics.regime.flow_regime` | The calendar month of each date; Pardé's coefficients, the spring share and Dynowska's type of the series (the specs parde_coefficients, spring_share, dynowska_regime_type), Walsh and Lawler's index of the monthly volumes (the means times the days of the month, February 28.25 days) and the first, last and number of the hydrological years with a value | february_days = 113/4 day (Hydrolog, ADR-0031 (2026), restated in ADR-0063, February of the mean year of 1901-2099, in which every fourth year is a leap year: 28 + 1/4 days, so the twelve months make 365.25 days; the other months have their days of a common year) | months of the Gregorian calendar; the lists from November to October; a day without a value (NaN) is left out; a hydrological year runs from November to October and is named after the year of its end (IMGW-PIB) | Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), point 1: the result of stats regime |
+| `circular_mean_of_dates` | `hydrolog.statistics.seasonality.circular_mean_date` | The time of each date, its day of the calendar year (1 = 1 January) minus a half, and the length of its year, 365 or 366 days; their circular_mean; the mean day 365.25 f + 0.5 and its MM-DD in the common year 2001 | mean_year_days = 1461/4 day (Hall, J. and Blöschl, G. (2018). Spatial patterns and characteristics of flood seasonality in Europe. Hydrology and Earth System Sciences 22, 3883-3901, eq. 2: m, the mean number of days per year, taken as 365.25, the mean of 1901-2099; Bayliss and Jones (1992, p. 19) take 365) | leap years by the Gregorian rule; the direction back to a day on the mean year of 365.25 days (Hall and Blöschl's m; Bayliss and Jones take 365, up to a quarter of a day earlier at the end of the year); the date of the mean day rounded by Python's round (a half to the even day), a day beyond 365 on 31 December | Bayliss, A.C. and Jones, R.C. (1992). The peaks-over-threshold database at the Institute of Hydrology. Report to MAFF, Institute of Hydrology, Wallingford, March 1992 (published as IH Report No. 121, 1993), section 3.2, pp. 18-19: theta_i = day 2 pi / LENYR - ADJUST with ADJUST = (1/2)(2 pi / 365) for the middle of the day, LENYR 365 or 366; xbar, ybar the means of cos and sin; tan(thetabar) = ybar / xbar with pi or 2 pi added by their signs; MPD = thetabar 365 / (2 pi) + 0.5; section 3.3, p. 21: r = sqrt(xbar^2 + ybar^2), MPD less meaningful when r is close to zero |
+| `extremes_of_complete_years` | `hydrolog.statistics.seasonality.daily_extremes` | The maximum or minimum of each complete hydrological year of a daily series, dated by the first day it occurs | – | a year counts only with a value for every day, as IMGW-PIB gives no characteristic for a period with a break; the extremes are of daily values, not of all observations | IMGW-PIB, Rocznik Hydrologiczny 2022 and hydrologia_info_ogolne.txt of the public data, the winter half-year 1 November to 30 April, the summer one 1 May to 31 October; the hydrological year named after the year of its end; no characteristic for a period with a break in the observations |
+| `extremes_of_half_years` | `hydrolog.statistics.seasonality.half_year_extremes` | IMGW-PIB's annual maximum, the larger of the half-year maxima (the winter one when they are equal), or minimum, the smaller of the minima, with the date of that half-year's extreme | – | a year without both half-years has no extreme; one whose extreme has no date is left out and named | IMGW-PIB, Rocznik Hydrologiczny 2022 and hydrologia_info_ogolne.txt of the public data, the winter half-year 1 November to 30 April, the summer one 1 May to 31 October; the hydrological year named after the year of its end; no characteristic for a period with a break in the observations |
+| `seasonality_of_extremes` | `hydrolog.statistics.seasonality.extreme_seasonality` | The circular mean date and concentration of the dated annual extremes and their shares in the winter (November to April) and the summer (May to October) half-year | – | IMGW-PIB's half-years by the calendar month of each date | IMGW-PIB, Rocznik Hydrologiczny 2022 and hydrologia_info_ogolne.txt of the public data, the winter half-year 1 November to 30 April, the summer one 1 May to 31 October; the hydrological year named after the year of its end; no characteristic for a period with a break in the observations |
+| `annual_cycle_of_a_daily_series` | `hydrolog.statistics.harmonics.annual_cycle` | The day of the hydrological year of each date (1 = 1 November); the harmonic_fit of every day of the period, the mean annual cycle, and of each hydrological year with at least 300 days with a value that meet its preconditions | min_year_values = 300 day (Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063, point 3: each hydrological year with at least 300 values has a fit of its own) | a hydrological year runs from November to October and is named after the year of its end (IMGW-PIB); a year whose values the fit refuses (all equal, or a gap too long for the harmonics) has no fit of its own | Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063, point 3: the result of stats harmonics |
 | `characteristic_first_degree` | `hydrolog.statistics.characteristic.calculate_characteristic_values` | The first degree of each hydrological year and of its half-years from a daily series: the minimum, mean and maximum of the days with a value, each extreme dated by the first day it occurs. | summer_first_month = 5 month (IMGW-PIB (2023). Rocznik Hydrologiczny 2022, pp. 5-8: WQ, SQ, NQ the largest, mean and smallest value of a month, of the half-years Zima XI-IV and Lato V-X and of the year Rok XI-X; WWQ, SWQ, SSQ, SNQ, NNQ of a period; 'Wartości ekstremalne opracowane zostały na podstawie wszystkich dostępnych pomiarów i obserwacji' (p. 7)) | Winter XI-IV, summer V-X, year XI-X. The extremes are those of the daily values, as a rule milder than IMGW-PIB's extremes of all observations (Kłodzko 2010: WQ 96.0 against 145 m3/s); a year with days without a value stays, with the days it has, and is listed in incomplete_years, where IMGW-PIB publishes no characteristic. | IMGW-PIB (2023). Rocznik Hydrologiczny 2022, pp. 5-8: WQ, SQ, NQ the largest, mean and smallest value of a month, of the half-years Zima XI-IV and Lato V-X and of the year Rok XI-X; WWQ, SWQ, SSQ, SNQ, NNQ of a period; 'Wartości ekstremalne opracowane zostały na podstawie wszystkich dostępnych pomiarów i obserwacji' (p. 7) |
 | `characteristic_second_degree` | `hydrolog.statistics.characteristic.calculate_characteristic_values` | The second degree of the year and of each half-year: the highest (W), mean (S), median (Z) and lowest (N) over the years of the first-degree maxima, means and minima (WWQ ... NNQ), each of the years that have it. | – | SWQ is the mean of the annual maxima, never of the pooled half-year maxima; the medians (ZWQ, ZSQ, ZNQ) and WSQ, NSQ, WNQ, NWQ follow the pattern of Byczkowski (1996, author-provided); W, S, N of a stage are WWW ... NNW and of water temperature WWT ... NNT. | IMGW-PIB (2023). Rocznik Hydrologiczny 2022, pp. 5-8: WQ, SQ, NQ the largest, mean and smallest value of a month, of the half-years Zima XI-IV and Lato V-X and of the year Rok XI-X; WWQ, SWQ, SSQ, SNQ, NNQ of a period; 'Wartości ekstremalne opracowane zostały na podstawie wszystkich dostępnych pomiarów i obserwacji' (p. 7) |
 | `characteristic_from_half_years` | `hydrolog.statistics.characteristic.characteristic_values_from_half_years` | The first degree from IMGW-PIB's published half-year characteristics: the half-years keep their minimum, mean and maximum with dates; the annual maximum is the larger of the half-year maxima and the annual minimum the smaller of the minima, with that half-year's date; the annual mean is the published one. | – | The winter value on a tie; an annual extreme with a half-year missing (a break in observations) is unknown; a year without any value is left out; the second degree as from a daily series. | IMGW-PIB, public hydrological data: POLR_publiczne_format.txt (file of 2026-04-29), PLWSKP 13 winter half-year XI-IV, 14 summer half-year V-X, 15 year; PLWSKEX 1 minimum, 2 mean, 3 maximum; a value 99999.999 or NULL is a break in observations |
@@ -2402,3 +2822,4 @@ None.
 | mann_whitney_u | scipy.stats.mannwhitneyu (two-sided, method auto: exact for parts of at most 8 values without ties, else normal with the corrections for ties and continuity) | scipy>=1.10 (1.18.1 locked) | Helsel et al. (2020), Example 5.1: U of the first part 76.5, p = 0.04911 (R's wilcox.test W = 76.5, p = 0.0491099747); the frozen oracle tests/oracles/trend_regime holds R's U and p of three pairs of samples (stats homogeneity) | `tests/unit/test_formulas_trend.py::test_the_delegated_mann_whitney_is_helsels_and_rs` |
 | ks_two_sample | scipy.stats.ks_2samp (two-sided, method auto: exact for a continuous distribution) | scipy>=1.10 (1.18.1 locked) | three values all below four others: D = 1, p = 2 / C(7, 3) = 0.0571429; seeded samples without ties against the exact count of spec ks_exact (stats homogeneity without ties) | `tests/unit/test_formulas_trend.py::test_the_delegated_ks_2samp_is_exact_without_ties` |
 | rating_curve_least_squares | scipy.optimize.curve_fit (bounds: least_squares, trust region reflective) | scipy>=1.10 (1.18.1 locked) | eight noise-free pairs of Q = 0.012 (H - 32)^1.62 at H = 40 to 270 cm give back a = 0.012, b = 1.62 and H0 = 32 cm within 1e-6 relative (spec rating_curve_fit) | `tests/unit/test_formulas_hydrometrics.py::test_the_delegated_least_squares_recover_a_noise_free_curve` |
+| harmonic_least_squares | numpy.linalg.lstsq (LAPACK gelsd) | numpy>=1.24 (2.5.4 locked) | the least squares of an exact signal of two harmonics over five hydrological years recover its mean 10 and amplitudes 5 and 2 within 1e-8 (spec harmonic_fit) | `tests/unit/test_formulas_regime.py::test_the_delegated_least_squares_recover_an_exact_signal` |

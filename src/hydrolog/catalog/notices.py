@@ -261,6 +261,14 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         ("count", "minimum", "years"),
     ),
     NoticeSpec(
+        "years_without_fit",
+        "info",
+        "{count} hydrological year(s) of the period have the days with a value a fit "
+        "needs but no fit of {harmonics} harmonic(s) of their own: their values are "
+        "all equal or leave a gap of {max_gap_days} days or more: {years}",
+        ("count", "harmonics", "max_gap_days", "years"),
+    ),
+    NoticeSpec(
         "undated_extremes",
         "warning",
         "{count} annual extreme(s) have no date in the half-year file and were left "

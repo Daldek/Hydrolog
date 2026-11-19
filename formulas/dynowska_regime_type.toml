@@ -1,0 +1,176 @@
+schema = "nogat-formula-card/1"
+name = "dynowska_regime_type"
+title = "Dynowska's type of a Polish river regime from Pardé's coefficients"
+function = "hydrolog.statistics.regime.dynowska_regime_type"
+family = "classification"
+formula_version = 1
+status = "referenced"
+equation = "S = max(K_III, K_IV), L = max(K_VI, K_VII, K_VIII); type 5 if L >= 0.95 S, else 4 if L >= 1.00, else 1 if S <= 1.30, 2 if S <= 1.80, 3 otherwise"
+latex = "S = \\max(K_{III}, K_{IV}),\\ L = \\max(K_{VI}, K_{VII}, K_{VIII});\\ \\text{type} = \\begin{cases} 5 & L \\ge 0.95\\,S \\\\ 4 & L \\ge 1.00 \\\\ 1 & S \\le 1.30 \\\\ 2 & S \\le 1.80 \\\\ 3 & \\text{otherwise} \\end{cases}"
+validation = "none: a typology; Wrzesiński (2017, 2018) classified 516 gauges of 1971-2010 and Perz (2019) the rivers of the Kłodzko basin by it, without a measure of agreement"
+conventions = ["the coefficients are Pardé's of the months November to October, as 1.30 for 130 % of the mean annual flow", "the spring month is the larger of March and April (Perz 2019, p. 79), the summer month the largest of June to August (Hydrolog's reading); of equal coefficients the earlier month", "the types are tested in the order 5, 4, then 1 to 3: 'higher than or nearly equal' reads as at least 0.95 of the spring coefficient (Hydrolog's reading, no source gives a number); the sources' 'as a rule 130-180 %' of types 4 and 5 is not tested", "inclusive limits as the sources word them: 'at most 130 %' is type 1, 'above 180 %' type 3, so 180 % is type 2, 'at least 100 %' type 4; the limits are compared as the floats 1.3, 1.8 and 1.0, and summer with the float 0.95 times spring, which keeps every printed three-decimal tie inside its class"]
+assumptions = ["the coefficients describe a long period, 30 to 40 years in the sources; the type of a few years or of coefficients near a limit is not robust: Kłodzko's June of 1971-2015 lies 0.05 % above 100 % (Perz's case)", "Wrzesiński's two classifications of the same 516 gauges of 1971-2010 count 24 (2017) and 33 (2018) pluvio-nival rivers: the reading of 'nearly equal' is not settled in the sources either"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/regime-cases.json"]
+constraints = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+
+[properties.monotonic]
+
+[[properties.limits]]
+name = "class_limits"
+text = "a coefficient exactly at a limit of a class and just beyond it gives the class of the criteria's inclusive limit and the next one"
+
+[[properties.limits]]
+name = "decision_table"
+text = "the type of three-decimal coefficients is that of the criteria applied to their printed decimals in exact fractions"
+
+[[properties.symmetries]]
+name = "months_that_do_not_decide"
+text = "the coefficients of the months other than March, April and June to August leave the type as it is"
+
+[properties.symmetries.tolerance]
+reason = "a class"
+abs = 0.0
+
+[[sources]]
+citation = "Wrzesiński, D. (2017). Typologia reżimu odpływu rzek w Polsce w podejściu nadzorowanym i nienadzorowanym. Badania Fizjograficzne, Seria A, R. VIII (A68), 253-264. doi:10.14746/bfg.2017.8.19"
+access = "open"
+locator = "p. 255: Dynowska's (1997) five types: the spring month's mean flow at most 130 % of the mean annual flow (1), 130-180 % (2), above 180 % (3); as a rule 130-180 % with a summer rise of at least 100 % (4); the summer month's mean flow higher than or nearly equal to the spring month's (5)"
+url = "https://repozytorium.amu.edu.pl/server/api/core/bitstreams/2a303457-aae6-4476-a766-985a3a4ac0b6/content"
+
+[[sources]]
+citation = "Wrzesiński, D. (2018). Typologia reżimu odpływu rzek w Polsce w różnych fazach oscylacji północnoatlantyckiej. Badania Fizjograficzne, Seria A, 9 (A69), 249-261. doi:10.14746/bfg.2018.9.19"
+access = "open"
+locator = "p. 250: the five types in the words of Wrzesiński (2017, p. 255); Table 1, pp. 253-254: the mean coefficients of each type, 516 gauges, 1971-2010"
+url = "https://pressto.amu.edu.pl/index.php/bfg/article/download/24472/22684/50308"
+
+[[sources]]
+citation = "Perz, A. (2019). Cechy reżimu odpływu rzek Kotliny Kłodzkiej. Badania Fizjograficzne, Seria A, 10 (A70), 65-83. doi:10.14746/bfg.2019.10.6"
+access = "open"
+locator = "p. 79: Dynowska's criteria, 130-180 % and at least 100 % of the mean annual flow, the spring month March or April (marzec-kwiecień)"
+url = "https://pressto.amu.edu.pl/index.php/bfg/article/download/23873/22299/"
+
+[[sources]]
+citation = "Dynowska, I. (1997). Reżim odpływu rzecznego. In: Atlas Rzeczypospolitej Polskiej. Główny Geodeta Kraju, Warszawa"
+access = "author-provided"
+locator = "the five types of the river regime; not opened: as Wrzesiński (2017, 2018) and Perz (2019) quote them"
+
+[[sources]]
+citation = "Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063"
+access = "open"
+locator = "point 1: where the sources name no month and no number, the spring month is the larger of March and April, the summer month the largest of June to August and 'nearly equal' at least 0.95 of the spring coefficient (the mockup's REGIME_RULE)"
+
+[[variables]]
+name = "parde"
+symbol = "K_m"
+unit = "-"
+kind = "real_array"
+description = "Pardé's coefficients of the months November to October."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 12
+max_length = 12
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 30.0
+test_reason = "ten times the largest monthly coefficient of Polish rivers in Wrzesiński's (2017) Table 1, 2.819 (March, type 3), rounded up; a coefficient grows without a bound only through gaps"
+
+[variables.typical]
+low = 0.224
+low_inclusive = true
+high = 2.819
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Wrzesiński, D. (2017). Typologia reżimu odpływu rzek w Polsce w podejściu nadzorowanym i nienadzorowanym. Badania Fizjograficzne, Seria A, R. VIII (A68), 253-264. doi:10.14746/bfg.2017.8.19"
+access = "open"
+locator = "Table 1, p. 260: the smallest coefficient 22.4 % (February, type 5) and the largest 281.9 % (March, type 3) of 516 gauges, 1971-2010"
+url = "https://repozytorium.amu.edu.pl/server/api/core/bitstreams/2a303457-aae6-4476-a766-985a3a4ac0b6/content"
+
+[[constants]]
+name = "weakly_nival"
+value = 1.3
+unit = "-"
+symbol = "S_1"
+exact = "13/10"
+
+[constants.source]
+citation = "Wrzesiński, D. (2017). Typologia reżimu odpływu rzek w Polsce w podejściu nadzorowanym i nienadzorowanym. Badania Fizjograficzne, Seria A, R. VIII (A68), 253-264. doi:10.14746/bfg.2017.8.19"
+access = "open"
+locator = "p. 255: Dynowska's (1997) five types: the spring month's mean flow at most 130 % of the mean annual flow (1), 130-180 % (2), above 180 % (3); as a rule 130-180 % with a summer rise of at least 100 % (4); the summer month's mean flow higher than or nearly equal to the spring month's (5)"
+url = "https://repozytorium.amu.edu.pl/server/api/core/bitstreams/2a303457-aae6-4476-a766-985a3a4ac0b6/content"
+
+[[constants]]
+name = "moderately_nival"
+value = 1.8
+unit = "-"
+symbol = "S_2"
+exact = "9/5"
+
+[constants.source]
+citation = "Wrzesiński, D. (2017). Typologia reżimu odpływu rzek w Polsce w podejściu nadzorowanym i nienadzorowanym. Badania Fizjograficzne, Seria A, R. VIII (A68), 253-264. doi:10.14746/bfg.2017.8.19"
+access = "open"
+locator = "p. 255: Dynowska's (1997) five types: the spring month's mean flow at most 130 % of the mean annual flow (1), 130-180 % (2), above 180 % (3); as a rule 130-180 % with a summer rise of at least 100 % (4); the summer month's mean flow higher than or nearly equal to the spring month's (5)"
+url = "https://repozytorium.amu.edu.pl/server/api/core/bitstreams/2a303457-aae6-4476-a766-985a3a4ac0b6/content"
+
+[[constants]]
+name = "summer_rise"
+value = 1.0
+unit = "-"
+symbol = "L_1"
+exact = "1"
+
+[constants.source]
+citation = "Wrzesiński, D. (2017). Typologia reżimu odpływu rzek w Polsce w podejściu nadzorowanym i nienadzorowanym. Badania Fizjograficzne, Seria A, R. VIII (A68), 253-264. doi:10.14746/bfg.2017.8.19"
+access = "open"
+locator = "p. 255: Dynowska's (1997) five types: the spring month's mean flow at most 130 % of the mean annual flow (1), 130-180 % (2), above 180 % (3); as a rule 130-180 % with a summer rise of at least 100 % (4); the summer month's mean flow higher than or nearly equal to the spring month's (5)"
+url = "https://repozytorium.amu.edu.pl/server/api/core/bitstreams/2a303457-aae6-4476-a766-985a3a4ac0b6/content"
+
+[[constants]]
+name = "nearly_equal"
+value = 0.95
+unit = "-"
+symbol = "r"
+exact = "19/20"
+
+[constants.source]
+citation = "Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063"
+access = "open"
+locator = "point 1: where the sources name no month and no number, the spring month is the larger of March and April, the summer month the largest of June to August and 'nearly equal' at least 0.95 of the spring coefficient (the mockup's REGIME_RULE)"
+
+[[outputs]]
+name = "code"
+unit = "-"
+kind = "integer"
+description = "1 nival, weakly developed; 2 nival, moderately developed; 3 nival, strongly developed; 4 nival-pluvial; 5 pluvio-nival."
+
+[outputs.physical]
+low = 1.0
+low_inclusive = true
+high = 5.0
+high_inclusive = true
+
+[[traps]]
+name = "class_limit"
+description = "A value exactly at a limit of a published class or table."
+test = "limit class_limits: 1.30, 1.80, 1.00 and 0.95 of spring, each exactly and just beyond (math.nextafter, or the next printed thousandth)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case parde-nan_element: a gap is refused, the twelve coefficients need values"
+
+[[oracles]]
+kind = "algorithm"
+description = "the criteria applied to the printed decimals of the coefficients in exact fractions, 'nearly equal' as 20 L >= 19 S"
+test = "tests/unit/test_formulas_regime.py (limit decision_table)"
+conventions = ["the code compares floats with the floats of the limits, the oracle the decimals the floats print as with the rational limits"]

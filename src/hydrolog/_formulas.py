@@ -80,6 +80,9 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.statistics.events",
     "hydrolog.statistics.volumes",
     "hydrolog.statistics.baseflow",
+    "hydrolog.statistics.regime",
+    "hydrolog.statistics.seasonality",
+    "hydrolog.statistics.harmonics",
     "hydrolog.statistics.characteristic",
     "hydrolog.statistics._hydrological_year",
     "hydrolog.hydrometrics.rating_curve",
@@ -152,6 +155,16 @@ DELEGATED: Final[tuple[Delegated, ...]] = (
         "(spec rating_curve_fit)",
         test="tests/unit/test_formulas_hydrometrics.py::"
         "test_the_delegated_least_squares_recover_a_noise_free_curve",
+    ),
+    Delegated(
+        name="harmonic_least_squares",
+        library="numpy.linalg.lstsq (LAPACK gelsd)",
+        versions="numpy>=1.24 (2.5.4 locked)",
+        smoke_case="the least squares of an exact signal of two harmonics over five "
+        "hydrological years recover its mean 10 and amplitudes 5 and 2 within 1e-8 "
+        "(spec harmonic_fit)",
+        test="tests/unit/test_formulas_regime.py::"
+        "test_the_delegated_least_squares_recover_an_exact_signal",
     ),
 )
 """Computations delegated to third-party libraries (CMP-1.2)."""

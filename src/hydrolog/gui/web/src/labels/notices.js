@@ -205,6 +205,10 @@ export const notices = {
       text: "{count} lat hydrologicznych okresu ma mniej niż {minimum} dni z danymi do obliczeń i nie ma własnych wartości: {years}.",
       plain: "Niektóre lata mają za mało dni z danymi, by mieć własne wartości.",
     },
+    years_without_fit: {
+      text: "{count} lat hydrologicznych okresu ma dość dni z danymi, ale nie ma własnego dopasowania {harmonics} harmonik: ich wartości są wszystkie równe albo mają lukę co najmniej {max_gap_days} dni: {years}.",
+      plain: "Niektóre lata mają stałe wartości albo zbyt długą lukę w danych, by dopasować do nich harmoniki.",
+    },
     undated_extremes: {
       text: "{count} ekstremów rocznych nie ma daty w pliku półroczy i pominięto je: {years}.",
       plain: "Ekstrema roczne bez daty pominięto.",

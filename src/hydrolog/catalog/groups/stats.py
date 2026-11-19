@@ -849,16 +849,18 @@ COMMANDS: tuple[Command, ...] = (
             "Metoda najmniejszych kwadratów: średnia i 1–4 harmoniki o okresie "
             "365,25 d na dniu roku hydrologicznego (1 = 1 XI) dla całego okresu i "
             "każdego roku z co najmniej 300 wartościami: amplituda harmoniki, dzień "
-            "jej pierwszego maksimum i udział w wariancji. Do cyklu rocznego "
-            "temperatury wody lub powietrza albo przepływu; średnie dobowe: `stats "
-            "daily`."
+            "jej pierwszego maksimum i udział w wariancji. Dni z danymi nie mogą "
+            "mieć luki 365,25/(2·harmoniki) dni lub dłuższej, a wartości muszą się "
+            "różnić. Do cyklu rocznego temperatury wody lub powietrza albo "
+            "przepływu; średnie dobowe: `stats daily`."
         ),
         description=(
             "Least squares fit of the mean and 1–4 harmonics of period 365.25 d on "
-            "the day of the hydrological year (1 = 1 Nov), over the period and in "
-            "each year with 300 or more values: each harmonic's amplitude, day of its "
-            "first maximum and share of the variance. Use for the annual cycle of "
-            "water or air temperature or flow; for daily means use `stats daily`."
+            "the day of the hydrological year (1 = 1 Nov), over the period and each "
+            "year of 300+ values: each harmonic's amplitude, day of its first maximum "
+            "and share of the variance. Needs no gap of 365.25/(2·harmonics) days and "
+            "values not all equal. For the annual cycle of water or air temperature "
+            "or flow; daily means: `stats daily`."
         ),
         result_schema="hydrolog-stats-harmonics/1",
         cardinality="bounded",
