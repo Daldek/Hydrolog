@@ -412,7 +412,7 @@ conventions = [
     "up = 0,66 / tp**1,04 to zależność Lutza dla dt -> 0 (KZGW 2017, wzór 6.19, s. 98), czyli kulminacja chwilowego hydrogramu jednostkowego; hydrogram jednostkowy dla kroku dt uśrednia ten chwilowy hydrogram dokładnie na przedziale dt (`NashIUH.to_unit_hydrograph`). Przykład 6.2 KZGW (s. 100) przyjmuje natomiast zależność dla dt = 1 h, up = 0,464 / tp**0,824, a Sikorska i in. (2012, tab. 1) stwierdzają, że P2 i P3 zależą od przedziału czasu: tamta droga daje N 2,55 i k 0,70 h, podczas gdy ta daje N 3,88 i K 0,377 h (przypadek `kzgw2017-ex6-2-n-k`, rozbieżność)",
     "P1 = 3,989 nM + 0,028: wzór 6.18 (KZGW 2017, s. 97) podaje „- 0,028”, co jest błędem druku, jak pokazują rys. 6.3 (P1 = 3,9886 n + 0,0284) i przykład 6.2 (P1 = 0,128 dla n = 0,025)",
     "0,66 ze wzoru 6.19 KZGW, a nie 0,64 podane przez Sikorską i in. (2012, tab. 1), którzy powołują się na tę samą pracę Lutza (1984)",
-    "L i Lc w km, Jg w m/m — spadek profilu podłużnego cieku głównego uśredniony metodą równych pól (KZGW 2017, s. 97; spec `equal_area_slope`), nM w s m^-1/3, U i W w procentach powierzchni zlewni; tp w h, up w 1/h, K zwracane w min przez dokładne 60 min/h",
+    "L i Lc w km, Jg w m/m — spadek profilu podłużnego cieku głównego uśredniony metodą równych pól (KZGW 2017, s. 97; specyfikacja `equal_area_slope`), nM w s m^-1/3, U i W w procentach powierzchni zlewni; tp w h, up w 1/h, K zwracane w min przez dokładne 60 min/h",
     "N jest rozwiązaniem równania f(N) = tp up na przedziale [1,1; 20] metodą Brenta (`scipy.optimize.brentq`, `xtol` 1e-6), podczas gdy KZGW odczytuje je z tab. C.2 (s. 132–133); f jest tam ściśle rosnąca, od 0,0755 do 1,731, i zgadza się z 13 wierszami tabeli od N = 1,10 do 7,99 z dokładnością do połowy ostatniej drukowanej cyfry",
 ]
 assumptions = [
@@ -423,7 +423,7 @@ assumptions = [
 [formulas.lutz.variables]
 length_km = "Długość wzdłuż cieku głównego od przekroju zamykającego do działu wodnego: najdłuższa droga spływu"
 centroid_length_km = "Długość wzdłuż cieku głównego od przekroju zamykającego do jego punktu najbliższego środkowi ciężkości zlewni"
-slope_m_per_m = "Spadek profilu podłużnego cieku głównego uśredniony metodą równych pól (spec `equal_area_slope`), a nie spadek między jego końcami"
+slope_m_per_m = "Spadek profilu podłużnego cieku głównego uśredniony metodą równych pól (specyfikacja `equal_area_slope`), a nie spadek między jego końcami"
 manning_n = "Współczynnik szorstkości Manninga koryta głównego"
 urban_pct = "Udział terenów zurbanizowanych w powierzchni zlewni"
 forest_pct = "Udział lasów w powierzchni zlewni"
@@ -545,7 +545,7 @@ validation = "brak: metoda Snydera daje kulminację, szerokości i czas podstawy
 conventions = [
     "czasy od początku opadu, w min; rzędne w m³/s na mm",
     "rzędne to wartości krzywej w chwilach kroków, przeskalowane tak, by zawierały dokładnie 1 mm: próbkowanie i część poza T zmieniałyby objętość",
-    "`SnyderUH` przyjmuje tpR i qpR ze spec `snyder` dla danego czasu trwania, a T, jeśli nie zostało podane, w punkcie 99,99% objętości krzywej, T = tpR P^-1(K + 1; 0,9999) / K, gdzie P to regularyzowana dolna niezupełna funkcja gamma",
+    "`SnyderUH` przyjmuje tpR i qpR ze specyfikacji `snyder` dla danego czasu trwania, a T, jeśli nie zostało podane, w punkcie 99,99% objętości krzywej, T = tpR P^-1(K + 1; 0,9999) / K, gdzie P to regularyzowana dolna niezupełna funkcja gamma",
 ]
 assumptions = [
     "kształt hydrogramu jednostkowego między punktami wyznaczonymi metodą Snydera to krzywa gamma; KZGW 2017, przykład 6.1, łączy je odcinkami prostymi (jego tab. 6.1, kulminacja niższa o 6,9%)",
@@ -553,8 +553,8 @@ assumptions = [
 
 [formulas.snyder_shape.variables]
 area_km2 = "Powierzchnia zlewni"
-time_to_peak_min = "Czas do kulminacji od początku opadu (spec `snyder`)"
-peak_discharge_m3s = "Kulminacja hydrogramu jednostkowego (spec `snyder`)"
+time_to_peak_min = "Czas do kulminacji od początku opadu (specyfikacja `snyder`)"
+peak_discharge_m3s = "Kulminacja hydrogramu jednostkowego (specyfikacja `snyder`)"
 timestep_min = "Krok czasowy rzędnych"
 total_duration_min = "Długość hydrogramu: krzywa poza nią jest odcinana"
 
@@ -2964,7 +2964,7 @@ day = "Liczba sekund w dobie"
 [rules.baseflow_spans]
 en_sha256 = "2d6a1c6632f2d3427c710032440a743bf3502dbb04886c0af6c4ff5528139b01"
 title = "Przepływ podstawowy szeregu dobowego z lukami, filtrowany odcinkami"
-definition = "szereg dobowy jest rozkładany na kalendarz kolejnych dni (brakująca data to dzień bez wartości); każdy odcinek bez luk o długości co najmniej 60 dni jest filtrowany osobno (spec `lyne_hollick`), z odbiciem na obu jego końcach; dzień krótszego odcinka nie ma przepływu podstawowego; series_baseflow to przepływ podstawowy każdego dnia roku series_year, domyślnie ostatniego pełnego roku hydrologicznego"
+definition = "szereg dobowy jest rozkładany na kalendarz kolejnych dni (brakująca data to dzień bez wartości); każdy odcinek bez luk o długości co najmniej 60 dni jest filtrowany osobno (specyfikacja `lyne_hollick`), z odbiciem na obu jego końcach; dzień krótszego odcinka nie ma przepływu podstawowego; series_baseflow to przepływ podstawowy każdego dnia roku series_year, domyślnie ostatniego pełnego roku hydrologicznego"
 convention = "odcinki co najmniej 60-dniowe są własną regułą Hydrologa; Ladson i in. (2013, rozdz. 2.4) filtrują każdy odcinek wartości niebrakujących, a ich BFI.R każdy dłuższy niż 30 wartości odbitych"
 
 [rules.baseflow_spans.constants]
@@ -2973,7 +2973,7 @@ min_span_days = "Najmniejsza długość odcinka bez luk filtrowanego osobno"
 [rules.baseflow_index_by_year]
 en_sha256 = "f92733ffe4d531e84c6fff7575adbe541893e6030cb9f96fc9e8034f3f017139"
 title = "Wskaźnik odpływu podziemnego BFI okresu i poszczególnych lat hydrologicznych"
-definition = "wskaźnik odpływu podziemnego okresu i każdego roku hydrologicznego (1 listopada – 31 października, nazywanego od roku jego końca) jest wskaźnikiem (spec `baseflow_index`) ich dni z przepływem podstawowym; rok potrzebuje 300 takich dni, aby mieć własny wskaźnik, a rok bez przepływu w tych dniach go nie ma (null); okres bez przepływu w tych dniach jest odrzucany"
+definition = "wskaźnik odpływu podziemnego okresu i każdego roku hydrologicznego (1 listopada – 31 października, nazywanego od roku jego końca) jest wskaźnikiem (specyfikacja `baseflow_index`) ich dni z przepływem podstawowym; rok potrzebuje 300 takich dni, aby mieć własny wskaźnik, a rok bez przepływu w tych dniach go nie ma (null); okres bez przepływu w tych dniach jest odrzucany"
 convention = "iloraz objętości z dni z przepływem podstawowym (Ladson i in., rozdz. 2.4; WMO-No. 1029, rozdz. 5.2), a nie średnia wskaźników odcinków ważona ich długościami z BFI.R; 300 dni w roku to własna reguła Hydrologa"
 
 [rules.baseflow_index_by_year.constants]
@@ -2982,13 +2982,13 @@ min_year_days = "Najmniejsza liczba dni z przepływem podstawowym w roku, dla kt
 [rules.recession_without_segment]
 en_sha256 = "aaf0a998c784df31a469e39df8d32968462ebe1d36f293e025d58b03c94e78fb"
 title = "Stała recesji szeregu bez odcinka recesji"
-definition = "stała recesji szeregu (spec `recession_constant`), z k i czasem połowicznego spadku równymi null i bez odcinków, gdy szereg nie ma żadnego odcinka recesji"
+definition = "stała recesji szeregu (specyfikacja `recession_constant`), z k i czasem połowicznego spadku równymi null i bez odcinków, gdy szereg nie ma żadnego odcinka recesji"
 convention = "recesja w `baseflow_separation` jest liczona dla całego kalendarza dobowego szeregu, a luki są w nim końcami odcinków"
 
 [rules.flow_regime_of_a_daily_series]
 en_sha256 = "12daaecc4b165a9900b427fb49aca044060bd3f46d999e2dba7996ff4a51953a"
 title = "Reżim odpływu szeregu dobowego"
-definition = "Miesiąc kalendarzowy każdej daty; współczynniki Pardégo, udział wiosenny i typ Dynowskiej szeregu (spec `parde_coefficients`, `spring_share`, `dynowska_regime_type`), wskaźnik Walsha i Lawlera objętości miesięcznych (średnie razy liczba dni miesiąca, luty 28,25 dnia) oraz pierwszy, ostatni i liczba lat hydrologicznych z wartością"
+definition = "Miesiąc kalendarzowy każdej daty; współczynniki Pardégo, udział wiosenny i typ Dynowskiej szeregu (specyfikacje `parde_coefficients`, `spring_share`, `dynowska_regime_type`), wskaźnik Walsha i Lawlera objętości miesięcznych (średnie razy liczba dni miesiąca, luty 28,25 dnia) oraz pierwszy, ostatni i liczba lat hydrologicznych z wartością"
 convention = "miesiące kalendarza gregoriańskiego; listy od listopada do października; dzień bez wartości (NaN) jest pomijany; rok hydrologiczny trwa od listopada do października i nosi numer roku, w którym się kończy (IMGW-PIB)"
 
 [rules.flow_regime_of_a_daily_series.constants]

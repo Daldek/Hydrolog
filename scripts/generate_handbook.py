@@ -891,7 +891,8 @@ class Handbook:
         sources = _Sources()
         cited = sources.cite(rule.source)
         lines = [
-            f"**{_cell(polish['title'])}** · reguła `{rule.name}` (Tier B, CMP-2.2)",
+            f"**{_cell(polish['title'])}** · wzór grupy B `{rule.name}` "
+            "(Tier B, CMP-2.2)",
             "",
             f"**Definicja:** {_cell(polish['definition'])} {cited}",
             "",
