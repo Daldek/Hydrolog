@@ -358,12 +358,15 @@ class LowFlowAnalysis:
         Raises
         ------
         CalculationError
-            If the series has no complete hydrological year, or maximum likelihood
-            gives no parameters: fewer than 4 annual minima (``too_few_values``),
-            all equal (``constant_values``), a likelihood without a maximum
-            (``unbounded_likelihood``: a shape of 1 or more puts the lower bound at
-            the smallest minimum) or a search that does not settle
-            (``not_converged``).
+            If the series has no complete hydrological year.
+        InvalidParameterError
+            If the annual minima are refused by the spec ``fisher_tippett_minima``:
+            ``details.reason`` ``precondition_failed`` with ``details.constraint``
+            ``enough_values`` (fewer than 4), ``values_not_all_equal`` or
+            ``likelihood_has_a_maximum`` (a shape of 1 or more puts the lower bound
+            at the smallest minimum, the search ends at an end of the shapes it
+            covers or does not settle), or ``outside_physical_range`` for a
+            negative discharge minimum.
 
         Warns
         -----
@@ -631,10 +634,8 @@ def fit_fisher_tippett_minima(
     Raises
     ------
     InvalidParameterError
-        If a minimum is not a finite number.
-    CalculationError
-        If maximum likelihood gives no parameters (see
-        :meth:`LowFlowAnalysis.fit_fisher_tippett`).
+        If a minimum is not a finite number, or the minima are refused by the spec
+        ``fisher_tippett_minima`` (see :meth:`LowFlowAnalysis.fit_fisher_tippett`).
 
     Warns
     -----

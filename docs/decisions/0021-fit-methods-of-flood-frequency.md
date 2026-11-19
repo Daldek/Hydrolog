@@ -7,6 +7,10 @@
 - Amended: 2026-11-06 (below), `fit_method` `all` and the default `l_moments` (the plan's erratum, decision D6);
   2026-11-18 (below), maximum likelihood by Hydrolog's own search, no parameters without a maximum, its
   preconditions and no negative low flows (the fix of a gross defect, Nogat CMP-9.2)
+- Amended by [ADR-0055](0055-the-frequency-estimators-refuse-by-preconditions-and-search-within-bounds.md)
+  (2026-11-19): a fit refused by a precondition of its estimator's spec is `validation_error`, maximum likelihood and
+  least squares search bounded shapes once for the precondition and the fit, least squares reaches the least squares,
+  and the AIC of a fit outside its support is infinite without the formula
 
 ## Context
 

@@ -1181,14 +1181,17 @@ def stats_low_flow(
     ------
     InvalidParameterError
         If the series options are inconsistent, ``parameter`` is not allowed, a
-        return period is not greater than 1 or ``first_year`` is after
-        ``last_year``.
+        return period is not greater than 1, ``first_year`` is after ``last_year``,
+        or the annual minima are refused by the spec ``fisher_tippett_minima``:
+        ``details.reason`` ``precondition_failed`` with ``details.constraint``
+        ``values_not_all_equal`` or ``likelihood_has_a_maximum`` (no maximum of the
+        likelihood inside the shapes searched), or ``outside_physical_range`` for a
+        negative discharge minimum.
     NotFoundError, InputDataError
         If a file does not exist or cannot be read.
     CalculationError
         If there are fewer than 4 annual minima, the period has no value or the fit
-        gives no parameters (its ``details.reason``: ``constant_values``,
-        ``unbounded_likelihood``, ``not_converged``) or fails.
+        fails.
     """
     cite(attribution)
     check_choice("parameter", parameter, _FREQUENCY_PARAMETERS)
