@@ -63,6 +63,9 @@ __all__ = [
 FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.runoff.scs_cn",
     "hydrolog.runoff.cn_lookup",
+    "hydrolog.time.concentration",
+    "hydrolog.morphometry.profile",
+    "hydrolog.runoff.nash_iuh",
     "hydrolog.runoff.unit_hydrograph",
     "hydrolog.runoff.snyder_uh",
     "hydrolog.runoff.clark_iuh",
@@ -71,7 +74,17 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
 """The modules whose ``SPECS`` (and ``TIER_B``) declare Hydrolog's formulas, in the
 order of ``docs/FORMULAS.md``."""
 
-DELEGATED: Final[tuple[Delegated, ...]] = ()
+DELEGATED: Final[tuple[Delegated, ...]] = (
+    Delegated(
+        name="nash_shape_root",
+        library="scipy.optimize.brentq",
+        versions="scipy>=1.10 (1.18.1 locked)",
+        smoke_case="the root N of f(N) = (N-1)^N e^-(N-1) / Gamma(N) = f(2.55) on "
+        "[1.1, 20] with xtol 1e-6 is 2.55 within 1e-6 (spec lutz)",
+        test="tests/unit/test_formulas_lutz.py::"
+        "test_the_delegated_root_finder_finds_a_known_root",
+    ),
+)
 """Computations delegated to third-party libraries (CMP-1.2)."""
 
 CONSTRAINT_OPTIONS: Final[Mapping[tuple[str, str], str]] = MappingProxyType(

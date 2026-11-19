@@ -157,16 +157,6 @@ _RANGE_NOTICES: Final = ("outside_typical_range", "outside_unverified_range")
 UH_MODELS: Final = ("scs", "nash", "clark", "snyder")
 """The unit hydrograph models; each has the range of the time step."""
 
-_KERBY_N = (
-    (
-        "Kerby (1959): the retardance N of his table, pavement to dense grass and "
-        "coniferous forest (Roussel et al. 2005)"
-    ),
-    (
-        "Kerby (1959): współczynnik N z jego tabeli, od nawierzchni do gęstej trawy "
-        "i lasu iglastego (Roussel i in. 2005)"
-    ),
-)
 _NASH = (
     "Hydrolog; no published source, to be verified",
     "Hydrolog; brak opublikowanego źródła, do weryfikacji",
@@ -203,6 +193,53 @@ _SOURCE_PL: Final[Mapping[tuple[str, str], str]] = {
     ("scs_cn_amc", "cn"): (
         "Ponce i Hawkins (1996), s. 15: wzory 15-16 Hawkinsa i in. (1985) obowiązują "
         "dla 55 ≤ CN ≤ 95"
+    ),
+    ("kirpich", "length_km"): (
+        "Mota i Kobiyama (2015), s. 58: dane Kirpicha (1940), tab. 1, wyznaczają "
+        "zakres wzoru, L od 350 do 4000 stóp"
+    ),
+    ("kirpich", "slope_m_per_m"): (
+        "Mota i Kobiyama (2015), s. 58: dane Kirpicha (1940), tab. 1, wyznaczają "
+        "zakres wzoru, S od 0,025 do 0,1"
+    ),
+    ("nrcs", "cn"): (
+        "USDA-NRCS (2010), NEH 630, rozdz. 15, s. 15-6: CN poniżej 50 lub powyżej 95 "
+        "nie stosuje się w równaniach 15-4a i 15-4b (Mockus 1961)"
+    ),
+    ("giandotti", "area_km2"): (
+        "Almeida i in. (2014), tab. 1: zlewnie środkowych i północnych Włoch, "
+        "170–70 000 km² (za Giandottim 1940, Preti i in. 2011, Radice i in. 2012)"
+    ),
+    ("faa", "runoff_coeff"): (
+        "FAA (1970), AC 150/5320-5B, tabela I, s. 10: wartości współczynnika C, od "
+        "0,00 do 0,95"
+    ),
+    ("kerby", "length_km"): (
+        "Roussel i in. (2005), suplement, s. 29: spływ po stoku w danych Kerby'ego "
+        "do ok. 1200 stóp (366 m), górna granica"
+    ),
+    ("kerby", "slope_m_per_m"): (
+        "Roussel i in. (2005), s. 5: zlewnie Kerby'ego (1959) mają spadki poniżej 0,01"
+    ),
+    ("kerby", "retardance"): (
+        "Roussel i in. (2005), suplement, s. 29: tabela N Kerby'ego, od nawierzchni "
+        "(0,02) do gęstej trawy, lasu iglastego lub liściastego z grubą ściółką (0,80)"
+    ),
+    ("kerby_kirpich", "overland_length_km"): (
+        "Roussel i in. (2005), suplement, s. 29: spływ po stoku w danych Kerby'ego "
+        "do ok. 1200 stóp (366 m), górna granica"
+    ),
+    ("kerby_kirpich", "retardance"): (
+        "Roussel i in. (2005), suplement, s. 29: tabela N Kerby'ego, od nawierzchni "
+        "(0,02) do gęstej trawy, lasu iglastego lub liściastego z grubą ściółką (0,80)"
+    ),
+    ("kerby_kirpich", "flow_path_length_km"): (
+        "Roussel i in. (2005), suplement, s. 29: cieki główne 92 zlewni w Teksasie, "
+        "ok. 1–50 mil, od przekroju do działu wodnego"
+    ),
+    ("kerby_kirpich", "flow_path_slope_m_per_m"): (
+        "Roussel i in. (2005), suplement, s. 29: spadki cieków głównych od działu "
+        "wodnego do przekroju, ok. 0,002–0,02"
     ),
     ("scs", "area_km2"): (
         "USDA-NRCS (2007), NEH 630, rozdz. 16, s. 16-4: zlewnia cząstkowa nie większa "
@@ -249,21 +286,14 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
         0.005,
         0.45,
         "km2",
-        "Kirpich (1940): data of 7 rural watersheds in Tennessee, 1.25-112 acres "
-        "(USDA-NRCS 2010, NEH 630 ch. 15; Roussel et al. 2005)",
-        "Kirpich (1940): dane 7 zlewni rolniczych w Tennessee, 1,25–112 akrów "
-        "(USDA-NRCS 2010, NEH 630 rozdz. 15; Roussel i in. 2005)",
+        "Kirpich (1940): data of 6 rural watersheds near Jackson, Tennessee, of "
+        "Ramser's 7, 1.25-112 acres (Mota and Kobiyama 2015, table 1; USDA-NRCS 2010, "
+        "NEH 630 ch. 15; Roussel et al. 2005)",
+        "Kirpich (1940): dane 6 zlewni rolniczych koło Jackson w Tennessee z 7 "
+        "Ramsera, 1,25–112 akrów (Mota i Kobiyama 2015, tab. 1; USDA-NRCS 2010, "
+        "NEH 630 rozdz. 15; Roussel i in. 2005)",
     ),
-    TypicalRange(
-        "kirpich",
-        "slope_m_per_m",
-        0.03,
-        0.10,
-        "m/m",
-        "Kirpich (1940): slopes of the 7 Tennessee watersheds, 3-10% (Roussel et "
-        "al. 2005)",
-        "Kirpich (1940): spadki 7 zlewni w Tennessee, 3–10% (Roussel i in. 2005)",
-    ),
+    *_specified("kirpich"),
     TypicalRange(
         "nrcs",
         "area_km2",
@@ -275,36 +305,9 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
         "Mockus (1961): równanie opóźnienia z 24 zlewni od 1,3 akra do 9,2 mi² "
         "(USDA-NRCS 2010, NEH 630 rozdz. 15)",
     ),
-    TypicalRange(
-        "nrcs",
-        "cn",
-        50.0,
-        95.0,
-        "-",
-        "Mockus (1961): a CN outside these bounds is not to be used in the lag "
-        "equation (USDA-NRCS 2010, NEH 630 ch. 15)",
-        "Mockus (1961): CN spoza tych granic nie stosuje się w równaniu opóźnienia "
-        "(USDA-NRCS 2010, NEH 630 rozdz. 15)",
-    ),
-    TypicalRange(
-        "giandotti",
-        "area_km2",
-        170.0,
-        70000.0,
-        "km2",
-        "Giandotti (1934): the Italian basins of the formula (Grimaldi et al. 2012)",
-        "Giandotti (1934): zlewnie włoskie, z których pochodzi wzór (Grimaldi i in. "
-        "2012)",
-    ),
-    TypicalRange(
-        "faa",
-        "runoff_coeff",
-        0.0,
-        0.95,
-        "-",
-        "FAA (1970), AC 150/5320-5B, table I: the runoff coefficients of the method",
-        "FAA (1970), AC 150/5320-5B, tabela I: współczynniki odpływu metody",
-    ),
+    *_specified("nrcs"),
+    *_specified("giandotti"),
+    *_specified("faa"),
     TypicalRange(
         "kerby",
         "area_km2",
@@ -314,25 +317,7 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
         "Kerby (1959): watersheds below 10 acres (Roussel et al. 2005)",
         "Kerby (1959): zlewnie poniżej 10 akrów (Roussel i in. 2005)",
     ),
-    TypicalRange(
-        "kerby",
-        "length_km",
-        0.0,
-        0.366,
-        "km",
-        "Kerby (1959): overland flow up to 1200 ft (Roussel et al. 2005; TxDOT 2019)",
-        "Kerby (1959): spływ po stoku do 1200 stóp (Roussel i in. 2005; TxDOT 2019)",
-    ),
-    TypicalRange(
-        "kerby",
-        "slope_m_per_m",
-        0.0,
-        0.01,
-        "m/m",
-        "Kerby (1959): slopes below 1% (Roussel et al. 2005)",
-        "Kerby (1959): spadki poniżej 1% (Roussel i in. 2005)",
-    ),
-    TypicalRange("kerby", "retardance", 0.02, 0.80, "-", *_KERBY_N),
+    *_specified("kerby"),
     TypicalRange(
         "kerby_kirpich",
         "area_km2",
@@ -344,40 +329,7 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
         "Roussel i in. (2005): 92 zlewnie w Teksasie, 0,25–150 mi² (raport TxDOT "
         "0-4696-2; TxDOT 2019)",
     ),
-    TypicalRange(
-        "kerby_kirpich",
-        "overland_length_km",
-        0.0,
-        0.366,
-        "km",
-        "Kerby (1959): overland flow of about 1200 ft as an upper limit (Roussel et "
-        "al. 2005)",
-        "Kerby (1959): spływ po stoku ok. 1200 stóp jako górna granica (Roussel i "
-        "in. 2005)",
-    ),
-    TypicalRange("kerby_kirpich", "retardance", 0.02, 0.80, "-", *_KERBY_N),
-    TypicalRange(
-        "kerby_kirpich",
-        "flow_path_length_km",
-        1.6,
-        80.0,
-        "km",
-        "Roussel et al. (2005): main channels of 1-50 mi, from the outlet to the "
-        "watershed divide, of the 92 Texas watersheds",
-        "Roussel i in. (2005): cieki główne 92 zlewni w Teksasie, 1–50 mil, od "
-        "przekroju do działu wodnego",
-    ),
-    TypicalRange(
-        "kerby_kirpich",
-        "flow_path_slope_m_per_m",
-        0.002,
-        0.02,
-        "m/m",
-        "Roussel et al. (2005): main channel slopes, from the watershed divide to "
-        "the outlet, of the 92 Texas watersheds",
-        "Roussel i in. (2005): spadki cieków głównych od działu wodnego do "
-        "przekroju 92 zlewni w Teksasie",
-    ),
+    *_specified("kerby_kirpich"),
     # --- SCS-CN ------------------------------------------------------------------
     *_specified("scs_cn_runoff"),
     *_specified("scs_cn_amc"),
@@ -409,9 +361,9 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
         0.0,
         236.0,
         "km2",
-        "KZGW (2017), annex 2, p. 96: the largest watershed the Lutz method is "
+        "KZGW (2017), annex 2, p. 97: the largest watershed the Lutz method is "
         "recommended for",
-        "KZGW (2017), zał. 2, s. 96: największa zlewnia, dla której zaleca się "
+        "KZGW (2017), zał. 2, s. 97: największa zlewnia, dla której zaleca się "
         "metodę Lutza",
     ),
     TypicalRange(
@@ -528,7 +480,7 @@ NASH_INPUTS: Final[Mapping[str, Mapping[str, tuple[str, ...]]]] = {
     "lutz": {
         "L_km": ("flow_path_length_km",),
         "Lc_km": ("Lc_km",),
-        "slope": ("flow_path_slope_m_per_m",),
+        "slope": ("flow_path_equal_area_slope_m_per_m",),
         "manning_n": ("manning_n",),
         "urban_pct": ("urban_pct",),
         "forest_pct": ("forest_pct",),
@@ -540,12 +492,14 @@ NASH_INPUTS: Final[Mapping[str, Mapping[str, tuple[str, ...]]]] = {
 For each method of ``nash_estimation``: argument of the estimating constructor
 (``NashIUH.from_lutz``) to the field its source defines for it, without substitutes.
 Lutz (1984, after KZGW 2017) takes the main stream from the divide to the outlet: its
-length L and its mean slope J are those of the longest flow path, as Kirpich's are
-(ADR-0019, ADR-0024), not of the channel, which ends at the channel head. Lc is the
-length along the stream from the outlet to the point nearest the centroid, n_M the
-Manning coefficient of the channel, U and W the urbanized and forested shares (0 when
-the watershed has none), and the area scales the unit hydrograph and is checked against
-the watersheds the method is recommended for.
+length L is that of the longest flow path, as Kirpich's is (ADR-0019, ADR-0024), not of
+the channel, which ends at the channel head, and its slope Jg the equal-area slope of
+that path's longitudinal profile (KZGW 2017, annex 2, p. 97; ADR-0053), not the slope
+between its ends that Kirpich takes. Lc is the length along the stream from the outlet
+to the point nearest the centroid, n_M the Manning coefficient of the channel, U and W
+the urbanized and forested shares (0 when the watershed has none), and the area scales
+the unit hydrograph and is checked against the watersheds the method is recommended
+for.
 """
 
 

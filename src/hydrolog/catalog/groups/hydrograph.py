@@ -308,29 +308,31 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         type="choice",
         description_pl=(
             "Nash: estymacja n i K ze zlewni zamiast podanych `nash_n` i `nash_k_min`"
-            "; lutz: metoda Lutza (1984, za KZGW 2017) z pól zlewni: L i J "
-            "najdłuższej drogi spływu (`flow_path_length_km`, "
-            "`flow_path_slope_m_per_m`), `Lc_km`, `manning_n` oraz `urban_pct` i "
-            "`forest_pct` (bez nich 0). Wymaga `watershed` lub `watershed_file`."
+            "; lutz: metoda Lutza (1984, za KZGW 2017) z pól zlewni: długość L "
+            "najdłuższej drogi spływu (`flow_path_length_km`), spadek wyrównany Jg "
+            "jej profilu podłużnego (`flow_path_equal_area_slope_m_per_m`), `Lc_km`, "
+            "`manning_n` oraz `urban_pct` i `forest_pct` (bez nich 0). Wymaga "
+            "`watershed` lub `watershed_file`."
         ),
         description=(
             "Nash: how n and K are estimated from the watershed instead of being "
             "given (`nash_n`, `nash_k_min`); lutz: the Lutz method (1984, after KZGW "
-            "2017) from the watershed fields: L and J of the longest flow path "
-            "(`flow_path_length_km`, `flow_path_slope_m_per_m`), `Lc_km`, "
-            "`manning_n`, and `urban_pct` and `forest_pct` (0 without them). Needs "
-            "`watershed` or `watershed_file`."
+            "2017) from the watershed fields: the length L of the longest flow path "
+            "(`flow_path_length_km`), the equal-area slope Jg of its longitudinal "
+            "profile (`flow_path_equal_area_slope_m_per_m`), `Lc_km`, `manning_n`, and "
+            "`urban_pct` and `forest_pct` (0 without them). Needs `watershed` or "
+            "`watershed_file`."
         ),
         choices=NASH_ESTIMATIONS,
         meanings={
             "lutz": "Lutz (1984, after KZGW 2017): n and K from the main stream "
-            "from the divide (the longest flow path), Lc, Manning's n and the urban "
-            "and forest shares.",
+            "from the divide (the longest flow path, its length and the equal-area "
+            "slope of its profile), Lc, Manning's n and the urban and forest shares.",
         },
         meanings_pl={
             "lutz": "Lutz (1984, za KZGW 2017): n i K z cieku głównego od działu "
-            "wodnego (najdłuższej drogi spływu), Lc, n Manninga oraz udziału "
-            "terenów zurbanizowanych i lasów.",
+            "wodnego (najdłuższej drogi spływu, jej długości i spadku wyrównanego "
+            "profilu), Lc, n Manninga oraz udziału terenów zurbanizowanych i lasów.",
         },
     ),
     Option(
@@ -503,9 +505,9 @@ COMMANDS: tuple[Command, ...] = (
         typical_ranges=GENERATE_RANGES,
         example_results=(
             {
-                "peak_discharge_m3s": 54.9079,
+                "peak_discharge_m3s": 54.9772,
                 "time_to_peak_min": 95.0,
-                "total_volume_m3": 321295.0,
+                "total_volume_m3": 321296.0,
                 "runoff_coefficient": 0.141794,
                 "uh_model": "scs",
             },
@@ -538,12 +540,12 @@ COMMANDS: tuple[Command, ...] = (
                 "uh_model": "snyder",
             },
             {
-                "peak_discharge_m3s": 22.1695,
-                "time_to_peak_min": 180.0,
+                "peak_discharge_m3s": 19.6377,
+                "time_to_peak_min": 200.0,
                 "total_volume_m3": 321161.0,
                 "uh_model": "nash",
                 "nash_estimation": "lutz",
-                "uh_parameters": {"n": 3.70061, "k_min": 56.5989},
+                "uh_parameters": {"n": 3.67681, "k_min": 64.2174},
             },
         ),
         examples=(
@@ -608,6 +610,7 @@ COMMANDS: tuple[Command, ...] = (
             {
                 "watershed": {
                     **_WATERSHED_EXAMPLE,
+                    "flow_path_equal_area_slope_m_per_m": 0.0185,
                     "Lc_km": 6.0,
                     "manning_n": 0.035,
                     "forest_pct": 40.0,

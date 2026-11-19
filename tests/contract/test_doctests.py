@@ -5,9 +5,8 @@
 the list once its examples pass; those of the visualisation modules and of
 ``reports.generator`` write files and stay out. Not listed, because some of their
 examples fail (2026-11-18): ``hydrometrics.rating_curve``,
-``morphometry.geometric``, ``morphometry.hypsometry``,
-``network.stream_order``, ``operations.config``, ``precipitation.interpolation``,
-``reports``, ``runoff.nash_iuh`` and the ``visualization`` modules.
+``morphometry.geometric``, ``network.stream_order``, ``operations.config``,
+``precipitation.interpolation``, ``reports`` and the ``visualization`` modules.
 """
 
 import doctest
@@ -27,6 +26,7 @@ MODULES = (
     "hydrolog.catalog.notices",
     "hydrolog.cli.values",
     "hydrolog.exceptions",
+    "hydrolog.morphometry.hypsometry",
     "hydrolog.morphometry.terrain",
     "hydrolog.morphometry.watershed_params",
     "hydrolog.operations.meta",
@@ -53,6 +53,7 @@ MODULES = (
     "hydrolog.runoff.clark_iuh",
     "hydrolog.runoff.convolution",
     "hydrolog.runoff.generator",
+    "hydrolog.runoff.nash_iuh",
     "hydrolog.runoff.scs_cn",
     "hydrolog.runoff.snyder_uh",
     "hydrolog.runoff.unit_hydrograph",

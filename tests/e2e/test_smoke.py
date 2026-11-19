@@ -154,6 +154,7 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
         "channel_length_km": "14,78",
         "flow_path_length_km": "15,88",
         "flow_path_slope_m_per_m": "0,0114",
+        "flow_path_equal_area_slope_m_per_m": "0,00848",
         "pmaxtp_latitude": "51,01544",
         "pmaxtp_longitude": "15,88984",
         "timestep_min": "10",
@@ -165,15 +166,15 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
     page.locator('[aria-labelledby="hg-uh-label"]').get_by_role(
         "radio", name="SCS", exact=True
     ).click()
-    expect(right.locator('[data-kpi="q"] .v')).to_contain_text("54,20")
+    expect(right.locator('[data-kpi="q"] .v')).to_contain_text("54,23")
     shown["hydrogram-depth"] = flat(
         left.locator("#hg-pmaxtp_depth").input_value() + " mm"
     )
     expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
     for name in ["q", "tp", "volume", "c"]:
         read(f"hydrogram-{name}", right.locator(f'[data-kpi="{name}"] .v'))
-    # The example's longest flow path is flatter than Kirpich's data: Hydrolog's
-    # warning on its slope
+    # The example's longest flow path is longer and flatter than Kirpich's data:
+    # Hydrolog's warnings on its length and slope; the guide quotes the slope's
     outside = left.locator('[data-field="flow_path_slope_m_per_m"] .warn')
     expect(outside).to_contain_text("outside_typical_range")
     shown["hydrogram-outside"] = flat(
@@ -182,7 +183,7 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
     page.locator('[aria-labelledby="hg-amc-label"]').get_by_role(
         "radio", name="III", exact=True
     ).click()
-    expect(right.locator('[data-kpi="q"] .v')).not_to_contain_text("54,20")
+    expect(right.locator('[data-kpi="q"] .v')).not_to_contain_text("54,23")
     expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
     read("hydrogram-q-amc3", right.locator('[data-kpi="q"] .v'))
     # Nash by Lutz at AMC II: n and K estimated from the watershed in the same run,

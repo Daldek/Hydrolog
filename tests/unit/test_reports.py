@@ -126,7 +126,7 @@ class TestFormulaRenderer:
             tc_min=200.0,
         )
 
-        assert "0.01416" in result
+        assert "0.014147" in result  # 100/7068.86, TRIAGE T8 (0.01416 until 0.8.1)
         assert "72" in result
         assert "200" in result
 
@@ -249,7 +249,9 @@ class TestFormulaRenderer:
 
         assert "0.0015^{-0.2335}" in result
         assert "0.0010 + 0.0005 = 0.0015" in result
-        assert pytest.approx(tc) == 36.37 * (0.10 * 0.40) ** 0.467 * 0.0015 ** (-0.2335)
+        assert tc == pytest.approx(
+            36.37 * (0.10 * 0.40) ** 0.467 * 0.0015 ** (-0.2335), rel=1e-4
+        )  # the constant as printed, 36.3699 to four digits
 
     def test_kerby_tc_without_adjustment_has_no_note(self):
         result = FormulaRenderer.kerby_tc(

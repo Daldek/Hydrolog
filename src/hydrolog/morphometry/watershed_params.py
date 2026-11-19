@@ -69,10 +69,23 @@ _FLOW_PATH_HINT = (
 # when missing; the others it reads, the shares of urban and forest areas, are 0 when
 # the watershed has none (by the argument of the estimating constructor)
 _NASH_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
-    "lutz": ("flow_path_length_km", "Lc_km", "flow_path_slope_m_per_m", "manning_n"),
+    "lutz": (
+        "flow_path_length_km",
+        "Lc_km",
+        "flow_path_equal_area_slope_m_per_m",
+        "manning_n",
+    ),
 }
 _NASH_DEFAULTS: dict[str, float] = {"urban_pct": 0.0, "forest_pct": 0.0}
 _NASH_METHOD_LABELS = {"lutz": "the Lutz estimation of Nash's n and K"}
+_LUTZ_HINT = (
+    "Lutz takes the main stream from the divide to the outlet: its length L is that "
+    "of the longest flow path (flow_path_length_km), its slope Jg the equal-area "
+    "slope of that path's longitudinal profile (flow_path_equal_area_slope_m_per_m, "
+    "hydrolog.morphometry.equal_area_slope of the profile from the outlet upstream), "
+    "not the slope between its ends (flow_path_slope_m_per_m), which is larger on a "
+    "concave profile."
+)
 
 # Field checks of WatershedParameters, in the order they run
 _POSITIVE_FIELDS = (
@@ -85,6 +98,7 @@ _POSITIVE_FIELDS = (
     "Lc_km",
     "manning_n",
     "flow_path_length_km",
+    "flow_path_equal_area_slope_m_per_m",
 )
 _NON_NEGATIVE_FIELDS = (
     "mean_slope_m_per_m",
@@ -162,8 +176,9 @@ class WatershedParameters:
     channel_slope_m_per_m : float, optional
         Main channel slope [m/m]. No calculation takes it: Kirpich and
         Kerby-Kirpich take the slope of the longest flow path,
-        ``flow_path_slope_m_per_m``, and so does Lutz's estimation of Nash's n and K
-        (:meth:`nash_parameters`), whose stream runs to the divide.
+        ``flow_path_slope_m_per_m``, and Lutz's estimation of Nash's n and K
+        (:meth:`nash_parameters`), whose stream runs to the divide, the equal-area
+        slope of its profile, ``flow_path_equal_area_slope_m_per_m``.
     cn : int, optional
         SCS Curve Number (0-100).
     source : str, optional
@@ -208,8 +223,17 @@ class WatershedParameters:
     flow_path_slope_m_per_m : float, optional
         Slope of the longest flow path [m/m]: the elevation of its head (that
         most distant point) minus the outlet elevation, over
-        ``flow_path_length_km``. Kirpich's slope, the main channel slope of
-        Kerby-Kirpich and Lutz's J (:meth:`nash_parameters`).
+        ``flow_path_length_km``. Kirpich's slope and the main channel slope of
+        Kerby-Kirpich; not Lutz's Jg.
+    flow_path_equal_area_slope_m_per_m : float, optional
+        Equal-area slope of the longitudinal profile of the longest flow path
+        [m/m]: the slope of the line through the outlet that leaves equal areas of
+        the profile above and below it (:func:`hydrolog.morphometry.equal_area_slope`,
+        spec ``equal_area_slope``, on the profile from the outlet to the head of the
+        path of ``flow_path_length_km``). Must be positive. Lutz's Jg
+        (:meth:`nash_parameters`; KZGW 2017, annex 2, p. 97), which
+        ``flow_path_slope_m_per_m`` does not replace: on a concave profile it is
+        smaller.
 
     Attributes
     ----------
@@ -279,9 +303,10 @@ class WatershedParameters:
     urban_pct: float | None = None
     forest_pct: float | None = None
 
-    # Longest flow path (Kirpich, NRCS lag, Kerby-Kirpich concentration time)
+    # Longest flow path (Kirpich, NRCS lag, Kerby-Kirpich concentration time; Lutz)
     flow_path_length_km: float | None = None
     flow_path_slope_m_per_m: float | None = None
+    flow_path_equal_area_slope_m_per_m: float | None = None
 
     def __post_init__(self) -> None:
         """Validate parameters after initialization."""
@@ -406,7 +431,8 @@ class WatershedParameters:
             channel_length_km, channel_slope_m_per_m, cn, source, crs,
             runoff_coeff, retardance, overland_length_km,
             overland_slope_m_per_m, Lc_km, manning_n, urban_pct, forest_pct,
-            flow_path_length_km, flow_path_slope_m_per_m.
+            flow_path_length_km, flow_path_slope_m_per_m,
+            flow_path_equal_area_slope_m_per_m.
 
         Returns
         -------
@@ -452,6 +478,7 @@ class WatershedParameters:
             "forest_pct",
             "flow_path_length_km",
             "flow_path_slope_m_per_m",
+            "flow_path_equal_area_slope_m_per_m",
         }
         filtered_data = {k: v for k, v in data.items() if k in known_fields}
         return cls(**filtered_data)
@@ -830,8 +857,8 @@ class WatershedParameters:
         -------
         dict of str to float
             ``L_km`` (``flow_path_length_km``), ``Lc_km``, ``slope``
-            (``flow_path_slope_m_per_m``), ``manning_n``, ``urban_pct`` and
-            ``forest_pct`` (0 when the watershed has none) and ``area_km2``.
+            (``flow_path_equal_area_slope_m_per_m``), ``manning_n``, ``urban_pct``
+            and ``forest_pct`` (0 when the watershed has none) and ``area_km2``.
 
         Raises
         ------
@@ -839,28 +866,31 @@ class WatershedParameters:
             If the method is unknown (``details["reason"] == "choice"``), a field
             the method requires is missing (``details["reason"] ==
             "missing_field"``, ``details["option"]`` the first of them,
-            ``details["missing"]`` all of them, ``details["method"]`` the method),
-            ``Lc_km`` is longer than ``flow_path_length_km`` (``"maximum"`` on
-            ``Lc_km``) or ``flow_path_slope_m_per_m`` is 0 (``"exclusive_minimum"``
-            on it): Lutz's formula needs Lc <= L and J > 0.
+            ``details["missing"]`` all of them, ``details["method"]`` the method)
+            or ``Lc_km`` is longer than ``flow_path_length_km`` (``"maximum"`` on
+            ``Lc_km``): Lutz's Lc runs along the stream whose length is L.
 
         Notes
         -----
         Lutz takes the main stream from the divide to the outlet (KZGW 2017,
-        annex 2, table C.2): its length L and its mean slope J are the length and
-        the slope of the longest flow path, ``flow_path_length_km`` and
-        ``flow_path_slope_m_per_m``, as Kirpich's are (ADR-0019, ADR-0024), not
-        the channel's, which ends at the channel head. Lc is ``Lc_km``, the
-        Manning coefficient of the channel n_M ``manning_n``, the urbanized and
-        forested shares U and W ``urban_pct`` and ``forest_pct``.
+        annex 2, p. 97 and table C.2): its length L is the length of the longest
+        flow path, ``flow_path_length_km``, as Kirpich's is (ADR-0019, ADR-0024),
+        not the channel's, which ends at the channel head; its slope Jg is the
+        equal-area slope of that path's longitudinal profile,
+        ``flow_path_equal_area_slope_m_per_m`` (ADR-0053), not the slope between
+        its ends, ``flow_path_slope_m_per_m``, which no watershed substitutes for
+        it. Lc is ``Lc_km``, the Manning coefficient of the channel n_M
+        ``manning_n``, the urbanized and forested shares U and W ``urban_pct`` and
+        ``forest_pct``.
 
         Examples
         --------
         >>> params = WatershedParameters(area_km2=37.22, flow_path_length_km=15.88,
-        ...     flow_path_slope_m_per_m=0.0114, Lc_km=6.76, manning_n=0.035,
-        ...     forest_pct=57.4, urban_pct=1.0)
-        >>> params.nash_parameters("lutz")["L_km"]
-        15.88
+        ...     flow_path_slope_m_per_m=0.0114,
+        ...     flow_path_equal_area_slope_m_per_m=0.00848, Lc_km=6.76,
+        ...     manning_n=0.035, forest_pct=57.4, urban_pct=1.0)
+        >>> params.nash_parameters("lutz")["slope"]
+        0.00848
         """
         if method not in NASH_ESTIMATIONS:
             raise InvalidParameterError(
@@ -880,19 +910,13 @@ class WatershedParameters:
         if missing:
             names = ", ".join(missing)
             plural = len(missing) > 1
-            hints = [_FLOW_PATH_HINT] if set(missing) & set(_FLOW_PATH_FIELDS) else []
+            hints = [_FLOW_PATH_HINT] if "flow_path_length_km" in missing else []
             raise _missing_error(
                 missing,
                 f"{names} {'are' if plural else 'is'} required for "
                 f"{_NASH_METHOD_LABELS[method]}. "
                 f"Set the {names} parameter{'s' if plural else ''}.",
-                hint=" ".join(
-                    [
-                        "Lutz takes the main stream from the divide to the outlet: "
-                        "its length and slope are those of the longest flow path.",
-                        *hints,
-                    ]
-                ),
+                hint=" ".join([_LUTZ_HINT, *hints]),
                 method=method,
             )
         arguments: dict[str, float] = {}
@@ -909,14 +933,5 @@ class WatershedParameters:
                 "maximum",
                 maximum=length,
                 value=centroid,
-            )
-        if arguments["slope"] <= 0:
-            raise _field_error(
-                "flow_path_slope_m_per_m",
-                "flow_path_slope_m_per_m must be positive for Lutz's estimation, "
-                f"got {arguments['slope']:g}",
-                "exclusive_minimum",
-                exclusive_minimum=0,
-                value=arguments["slope"],
             )
         return arguments

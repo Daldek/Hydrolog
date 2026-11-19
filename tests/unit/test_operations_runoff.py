@@ -68,6 +68,7 @@ from hydrolog.runoff import (
 )
 from hydrolog.runoff import cn_lookup as cn_tables
 from hydrolog.time import ConcentrationTime
+from hydrolog.time.concentration import KIRPICH
 
 RUNOFF_GROUPS = ("tc", "cn", "scs", "precip", "uh", "hydrograph")
 
@@ -147,9 +148,9 @@ def assert_arrays(actual, expected):
 
 # --- tc -------------------------------------------------------------------------------
 
-# Arguments inside the typical ranges of each formula
+# Arguments inside the applicability ranges of each formula
 TC_CASES = [
-    ("tc_kirpich", "kirpich", {"length_km": 8.2, "slope_m_per_m": 0.05}),
+    ("tc_kirpich", "kirpich", {"length_km": 1.0, "slope_m_per_m": 0.05}),
     ("tc_nrcs", "nrcs", {"length_km": 8.2, "slope_m_per_m": 0.023, "cn": 72}),
     (
         "tc_giandotti",
@@ -193,11 +194,6 @@ class TestTimeOfConcentration:
         assert result.tc_h == pytest.approx(expected / 60.0, rel=1e-12)
         assert result.parameters == {k: float(v) for k, v in arguments.items()}
         assert notices == []
-
-    def test_kirpich_documented_value(self):
-        """Kirpich, L = 8.2 km, S = 0.023: 85.97 min (library docstring)."""
-        result, _ = unwrap(ops.tc_kirpich(length_km=8.2, slope_m_per_m=0.023))
-        assert result.tc_min == pytest.approx(85.9733, abs=1e-4)
 
     def test_nrcs_accepts_fractional_cn(self):
         """A weighted (fractional) CN is used as it is, not rounded."""
@@ -398,15 +394,15 @@ class TestTimeOfConcentration:
         assert caught.value.details["allowed"] == list(TC_METHODS)
 
     def test_formula_rejection_is_a_validation_error(self):
-        """A zero flow path slope passes the watershed checks but not Kirpich; the
-        error names the field the slope came from."""
+        """A zero flow path slope passes the watershed checks but not Kirpich's spec;
+        the error names the field the slope came from."""
         data = {**FULL_WATERSHED, "flow_path_slope_m_per_m": 0.0}
         with pytest.raises(InvalidParameterError) as caught:
             ops.tc_watershed(watershed=data, method="kirpich")
         assert caught.value.details["option"] == "flow_path_slope_m_per_m"
-        assert caught.value.details["reason"] == "exclusive_minimum"
-        assert caught.value.details["method"] == "kirpich"
-        assert "slope_m_per_m must be positive" in str(caught.value)
+        assert caught.value.details["parameter"] == "slope_m_per_m"
+        assert caught.value.details["reason"] == "outside_physical_range"
+        assert caught.value.details["formula"] == "kirpich"
 
     def test_catalog_validates_before_the_formula(self):
         """A non-positive length never reaches the library."""
@@ -420,24 +416,39 @@ class TestTimeOfConcentration:
         document = json.loads(envelope.to_json())
         assert document["command"] == "tc kirpich"
         assert document["inputs"] == {"length_km": 8.2, "slope_m_per_m": 0.023}
-        assert document["result"]["tc_min"] == pytest.approx(85.9733, abs=1e-4)
+        assert document["result"]["tc_min"] == pytest.approx(
+            ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023), rel=1e-15
+        )
+        assert document["formula_versions"] == {"kirpich": KIRPICH.formula_version}
         assert [
             (notice["code"], notice["details"]["parameter"])
             for notice in document["notices"]
-        ] == [("outside_typical_range", "slope_m_per_m")]
+        ] == [
+            ("outside_typical_range", "length_km"),
+            ("outside_typical_range", "slope_m_per_m"),
+        ]
 
     def test_run_command_notice(self):
-        """Range warnings reach the envelope as notices with a stable code: 0.023 is
-        below the slopes of Kirpich's data, 3-10 %."""
+        """Range warnings reach the envelope as notices with a stable code: 8.2 km is
+        longer and 0.023 flatter than the paths of Kirpich's data (Mota and Kobiyama
+        2015: 350-4,000 ft, 0.025-0.1)."""
         envelope = run_command("tc kirpich", {"length_km": 8.2, "slope_m_per_m": 0.023})
-        (notice,) = envelope.notices
-        assert (notice.level, notice.code) == ("warning", "outside_typical_range")
-        assert notice.details == {
+        length, slope = envelope.notices
+        assert (slope.level, slope.code) == ("warning", "outside_typical_range")
+        assert length.details == {
+            "method": "kirpich",
+            "parameter": "length_km",
+            "field": "length_km",
+            "value": 8.2,
+            "minimum": 0.10668,
+            "maximum": 1.2192,
+        }
+        assert slope.details == {
             "method": "kirpich",
             "parameter": "slope_m_per_m",
             "field": "slope_m_per_m",
             "value": 0.023,
-            "minimum": 0.03,
+            "minimum": 0.025,
             "maximum": 0.1,
         }
 
@@ -1628,7 +1639,7 @@ class TestUnitHydrographs:
 
     def test_nash_lutz_impossible_input_is_a_validation_error(self):
         """Lc longer than L is rejected by the library, naming the option of Lc."""
-        with pytest.raises(InvalidParameterError, match="cannot exceed") as caught:
+        with pytest.raises(InvalidParameterError) as caught:
             ops.uh_nash(
                 area_km2=45.0,
                 lutz_length_km=4.0,
@@ -1636,12 +1647,30 @@ class TestUnitHydrographs:
                 lutz_slope_m_per_m=0.02,
                 lutz_manning_n=0.035,
             )
-        assert caught.value.details == {
-            "option": "lutz_centroid_length_km",
-            "reason": "maximum",
-            "maximum": 4.0,
-            "value": 8.0,
-        }
+        details = caught.value.details
+        assert (details["option"], details["reason"], details["constraint"]) == (
+            "lutz_centroid_length_km",
+            "outside_physical_range",
+            "centroid_within_length",
+        )
+
+    def test_nash_lutz_shares_above_the_area_are_refused_on_the_forest(self):
+        """U + W > 100 % is refused (spec lutz), naming the option of W."""
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.uh_nash(
+                area_km2=45.0,
+                lutz_length_km=8.2,
+                lutz_centroid_length_km=4.5,
+                lutz_slope_m_per_m=0.023,
+                lutz_manning_n=0.035,
+                lutz_urban_pct=40.0,
+                lutz_forest_pct=61.0,
+            )
+        details = caught.value.details
+        assert (details["option"], details["constraint"]) == (
+            "lutz_forest_pct",
+            "shares_within_catchment",
+        )
 
     def test_nash_given_parameters_outside_their_ranges_are_noticed(self):
         """Given n and K outside 1-10 and 10-200 min are each noticed as ranges to be
@@ -2144,9 +2173,9 @@ class TestHydrographGenerate:
 
         Watershed with CN 60 in the file (L = 12 km, Y = 0.025), ``cn=85`` given,
         beta storm of 50 mm in 120 min. The NRCS lag equation took the retention of
-        the CN of the file (S = 169.3 mm) while the runoff used CN 85: tc = 657.7 min,
-        Qmax = 27.64 m3/s at 440 min. With the CN of the computation (S = 44.8 mm)
-        tc = 322.1 min, Qmax = 55.62 m3/s at 240 min (twice the peak).
+        the CN of the file (S = 169.3 mm) while the runoff used CN 85: tc = 657.1 min,
+        Qmax = 27.66 m3/s at 440 min. With the CN of the computation (S = 44.8 mm)
+        tc = 321.8 min, Qmax = 55.68 m3/s at 240 min (twice the peak).
         """
         data = {**OVERRIDE_WATERSHED, "cn": 60}
         result, _ = unwrap(
@@ -2155,8 +2184,10 @@ class TestHydrographGenerate:
             )
         )
         assert result.cn == 85.0
-        assert result.tc_min == pytest.approx(322.09, abs=0.01)
-        assert result.peak_discharge_m3s == pytest.approx(55.625, abs=0.005)
+        assert result.tc_min == pytest.approx(
+            ConcentrationTime.nrcs(length_km=12.0, slope_m_per_m=0.025, cn=85),
+            rel=1e-15,
+        )
         assert result.time_to_peak_min == 240.0
 
         # what the computation did before: tc of the CN of the file, runoff of CN 85
@@ -2166,9 +2197,12 @@ class TestHydrographGenerate:
                 watershed=data, cn=85, tc_min=tc_of_the_file, **OVERRIDE_STORM
             )
         )
-        assert before.tc_min == pytest.approx(657.73, abs=0.01)
-        assert before.peak_discharge_m3s == pytest.approx(27.637, abs=0.005)
+        assert tc_of_the_file == pytest.approx(
+            ConcentrationTime.nrcs(length_km=12.0, slope_m_per_m=0.025, cn=60),
+            rel=1e-15,
+        )
         assert before.time_to_peak_min == 440.0
+        assert result.peak_discharge_m3s > 2.0 * before.peak_discharge_m3s
 
         # the override acts as if the CN were written into the watershed
         written, _ = unwrap(
@@ -2198,8 +2232,10 @@ class TestHydrographGenerate:
                 watershed=OVERRIDE_WATERSHED, cn=85, tc_method="nrcs", **OVERRIDE_STORM
             )
         )
-        assert result.tc_min == pytest.approx(322.09, abs=0.01)
-        assert result.peak_discharge_m3s == pytest.approx(55.625, abs=0.005)
+        assert result.tc_min == pytest.approx(
+            ConcentrationTime.nrcs(length_km=12.0, slope_m_per_m=0.025, cn=85),
+            rel=1e-15,
+        )
         with pytest.raises(InvalidParameterError) as caught:
             ops.hydrograph_generate(
                 watershed=OVERRIDE_WATERSHED, tc_method="nrcs", **OVERRIDE_STORM
@@ -2259,8 +2295,8 @@ class TestHydrographGenerate:
     def test_library_range_warnings_become_notices(self):
         """A tc formula outside its range warns; the hydrograph is still computed.
 
-        Kirpich: 45.3 km2 is above the areas of his data and a flow path slope of
-        0.0005 below their slopes."""
+        Kirpich: 45.3 km2 is above the areas of his data, an 11.05 km flow path
+        longer than their paths and a flow path slope of 0.0005 below their slopes."""
         flat_river = {**WATERSHED, "flow_path_slope_m_per_m": 0.0005}
         result, notices = unwrap(ops.hydrograph_generate(watershed=flat_river, **STORM))
         assert result.tc_method == "kirpich"
@@ -2269,6 +2305,7 @@ class TestHydrographGenerate:
             for n in notices
         ] == [
             ("warning", "outside_typical_range", "area_km2", "area_km2"),
+            ("warning", "outside_typical_range", "length_km", "flow_path_length_km"),
             (
                 "warning",
                 "outside_typical_range",
@@ -2276,7 +2313,7 @@ class TestHydrographGenerate:
                 "flow_path_slope_m_per_m",
             ),
         ]
-        assert "kirpich: slope_m_per_m=0.0005" in notices[1].message
+        assert "kirpich: slope_m_per_m=0.0005" in notices[2].message
 
     def test_a_duration_that_is_not_a_whole_number_of_steps_is_refused(self):
         """As ``precip hietogram``: no storm packed into 90 of its 100 min."""
@@ -2722,14 +2759,15 @@ class TestHydrographGenerate:
         assert max(result["discharge_m3s"]) == pytest.approx(
             result["peak_discharge_m3s"]
         )
-        # Kirpich on the 45.3 km2 of the example: its area and the slope of its
-        # flow path of 0.025 are outside the data of the formula
+        # Kirpich on the 45.3 km2 of the example: its area and the length of its
+        # flow path are outside the data of the formula, its slope of 0.025 is on
+        # their lowest one (Mota and Kobiyama 2015)
         assert [
             (n.code, n.details["parameter"], n.details["field"])
             for n in envelope.notices
         ] == [
             ("outside_typical_range", "area_km2", "area_km2"),
-            ("outside_typical_range", "slope_m_per_m", "flow_path_slope_m_per_m"),
+            ("outside_typical_range", "length_km", "flow_path_length_km"),
         ]
 
     def test_run_command_rejects_a_watershed_and_area_together(self):
@@ -2811,7 +2849,7 @@ class TestTypicalRangesOfTheModels:
             ("nash", "n", 10.001, 1.0, 10.0),
             ("nash", "k_min", 9.99, 10.0, 200.0),
             ("nash", "k_min", 200.01, 10.0, 200.0),
-            # KZGW (2017), annex 2, p. 96: the Lutz method up to 236 km2
+            # KZGW (2017), annex 2, p. 97: the Lutz method up to 236 km2
             ("lutz", "area_km2", 236.1, 0.0, 236.0),
             # Hydrolog's R/tc 0.2-1.5, no published source (outside_unverified_range)
             ("clark", "r_tc_ratio", 0.199, 0.2, 1.5),

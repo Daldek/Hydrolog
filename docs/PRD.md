@@ -136,9 +136,9 @@ print(f"Peak intensity: {result.intensity_mm_per_h.max():.2f} mm/h")
 **So that** I can determine the catchment response time
 
 **Acceptance criteria:**
-- [ ] Accepts: stream length [km], slope [m/m]
+- [ ] Accepts: length of the longest flow path, from the hydraulically most distant point to the outlet [km], and its slope [m/m]
 - [ ] Returns: time of concentration [min]
-- [ ] Formula: tc = 0.0195 × L^0.77 × S^(-0.385)
+- [ ] Formula: spec `kirpich` ([FORMULAS.md](FORMULAS.md)), Kirpich's `tc[min] = 0.0078 × L^0.77 × S^(-0.385)` with L in ft (Fang et al. 2005, eq. 3.14), the length converted from km exactly
 
 **Example:**
 ```python
@@ -156,9 +156,9 @@ print(f"tc = {tc:.1f} min")
 **So that** I can take CN into account in the calculations
 
 **Acceptance criteria:**
-- [ ] Accepts: stream length [km], CN, slope [m/m]
+- [ ] Accepts: length of the longest flow path [km], CN, average land slope of the catchment [m/m] (not the slope of the flow path)
 - [ ] Returns: time of concentration [min]
-- [ ] Formula: Lag = L^0.8 × (S+1)^0.7 / (1900 × Y^0.5), tc = Lag / 0.6
+- [ ] Formula: spec `nrcs` ([FORMULAS.md](FORMULAS.md)), NEH 630 ch. 15, eq. 15-4b: `tc[h] = ℓ^0.8 × (S+1)^0.7 / (1140 × Y^0.5)` with ℓ in ft, S = 1000/CN − 10 in inches and Y in %, the inputs converted exactly (eq. 15-4a gives the lag, L = 0.6 Tc by eq. 15-3)
 
 > **Note:** The method was renamed from `scs_lag` to `nrcs` in v0.3.0. The `slope_percent` parameter was changed to `slope_m_per_m`.
 

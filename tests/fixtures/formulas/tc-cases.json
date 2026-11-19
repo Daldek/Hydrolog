@@ -1,0 +1,1297 @@
+[
+ {
+  "formula": "nrcs",
+  "case_id": "neh630-15-lag-example",
+  "source": {
+   "citation": "USDA-NRCS (2010). National Engineering Handbook, Part 630 Hydrology, Chapter 15 Time of Concentration (210-VI-NEH, May 2010); identical in 210 H 630 Subpart F (amended June 2025)",
+   "locator": "§630.1504(a), example of the watershed lag method, p. 15-12: l = 3,865 ft, Y = 4.79 %, CN 63, Tc = 1.14 h",
+   "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930617/14081.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "length_km": 1.178052,
+   "slope_m_per_m": 0.0479,
+   "cn": 63
+  },
+  "expected": {
+   "tc_min": 68.4
+  },
+  "printed_precision": {
+   "length_km": 0.0003048,
+   "slope_m_per_m": 0.0001,
+   "tc_min": 0.6
+  },
+  "intermediate_rounding": [
+   {
+    "step": "S = 1000/63 - 10 = 5.8730 in printed and used as 5.87 in",
+    "effect": {
+     "tc_min": 0.021096
+    }
+   }
+  ],
+  "conventions": [
+   "US units of NEH: l = 3,865 ft (1.178052 km by the exact foot), Y = 4.79 %, S in inches, Tc = 1.14 h printed (68.4 min)",
+   "eq. 15-4b = eq. 15-4a / 0.6; CN of AMC II as the retardance factor"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "USDA-NRCS (2025). 210 NEH Part 630 Hydrology, Subpart F: Time of Concentration (amended June 2025)",
+   "locator": "§630.74 A, the same example and numbers (pp. 15-16)",
+   "url": "https://directives.nrcs.usda.gov/sites/default/files2/1749749287/Subpart%20F%20%E2%80%93%20Time%20of%20Concentration.pdf",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "kerby",
+  "case_id": "roussel2005-overland",
+  "source": {
+   "citation": "Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G., Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University",
+   "locator": "supplement 'Guidance for estimation of time of concentration in Texas', example of the Kerby-Kirpich method, pp. 29-30",
+   "url": "https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "length_km": 0.1524,
+   "slope_m_per_m": 0.02,
+   "retardance": 0.4
+  },
+  "expected": {
+   "tc_min": 25
+  },
+  "printed_precision": {
+   "tc_min": 1
+  },
+  "intermediate_rounding": [
+   {
+    "step": "the source evaluates TxDOT's form 0.828 (L N)^0.467 S^-0.235 (L in ft), Kerby's (0.67 N L / S^0.5)^0.467 with its constant and the exponent of S rounded",
+    "effect": {
+     "tc_min": 0.102072
+    }
+   }
+  ],
+  "conventions": [
+   "L = 500 ft (0.1524 km), S = 2 %, N = 0.40 (pasture, average grass); 'about 25 minutes'",
+   "no low-slope offset (S above 0.002)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Texas Department of Transportation (2019). Hydraulic Design Manual, chapter 4, section 11: Time of Concentration",
+   "locator": "'Application of the Kerby-Kirpich method': the same example and numbers",
+   "url": "https://www.txdot.gov/manuals/des/hyd/chapter-4--hydrology/section-11--time-of-concentration.html",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "kirpich",
+  "case_id": "roussel2005-channel",
+  "source": {
+   "citation": "Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G., Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University",
+   "locator": "supplement 'Guidance for estimation of time of concentration in Texas', example of the Kerby-Kirpich method, pp. 29-30",
+   "url": "https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "length_km": 1.456944,
+   "slope_m_per_m": 0.0095
+  },
+  "expected": {
+   "tc_min": 32
+  },
+  "printed_precision": {
+   "slope_m_per_m": 0.0001,
+   "tc_min": 1
+  },
+  "conventions": [
+   "L = 5,280 - 500 = 4,780 ft (1.456944 km), the main channel minus the overland segment; S = (750 - 700)/5,280 = 0.00947 printed and used as 0.0095; 'about 32 minutes'",
+   "K = 0.0078 for feet, the spec's constant"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Texas Department of Transportation (2019). Hydraulic Design Manual, chapter 4, section 11: Time of Concentration",
+   "locator": "'Application of the Kerby-Kirpich method': the same example and numbers",
+   "url": "https://www.txdot.gov/manuals/des/hyd/chapter-4--hydrology/section-11--time-of-concentration.html",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "kerby_kirpich",
+  "case_id": "roussel2005-kerby-kirpich",
+  "source": {
+   "citation": "Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G., Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University",
+   "locator": "supplement 'Guidance for estimation of time of concentration in Texas', example of the Kerby-Kirpich method, pp. 29-30",
+   "url": "https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "overland_length_km": 0.1524,
+   "overland_slope_m_per_m": 0.02,
+   "retardance": 0.4,
+   "flow_path_length_km": 1.609344,
+   "flow_path_slope_m_per_m": 0.0095
+  },
+  "expected": {
+   "tc_min": 57
+  },
+  "printed_precision": {
+   "flow_path_slope_m_per_m": 0.0001,
+   "tc_min": 1
+  },
+  "intermediate_rounding": [
+   {
+    "step": "the source evaluates TxDOT's form 0.828 (L N)^0.467 S^-0.235 (L in ft), Kerby's (0.67 N L / S^0.5)^0.467 with its constant and the exponent of S rounded",
+    "effect": {
+     "tc_min": 0.102072
+    }
+   },
+   {
+    "step": "the two parts printed as whole minutes ('about 25', 'about 32') and added: half a minute beyond the total's own",
+    "effect": {
+     "tc_min": 0.5
+    }
+   }
+  ],
+  "conventions": [
+   "the main channel of one mile (5,280 ft, 1.609344 km) from the divide to the outlet includes the 500 ft overland segment; its slope 50/5,280 printed as 0.0095; 'about 57 minutes'"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Texas Department of Transportation (2019). Hydraulic Design Manual, chapter 4, section 11: Time of Concentration",
+   "locator": "'Application of the Kerby-Kirpich method': the same example and numbers",
+   "url": "https://www.txdot.gov/manuals/des/hyd/chapter-4--hydrology/section-11--time-of-concentration.html",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "kerby",
+  "case_id": "cleveland2012-overland-low-slope",
+  "source": {
+   "citation": "Cleveland, T.G., Thompson, D.B., Fang, X., Li, M.-H. (2012). Guidance for estimation of time of concentration in Texas for low-slope conditions. TxDOT Product 0-6382-P1, Texas Tech University",
+   "locator": "'Application', eqs. 4-8, pp. 3-5: the example of Roussel et al. (2005) on a main channel of 1.1 ft over a mile",
+   "url": "https://rosap.ntl.bts.gov/view/dot/66537/dot_66537_DS1.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "length_km": 0.1524,
+   "slope_m_per_m": 0.0003,
+   "retardance": 0.4
+  },
+  "expected": {
+   "tc_min": 53
+  },
+  "printed_precision": {
+   "tc_min": 1
+  },
+  "intermediate_rounding": [
+   {
+    "step": "the source evaluates TxDOT's form 0.828 (L N)^0.467 (S + 0.0005)^-0.235 (L in ft), Kerby's with its constant and the exponent of S rounded",
+    "effect": {
+     "tc_min": 0.46944
+    }
+   }
+  ],
+  "conventions": [
+   "S = 0.0003 taken as 0.0003 + 0.0005 = 0.0008 (eq. 1); 'about 53 minutes'",
+   "the source's unadjusted 'about 73 minutes' is an arithmetic error of the source (its own eq. 4 gives 66.1 min) and not a case"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "kirpich",
+  "case_id": "cleveland2012-channel-unadjusted",
+  "source": {
+   "citation": "Cleveland, T.G., Thompson, D.B., Fang, X., Li, M.-H. (2012). Guidance for estimation of time of concentration in Texas for low-slope conditions. TxDOT Product 0-6382-P1, Texas Tech University",
+   "locator": "'Application', eqs. 4-8, pp. 3-5: the example of Roussel et al. (2005) on a main channel of 1.1 ft over a mile",
+   "url": "https://rosap.ntl.bts.gov/view/dot/66537/dot_66537_DS1.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "length_km": 1.456944,
+   "slope_m_per_m": 0.00021
+  },
+  "expected": {
+   "tc_min": 138
+  },
+  "printed_precision": {
+   "slope_m_per_m": 1e-05,
+   "tc_min": 1
+  },
+  "conventions": [
+   "L = 4,780 ft (1.456944 km); S = 1.1/5,280 = 0.000208 printed as 0.00021, without the offset; Kirpich alone applies no offset, so the slope is given as the source used it"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "kirpich",
+  "case_id": "cleveland2012-channel-offset",
+  "source": {
+   "citation": "Cleveland, T.G., Thompson, D.B., Fang, X., Li, M.-H. (2012). Guidance for estimation of time of concentration in Texas for low-slope conditions. TxDOT Product 0-6382-P1, Texas Tech University",
+   "locator": "'Application', eqs. 4-8, pp. 3-5: the example of Roussel et al. (2005) on a main channel of 1.1 ft over a mile",
+   "url": "https://rosap.ntl.bts.gov/view/dot/66537/dot_66537_DS1.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "length_km": 1.456944,
+   "slope_m_per_m": 0.00071
+  },
+  "expected": {
+   "tc_min": 87
+  },
+  "printed_precision": {
+   "slope_m_per_m": 1e-05,
+   "tc_min": 1
+  },
+  "conventions": [
+   "L = 4,780 ft (1.456944 km); S = 1.1/5,280 = 0.000208 printed as 0.00021, with the offset, 0.00021 + 0.0005; Kirpich alone applies no offset, so the slope is given as the source used it"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "kerby_kirpich",
+  "case_id": "cleveland2012-kerby-kirpich-low-slope",
+  "source": {
+   "citation": "Cleveland, T.G., Thompson, D.B., Fang, X., Li, M.-H. (2012). Guidance for estimation of time of concentration in Texas for low-slope conditions. TxDOT Product 0-6382-P1, Texas Tech University",
+   "locator": "'Application', eqs. 4-8, pp. 3-5: the example of Roussel et al. (2005) on a main channel of 1.1 ft over a mile",
+   "url": "https://rosap.ntl.bts.gov/view/dot/66537/dot_66537_DS1.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "overland_length_km": 0.1524,
+   "overland_slope_m_per_m": 0.0003,
+   "retardance": 0.4,
+   "flow_path_length_km": 1.609344,
+   "flow_path_slope_m_per_m": 0.00021
+  },
+  "expected": {
+   "tc_min": 140
+  },
+  "printed_precision": {
+   "flow_path_slope_m_per_m": 1e-05,
+   "tc_min": 1
+  },
+  "intermediate_rounding": [
+   {
+    "step": "the source evaluates TxDOT's form 0.828 (L N)^0.467 (S + 0.0005)^-0.235 (L in ft), Kerby's with its constant and the exponent of S rounded",
+    "effect": {
+     "tc_min": 0.46944
+    }
+   },
+   {
+    "step": "the two parts printed as whole minutes ('about 53', 'about 87') and added: half a minute beyond the total's own",
+    "effect": {
+     "tc_min": 0.5
+    }
+   }
+  ],
+  "conventions": [
+   "both slopes below 0.002, both offset by 0.0005: Hydrolog's per-segment decision and Cleveland et al.'s by the main-channel slope agree here"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "kirpich",
+  "case_id": "wr-d-71-1-2023-reservoir",
+  "source": {
+   "citation": "Wytyczne projektowania urządzeń do odwodnienia dróg zamiejskich i ulic. Część 1: Wymagania podstawowe (WR-D-71-1, wersja 01-2023.11.28). Wzorce i standardy rekomendowane przez Ministra właściwego ds. transportu",
+   "locator": "§5.4.2 (4), eq. (5.4.2.2), example of a retention reservoir: L = 1,550 m, J = 0.025, t = 23 min",
+   "url": "https://www.gov.pl/attachment/9361c405-b42a-436d-a5b6-037e87d88695",
+   "access": "open"
+  },
+  "inputs": {
+   "length_km": 1.55,
+   "slope_m_per_m": 0.025
+  },
+  "expected": {
+   "tc_min": 23
+  },
+  "printed_precision": {
+   "length_km": 0.001,
+   "slope_m_per_m": 0.001,
+   "tc_min": 1
+  },
+  "intermediate_rounding": [
+   {
+    "step": "the guideline's SI constant 0.01947 rounds 0.0078 (1/0.3048)^0.77 = 0.019472",
+    "effect": {
+     "tc_min": 0.001971
+    }
+   },
+   {
+    "step": "the factors printed and multiplied as 286.1 and 4.138 (0.01947 x 286.1 x 4.138 = 23.05)",
+    "effect": {
+     "tc_min": 0.002132
+    }
+   }
+  ],
+  "conventions": [
+   "L [m] from the outlet to the most distant point of the catchment, J the drop between them over L (§5.4.2 (4))"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "faa",
+  "case_id": "indot-29-7.4",
+  "source": {
+   "citation": "Indiana Department of Transportation, Indiana Design Manual (metric, archived), Part IV, Chapter 29 Hydrology",
+   "url": "https://www.in.gov/dot/div/contracts/standards/dm-Archived/07%20Metric/Part%204%20Vol.%201/Ch%2029/Ch29.pdf",
+   "access": "open",
+   "locator": "§29-7.06, eq. 29-7.6, example 29-7.4: L = 45 m, S = 0.02, C = 0.18, t = 16 min"
+  },
+  "inputs": {
+   "length_km": 0.045,
+   "slope_m_per_m": 0.02,
+   "runoff_coeff": 0.18
+  },
+  "expected": {
+   "tc_min": 16
+  },
+  "printed_precision": {
+   "tc_min": 1
+  },
+  "intermediate_rounding": [
+   {
+    "step": "INDOT's metric form (1.1 - C) L^0.5 / (1.44 S^0.33) rounds 1/(1.8 (1/0.3048)^0.5 / 100^(1/3)) = 1.4237 to 1.44 and 1/3 to 0.33",
+    "effect": {
+     "tc_min": 0.385942
+    }
+   }
+  ],
+  "conventions": [
+   "FAA (1970): T = 1.8 (1.1 - C) D^0.5 / S^(1/3), D in ft, S in percent; INDOT's metric form takes L in m and S in m/m"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "kerby",
+  "case_id": "indot-29-7.7",
+  "source": {
+   "citation": "Indiana Department of Transportation, Indiana Design Manual (metric, archived), Part IV, Chapter 29 Hydrology",
+   "url": "https://www.in.gov/dot/div/contracts/standards/dm-Archived/07%20Metric/Part%204%20Vol.%201/Ch%2029/Ch29.pdf",
+   "access": "open",
+   "locator": "§29-7.12, eq. 29-7.14, example 29-7.7: L = 200 m, S = 0.005, N = 0.40, t = 38.4 min"
+  },
+  "inputs": {
+   "length_km": 0.2,
+   "slope_m_per_m": 0.005,
+   "retardance": 0.4
+  },
+  "expected": {
+   "tc_min": 38.4
+  },
+  "printed_precision": {
+   "tc_min": 0.1
+  },
+  "intermediate_rounding": [
+   {
+    "step": "INDOT's form K [L N S^-0.5]^0.467 (L in m) rounds K = (0.67/0.3048)^0.467 = 1.4446 to 1.44",
+    "effect": {
+     "tc_min": 0.122182
+    }
+   }
+  ],
+  "conventions": [
+   "no low-slope offset (S above 0.002)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "kirpich",
+  "case_id": "indot-29-7.8",
+  "source": {
+   "citation": "Indiana Department of Transportation, Indiana Design Manual (metric, archived), Part IV, Chapter 29 Hydrology",
+   "url": "https://www.in.gov/dot/div/contracts/standards/dm-Archived/07%20Metric/Part%204%20Vol.%201/Ch%2029/Ch29.pdf",
+   "access": "open",
+   "locator": "§29-7.13, eq. 29-7.15, example 29-7.8, step 1: L = 0.8 km, H = 10 m, tc = 0.31 h"
+  },
+  "inputs": {
+   "length_km": 0.8,
+   "slope_m_per_m": 0.0125
+  },
+  "expected": {
+   "tc_min": 18.6
+  },
+  "printed_precision": {
+   "tc_min": 0.6
+  },
+  "conventions": [
+   "INDOT eq. 29-7.15: tc = (0.948 L^3 / H)^0.385 [h, km, m]"
+  ],
+  "status": "discrepancy",
+  "second_source": {
+   "citation": "Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University",
+   "locator": "table 3.4: the USBR form tc = (11.9 L^3/H)^0.385 [h, mi, ft], (0.870 L^3/H)^0.385 in km and m, 0.3015 h here; Mota and Kobiyama (2015) eq. 1",
+   "url": "https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf",
+   "access": "open"
+  },
+  "discrepancy": "INDOT puts 0.948 = 0.870^0.385, the coefficient that belongs outside the power (0.948 L^1.155 H^-0.385), inside it: its 0.31 h is 3.5 % above the formula's 0.3015 h (18.09 min); an error of the source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-rafina",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Rafina' (GR); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 123.3,
+   "length_km": 29.6,
+   "elevation_diff_m": 226
+  },
+  "expected": {
+   "tc_min": 444.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-sarantapotamos",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Sarantapotamos' (GR); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 143.7,
+   "length_km": 32.1,
+   "elevation_diff_m": 369
+  },
+  "expected": {
+   "tc_min": 378.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-xerias",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Xerias' (GR); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 111.5,
+   "length_km": 34.0,
+   "elevation_diff_m": 466
+  },
+  "expected": {
+   "tc_min": 324.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-nedontas",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Nedontas' (GR); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 114.8,
+   "length_km": 21.6,
+   "elevation_diff_m": 819
+  },
+  "expected": {
+   "tc_min": 198.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-baganza",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Baganza' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 125.5,
+   "length_km": 32.7,
+   "elevation_diff_m": 538
+  },
+  "expected": {
+   "tc_min": 306.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-scoltenna",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Scoltenna' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 129.7,
+   "length_km": 14.9,
+   "elevation_diff_m": 583
+  },
+  "expected": {
+   "tc_min": 210.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-ceno",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Ceno' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 328.7,
+   "length_km": 38.2,
+   "elevation_diff_m": 517
+  },
+  "expected": {
+   "tc_min": 426.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-nure-ferriere",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Nure (Ferriere)' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 48.3,
+   "length_km": 12.1,
+   "elevation_diff_m": 489
+  },
+  "expected": {
+   "tc_min": 156.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-tresinaro",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Tresinaro' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 139.4,
+   "length_km": 34.7,
+   "elevation_diff_m": 310
+  },
+  "expected": {
+   "tc_min": 420.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-rossenna",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Rossenna' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 182.6,
+   "length_km": 30.5,
+   "elevation_diff_m": 454
+  },
+  "expected": {
+   "tc_min": 354.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-leo",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Leo' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 36.9,
+   "length_km": 10.6,
+   "elevation_diff_m": 752
+  },
+  "expected": {
+   "tc_min": 108.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-achelous",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Achelous' (GR); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 639.2,
+   "length_km": 41.4,
+   "elevation_diff_m": 700
+  },
+  "expected": {
+   "tc_min": 462.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-lavino",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Lavino' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 82.8,
+   "length_km": 25.8,
+   "elevation_diff_m": 241
+  },
+  "expected": {
+   "tc_min": 360.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-montone",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Montone' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 235.7,
+   "length_km": 47.4,
+   "elevation_diff_m": 455
+  },
+  "expected": {
+   "tc_min": 468.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-tassobbio",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Tassobbio' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 98.3,
+   "length_km": 20.6,
+   "elevation_diff_m": 271
+  },
+  "expected": {
+   "tc_min": 324.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-enza",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Enza' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 293.5,
+   "length_km": 31.5,
+   "elevation_diff_m": 551
+  },
+  "expected": {
+   "tc_min": 372.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-nure-farini",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Nure (Farini)' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 200.6,
+   "length_km": 24.4,
+   "elevation_diff_m": 513
+  },
+  "expected": {
+   "tc_min": 306.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-mella-tavernole",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Mella (Tavernole)' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 130.1,
+   "length_km": 20.1,
+   "elevation_diff_m": 751
+  },
+  "expected": {
+   "tc_min": 210.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-mella-gardone",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Mella (Gardone)' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 182.7,
+   "length_km": 27.5,
+   "elevation_diff_m": 751
+  },
+  "expected": {
+   "tc_min": 258.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-aggitis",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Aggitis' (GR); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 1853.6,
+   "length_km": 59.4,
+   "elevation_diff_m": 381
+  },
+  "expected": {
+   "tc_min": 1002.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-pamisos",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Pamisos' (GR); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 564.1,
+   "length_km": 46.7,
+   "elevation_diff_m": 332
+  },
+  "expected": {
+   "tc_min": 678.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-upper-peneus",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Upper Peneus' (GR); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 528.5,
+   "length_km": 38.9,
+   "elevation_diff_m": 748
+  },
+  "expected": {
+   "tc_min": 414.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-upper-oglio",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Upper Oglio' (IT); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 122.2,
+   "length_km": 17.5,
+   "elevation_diff_m": 1078
+  },
+  "expected": {
+   "tc_min": 162.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-xeros",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Xeros' (CY); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 67.5,
+   "length_km": 12.9,
+   "elevation_diff_m": 436
+  },
+  "expected": {
+   "tc_min": 186.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-peristerona",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Peristerona' (CY); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 77.8,
+   "length_km": 23.6,
+   "elevation_diff_m": 466
+  },
+  "expected": {
+   "tc_min": 246.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-titarisios",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Titarisios' (GR); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 1813.0,
+   "length_km": 93.5,
+   "elevation_diff_m": 569
+  },
+  "expected": {
+   "tc_min": 978.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-spercheios",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Spercheios' (GR); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 1403.5,
+   "length_km": 78.6,
+   "elevation_diff_m": 671
+  },
+  "expected": {
+   "tc_min": 774.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-peneus-trikala",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Peneus (Trikala)' (GR); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 1372.9,
+   "length_km": 77.7,
+   "elevation_diff_m": 638
+  },
+  "expected": {
+   "tc_min": 786.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-anavros",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Anavros' (GR); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 13.9,
+   "length_km": 9.0,
+   "elevation_diff_m": 382
+  },
+  "expected": {
+   "tc_min": 108.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "giandotti",
+  "case_id": "michailidi2018-enipeus",
+  "source": {
+   "citation": "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B., Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985",
+   "locator": "Table 3, row 'Enipeus' (GR); formula in Table 2",
+   "url": "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "area_km2": 1140.5,
+   "length_km": 120.3,
+   "elevation_diff_m": 302
+  },
+  "expected": {
+   "tc_min": 1362.0
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "elevation_diff_m": 1,
+   "tc_min": 6
+  },
+  "conventions": [
+   "A, L to 0.1 and H to 1 m as printed; tG printed to 0.1 h",
+   "H the mean basin elevation minus the outlet's; L in the source the longest flow path (Hydrolog's field is the main channel; the formula is the same)"
+  ],
+  "status": "single_source"
+ }
+]

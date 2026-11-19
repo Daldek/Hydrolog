@@ -1,0 +1,188 @@
+schema = "nogat-formula-card/1"
+name = "kirpich"
+title = "Time of concentration by Kirpich's formula (Tennessee form)"
+function = "hydrolog.time.concentration.ConcentrationTime.kirpich"
+family = "empirical"
+formula_version = 1
+status = "referenced"
+equation = "tc = 0.0078 * L**0.77 * S**-0.385 [min], L in ft (L[km] by the exact foot), S in m/m"
+latex = "t_c = 0.0078\\,L^{0.77}\\,S^{-0.385},\\quad L\\ \\mathrm{[ft]}"
+validation = "Kirpich (1940) published curves of six basins of Ramser (1927) near Jackson, Tennessee (basin 2 of seven excluded), not the formula; Mota and Kobiyama (2015, pp. 57-58) find their own fit to those data 2 to 9 % from the formula within L of 350-4,000 ft and S of 0.025-0.1, up to 30 % outside"
+conventions = ["the Tennessee form in its source units: L in feet by the exact 0.3048 m/ft of the units table, tc in minutes; the SI constants 0.0195 (L in m; Roussel et al. 2005, TxDOT 2019) and 0.01947 (WR-D-71-1, 2023) round 0.0078 (1/0.3048)^0.77 = 0.019472, and Hydrolog's 3.981 (L in km) up to 0.8.1 was 0.136 % above the exact 3.97560", "L along the watercourse from the outlet to the most remote point of the watershed, the longest flow path, and S the drop between its two ends over L (Fang et al. 2005, eq. 3.14), neither the channel to its head nor the mean slope of the watershed; Kirpich (1940) measured L to the highest point of the basin (Mota and Kobiyama 2015, p. 56)", "S in m/m (ft/ft), not in percent", "no low-slope offset in the formula alone; Kerby-Kirpich offsets its channel part (Cleveland et al. 2012)"]
+assumptions = ["small rural basins with defined channels, 1.25-112 acres (0.005-0.45 km2, checked by WatershedParameters.calculate_tc), so mostly channel flow; Kirpich applied it up to about 200 acres (Roussel et al. 2005, p. 5); the factors 0.4 for overland flow on concrete or asphalt and 0.2 for concrete channels of US practice (Fang et al. 2005, p. 22) are not applied", "Hydrograf's watersheds (flow paths of 0.05-30 km) lie mostly outside Kirpich's data (0.107-1.22 km): their results are extrapolations, with the notice"]
+notices = ["outside_applicability"]
+reference_cases = ["tests/fixtures/formulas/tc-cases.json"]
+constraints = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+length_km = 1
+slope_m_per_m = -1
+
+[[properties.limits]]
+name = "source_units"
+text = "tc equals the SI form 0.0078 (1/0.3048)^0.77 L[m]^0.77 S^-0.385 evaluated in decimal arithmetic at 50 digits"
+
+[[properties.limits]]
+name = "power_law"
+text = "doubling L multiplies tc by 2^0.77, doubling S by 2^-0.385"
+
+[[sources]]
+citation = "Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University"
+access = "open"
+locator = "eq. 3.14, p. 22 (L the channel length to the most remote point, S its drop over L)"
+url = "https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf"
+
+[[sources]]
+citation = "Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University"
+access = "open"
+locator = "eq. 7, p. 7; supplement, p. 29 (K = 0.0078 for feet)"
+url = "https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf"
+
+[[sources]]
+citation = "Mota, A.A. and Kobiyama, M. (2015). Reconsiderações sobre a fórmula de Kirpich para o cálculo de tempo de concentração. Revista Brasileira de Recursos Hídricos 20(1), 55-59"
+access = "open"
+locator = "pp. 56-58: Kirpich's curves and data of 1940, table 1; the formula published by Rowe and Thomas (1942)"
+url = "https://revistas.abrhidro.org.br/article.php?Article=5027"
+
+[[sources]]
+citation = "Florida Department of Transportation (2024). Drainage Design Guide, chapter 2"
+access = "open"
+locator = "eq. 2.2-9"
+url = "https://fdotwww.blob.core.windows.net/sitefinity/docs/default-source/roadway/drainage/files/drainagedesignguide/chapter2.pdf"
+
+[[variables]]
+name = "length_km"
+symbol = "L"
+unit = "km"
+kind = "real"
+description = "Length of the longest flow path, from the outlet to the hydraulically most distant point of the watershed."
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000.0
+test_reason = "1,000 km, about the length of the Vistula, the longest river of Poland: no flow path of a Polish watershed is longer"
+
+[variables.applicability]
+low = 0.10668
+low_inclusive = true
+high = 1.2192
+high_inclusive = true
+
+[variables.applicability.source]
+citation = "Mota, A.A. and Kobiyama, M. (2015). Reconsiderações sobre a fórmula de Kirpich para o cálculo de tempo de concentração. Revista Brasileira de Recursos Hídricos 20(1), 55-59"
+access = "open"
+locator = "p. 58: the data of Kirpich (1940), table 1, give the range of the formula, L between 350 and 4,000 ft"
+url = "https://revistas.abrhidro.org.br/article.php?Article=5027"
+
+[variables.typical]
+low = 0.05
+low_inclusive = true
+high = 30.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: flow paths of 0.0566 to 28.88 km"
+
+[[variables]]
+name = "slope_m_per_m"
+symbol = "S"
+unit = "m/m"
+kind = "real"
+description = "Slope of the longest flow path: the elevation of its head minus the outlet's, over its length."
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1.0
+test_reason = "a mean slope of 1 m/m (45 degrees), steeper than any flow path or land surface of a watershed on average"
+
+[variables.applicability]
+low = 0.025
+low_inclusive = true
+high = 0.1
+high_inclusive = true
+
+[variables.applicability.source]
+citation = "Mota, A.A. and Kobiyama, M. (2015). Reconsiderações sobre a fórmula de Kirpich para o cálculo de tempo de concentração. Revista Brasileira de Recursos Hídricos 20(1), 55-59"
+access = "open"
+locator = "p. 58: the data of Kirpich (1940), table 1, give the range of the formula, S from 0.025 to 0.1"
+url = "https://revistas.abrhidro.org.br/article.php?Article=5027"
+
+[variables.typical]
+low = 0.002
+low_inclusive = true
+high = 0.11
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: flow path slopes of 0.00244 to 0.1055 m/m"
+
+[[constants]]
+name = "kirpich_coefficient"
+value = 0.0078
+unit = "min ft^-0.77"
+symbol = "0.0078"
+
+[constants.source]
+citation = "Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University"
+access = "open"
+locator = "eq. 3.14, p. 22; the same in Roussel et al. (2005) eq. 7, Mota and Kobiyama (2015) and FDOT (2024) eq. 2.2-9"
+url = "https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf"
+
+[[constants]]
+name = "kirpich_length_exponent"
+value = 0.77
+unit = "-"
+symbol = "0.77"
+
+[constants.source]
+citation = "Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University"
+access = "open"
+locator = "eq. 3.14, p. 22; Mota and Kobiyama (2015); FDOT (2024)"
+url = "https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf"
+
+[[constants]]
+name = "kirpich_slope_exponent"
+value = -0.385
+unit = "-"
+symbol = "-0.385"
+
+[constants.source]
+citation = "Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University"
+access = "open"
+locator = "eq. 3.14, p. 22; Mota and Kobiyama (2015); FDOT (2024)"
+url = "https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf"
+
+[[outputs]]
+name = "tc_min"
+unit = "min"
+kind = "real"
+symbol = "t_c"
+description = "Time of concentration."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "range cases slope_m_per_m-physical_low_*: tc grows without bound as S tends to 0 (S^-0.385) and stays finite down to the smallest positive float; a slope of 0 is refused"
+
+[[oracles]]
+kind = "exact"
+description = "the SI form with the unrounded constant 0.0078 (1/0.3048)^0.77, evaluated with the decimal module at 50 digits"
+test = "tests/unit/test_formulas_tc.py (limit source_units)"
+conventions = []

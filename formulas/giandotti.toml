@@ -1,0 +1,197 @@
+schema = "nogat-formula-card/1"
+name = "giandotti"
+title = "Time of concentration by Giandotti's formula (1934)"
+function = "hydrolog.time.concentration.ConcentrationTime.giandotti"
+family = "empirical"
+formula_version = 1
+status = "referenced"
+equation = "tc = (4 * A**0.5 + 1.5 * L) / (0.8 * H**0.5) [h]"
+latex = "t_c = \\frac{4\\sqrt{A} + 1.5\\,L}{0.8\\sqrt{H}}"
+validation = "none reported by the open sources (Giandotti 1934 is not open)"
+conventions = ["A in km2, L in km and H in m as the sources print it, tc in hours converted to minutes", "H the mean elevation of the watershed minus the elevation of the outlet, neither the relief (maximum minus minimum) nor the mean elevation itself", "L the main channel, the field channel_length_km, after Grimaldi et al. (2012, eq. 5); the Autorità di bacino del Po (2001, §6.1: 'percorso idraulicamente più lungo') and Michailidi et al. (2018) take the longest flow path, longer by the overland segment (Kamiennik: 14.78 against 15.88 km, +3.5 % in tc)"]
+assumptions = ["basins of central and northern Italy of 170-70,000 km2 (Almeida et al. 2014, table 1); Hydrograf's watersheds, up to 250 km2, lie mostly below that range: their results are extrapolations, with the notice"]
+notices = ["outside_applicability"]
+reference_cases = ["tests/fixtures/formulas/tc-cases.json"]
+constraints = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+area_km2 = 1
+length_km = 1
+elevation_diff_m = -1
+
+[[properties.limits]]
+name = "decimal"
+text = "tc equals 75 (4 A^0.5 + 1.5 L) / H^0.5 minutes evaluated in decimal arithmetic at 50 digits"
+
+[[properties.limits]]
+name = "height"
+text = "four times H halves tc"
+
+[[sources]]
+citation = "Autorità di bacino del fiume Po (2001). Piano stralcio per l'assetto idrogeologico (PAI), Direttiva sulla piena di progetto"
+access = "open"
+locator = "§6.1, p. 9: tempo di corrivazione di Giandotti (1934, 1937)"
+url = "https://www.adbpo.it/PAI/7%20-%20Norme%20di%20attuazione/7.2%20-%20Direttive%20di%20Piano/Direttiva2/DIRETTIVA/DIRETTIVA.PDF"
+
+[[sources]]
+citation = "Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B. and Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985"
+access = "open"
+locator = "table 2 (the formula), table 3 (30 basins)"
+url = "https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf"
+
+[[sources]]
+citation = "Almeida, I.K., Almeida, A.K., Anache, J.A.A., Steffen, J.L. and Alves Sobrinho, T. (2014). Estimation on time of concentration of overland flow in watersheds: a review. Geociências 33(4), 661-671"
+access = "open"
+locator = "table 1, Giandotti: basins of central and northern Italy, 170-70,000 km2 (after Giandotti 1940, Preti et al. 2011, Radice et al. 2012)"
+url = "https://www.revistageociencias.com.br/geociencias-arquivos/33/volume33_4_files/33-4-artigo-9.pdf"
+
+[[variables]]
+name = "area_km2"
+symbol = "A"
+unit = "km2"
+kind = "real"
+description = "Area of the watershed."
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000000.0
+test_reason = "a million km2, more than ten times the largest basin of the formula's data (70,000 km2)"
+
+[variables.applicability]
+low = 170.0
+low_inclusive = true
+high = 70000.0
+high_inclusive = true
+
+[variables.applicability.source]
+citation = "Almeida, I.K., Almeida, A.K., Anache, J.A.A., Steffen, J.L. and Alves Sobrinho, T. (2014). Estimation on time of concentration of overland flow in watersheds: a review. Geociências 33(4), 661-671"
+access = "open"
+locator = "table 1, Giandotti: basins of central and northern Italy, 170-70,000 km2 (after Giandotti 1940, Preti et al. 2011, Radice et al. 2012)"
+url = "https://www.revistageociencias.com.br/geociencias-arquivos/33/volume33_4_files/33-4-artigo-9.pdf"
+
+[variables.typical]
+low = 0.0003
+low_inclusive = true
+high = 250.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 135 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)"
+
+[[variables]]
+name = "length_km"
+symbol = "L"
+unit = "km"
+kind = "real"
+description = "Length of the main channel."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000.0
+test_reason = "1,000 km, about the length of the Vistula, the longest river of Poland: no flow path of a Polish watershed is longer"
+
+[variables.typical]
+low = 0.007
+low_inclusive = true
+high = 27.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: main channels of 0.0071 to 26.18 km"
+
+[[variables]]
+name = "elevation_diff_m"
+symbol = "H"
+unit = "m"
+kind = "real"
+description = "Mean elevation of the watershed above the outlet."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 8849.0
+test_reason = "the height of Mount Everest above sea level: no mean elevation lies higher above its outlet"
+
+[variables.typical]
+low = 2.5
+low_inclusive = true
+high = 210.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: mean elevations of 2.89 to 204 m above the outlet"
+
+[[constants]]
+name = "area_factor"
+value = 4.0
+unit = "h km^-1 m^0.5"
+symbol = "4"
+
+[constants.source]
+citation = "Autorità di bacino del fiume Po (2001). Piano stralcio per l'assetto idrogeologico (PAI), Direttiva sulla piena di progetto"
+access = "open"
+locator = "§6.1, p. 9: tempo di corrivazione di Giandotti (1934, 1937)"
+url = "https://www.adbpo.it/PAI/7%20-%20Norme%20di%20attuazione/7.2%20-%20Direttive%20di%20Piano/Direttiva2/DIRETTIVA/DIRETTIVA.PDF"
+
+[[constants]]
+name = "length_factor"
+value = 1.5
+unit = "h km^-1 m^0.5"
+symbol = "1.5"
+
+[constants.source]
+citation = "Autorità di bacino del fiume Po (2001). Piano stralcio per l'assetto idrogeologico (PAI), Direttiva sulla piena di progetto"
+access = "open"
+locator = "§6.1, p. 9: tempo di corrivazione di Giandotti (1934, 1937)"
+url = "https://www.adbpo.it/PAI/7%20-%20Norme%20di%20attuazione/7.2%20-%20Direttive%20di%20Piano/Direttiva2/DIRETTIVA/DIRETTIVA.PDF"
+
+[[constants]]
+name = "height_factor"
+value = 0.8
+unit = "-"
+symbol = "0.8"
+
+[constants.source]
+citation = "Autorità di bacino del fiume Po (2001). Piano stralcio per l'assetto idrogeologico (PAI), Direttiva sulla piena di progetto"
+access = "open"
+locator = "§6.1, p. 9: tempo di corrivazione di Giandotti (1934, 1937)"
+url = "https://www.adbpo.it/PAI/7%20-%20Norme%20di%20attuazione/7.2%20-%20Direttive%20di%20Piano/Direttiva2/DIRETTIVA/DIRETTIVA.PDF"
+
+[[outputs]]
+name = "tc_min"
+unit = "min"
+kind = "real"
+symbol = "t_c"
+description = "Time of concentration."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "range cases elevation_diff_m-physical_low_*: tc grows as H^-0.5 when H tends to 0 (a flat watershed) and stays finite; H = 0 is refused"
+
+[[oracles]]
+kind = "exact"
+description = "the formula in minutes, 75 (4 A^0.5 + 1.5 L) / H^0.5, evaluated with the decimal module at 50 digits"
+test = "tests/unit/test_formulas_tc.py (limit decimal)"
+conventions = []
