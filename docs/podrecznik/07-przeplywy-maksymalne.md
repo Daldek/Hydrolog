@@ -31,9 +31,10 @@ z liczbą lat i dla okresu użytkowania budowli porównywalnego z $T$ jest znacz
 powtarzalności nie jest gwarancją bezpieczeństwa na $T$ lat.
 
 Analiza opiera się na trzech założeniach. Maksima kolejnych lat są niezależne (jedna wartość na rok
-hydrologiczny), pochodzą z jednego rozkładu (ciąg jednorodny: bez zbiornika, regulacji czy przeniesienia
-wodowskazu w trakcie obserwacji) i ten rozkład nie zmienia się w czasie (brak trendu). Ramki
-specyfikacji poniżej podają je jako założenie „maksima roczne są niezależne i mają jednakowy rozkład”.
+hydrologiczny), pochodzą z jednego rozkładu (ciąg jednorodny, ang. *homogeneous*: bez zbiornika,
+regulacji czy przeniesienia wodowskazu w trakcie obserwacji) i ten rozkład nie zmienia się w czasie
+(stacjonarność, ang. *stationarity*: brak trendu). Ramki specyfikacji poniżej podają je jako założenie
+niezależności i jednakowego rozkładu maksimów rocznych.
 Czwarta, ukryta trudność to ekstrapolacja: przepływy o okresie powtarzalności 100–1000 lat wyznacza się
 z ciągów 30–70-letnich, więc o wyniku decyduje w dużej mierze przyjęty kształt rozkładu.
 
@@ -149,7 +150,8 @@ GEV nie ma w metodyce KZGW (2017); jest w programie PrzepływyMax2011 IMGW-PIB (
 
 ### Rozkład logarytmiczno-normalny
 
-Logarytm przepływu pomniejszonego o dolne ograniczenie $\epsilon$ ma rozkład normalny.
+Rozkład logarytmiczno-normalny (ang. *log-normal*): logarytm przepływu pomniejszonego o dolne
+ograniczenie $\epsilon$ ma rozkład normalny.
 
 <!-- spec:log_normal_quantiles -->
 <!-- /spec:log_normal_quantiles -->
@@ -208,7 +210,8 @@ gęstość; Hydrolog sygnalizuje to uwagą `outside_support` (p. 7.7).
 
 ### Metoda momentów
 
-Średnia, odchylenie standardowe i skośność rozkładu są równe tym z próby.
+W metodzie momentów (ang. *method of moments*) średnia, odchylenie standardowe i skośność rozkładu są
+równe tym z próby.
 
 <!-- spec:fit_moments -->
 <!-- /spec:fit_moments -->
@@ -242,8 +245,8 @@ dopuszcza w uzasadnionych przypadkach, Hydrolog nie ma.
 
 ### Metoda najmniejszych kwadratów (MNK)
 
-Parametry minimalizują sumę kwadratów różnic między uporządkowanymi maksimami a kwantylami rozkładu
-w pozycjach Weibulla.
+Metoda najmniejszych kwadratów (ang. *least squares*) dobiera parametry tak, by suma kwadratów różnic
+między uporządkowanymi maksimami a kwantylami rozkładu w pozycjach Weibulla była najmniejsza.
 
 <!-- spec:fit_least_squares -->
 <!-- /spec:fit_least_squares -->
@@ -309,8 +312,9 @@ sprawdzić, czy kwantyle rzadkich przepływów są fizycznie wiarygodne.
 Rozporządzenie Ministra Infrastruktury z dnia 4 maja 2026 r. w sprawie warunków technicznych, jakim
 powinny odpowiadać budowle hydrotechniczne i ich usytuowanie (Dz.U. 2026 poz. 692), które zastąpiło
 rozporządzenie Ministra Środowiska z 2007 r. (Dz.U. 2007 nr 86 poz. 579), określa w załączniku nr 3
-prawdopodobieństwo przewyższenia przepływów miarodajnych $Q_m$ (projektowanie) i kontrolnych $Q_k$
-(sprawdzenie bezpieczeństwa w wyjątkowym układzie obciążeń) dla stałych budowli hydrotechnicznych:
+prawdopodobieństwo przewyższenia przepływów miarodajnych $Q_m$ (ang. *design flood*; projektowanie)
+i kontrolnych $Q_k$ (ang. *check flood*; sprawdzenie bezpieczeństwa w wyjątkowym układzie obciążeń) dla
+stałych budowli hydrotechnicznych:
 
 | Rodzaj budowli | Przepływ | Klasa I | Klasa II | Klasa III | Klasa IV |
 |---|---|---|---|---|---|
