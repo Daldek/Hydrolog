@@ -1,0 +1,156 @@
+schema = "nogat-formula-card/1"
+name = "sielianinov_coefficient"
+title = "Sielianinov's hydrothermal coefficient of a month or a season"
+function = "hydrolog.statistics.meteo_hydrothermal.sielianinov_coefficient"
+family = "index"
+formula_version = 1
+status = "referenced"
+equation = "k = P / (0.1 sum t): P the precipitation [mm] and sum t the sum of the daily mean temperatures [°C·d] of the same days"
+latex = "k = \\frac{P}{0.1\\,\\sum t}"
+validation = "none: an index of precipitation and temperature"
+conventions = ["computed as 10 P / sum t, the factor 1 / 0.1 exact", "the series function gives a month's sum and mean times its days (April to September, a mean above 0 °C) or the sums over the days of April to September above 10 °C (Miś 2026; Tier B hydrothermal_season)"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/meteo-indices-cases.json"]
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+precipitation_mm = 1
+temperature_sum_c_days = -1
+
+[[properties.limits]]
+name = "exact_oracle"
+text = "k equals P / (0.1 sum t) in exact fractions"
+
+[[properties.limits]]
+name = "no_precipitation"
+text = "no precipitation gives k = 0"
+
+[[sources]]
+citation = "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177"
+access = "open"
+locator = "p. 172: k = P / (0.1 sum t), P the monthly precipitation [mm], sum t the monthly sum of the air temperatures above 0 °C, the monthly mean times the days"
+url = "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf"
+
+[[sources]]
+citation = "Kulik, M., Baryła, R., Czarnecki, Z. and Bochniak, A. (2016). Warunki hydrotermiczne w centralnej części rejonu kanału Wieprz-Krzna w 50-leciu (1966-2015). Agronomy Science 71(3), 1-12"
+access = "open"
+locator = "p. 2: the coefficient; Table 1, pp. 5-6: P, the mean temperature and k of April-September at Sosnowica"
+url = "https://doi.org/10.24326/as.2016.3.1"
+
+[[sources]]
+citation = "Selyaninov, G. T. (1928). O sel'skokhozyaystvennoy otsenke klimata. Trudy po sel'skokhozyaystvennoy meteorologii 20, 165-177"
+access = "author-provided"
+locator = "the coefficient; not opened here: as Skowera and Puła (2004) print it"
+
+[[variables]]
+name = "precipitation_mm"
+symbol = "P"
+unit = "mm"
+kind = "real"
+description = "The precipitation of a month or a season."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 26470.0
+test_reason = "a season holds less than the world's greatest 12-month rainfall, 26,470 mm at Cherrapunji, 1 August 1860 - 31 July 1861 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 3.2
+low_inclusive = true
+high = 535.2
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the precipitation of the months April to September and of the seasons of 1991-2020: 3.2 to 535.2 mm"
+
+[[variables]]
+name = "temperature_sum_c_days"
+symbol = "\\sum t"
+unit = "°C·d"
+kind = "real"
+description = "The sum of the daily mean temperatures of the same days: a month's mean times its days, or the sum over the days of a season."
+applicability = "unstated"
+
+[variables.physical]
+test_low = -99700.0
+test_high = 20700.0
+test_reason = "a year of daily means at absolute zero (-273.15 °C times 365) or at the highest temperature on record (56.7 °C times 365)"
+
+[variables.typical]
+low = 150.8
+low_inclusive = true
+high = 3297.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the sums of the months April to September and of the seasons of 1991-2020: 150.8 to 3297.0 °C·d"
+
+[[constraints]]
+name = "a_positive_temperature_sum"
+class = "precondition"
+text = "sum t > 0: a month with a mean above 0 °C, a season with a warm day"
+
+[constraints.source]
+citation = "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177"
+access = "open"
+locator = "p. 172: k = P / (0.1 sum t), P the monthly precipitation [mm], sum t the monthly sum of the air temperatures above 0 °C, the monthly mean times the days"
+url = "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf"
+
+[[constraints]]
+name = "a_finite_coefficient"
+class = "precondition"
+text = "P / (0.1 sum t) is a finite number: sum t is not vanishingly small against P"
+
+[constraints.source]
+citation = "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177"
+access = "open"
+locator = "p. 172: k = P / (0.1 sum t), P the monthly precipitation [mm], sum t the monthly sum of the air temperatures above 0 °C, the monthly mean times the days"
+url = "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf"
+
+[[constants]]
+name = "tenth"
+value = 0.1
+unit = "mm/(°C·d)"
+symbol = "0.1"
+exact = "1/10"
+
+[constants.source]
+citation = "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177"
+access = "open"
+locator = "p. 172: k = P / (0.1 sum t), P the monthly precipitation [mm], sum t the monthly sum of the air temperatures above 0 °C, the monthly mean times the days"
+url = "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf"
+
+[[outputs]]
+name = "coefficient"
+unit = "-"
+kind = "real"
+symbol = "k"
+description = "The hydrothermal coefficient."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "preconditions a_positive_temperature_sum and a_finite_coefficient: sum t at 0 and vanishingly small is refused"
+
+[[oracles]]
+kind = "exact"
+description = "P / (0.1 sum t) in exact fractions (fractions.Fraction)"
+test = "tests/unit/test_formulas_meteo_hydrothermal.py (limit exact_oracle)"
+conventions = []

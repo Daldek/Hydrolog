@@ -24,6 +24,8 @@
 | [Oliver's class of a precipitation concentration index](#pci_class) | `hydrolog.statistics.meteo_precipitation.pci_class` | referenced | 1 | not measured |
 | [Walsh and Lawler's class of a seasonality index](#si_class) | `hydrolog.statistics.meteo_precipitation.si_class` | referenced | 1 | not measured |
 | [Walsh and Lawler's seasonality index of twelve monthly totals](#seasonality_index) | `hydrolog.statistics.regime.seasonality_index` | referenced | 1 | not measured |
+| [Sielianinov's hydrothermal coefficient of a month or a season](#sielianinov_coefficient) | `hydrolog.statistics.meteo_hydrothermal.sielianinov_coefficient` | referenced | 1 | not measured |
+| [Class of Sielianinov's hydrothermal coefficient (Skowera and Puła)](#sielianinov_class) | `hydrolog.statistics.meteo_hydrothermal.sielianinov_class` | referenced | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
 ### Potential maximum retention S of the SCS curve number
@@ -1355,6 +1357,156 @@ None stated.
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
+<a id="sielianinov_coefficient"></a>
+### Sielianinov's hydrothermal coefficient of a month or a season
+
+`hydrolog.statistics.meteo_hydrothermal.sielianinov_coefficient` · family `index` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+k = \frac{P}{0.1\,\sum t}
+$$
+
+Plain text: `k = P / (0.1 sum t): P the precipitation [mm] and sum t the sum of the daily mean temperatures [°C·d] of the same days`
+
+**Sources**
+
+- Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177, p. 172: k = P / (0.1 sum t), P the monthly precipitation [mm], sum t the monthly sum of the air temperatures above 0 °C, the monthly mean times the days (open) <http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf>
+- Kulik, M., Baryła, R., Czarnecki, Z. and Bochniak, A. (2016). Warunki hydrotermiczne w centralnej części rejonu kanału Wieprz-Krzna w 50-leciu (1966-2015). Agronomy Science 71(3), 1-12, p. 2: the coefficient; Table 1, pp. 5-6: P, the mean temperature and k of April-September at Sosnowica (open) <https://doi.org/10.24326/as.2016.3.1>
+- Selyaninov, G. T. (1928). O sel'skokhozyaystvennoy otsenke klimata. Trudy po sel'skokhozyaystvennoy meteorologii 20, 165-177, the coefficient; not opened here: as Skowera and Puła (2004) print it (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `precipitation_mm` | $P$ | mm | real | [0.0, inf), test bound high 26470.0 (a season holds less than the world's greatest 12-month rainfall, 26,470 mm at Cherrapunji, 1 August 1860 - 31 July 1861 (WMO Archive of Weather and Climate Extremes)) | unstated | [3.2, 535.2]: Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020, the precipitation of the months April to September and of the seasons of 1991-2020: 3.2 to 535.2 mm |
+| `temperature_sum_c_days` | $\sum t$ | °C·d | real | (-inf, inf), test bound low -99700.0 and high 20700.0 (a year of daily means at absolute zero (-273.15 °C times 365) or at the highest temperature on record (56.7 °C times 365)) | unstated | [150.8, 3297.0]: Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020, the sums of the months April to September and of the seasons of 1991-2020: 150.8 to 3297.0 °C·d |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `a_positive_temperature_sum` | precondition | sum t > 0: a month with a mean above 0 °C, a season with a warm day | Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177, p. 172: k = P / (0.1 sum t), P the monthly precipitation [mm], sum t the monthly sum of the air temperatures above 0 °C, the monthly mean times the days |
+| `a_finite_coefficient` | precondition | P / (0.1 sum t) is a finite number: sum t is not vanishingly small against P | Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177, p. 172: k = P / (0.1 sum t), P the monthly precipitation [mm], sum t the monthly sum of the air temperatures above 0 °C, the monthly mean times the days |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `tenth` | $0.1$ | 1/10 | mm/(°C·d) | Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177, p. 172: k = P / (0.1 sum t), P the monthly precipitation [mm], sum t the monthly sum of the air temperatures above 0 °C, the monthly mean times the days |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `coefficient` | - | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- computed as 10 P / sum t, the factor 1 / 0.1 exact
+- the series function gives a month's sum and mean times its days (April to September, a mean above 0 °C) or the sums over the days of April to September above 10 °C (Miś 2026; Tier B hydrothermal_season)
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: an index of precipitation and temperature
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: preconditions a_positive_temperature_sum and a_finite_coefficient: sum t at 0 and vanishingly small is refused
+
+**Properties (CMP-6.5)**
+
+- units: unit_specific
+- monotonic: `precipitation_mm` increasing, `temperature_sum_c_days` decreasing
+- limit `exact_oracle`: k equals P / (0.1 sum t) in exact fractions
+- limit `no_precipitation`: no precipitation gives k = 0
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/meteo-indices-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: P / (0.1 sum t) in exact fractions (fractions.Fraction) (`tests/unit/test_formulas_meteo_hydrothermal.py (limit exact_oracle)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="sielianinov_class"></a>
+### Class of Sielianinov's hydrothermal coefficient (Skowera and Puła)
+
+`hydrolog.statistics.meteo_hydrothermal.sielianinov_class` · family `classification` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+k \le 0.4,\ (0.4, 0.7],\ (0.7, 1.0],\ (1.0, 1.3],\ (1.3, 1.6],\ (1.6, 2.0],\ (2.0, 2.5],\ (2.5, 3.0],\ > 3.0
+$$
+
+Plain text: `k <= 0.4 extremely dry, (0.4, 0.7] very dry, (0.7, 1.0] dry, (1.0, 1.3] fairly dry, (1.3, 1.6] optimal, (1.6, 2.0] fairly wet, (2.0, 2.5] wet, (2.5, 3.0] very wet, above 3.0 extremely wet`
+
+**Sources**
+
+- Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177, p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, 0.7 < k <= 1.0 dry, 1.0 < k <= 1.3 fairly dry, 1.3 < k <= 1.6 optimal, 1.6 < k <= 2.0 fairly wet, 2.0 < k <= 2.5 wet, 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet (open) <http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `coefficient` | $k$ | - | real | [0.0, inf), test bound high 52.7 (ten times the largest monthly coefficient of the project's data (5.27 at Warszawa-Okęcie)) | unstated | [0.1, 5.27]: Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020, the coefficients of the months April to September of 1991-2020: 0.10 to 5.27 |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `extremely_dry_to` | $0.4$ | 0.4 | - | Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177, p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, 0.7 < k <= 1.0 dry, 1.0 < k <= 1.3 fairly dry, 1.3 < k <= 1.6 optimal, 1.6 < k <= 2.0 fairly wet, 2.0 < k <= 2.5 wet, 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet |
+| `very_dry_to` | $0.7$ | 0.7 | - | Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177, p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, 0.7 < k <= 1.0 dry, 1.0 < k <= 1.3 fairly dry, 1.3 < k <= 1.6 optimal, 1.6 < k <= 2.0 fairly wet, 2.0 < k <= 2.5 wet, 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet |
+| `dry_to` | $1$ | 1.0 | - | Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177, p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, 0.7 < k <= 1.0 dry, 1.0 < k <= 1.3 fairly dry, 1.3 < k <= 1.6 optimal, 1.6 < k <= 2.0 fairly wet, 2.0 < k <= 2.5 wet, 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet |
+| `fairly_dry_to` | $1.3$ | 1.3 | - | Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177, p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, 0.7 < k <= 1.0 dry, 1.0 < k <= 1.3 fairly dry, 1.3 < k <= 1.6 optimal, 1.6 < k <= 2.0 fairly wet, 2.0 < k <= 2.5 wet, 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet |
+| `optimal_to` | $1.6$ | 1.6 | - | Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177, p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, 0.7 < k <= 1.0 dry, 1.0 < k <= 1.3 fairly dry, 1.3 < k <= 1.6 optimal, 1.6 < k <= 2.0 fairly wet, 2.0 < k <= 2.5 wet, 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet |
+| `fairly_wet_to` | $2$ | 2.0 | - | Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177, p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, 0.7 < k <= 1.0 dry, 1.0 < k <= 1.3 fairly dry, 1.3 < k <= 1.6 optimal, 1.6 < k <= 2.0 fairly wet, 2.0 < k <= 2.5 wet, 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet |
+| `wet_to` | $2.5$ | 2.5 | - | Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177, p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, 0.7 < k <= 1.0 dry, 1.0 < k <= 1.3 fairly dry, 1.3 < k <= 1.6 optimal, 1.6 < k <= 2.0 fairly wet, 2.0 < k <= 2.5 wet, 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet |
+| `very_wet_to` | $3$ | 3.0 | - | Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177, p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, 0.7 < k <= 1.0 dry, 1.0 < k <= 1.3 fairly dry, 1.3 < k <= 1.6 optimal, 1.6 < k <= 2.0 fairly wet, 2.0 < k <= 2.5 wet, 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `sielianinov_class` | - | choice | – | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- each limit belongs to the class below it, as the source prints (k <= 0.4 extremely dry); the source's text speaks of ten classes and lists nine
+- Miś (2026) and Chmist-Sikorska et al. (2022) use other limits
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a classification
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `class_limit`: reference cases skowera-pula-*: each limit and just above it
+- `gap_propagation`: type case coefficient-nan: NaN is refused; a month without a coefficient has no class
+
+**Properties (CMP-6.5)**
+
+- units: unit_specific
+- limit `ordered_classes`: a larger coefficient never gives a drier class
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/meteo-indices-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+None.
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
 ## Tier B
 
 | Formula | Function | Definition | Constants | Convention | Source |
@@ -1377,3 +1529,6 @@ None stated.
 | `precipitation_intensity` | `hydrolog.statistics.meteo_precipitation.precipitation_intensity` | sdii of each month and year with every day, and of each calendar month over those months of the period together; the mean annual sum and the mean SDII of the years with one | – | an accumulated total is a missing day for sdii and counts in the annual sum; PRCPTOT rounded to 1e-6 mm; a month or year without a wet day has W = 0 and no SDII | ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990 |
 | `heavy_precipitation_thresholds` | `hydrolog.statistics.meteo_precipitation.heavy_precipitation` | the thresholds: wet_day_percentile of the wet days of the reference period at each percentile, from at least 100 wet days; each year with every day: heavy_precipitation_share at each threshold, and the mean share of those years | – | the reference period is by default the analysed years (the ETCCDI's base is 1961-1990); the minimum of 100 wet days is Hydrolog's (ADR-0032), no source gives one | Bronaugh, D. (2020). climdex.pcic 1.1-11: PCIC implementation of Climdex routines, R package, R/climdex.r: the percentiles of the wet days (not NA, at least 1 mm) of the base period by quantile type 8 |
 | `precipitation_regime` | `hydrolog.statistics.meteo_precipitation.precipitation_seasonality` | each monthly normal of the reference period in % of their sum and over their mean; precipitation_concentration_index and seasonality_index, with their classes, of the twelve normals and of each year with its twelve monthly sums, and the means of the yearly indices | – | the indices of the normals and the means of the yearly indices differ and both are given (Sumner et al. 2001); a total of 0 has no index | Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247, p. 225: the SI of the mean monthly totals and the mean of the yearly SI |
+| `hydrothermal_months` | `hydrolog.statistics.meteo_hydrothermal.hydrothermal_coefficient` | sielianinov_coefficient of each month April to September: P its precipitation sum, sum t its mean daily temperature times its days, for a month with both and a mean above 0 °C | – | the months April to September (Radzka 2014); the sums of precipitation rounded to 1e-6 mm | WMO (2017). WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203, Geneva, section 4.4.1 (a) and (c), pp. 7-8: a monthly mean needs fewer than 11 missing days and fewer than 5 in a row, a monthly sum every day or accumulated totals covering the missing days |
+| `hydrothermal_season` | `hydrolog.statistics.meteo_hydrothermal.hydrothermal_coefficient` | sielianinov_coefficient of the days of April to September with a mean temperature above 10 °C: P and sum t summed over them, in a year whose every day of April to September has both values | – | the day filter of Polish practice (Miś 2026), not the period between the stable transitions through 10 °C of Russian practice; an accumulated total is a missing day of the season | Miś, F. (2026). Spatiotemporal variability of atmospheric drought during the growing season in Poland: a multi-index analysis based on SPEI, VPD, and HTC (1980-2024). Theoretical and Applied Climatology 157(12), 790, section 2, eq. 4: the days with a mean temperature above 10 °C, calculated for the April-September period |
+| `hydrothermal_period` | `hydrolog.statistics.meteo_hydrothermal.hydrothermal_coefficient` | per month April to September: the mean coefficient of the years with one and the count of each class; the mean season coefficient and its class | – | the class of the mean, not the most frequent class | Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177, p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, 0.7 < k <= 1.0 dry, 1.0 < k <= 1.3 fairly dry, 1.3 < k <= 1.6 optimal, 1.6 < k <= 2.0 fairly wet, 2.0 < k <= 2.5 wet, 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet |

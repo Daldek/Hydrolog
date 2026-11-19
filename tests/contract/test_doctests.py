@@ -60,6 +60,7 @@ MODULES = (
     "hydrolog.statistics.homogeneity",
     "hydrolog.statistics.low_flows",
     "hydrolog.statistics.meteo_precipitation",
+    "hydrolog.statistics.meteo_hydrothermal",
     "hydrolog.statistics.meteo_spells",
     "hydrolog.statistics.meteo_spi",
     "hydrolog.statistics.meteo_temperature",

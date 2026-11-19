@@ -68,6 +68,9 @@ classes are ranges of whole percents while the code rounded the percentage with 
 - `meteo temperature --index days` gives the same counts and carries `formula_versions` `threshold_days` (the flags of
   each day, which the series counts by the WMO-No. 1203 rules); a missing series is passed as missing days. The means,
   normals, anomalies, extremes, counts, degree-day sums and the daily range of `meteo_temperature` are its Tier B.
+- `meteo hydrothermal` gives the same coefficients and classes and carries `formula_versions` `sielianinov_coefficient`
+  and `sielianinov_class`; a month or season whose sum of temperatures is not positive has no coefficient, as before
+  (the precondition of the spec). The months, the season of Miś (2026) and the means are its Tier B.
 - Breaking for library callers: `fit_gamma(sums_mm)` returns `(alpha, beta_mm, zero_probability)` and raises
   `InvalidParameterError` (`precondition_failed`) where it returned `None`; `spi_values` takes `beta_mm`;
   `year_precipitation_class` and `month_precipitation_class` take `percent_of_normal`, a number;

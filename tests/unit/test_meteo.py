@@ -14,11 +14,7 @@ import pytest
 
 from hydrolog.catalog import get_command, run_command, validate_command
 from hydrolog.exceptions import CalculationError, InputDataError, InvalidParameterError
-from hydrolog.statistics import (
-    precipitation_spells,
-    precipitation_sums,
-    sielianinov_class,
-)
+from hydrolog.statistics import precipitation_spells, precipitation_sums
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "meteo_daily.csv"
 
@@ -209,16 +205,6 @@ class TestSpells:
         ]
         wet = precipitation_spells(values, _days("2001-01-01", 9), kind="wet")
         assert [s.duration_days for s in wet.spells] == [1, 1]
-
-
-class TestSielianinovClasses:
-    """The classes of the hydrothermal coefficient."""
-
-    def test_sielianinov_classes_of_skowera_and_pula(self):
-        assert sielianinov_class(0.4) == "extremely_dry"
-        assert sielianinov_class(0.41) == "very_dry"
-        assert sielianinov_class(1.6) == "optimal"
-        assert sielianinov_class(3.01) == "extremely_wet"
 
 
 class TestTemperatureSnowHydrothermal:
