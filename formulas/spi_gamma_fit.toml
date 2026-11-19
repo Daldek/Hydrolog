@@ -1,0 +1,213 @@
+schema = "nogat-formula-card/1"
+name = "spi_gamma_fit"
+title = "Gamma distribution of precipitation sums by Thom's approximation"
+function = "hydrolog.statistics.meteo_spi.fit_gamma"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "A = ln(mean x) - mean(ln x) over the positive sums x; alpha = (1 + sqrt(1 + 4A/3)) / (4A); beta = mean x / alpha; q = m / n, m sums of zero among n"
+latex = "A = \\ln\\bar{x} - \\overline{\\ln x},\\quad \\hat{\\alpha} = \\frac{1 + \\sqrt{1 + 4A/3}}{4A},\\quad \\hat{\\beta} = \\frac{\\bar{x}}{\\hat{\\alpha}},\\quad q = \\frac{m}{n}"
+validation = "Thom's estimate approximates the maximum likelihood shape: its relative error is 1e-4 at A = 0.1 (alpha near 5), 2e-3 at A = 0.3 and 2.7 % at A = 1 (alpha 0.62), against ln(alpha) - digamma(alpha) = A solved exactly (the audit of 2026-11-18); the sources give no test of the fit against observations"
+conventions = ["the sums of one calendar month and scale over the years of the reference period; the caller leaves out the years without a sum", "q = m / n, the zero sums among all n sums (Edwards and McKee 1997, as Naresh Kumar et al. 2009 eq. A9 restate it); the shape and scale from the positive sums only", "Thom's approximation, not the exact maximum likelihood estimate, as climate_indices 3.2.0 and xclim 1.0.0 (method APP)", "A computed as the mean of d - ln(1 + d), d = x / mean x - 1, which equals ln(mean x) - mean(ln x) without its cancellation (ln x - ln(mean x) for a sum below half the mean)"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/meteo-indices-cases.json"]
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "sums_in_another_unit"
+
+[properties.scalings.inputs]
+sums_mm = 1.0
+
+[properties.scalings.outputs]
+beta_mm = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling the sums leaves d and A exact; only ln x - ln(mean) of a sum below half the mean, up to 745 in magnitude, is rounded anew in a term of at least 0.19; a subnormal scale keeps fewer digits"
+abs = 1e-300
+rel = 1e-09
+
+[[properties.limits]]
+name = "decimal_oracle"
+text = "alpha, beta and q equal Thom's equations evaluated from ln(mean) - mean(ln x) in 50-digit decimal arithmetic"
+
+[[properties.limits]]
+name = "nearly_equal_sums"
+text = "sums equal to two parts in a billion keep their estimates (A as the mean of d - ln(1 + d))"
+
+[[properties.limits]]
+name = "share_of_zeros"
+text = "q is the share of zero sums"
+
+[[sources]]
+citation = "Thom, H. C. S. (1958). A note on the gamma distribution. Monthly Weather Review 86(4), 117"
+access = "author-provided"
+locator = "the approximation of the maximum likelihood estimate of the shape; not opened here: its equations as McSweeney (2007) and Naresh Kumar et al. (2009) print them"
+
+[[sources]]
+citation = "McSweeney, C. F. (2007). Daily rainfall variability at point and areal scales: evaluating simulations of present and future climate. PhD thesis, University of East Anglia, Norwich"
+access = "open"
+locator = "chapter 4, p. 93, eqs. 4-3 and 4-4: Thom's approximation of the maximum likelihood estimate of the shape"
+url = "https://crudata.uea.ac.uk/cru/pubs/thesis/2007-mcsweeney/4.Gamma.pdf"
+
+[[sources]]
+citation = "Naresh Kumar, M., Murthy, C. S., Sesha Sai, M. V. R. and Roy, P. S. (2009). On the use of Standardized Precipitation Index (SPI) for drought intensity assessment. Meteorological Applications 16(3), 381-389; open preprint arXiv:1509.04808"
+access = "open"
+locator = "appendix, eqs. A4-A8 (Thom's estimates) and A9 (q = m / n)"
+url = "https://arxiv.org/pdf/1509.04808"
+
+[[sources]]
+citation = "WMO (2012). Standardized Precipitation Index User Guide. WMO-No. 1090, Geneva"
+access = "open"
+locator = "chapter 2 and section 6.1: the gamma distribution of the sums of each calendar month transformed to the standard normal (McKee et al. 1993)"
+url = "https://library.wmo.int/idurl/4/39629"
+
+[[variables]]
+name = "sums_mm"
+symbol = "x_i"
+unit = "mm"
+kind = "real_array"
+description = "Precipitation sums of one calendar month and scale, one per year of the reference period."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 105880.0
+test_reason = "four times the world's greatest 12-month rainfall, 26,470 mm at Cherrapunji, 1 August 1860 - 31 July 1861 (WMO Archive of Weather and Climate Extremes): a sum of the longest scale, 48 months"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 872.3
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the k-month sums of the default scales 1, 3, 6 and 12: 0.4 to 872.3 mm (a month without precipitation gives 0)"
+
+[[constraints]]
+name = "three_positive_sums"
+class = "precondition"
+text = "at least three of the sums are positive"
+
+[constraints.source]
+citation = "Hydrolog ADR-0032 (2026-11-13): meteorological statistics of a station, the group meteo"
+access = "open"
+locator = "point 5: a calendar month is fitted when 3 of its sums are positive"
+url = "https://github.com/Daldek/Hydrolog/blob/develop/docs/decisions/0032-meteorological-statistics-of-a-station-the-group-meteo.md"
+
+[[constraints]]
+name = "positive_sums_differ"
+class = "precondition"
+text = "the positive sums are not all equal (A > 0)"
+
+[constraints.source]
+citation = "McSweeney, C. F. (2007). Daily rainfall variability at point and areal scales: evaluating simulations of present and future climate. PhD thesis, University of East Anglia, Norwich"
+access = "open"
+locator = "chapter 4, p. 93, eqs. 4-3 and 4-4: Thom's approximation of the maximum likelihood estimate of the shape"
+url = "https://crudata.uea.ac.uk/cru/pubs/thesis/2007-mcsweeney/4.Gamma.pdf"
+
+[[constants]]
+name = "thom_ratio"
+value = 1.3333333333333333
+unit = "-"
+symbol = "4/3"
+exact = "4/3"
+
+[constants.source]
+citation = "McSweeney, C. F. (2007). Daily rainfall variability at point and areal scales: evaluating simulations of present and future climate. PhD thesis, University of East Anglia, Norwich"
+access = "open"
+locator = "chapter 4, p. 93, eqs. 4-3 and 4-4: Thom's approximation of the maximum likelihood estimate of the shape"
+url = "https://crudata.uea.ac.uk/cru/pubs/thesis/2007-mcsweeney/4.Gamma.pdf"
+
+[[constants]]
+name = "thom_denominator"
+value = 4.0
+unit = "-"
+symbol = "4"
+
+[constants.source]
+citation = "McSweeney, C. F. (2007). Daily rainfall variability at point and areal scales: evaluating simulations of present and future climate. PhD thesis, University of East Anglia, Norwich"
+access = "open"
+locator = "chapter 4, p. 93, eqs. 4-3 and 4-4: Thom's approximation of the maximum likelihood estimate of the shape"
+url = "https://crudata.uea.ac.uk/cru/pubs/thesis/2007-mcsweeney/4.Gamma.pdf"
+
+[[outputs]]
+name = "alpha"
+unit = "-"
+kind = "real"
+symbol = "\\hat{\\alpha}"
+description = "Shape of the gamma distribution of the positive sums."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "beta_mm"
+unit = "mm"
+kind = "real"
+symbol = "\\hat{\\beta}"
+description = "Its scale."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "zero_probability"
+unit = "-"
+kind = "real"
+symbol = "q"
+description = "The share of the sums that are zero."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = false
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "preconditions three_positive_sums and positive_sums_differ: A = 0 for equal sums would divide by zero; a zero sum never reaches a logarithm"
+
+[[traps]]
+name = "moment_cancellation"
+description = "Cancellation in moments computed as E[x^2] - E[x]^2."
+test = "limit nearly_equal_sums: A, a difference of nearly equal logarithms, is the mean of d - ln(1 + d)"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "the mean and A are pairwise sums of at most one term per year; limit decimal_oracle checks them to 1e-13"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case sums_mm-nan_element: a gap is refused; the caller passes the known sums only"
+
+[[oracles]]
+kind = "exact"
+description = "Thom's equations from ln(mean) - mean(ln x) in 50-digit decimal arithmetic (decimal)"
+test = "tests/unit/test_formulas_meteo_spi.py (limit decimal_oracle)"
+conventions = []
+
+[[oracles]]
+kind = "frozen"
+description = "climate_indices 3.2.0 indices.spi on the monthly sums of Warszawa-Okęcie 1991-2020, scales 1, 3, 6 and 12"
+test = "tests/oracles/spi_climate_indices_warszawa.csv, compared by tests/unit/test_formulas_meteo_spi.py"
+conventions = ["both: Thom's estimates, q = m / n, H(0) = q, the SPI within -3.09 and 3.09, calibration 1991-2020 = the analysed years"]

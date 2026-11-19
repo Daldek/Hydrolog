@@ -1,0 +1,810 @@
+[
+ {
+  "formula": "spi_gamma_fit",
+  "case_id": "kumar2009-anantapur-july-fit",
+  "source": {
+   "citation": "Naresh Kumar, M., Murthy, C. S., Sesha Sai, M. V. R. and Roy, P. S. (2009). On the use of Standardized Precipitation Index (SPI) for drought intensity assessment. Meteorological Applications 16(3), 381-389; open preprint arXiv:1509.04808",
+   "url": "https://arxiv.org/pdf/1509.04808",
+   "access": "open",
+   "locator": "appendix, eqs. A4-A8, and the statistics above the table of July rainfall, Anantapur 1969-2007: shape 1.90981, scale 32.4544 (the paper calls the shape beta and the scale alpha)"
+  },
+  "inputs": {
+   "sums_mm": [
+    27.999874,
+    30.000079,
+    29.000121,
+    14.000597,
+    26.999005,
+    49.99885,
+    124.002286,
+    39.001496,
+    68.999551,
+    76.999583,
+    46.997763,
+    34.001342,
+    77.999312,
+    57.997505,
+    29.000121,
+    137.002613,
+    75.000891,
+    26.999005,
+    10.000149,
+    158.000785,
+    280.002911,
+    42.001276,
+    18.999259,
+    54.998175,
+    41.001145,
+    45.001688,
+    112.000126,
+    56.002705,
+    10.000149,
+    112.000126,
+    38.000526,
+    54.998175,
+    20.999529,
+    21.187259,
+    40.698857,
+    107.996628,
+    144.995107,
+    20.999529,
+    55.401131
+   ]
+  },
+  "expected": {
+   "alpha": 1.90981,
+   "beta_mm": 32.4544,
+   "zero_probability": 0.0
+  },
+  "printed_precision": {
+   "alpha": 1e-05,
+   "beta_mm": 0.0001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "the 39 July sums are the exponentials of the printed 4-decimal logarithms (its rainfall column is rounded to whole mm), each within 5e-5 of itself; over 20,000 seeded perturbations of the logarithms within their rounding the fit spreads over 1.90972-1.90989 and 32.4526-32.4563 mm (the audit of 2026-11-18)",
+    "effect": {
+     "alpha": 8.6e-05,
+     "beta_mm": 0.0019
+    }
+   }
+  ],
+  "conventions": [
+   "Thom's approximation: A = ln(mean) - mean(ln x) printed as U = 0.2846",
+   "no zero sums: q = 0"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "McSweeney, C. F. (2007). Daily rainfall variability at point and areal scales: evaluating simulations of present and future climate. PhD thesis, University of East Anglia, Norwich",
+   "locator": "chapter 4, p. 93, eqs. 4-3 and 4-4 (the same estimator)",
+   "url": "https://crudata.uea.ac.uk/cru/pubs/thesis/2007-mcsweeney/4.Gamma.pdf",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "spi",
+  "case_id": "kumar2009-anantapur-july-table-iii",
+  "source": {
+   "citation": "Naresh Kumar, M., Murthy, C. S., Sesha Sai, M. V. R. and Roy, P. S. (2009). On the use of Standardized Precipitation Index (SPI) for drought intensity assessment. Meteorological Applications 16(3), 381-389; open preprint arXiv:1509.04808",
+   "url": "https://arxiv.org/pdf/1509.04808",
+   "access": "open",
+   "locator": "Table III, July (SPI to 3 decimals) of 1997, 1972, 1991, 1984, 2005, 1988 and 1989, under the fit shape 1.90981, scale 32.4544 mm"
+  },
+  "inputs": {
+   "sums_mm": [
+    10.0001,
+    14.0006,
+    18.9993,
+    137.0026,
+    144.9951,
+    158.0008,
+    280.0029
+   ],
+   "alpha": 1.90981,
+   "beta_mm": 32.4544,
+   "zero_probability": 0.0
+  },
+  "expected": {
+   "spi": [
+    -1.676,
+    -1.389,
+    -1.107,
+    1.489,
+    1.592,
+    1.753,
+    2.977
+   ]
+  },
+  "printed_precision": {
+   "alpha": 1e-05,
+   "beta_mm": 0.0001,
+   "spi": 0.001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "the paper's normal quantile is the rational approximation of Abramowitz and Stegun 26.2.23 (its eqs. A10-A12), within 4.5e-4",
+    "effect": {
+     "spi": 0.00045
+    }
+   },
+   {
+    "step": "the sums are the exponentials of the printed 4-decimal logarithms, relative 5e-5: at most 1e-4 of SPI (the audit's 20,000 seeded perturbations)",
+    "effect": {
+     "spi": 0.0001
+    }
+   }
+  ],
+  "conventions": [
+   "H(x) = q + (1 - q) G(x) with q = 0",
+   "no SPI reaches 3.09"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "spi",
+  "case_id": "edwards-mckee-zero-sum",
+  "source": {
+   "citation": "Naresh Kumar, M., Murthy, C. S., Sesha Sai, M. V. R. and Roy, P. S. (2009). On the use of Standardized Precipitation Index (SPI) for drought intensity assessment. Meteorological Applications 16(3), 381-389; open preprint arXiv:1509.04808",
+   "url": "https://arxiv.org/pdf/1509.04808",
+   "access": "open",
+   "locator": "appendix, eq. A9: H(x) = q + (1 - q) G(x), so a zero sum has H = q (after Edwards and McKee 1997); q = 0.3 gives the normal quantile -0.5244"
+  },
+  "inputs": {
+   "sums_mm": [
+    0.0
+   ],
+   "alpha": 2.0,
+   "beta_mm": 30.0,
+   "zero_probability": 0.3
+  },
+  "expected": {
+   "spi": [
+    -0.5244
+   ]
+  },
+  "printed_precision": {
+   "spi": 0.0001
+  },
+  "conventions": [
+   "the classic zero handling of climate_indices 3.2.0 (H(0) = q)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "climate_indices 3.2.0 (J. Adams), Python package of climate indices",
+   "locator": "indices.spi with zero_handling 'classic': SPI(0) = Phi^-1(q)",
+   "url": "https://pypi.org/project/climate-indices/3.2.0/",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "rocznik-2022-poznan",
+  "source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 9, p. 22: Poznań 2022, 414.6 mm, 77 % of the normal 538.9 mm; text p. 24: a dry year"
+  },
+  "inputs": {
+   "percent_of_normal": 77
+  },
+  "expected": {
+   "precipitation_class": "dry"
+  },
+  "printed_precision": {
+   "percent_of_normal": 1
+  },
+  "conventions": [
+   "Kaczorowska's classes of the year, „suchy” dry, „wilgotny” wet"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "rocznik-2022-wlodawa",
+  "source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 9, p. 22: Włodawa 2022, 649.1 mm, 115 % of the normal 562.4 mm; text p. 24: a wet year"
+  },
+  "inputs": {
+   "percent_of_normal": 115
+  },
+  "expected": {
+   "precipitation_class": "wet"
+  },
+  "printed_precision": {
+   "percent_of_normal": 1
+  },
+  "conventions": [
+   "Kaczorowska's classes of the year, „suchy” dry, „wilgotny” wet"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-49.49",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 49.49
+  },
+  "expected": {
+   "precipitation_class": "extremely_dry"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-49.5",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 49.5
+  },
+  "expected": {
+   "precipitation_class": "very_dry"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-74.49",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 74.49
+  },
+  "expected": {
+   "precipitation_class": "very_dry"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-74.5",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 74.5
+  },
+  "expected": {
+   "precipitation_class": "dry"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-89.49",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 89.49
+  },
+  "expected": {
+   "precipitation_class": "dry"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-89.5",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 89.5
+  },
+  "expected": {
+   "precipitation_class": "normal"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-110.49",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 110.49
+  },
+  "expected": {
+   "precipitation_class": "normal"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-110.5",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 110.5
+  },
+  "expected": {
+   "precipitation_class": "wet"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-125.49",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 125.49
+  },
+  "expected": {
+   "precipitation_class": "wet"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-125.5",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 125.5
+  },
+  "expected": {
+   "precipitation_class": "very_wet"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-150.49",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 150.49
+  },
+  "expected": {
+   "precipitation_class": "very_wet"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-150.5",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 150.5
+  },
+  "expected": {
+   "precipitation_class": "extremely_wet"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-89.6-whole-number-reading",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 89.6
+  },
+  "expected": {
+   "precipitation_class": "normal"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)",
+   "Łabędzki and Bąk (2004, Acta Agrophysica 3(1), Tab. 2) read decimal bounds, 75.0-89.9 dry, and class 89.6 % dry"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-24.999",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 24.999
+  },
+  "expected": {
+   "precipitation_class": "extremely_dry"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-25",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 25.0
+  },
+  "expected": {
+   "precipitation_class": "very_dry"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-49.999",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 49.999
+  },
+  "expected": {
+   "precipitation_class": "very_dry"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-50",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 50.0
+  },
+  "expected": {
+   "precipitation_class": "dry"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-74.999",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 74.999
+  },
+  "expected": {
+   "precipitation_class": "dry"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-75",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 75.0
+  },
+  "expected": {
+   "precipitation_class": "normal"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-125",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 125.0
+  },
+  "expected": {
+   "precipitation_class": "normal"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-125.001",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 125.001
+  },
+  "expected": {
+   "precipitation_class": "wet"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-150",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 150.0
+  },
+  "expected": {
+   "precipitation_class": "wet"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-150.001",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 150.001
+  },
+  "expected": {
+   "precipitation_class": "very_wet"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-200",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 200.0
+  },
+  "expected": {
+   "precipitation_class": "very_wet"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-200.001",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 200.001
+  },
+  "expected": {
+   "precipitation_class": "extremely_wet"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ }
+]

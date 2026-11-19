@@ -1,0 +1,167 @@
+schema = "nogat-formula-card/1"
+name = "kaczorowska_class"
+title = "Kaczorowska's class of a year's precipitation in % of its normal"
+function = "hydrolog.statistics.meteo_spi.year_precipitation_class"
+family = "classification"
+formula_version = 1
+status = "referenced"
+equation = "P/N rounded to a whole percent, a half up: below 50 extremely dry, 50-74 very dry, 75-89 dry, 90-110 normal, 111-125 wet, 126-150 very wet, above 150 extremely wet"
+latex = "r = \\left\\lfloor \\frac{100\\,P}{N} + \\frac{1}{2} \\right\\rfloor:\\ r < 50,\\ 50 \\le r \\le 74,\\ 75 \\le r \\le 89,\\ 90 \\le r \\le 110,\\ 111 \\le r \\le 125,\\ 126 \\le r \\le 150,\\ r > 150"
+validation = "none: a classification"
+conventions = ["a percentage counts in the class of its whole-number rounding, a half rounded up: 74.5 % is dry, 110.5 % wet, 150.5 % extremely wet (Python's rounding of a half to even, used up to 0.8.1, made them very dry, normal and very wet)", "Łabędzki and Bąk (2004, Acta Agrophysica 3(1), Tab. 2) read the classes with decimal bounds (75.0-89.9 dry): 89.6 % is normal here and dry there", "the normal of the reference period, by default the analysed years"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/meteo-indices-cases.json"]
+constraints = []
+oracles = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.limits]]
+name = "ordered_classes"
+text = "a larger percentage never gives a drier class"
+
+[[sources]]
+citation = "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33"
+access = "open"
+locator = "p. 72: the classes of a year (or a season) in % of the normal"
+url = "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf"
+
+[[sources]]
+citation = "IMGW-PIB (2023). Rocznik Meteorologiczny 2022"
+access = "open"
+locator = "Tab. 5, p. 14 (the same classes, „normalny” for „przeciętny”) and Tab. 9, p. 22 (annual sums in % of the normal 1991-2020, whole percents)"
+url = "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf"
+
+[[variables]]
+name = "percent_of_normal"
+symbol = "P/N"
+unit = "%"
+kind = "real"
+description = "Precipitation in % of its normal."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1452.0
+test_reason = "ten times the largest percentage of the project's data (145.2 % at Warszawa-Okęcie)"
+
+[variables.typical]
+low = 71.0
+low_inclusive = true
+high = 145.2
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the annual sums of 1991-2020 in % of their normal: 71.0 to 145.2 %"
+
+[[constants]]
+name = "very_dry_from"
+value = 50.0
+unit = "%"
+symbol = "50"
+
+[constants.source]
+citation = "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33"
+access = "open"
+locator = "p. 72: the least whole percent of the class very_dry"
+url = "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf"
+
+[[constants]]
+name = "dry_from"
+value = 75.0
+unit = "%"
+symbol = "75"
+
+[constants.source]
+citation = "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33"
+access = "open"
+locator = "p. 72: the least whole percent of the class dry"
+url = "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf"
+
+[[constants]]
+name = "normal_from"
+value = 90.0
+unit = "%"
+symbol = "90"
+
+[constants.source]
+citation = "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33"
+access = "open"
+locator = "p. 72: the least whole percent of the class normal"
+url = "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf"
+
+[[constants]]
+name = "wet_from"
+value = 111.0
+unit = "%"
+symbol = "111"
+
+[constants.source]
+citation = "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33"
+access = "open"
+locator = "p. 72: the least whole percent of the class wet"
+url = "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf"
+
+[[constants]]
+name = "very_wet_from"
+value = 126.0
+unit = "%"
+symbol = "126"
+
+[constants.source]
+citation = "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33"
+access = "open"
+locator = "p. 72: the least whole percent of the class very_wet"
+url = "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf"
+
+[[constants]]
+name = "extremely_wet_from"
+value = 151.0
+unit = "%"
+symbol = "151"
+
+[constants.source]
+citation = "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33"
+access = "open"
+locator = "p. 72: the least whole percent of the class extremely_wet"
+url = "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf"
+
+[[constants]]
+name = "rounding_half"
+value = 0.5
+unit = "%"
+symbol = "1/2"
+
+[constants.source]
+citation = "Hydrolog ADR-0059 (2026-11-19): the meteorological indices declared by specs"
+access = "open"
+locator = "the classes are ranges of whole percents: a percentage counts in the class of its rounding, a half up"
+url = "https://github.com/Daldek/Hydrolog/blob/develop/docs/decisions/0059-the-meteorological-indices-by-specs.md"
+
+[[outputs]]
+name = "precipitation_class"
+unit = "-"
+kind = "choice"
+description = "The class, driest first."
+choices = ["extremely_dry", "very_dry", "dry", "normal", "wet", "very_wet", "extremely_wet"]
+
+[[traps]]
+name = "class_limit"
+description = "A value exactly at a limit of a published class or table."
+test = "reference cases kaczorowska-boundary-*: each limit, a half below it and above it"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case percent_of_normal-nan: NaN is refused; a year without a percentage has no class"
