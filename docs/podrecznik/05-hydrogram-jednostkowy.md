@@ -543,10 +543,10 @@ jest:
 - sprawdzić rząd wielkości wyniku metodą statystyczną dla najbliższego wodowskazu (rozdz. 7);
 - podawać w raporcie model, jego parametry, metodę czasu koncentracji i krok obliczeń.
 
-**Czas trwania opadu.** Opad 12-godzinny jest wyborem przykładu, a nie wynikiem analizy.
-Najwyższą kulminację daje opad o **czasie trwania krytycznym**, który trzeba znaleźć, licząc
-hydrogramy dla kilku czasów trwania tego samego prawdopodobieństwa. Wysokości opadu PMAXTP dla
-$p$ = 1 % i polecenia z odpowiednimi `--total-mm` i `--duration-min` dają:
+**Czas trwania opadu.** Najwyższą kulminację daje opad o **czasie trwania krytycznym**, który
+znajduje się, licząc hydrogramy dla kilku czasów trwania tego samego prawdopodobieństwa (rozdz. 2
+pokazuje taki przegląd dla modelu SCS, także dla opadów krótszych niż 3 h). Wysokości opadu PMAXTP
+dla $p$ = 1 % i polecenia z odpowiednimi `--total-mm` i `--duration-min` dają:
 
 | Czas trwania opadu [min] | Opad [mm] | Opad efektywny [mm] | SCS: kulminacja [m³/s] (czas [min]) | Nash–Lutz: kulminacja [m³/s] (czas [min]) |
 |---|---|---|---|---|
@@ -556,12 +556,13 @@ $p$ = 1 % i polecenia z odpowiednimi `--total-mm` i `--duration-min` dają:
 | 1080 | 116,56 | 35,22 | 51,97 (530) | 37,19 (730) |
 | 1440 | 128,58 | 43,05 | 49,86 (640) | 39,18 (850) |
 
-Dla modelu SCS największą kulminację spośród tych czasów daje opad 12-godzinny, dla metody Lutza
-kulminacja rośnie jeszcze przy 24 h. Czas krytyczny zależy więc od modelu, a przy metodzie SCS-CN
-także od strat: przy CN = 65 straty początkowe wynoszą 27,35 mm, więc krótki opad daje mało odpływu,
-a dłuższy, choć mniej intensywny, coraz więcej. Reguła DVWK przytaczana przez KZGW (2017, s. 105),
-według której czas krytyczny leży między $t_c$ a $2t_c$ (rozdz. 4), wskazywałaby tu 3,5–7 h; tabela
-pokazuje, że przy dużych stratach warto sprawdzić także dłuższe opady.
+Dla modelu SCS opad 12-godzinny daje największą kulminację spośród sprawdzonych czasów trwania —
+jest praktycznie krytyczny; dla metody Lutza kulminacja rośnie jeszcze przy 24 h. Czas krytyczny zależy
+więc od modelu, a przy metodzie SCS-CN także od strat: przy CN = 65 straty początkowe wynoszą
+27,35 mm, więc krótki, intensywny opad daje mało odpływu, a dłuższy, choć mniej intensywny, coraz
+więcej. Reguła DVWK przytaczana przez KZGW (2017, s. 105), według której czas krytyczny leży między
+$t_c$ a $2t_c$, wskazywałaby tu 3,5–7 h; nie uwzględnia ona strat początkowych, dlatego
+przy dużych stratach trzeba sprawdzić także dłuższe opady.
 
 **Prawdopodobieństwo wyniku.** Obliczenie przyjmuje, że wezbranie wywołane opadem o
 prawdopodobieństwie przewyższenia 1 % ma to samo prawdopodobieństwo. To założenie metody, a nie
