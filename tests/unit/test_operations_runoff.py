@@ -1585,7 +1585,7 @@ class TestUnitHydrographs:
 
     def test_nash_lutz_impossible_input_is_a_validation_error(self):
         """Lc longer than L is rejected by the library, naming the option of Lc."""
-        with pytest.raises(InvalidParameterError, match="cannot exceed") as caught:
+        with pytest.raises(InvalidParameterError) as caught:
             ops.uh_nash(
                 area_km2=45.0,
                 lutz_length_km=4.0,
@@ -1593,12 +1593,30 @@ class TestUnitHydrographs:
                 lutz_slope_m_per_m=0.02,
                 lutz_manning_n=0.035,
             )
-        assert caught.value.details == {
-            "option": "lutz_centroid_length_km",
-            "reason": "maximum",
-            "maximum": 4.0,
-            "value": 8.0,
-        }
+        details = caught.value.details
+        assert (details["option"], details["reason"], details["constraint"]) == (
+            "lutz_centroid_length_km",
+            "outside_physical_range",
+            "centroid_within_length",
+        )
+
+    def test_nash_lutz_shares_above_the_area_are_refused_on_the_forest(self):
+        """U + W > 100 % is refused (spec lutz), naming the option of W."""
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.uh_nash(
+                area_km2=45.0,
+                lutz_length_km=8.2,
+                lutz_centroid_length_km=4.5,
+                lutz_slope_m_per_m=0.023,
+                lutz_manning_n=0.035,
+                lutz_urban_pct=40.0,
+                lutz_forest_pct=61.0,
+            )
+        details = caught.value.details
+        assert (details["option"], details["constraint"]) == (
+            "lutz_forest_pct",
+            "shares_within_catchment",
+        )
 
     def test_nash_given_parameters_outside_their_ranges_are_noticed(self):
         """Given n and K outside 1-10 and 10-200 min are each noticed as ranges to be

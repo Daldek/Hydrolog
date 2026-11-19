@@ -228,7 +228,7 @@ print(f"Qmax = {hydrograph.peak_discharge_m3s:.2f} m³/s")
     │     Jg^1.5)^0.26         │ │    ×(1+U)^(-1.66)    │    │
     │    ×e^(-0.016U)          │ │    ×H^(-0.27)        │    │
     │    ×e^(0.004W)           │ │    ×D^0.37           │    │
-    │  3. up = 0.66/tp^1.04    │ │ 2. k = 0.56×A^0.39   │    │
+    │  3. up=0.66/tp^1.04 Δt→0 │ │ 2. k = 0.56×A^0.39   │    │
     │  4. f(N) = tp×up →      │ │    ×(1+U)^(-0.62)    │    │
     │     solve for N          │ │    ×H^(-0.11)        │    │
     │  5. K = tp / (N-1)       │ │    ×D^0.22           │    │
@@ -288,18 +288,28 @@ deprecated since v0.6.2, was removed in v0.8.0:
 
 #### 3.2.4 Lutz Method Formulas
 
+The spec `lutz` ([FORMULAS.md](FORMULAS.md#lutz)) declares the equations, their constants,
+ranges and sources (KZGW 2017, annex 2, pp. 97–100 and Table C.2;
+`hydrolog.runoff.nash_iuh.lutz_parameters`, which `NashIUH.from_lutz` computes with):
+
 ```
-1. P₁ = 3.989 × n_manning + 0.028
+1. P₁ = 3.989 × n_manning + 0.028     (eq. 6.18 prints "− 0,028", a misprint)
 
 2. tp = P₁ × (L × Lc / Jg^1.5)^0.26 × e^(-0.016U) × e^(0.004W)   [h]
 
-3. up = 0.66 / tp^1.04                                            [1/h]
+3. up = 0.66 / tp^1.04                for Δt → 0 (eq. 6.19)       [1/h]
 
-4. f(N) = tp × up → solve numerically for N
-   (where f(N) = (N-1)^N × e^(-(N-1)) / Γ(N))
+4. f(N) = tp × up → solve numerically for N on [1.1, 20]
+   (where f(N) = (N-1)^N × e^(-(N-1)) / Γ(N), KZGW's Table C.2)
 
 5. K = tp / (N-1)                                                 [h]
 ```
+
+Step 3 is Lutz's relation for an infinitesimal step: the unit hydrograph of a step Δt
+averages the IUH over Δt exactly. KZGW's Ex. 6.2 takes the relation of Δt = 1 h
+(`up = 0.464 / tp^0.824`) and gets N 2.55 and k 0.70 h where Hydrolog gets 3.88 and
+0.377 h (a UH peak 28 % higher); the spec records it as a discrepancy. The spec refuses
+Lc > L, U + W > 100 % and a tp whose N lies outside the bracket.
 
 **Influence of physiographic parameters:**
 

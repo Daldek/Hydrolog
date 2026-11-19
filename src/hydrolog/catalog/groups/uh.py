@@ -348,6 +348,7 @@ COMMANDS: tuple[Command, ...] = (
                 "rejected."
             ),
             "Lutz needs lutz_centroid_length_km <= lutz_length_km.",
+            "Lutz needs lutz_urban_pct + lutz_forest_pct <= 100.",
             "Check `notices` in the result.",
         ),
         rules_pl=(
@@ -356,6 +357,7 @@ COMMANDS: tuple[Command, ...] = (
                 "odrzucane."
             ),
             "Lutz wymaga lutz_centroid_length_km <= lutz_length_km.",
+            "Lutz wymaga lutz_urban_pct + lutz_forest_pct <= 100.",
             "Sprawdź `notices` w wyniku.",
         ),
         errors=("validation_error",),

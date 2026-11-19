@@ -20,16 +20,36 @@ KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów
 maksymalnych. Załącznik 2, Tabela C.2.
 """
 
+import math
+from collections.abc import Callable
 from dataclasses import dataclass
+from decimal import Decimal, localcontext
+from typing import Final, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import brentq
 from scipy.special import gamma
 
+from hydrolog._formulas import checked_inputs, checked_outputs
 from hydrolog._ranges import warn_if_outside
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.nogat_formulas import (
+    Constant,
+    Constraint,
+    FormulaSpec,
+    Limit,
+    Oracle,
+    Output,
+    Properties,
+    Range,
+    Source,
+    Values,
+    Variable,
+    assert_within,
+    convert,
+)
 
 
 @dataclass
@@ -656,12 +676,13 @@ class NashIUH:
         forest_pct: float = 0.0,
         area_km2: float | None = None,
     ) -> "NashIUH":
-        r"""
+        """
         Create NashIUH using Lutz method for ungauged catchments.
 
         The Lutz method estimates Nash model parameters from catchment
         physiographic characteristics. Recommended for non-urbanized
-        catchments.
+        catchments. Computes with :func:`lutz_parameters` (spec ``lutz``, whose
+        equations, constants, ranges and sources ``docs/FORMULAS.md`` shows).
 
         Parameters
         ----------
@@ -694,7 +715,9 @@ class NashIUH:
         Raises
         ------
         InvalidParameterError
-            If any parameter is invalid or if N cannot be determined.
+            If the spec ``lutz`` refuses the inputs (``details.reason`` of the
+            standard, ``details.option`` the argument of this method), or if
+            ``area_km2`` is not positive.
 
         Warns
         -----
@@ -705,35 +728,10 @@ class NashIUH:
 
         Notes
         -----
-        The Lutz method computes:
-
-        1. Time to peak of unit hydrograph:
-
-        .. math::
-            t_p = P_1 \cdot \left(\frac{L \cdot L_c}{J_g^{1.5}}\right)^{0.26}
-                  \cdot e^{-0.016 U} \cdot e^{0.004 W}
-
-        where :math:`P_1 = 3.989 n + 0.028` (n = Manning coefficient).
-
-        2. Peak IUH ordinate:
-
-        .. math::
-            u_p = \frac{0.66}{t_p^{1.04}}
-
-        3. Shape function:
-
-        .. math::
-            f(N) = t_p \cdot u_p
-
-        4. Parameter N is found by solving:
-
-        .. math::
-            f(N) = \frac{(N-1)^N \cdot e^{-(N-1)}}{\Gamma(N)}
-
-        5. Storage coefficient:
-
-        .. math::
-            K = \frac{t_p}{N-1}
+        The peak of the IUH follows Lutz's relation for an infinitesimal step
+        (KZGW 2017, eq. 6.19); :meth:`to_unit_hydrograph` averages the IUH over the
+        step exactly. KZGW's Ex. 6.2 uses a relation fitted for a step of 1 h
+        instead and gets a lower, later peak (spec ``lutz``, its conventions).
 
         References
         ----------
@@ -742,7 +740,7 @@ class NashIUH:
         für Hydrologie und Wasserwirtschaft, H. 24, Universität Karlsruhe.
 
         KZGW (2017). Aktualizacja metodyki obliczania przepływów
-        i opadów maksymalnych. Załącznik 2, Tabela C.2.
+        i opadów maksymalnych. Załącznik 2, pp. 97-100, Tabela C.2.
 
         Examples
         --------
@@ -756,97 +754,22 @@ class NashIUH:
         >>> print(f"n = {nash.n:.2f}, K = {nash.k_min:.1f} min")
         n = 3.66, K = 70.9 min
         """
-        # Validate inputs
-        if L_km <= 0:
-            raise InvalidParameterError(f"L_km must be positive, got {L_km}")
-        if Lc_km <= 0:
-            raise InvalidParameterError(f"Lc_km must be positive, got {Lc_km}")
-        if Lc_km > L_km:
-            raise InvalidParameterError(
-                f"Lc_km ({Lc_km}) cannot exceed L_km ({L_km})",
-                details={
-                    "option": "Lc_km",
-                    "reason": "maximum",
-                    "maximum": L_km,
-                    "value": Lc_km,
-                },
+        try:
+            estimate = lutz_parameters(
+                length_km=L_km,
+                centroid_length_km=Lc_km,
+                slope_m_per_m=slope,
+                manning_n=manning_n,
+                urban_pct=urban_pct,
+                forest_pct=forest_pct,
             )
-        if slope <= 0:
-            raise InvalidParameterError(f"slope must be positive, got {slope}")
-        if manning_n <= 0:
-            raise InvalidParameterError(f"manning_n must be positive, got {manning_n}")
-        if urban_pct < 0 or urban_pct > 100:
-            raise InvalidParameterError(
-                f"urban_pct must be in [0, 100], got {urban_pct}"
-            )
-        if forest_pct < 0 or forest_pct > 100:
-            raise InvalidParameterError(
-                f"forest_pct must be in [0, 100], got {forest_pct}"
-            )
+        except InvalidParameterError as exc:
+            raise _from_lutz_error(exc) from exc
         if area_km2 is not None and area_km2 <= 0:
             raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
         if area_km2 is not None:
             warn_if_outside("lutz", "area_km2", area_km2)
 
-        # Step 1: Calculate P1 parameter
-        P1 = 3.989 * manning_n + 0.028
-
-        # Step 2: Calculate time to peak [hours]
-        # tp = P1 * (L * Lc / Jg^1.5)^0.26 * exp(-0.016*U) * exp(0.004*W)
-        geometric_factor = (L_km * Lc_km / (slope**1.5)) ** 0.26
-        urban_factor = np.exp(-0.016 * urban_pct)
-        forest_factor = np.exp(0.004 * forest_pct)
-        tp_hours = P1 * geometric_factor * urban_factor * forest_factor
-
-        # Step 3: Calculate peak IUH ordinate [1/hour]
-        up_per_hour = 0.66 / (tp_hours**1.04)
-
-        # Step 4: Calculate f(N) = tp * up
-        f_N_target = tp_hours * up_per_hour
-
-        # Step 5: Find N by solving f(N) = (N-1)^N * e^(-(N-1)) / Gamma(N)
-        def f_N_equation(N_val: float) -> float:
-            """Calculate f(N) for Nash model."""
-            if N_val <= 1:
-                return 0.0
-            n_minus_1 = N_val - 1
-            numerator = (n_minus_1**N_val) * np.exp(-n_minus_1)
-            denominator = gamma(N_val)
-            return float(numerator / denominator)
-
-        def objective(N_val: float) -> float:
-            """Objective function: f(N) - target = 0."""
-            return float(f_N_equation(N_val) - f_N_target)
-
-        # f(N) has maximum around N=2-3, then decreases
-        # Typical range for f(N): 0.35 - 0.40
-        # Search in range N = 1.1 to 20
-        try:
-            # Check if solution exists in range
-            f_low = objective(1.1)
-            f_high = objective(20.0)
-
-            if f_low * f_high > 0:
-                # No sign change - check if target is achievable
-                f_max = max(f_N_equation(N_val) for N_val in np.linspace(1.1, 20, 100))
-                if f_N_target > f_max:
-                    raise InvalidParameterError(
-                        f"f(N) = {f_N_target:.4f} is too high. "
-                        f"Maximum achievable f(N) ≈ {f_max:.4f}. "
-                        "Check input parameters."
-                    )
-
-            N = brentq(objective, 1.1, 20.0, xtol=1e-6)
-        except ValueError as e:
-            raise InvalidParameterError(
-                f"Could not find valid N for f(N) = {f_N_target:.4f}. Error: {e}"
-            ) from e
-
-        # Step 6: Calculate K [hours], convert to minutes
-        K_hours = tp_hours / (N - 1)
-        k_min = K_hours * 60.0
-
-        # Store all intermediate calculation results
         lutz_params = LutzCalculationResult(
             L_km=L_km,
             Lc_km=Lc_km,
@@ -854,20 +777,22 @@ class NashIUH:
             manning_n=manning_n,
             urban_pct=urban_pct,
             forest_pct=forest_pct,
-            P1=P1,
-            geometric_factor=geometric_factor,
-            urban_factor=urban_factor,
-            forest_factor=forest_factor,
-            tp_hours=tp_hours,
-            up_per_hour=up_per_hour,
-            f_N_target=f_N_target,
-            n=N,
-            k_hours=K_hours,
-            k_min=k_min,
+            P1=estimate.p1,
+            geometric_factor=estimate.geometric_factor,
+            urban_factor=estimate.urban_factor,
+            forest_factor=estimate.forest_factor,
+            tp_hours=estimate.time_to_peak_h,
+            up_per_hour=estimate.peak_ordinate_per_h,
+            f_N_target=estimate.peak_product,
+            n=estimate.n,
+            k_hours=estimate.k_h,
+            k_min=estimate.k_min,
         )
-
         return cls._estimated(
-            n=N, k_min=k_min, area_km2=area_km2, lutz_params=lutz_params
+            n=estimate.n,
+            k_min=estimate.k_min,
+            area_km2=area_km2,
+            lutz_params=lutz_params,
         )
 
     @classmethod
@@ -1035,3 +960,822 @@ class NashIUH:
         k_min = k_h * 60.0
 
         return cls._estimated(n=N, k_min=k_min, area_km2=area_km2)
+
+
+# --- Lutz's estimation of n and K: the spec lutz -------------------------------------
+
+_KZGW_CITATION = (
+    "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o "
+    "określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i "
+    "niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+)
+_KZGW_URL = (
+    "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/"
+    "zal-2-do-OPZ-ujednolicony-1.pdf"
+)
+_SIKORSKA_CITATION = (
+    "Sikorska, A.E., Scheidegger, A., Banasik, K., Rieckermann, J. (2012). Bayesian "
+    "uncertainty assessment of flood predictions in ungauged urban basins for "
+    "conceptual rainfall-runoff models. Hydrology and Earth System Sciences 16, "
+    "1221-1236"
+)
+_SIKORSKA_URL = (
+    "https://hess.copernicus.org/articles/16/1221/2012/hess-16-1221-2012.pdf"
+)
+_HANDOFFS = (
+    "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November "
+    "2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa "
+    "(134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, "
+    "and the guide's Kamiennik to Świerzawa (37.22 km2)"
+)
+_HANDOFF_FILES = (
+    "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json"
+)
+
+
+def _kzgw(locator: str) -> Source:
+    return Source(citation=_KZGW_CITATION, locator=locator, url=_KZGW_URL)
+
+
+def _sikorska(locator: str) -> Source:
+    return Source(citation=_SIKORSKA_CITATION, locator=locator, url=_SIKORSKA_URL)
+
+
+def _from_handoffs(what: str) -> Source:
+    return Source(citation=_HANDOFFS, locator=f"{_HANDOFF_FILES}: {what}")
+
+
+_N_LOW: Final = 1.1
+"""Lower end of the bracket of N: the first row of KZGW's Table C.2."""
+_N_HIGH: Final = 20.0
+"""Upper end of the bracket of N, far beyond the last row of Table C.2 (7.99)."""
+_N_XTOL: Final = 1e-6
+"""Absolute tolerance of the root N (scipy.optimize.brentq's ``xtol``)."""
+
+
+def _peak_product(n: float) -> float:
+    """Return f(N) = (N-1)^N e^-(N-1) / Gamma(N), the product tp up of a cascade."""
+    n_minus_1 = n - 1
+    return float((n_minus_1**n) * np.exp(-n_minus_1) / gamma(n))
+
+
+class _Steps(NamedTuple):
+    """The steps of Lutz's equations before N, as the function computes them."""
+
+    p1: float
+    geometric_factor: float
+    urban_factor: float
+    forest_factor: float
+    time_to_peak_h: float
+    peak_ordinate_per_h: float
+    peak_product: float
+
+
+def _steps(x: Values) -> _Steps:
+    """Return P1, the factors of tp, tp, up and tp up of checked inputs (eqs 6.17-6.20).
+
+    Raises ZeroDivisionError or OverflowError where float64 cannot hold a step, which
+    the precondition ``root_in_bracket`` refuses before the formula computes.
+    """
+    p1 = LUTZ.constant("p1_slope") * x.real("manning_n") + LUTZ.constant("p1_intercept")
+    geometric = (
+        x.real("length_km")
+        * x.real("centroid_length_km")
+        / (x.real("slope_m_per_m") ** LUTZ.constant("slope_exponent"))
+    ) ** LUTZ.constant("geometric_exponent")
+    urban = np.exp(LUTZ.constant("urban_coefficient") * x.real("urban_pct"))
+    forest = np.exp(LUTZ.constant("forest_coefficient") * x.real("forest_pct"))
+    tp = p1 * geometric * urban * forest
+    up = LUTZ.constant("peak_coefficient") / (tp ** LUTZ.constant("peak_exponent"))
+    return _Steps(
+        p1=p1,
+        geometric_factor=geometric,
+        urban_factor=urban,
+        forest_factor=forest,
+        time_to_peak_h=tp,
+        peak_ordinate_per_h=up,
+        peak_product=tp * up,
+    )
+
+
+def _root_in_bracket(x: Values) -> bool:
+    """f(1.1) <= tp up <= f(20): brentq's sign change on the bracket of N."""
+    try:
+        with np.errstate(all="ignore"):
+            target = float(_steps(x).peak_product)
+    except (ZeroDivisionError, OverflowError):
+        return False
+    return _peak_product(_N_LOW) <= target <= _peak_product(_N_HIGH)
+
+
+# --- oracles and limits (CMP-6.2, CMP-6.5) -------------------------------------------
+
+_ORACLE_POINTS: Final[tuple[dict[str, float], ...]] = (
+    # KZGW (2017) Ex. 6.2, the Niedźwiadka at km 3+450
+    {
+        "length_km": 4.3,
+        "centroid_length_km": 2.7,
+        "slope_m_per_m": 0.03,
+        "manning_n": 0.025,
+        "urban_pct": 0.0,
+        "forest_pct": 33.6,
+    },
+    # the guide's Kamiennik to Świerzawa, Jg the equal-area slope of its profile
+    {
+        "length_km": 15.88,
+        "centroid_length_km": 6.76,
+        "slope_m_per_m": 0.00848,
+        "manning_n": 0.035,
+        "urban_pct": 1.0,
+        "forest_pct": 57.4,
+    },
+    # the catalog's example of uh nash
+    {
+        "length_km": 8.2,
+        "centroid_length_km": 4.5,
+        "slope_m_per_m": 0.023,
+        "manning_n": 0.035,
+        "urban_pct": 5.0,
+        "forest_pct": 30.0,
+    },
+    # the shortest and the longest flow path of the hand-offs
+    {
+        "length_km": 0.0566,
+        "centroid_length_km": 0.0042,
+        "slope_m_per_m": 0.105,
+        "manning_n": 0.025,
+        "urban_pct": 0.0,
+        "forest_pct": 100.0,
+    },
+    {
+        "length_km": 28.88,
+        "centroid_length_km": 14.49,
+        "slope_m_per_m": 0.002,
+        "manning_n": 0.05,
+        "urban_pct": 9.0,
+        "forest_pct": 0.0,
+    },
+)
+"""Inputs of the oracles, inside the typical ranges or at their ends."""
+
+_DIGITS = 50
+"""Precision of the decimal oracle: far beyond float64's 16 digits."""
+
+
+def _decimal_steps(point: dict[str, float]) -> tuple[Decimal, Decimal]:
+    """Tp and up of the published equations at 50 digits, from the exact inputs."""
+    with localcontext(prec=_DIGITS):
+        length, centroid, slope, roughness, urban, forest = (
+            Decimal(point[name])
+            for name in (
+                "length_km",
+                "centroid_length_km",
+                "slope_m_per_m",
+                "manning_n",
+                "urban_pct",
+                "forest_pct",
+            )
+        )
+        p1 = Decimal("3.989") * roughness + Decimal("0.028")
+        geometric = (length * centroid / slope ** Decimal("1.5")) ** Decimal("0.26")
+        tp = (
+            p1
+            * geometric
+            * (Decimal("-0.016") * urban).exp()
+            * (Decimal("0.004") * forest).exp()
+        )
+        up = Decimal("0.66") / tp ** Decimal("1.04")
+        return tp, up
+
+
+def _decimal_oracle(run: Callable[..., Values]) -> None:
+    for point in _ORACLE_POINTS:
+        result = run(**point)
+        tp, up = _decimal_steps(point)
+        assert_within(
+            result.real("time_to_peak_h"),
+            float(tp),
+            rel=1e-13,
+            reason="float64 products, powers and exponentials of the inputs against "
+            "eq. 6.17 in decimal arithmetic at 50 digits: a few units in the last "
+            "place of each step, the constants 3.989, 0.028 and -0.016 one rounding "
+            "from their decimal values",
+        )
+        assert_within(
+            result.real("peak_ordinate_per_h"),
+            float(up),
+            rel=1e-13,
+            reason="eq. 6.19 on the tp above: tp's error times 1.04 plus a few units "
+            "in the last place of the power and the quotient",
+        )
+
+
+def _cascade_peak(run: Callable[..., Values]) -> None:
+    from scipy import stats
+
+    for point in _ORACLE_POINTS:
+        result = run(**point)
+        tp = result.real("time_to_peak_h")
+        n = result.real("n")
+        k_h = convert(result.real("k_min"), "min", "h")
+        assert_within(
+            (n - 1.0) * k_h,
+            tp,
+            rel=1e-15,
+            reason="K = tp / (N - 1) converted to minutes and back: a quotient, a "
+            "product by 60, a quotient by 60 and the product (N - 1) K, each one "
+            "rounding of float64",
+        )
+        assert_within(
+            float(stats.gamma.pdf(tp, a=n, scale=k_h)),
+            result.real("peak_ordinate_per_h"),
+            rel=1e-6,
+            reason="brentq stops within 1e-6 of the root N (xtol); f'/f <= 0.58 for "
+            "N >= 2, as all these points give, so the density at tp, f(N)/tp, is "
+            "within 6e-7 of up = (tp up)/tp relative; scipy.stats evaluates the "
+            "density through logarithms, a few units in the last place",
+        )
+
+
+def _power_law(run: Callable[..., Values]) -> None:
+    base = dict(_ORACLE_POINTS[1])  # Kamiennik: 2 Lc < L, and U + W + 10 < 100
+    once = run(**base).real("time_to_peak_h")
+    for name, factor, ratio in (
+        ("length_km", 2.0, 2.0**0.26),
+        ("centroid_length_km", 2.0, 2.0**0.26),
+        ("slope_m_per_m", 2.0, 2.0 ** (-1.5 * 0.26)),
+    ):
+        moved = run(**{**base, name: factor * base[name]}).real("time_to_peak_h")
+        assert_within(
+            moved / once,
+            ratio,
+            rel=1e-14,
+            reason=f"tp is proportional to {name} to a fixed power: the ratio of two "
+            "float64 evaluations, each within a few units in the last place",
+        )
+    for name, step, coefficient in (
+        ("urban_pct", 10.0, -0.016),
+        ("forest_pct", 10.0, 0.004),
+    ):
+        moved = run(**{**base, name: base[name] + step}).real("time_to_peak_h")
+        assert_within(
+            moved / once,
+            math.exp(coefficient * step),
+            rel=1e-14,
+            reason=f"{name} enters through exp(c {name}): adding 10 multiplies tp by "
+            "exp(10 c), within a few units in the last place of the two evaluations",
+        )
+
+
+# --- the spec ------------------------------------------------------------------------
+
+_LENGTH_REASON = (
+    "1,000 km, about the length of the Vistula, the longest river of Poland: no main "
+    "stream of a Polish watershed is longer"
+)
+
+LUTZ: Final = FormulaSpec(
+    name="lutz",
+    title="Nash's n and K of an ungauged watershed by Lutz's method (KZGW 2017)",
+    function="hydrolog.runoff.nash_iuh.lutz_parameters",
+    family="empirical",
+    equation=(
+        "tp = P1 * (L * Lc / Jg**1.5)**0.26 * exp(-0.016 * U) * exp(0.004 * W) [h], "
+        "P1 = 3.989 * nM + 0.028; up = 0.66 / tp**1.04 [1/h] (dt -> 0); N solves "
+        "(N - 1)**N * exp(-(N - 1)) / Gamma(N) = tp * up; K = tp / (N - 1)"
+    ),
+    latex=(
+        r"t_p = P_1 \left(\frac{L\,L_c}{J_g^{1.5}}\right)^{0.26} e^{-0.016\,U}"
+        r" e^{0.004\,W},\quad P_1 = 3.989\,n_M + 0.028,\quad"
+        r" u_p = \frac{0.66}{t_p^{1.04}},\quad"
+        r" \frac{(N-1)^N e^{-(N-1)}}{\Gamma(N)} = t_p\,u_p,\quad K = \frac{t_p}{N-1}"
+    ),
+    variables=(
+        Variable(
+            name="length_km",
+            symbol="L",
+            unit="km",
+            description="Length along the main stream from the outlet to the divide: "
+            "the longest flow path.",
+            physical=Range(
+                low=0.0,
+                low_inclusive=False,
+                test_high=1000.0,
+                test_reason=_LENGTH_REASON,
+            ),
+            applicability="unstated",
+            typical=Range(
+                low=0.05,
+                high=30.0,
+                source=_from_handoffs("flow paths of 0.0566 to 28.88 km"),
+            ),
+        ),
+        Variable(
+            name="centroid_length_km",
+            symbol="Lc",
+            unit="km",
+            description="Length along the main stream from the outlet to its point "
+            "nearest the watershed's centroid.",
+            physical=Range(
+                low=0.0,
+                low_inclusive=False,
+                test_high=1000.0,
+                test_reason=_LENGTH_REASON,
+            ),
+            applicability="unstated",
+            typical=Range(
+                low=0.004,
+                high=15.0,
+                source=_from_handoffs("Lc of 0.0042 to 14.49 km"),
+            ),
+        ),
+        Variable(
+            name="slope_m_per_m",
+            symbol="Jg",
+            unit="m/m",
+            description="Equal-area slope of the main stream's longitudinal profile "
+            "(spec equal_area_slope), not the slope between its ends.",
+            physical=Range(
+                low=0.0,
+                low_inclusive=False,
+                test_high=1.0,
+                test_reason="a mean slope of 1 m/m (45 degrees), steeper than any "
+                "main stream on average",
+            ),
+            applicability="unstated",
+            typical=Range(
+                low=0.002,
+                high=0.11,
+                source=_from_handoffs(
+                    "slopes between the ends of the flow paths, 0.00244 to 0.1055 "
+                    "m/m, which bound their equal-area slopes on concave profiles "
+                    "(Kamiennik: 0.00848 against 0.0114)"
+                ),
+            ),
+        ),
+        Variable(
+            name="manning_n",
+            symbol="nM",
+            unit="s m^-1/3",
+            description="Manning's roughness coefficient of the main channel.",
+            physical=Range(
+                low=0.0,
+                low_inclusive=False,
+                test_high=0.8,
+                test_reason="0.80, the roughness of overland flow through woods with "
+                "dense underbrush, rougher than any channel (USDA-NRCS 1986, TR-55, "
+                "table 3-1)",
+            ),
+            applicability="unstated",
+            typical=Range(
+                low=0.025,
+                high=0.035,
+                source=Source(
+                    citation=f"{_KZGW_CITATION}; and {_HANDOFFS}",
+                    locator="KZGW Ex. 6.2, p. 99: n = 0.025 for the Niedźwiadka; "
+                    "tests/fixtures/kamiennik.json: n = 0.035",
+                    url=_KZGW_URL,
+                ),
+            ),
+        ),
+        Variable(
+            name="urban_pct",
+            symbol="U",
+            unit="%",
+            description="Share of urbanized land in the watershed's area.",
+            physical=Range(low=0.0, high=100.0),
+            applicability="unstated",
+            typical=Range(
+                low=0.0,
+                high=10.0,
+                source=_from_handoffs("urbanized shares of 0 to 9 %"),
+            ),
+        ),
+        Variable(
+            name="forest_pct",
+            symbol="W",
+            unit="%",
+            description="Share of forest in the watershed's area.",
+            physical=Range(low=0.0, high=100.0),
+            applicability="unstated",
+            typical=Range(
+                low=0.0,
+                high=100.0,
+                source=_from_handoffs("forest shares of 0 to 100 %"),
+            ),
+        ),
+    ),
+    outputs=(
+        Output(
+            name="time_to_peak_h",
+            unit="h",
+            symbol="tp",
+            description="Time to the peak of the instantaneous unit hydrograph.",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+        Output(
+            name="peak_ordinate_per_h",
+            unit="1/h",
+            symbol="up",
+            description="Peak ordinate of the instantaneous unit hydrograph (dt -> 0).",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+        Output(
+            name="n",
+            unit="-",
+            symbol="N",
+            description="Number of reservoirs of Nash's cascade.",
+            physical=Range(low=1.0, low_inclusive=False),
+        ),
+        Output(
+            name="k_min",
+            unit="min",
+            symbol="K",
+            description="Storage constant of each reservoir.",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+        Output(
+            name="p1",
+            unit="h km^-0.52",
+            symbol="P1",
+            description="Lutz's roughness parameter of tp.",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+    ),
+    sources=(
+        _kzgw(
+            "annex 2, section 3.1.2, pp. 97-98: eqs. 6.17-6.21, Fig. 6.3 and the "
+            "definitions of L, Lc, Jg, U and W; Ex. 6.2, pp. 99-100; Table C.2, "
+            "pp. 132-133 (N against f(N))"
+        ),
+        _sikorska(
+            "Table 1, p. 1226: Lutz's tp with the exponent 0.26 and up = P2 / tp**P3, "
+            "P2 = 0.64 and P3 = 1.04, 'dependent on the interval of estimation'"
+        ),
+    ),
+    constants=(
+        Constant(
+            name="p1_slope",
+            value=3.989,
+            unit="h km^-0.52 s^-1 m^1/3",
+            symbol="3.989",
+            source=_kzgw(
+                "eq. 6.18, p. 97; Fig. 6.3, p. 98: P1 = 3.9886 n + 0.0284 (R2 = "
+                "0.9974), after Lutz (1984)"
+            ),
+        ),
+        Constant(
+            name="p1_intercept",
+            value=0.028,
+            unit="h km^-0.52",
+            symbol="0.028",
+            source=_kzgw(
+                "Fig. 6.3, p. 98 (+0.0284) and Ex. 6.2, p. 99 (P1 = 0.128 for n = "
+                "0.025); eq. 6.18, p. 97, prints '- 0,028', a misprint"
+            ),
+        ),
+        Constant(
+            name="slope_exponent",
+            value=1.5,
+            unit="-",
+            symbol="1.5",
+            source=_kzgw("eq. 6.17, p. 97; the same in Sikorska et al. 2012, Table 1"),
+        ),
+        Constant(
+            name="geometric_exponent",
+            value=0.26,
+            unit="-",
+            symbol="0.26",
+            source=_kzgw("eq. 6.17, p. 97; the same in Sikorska et al. 2012, Table 1"),
+        ),
+        Constant(
+            name="urban_coefficient",
+            value=-0.016,
+            unit="1/%",
+            symbol="-0.016",
+            source=_kzgw("eq. 6.17, p. 97; the same in Sikorska et al. 2012, Table 1"),
+        ),
+        Constant(
+            name="forest_coefficient",
+            value=0.004,
+            unit="1/%",
+            symbol="0.004",
+            source=_kzgw("eq. 6.17, p. 97; the same in Sikorska et al. 2012, Table 1"),
+        ),
+        Constant(
+            name="peak_coefficient",
+            value=0.66,
+            unit="h^0.04",
+            symbol="0.66",
+            source=_kzgw(
+                "eq. 6.19, p. 98, for dt -> 0; Sikorska et al. 2012, Table 1, give "
+                "P2 = 0.64"
+            ),
+        ),
+        Constant(
+            name="peak_exponent",
+            value=1.04,
+            unit="-",
+            symbol="1.04",
+            source=_kzgw("eq. 6.19, p. 98; the same in Sikorska et al. 2012, Table 1"),
+        ),
+    ),
+    constraints=(
+        Constraint(
+            name="centroid_within_length",
+            cls="physical",
+            check=lambda x: x.real("centroid_length_km") <= x.real("length_km"),
+            text="Lc <= L: both run along the main stream from the outlet, Lc to its "
+            "point nearest the centroid, L to the divide",
+            source=_kzgw("p. 97, the definitions of L and Lc under eq. 6.17"),
+            satisfied={"length_km": 4.3, "centroid_length_km": 2.7},
+            boundary={"length_km": 4.3, "centroid_length_km": 4.3},
+            violated={"length_km": 4.3, "centroid_length_km": 4.4},
+        ),
+        Constraint(
+            name="shares_within_catchment",
+            cls="physical",
+            check=lambda x: x.real("urban_pct") + x.real("forest_pct") <= 100.0,
+            text="U + W <= 100: the urbanized and the forest land are shares of the "
+            "same watershed's area that do not overlap",
+            source=_kzgw("p. 97, the definitions of U and W under eq. 6.17"),
+            satisfied={"urban_pct": 5.0, "forest_pct": 57.4},
+            boundary={"urban_pct": 40.0, "forest_pct": 60.0},
+            violated={"urban_pct": 40.0, "forest_pct": 61.0},
+        ),
+        Constraint(
+            name="root_in_bracket",
+            cls="precondition",
+            check=_root_in_bracket,
+            text="f(1.1) <= tp up <= f(20), tp from about 3.4e-11 to 3.4e23 h: the "
+            "root N of f(N) = tp up lies in the bracket searched, from the first "
+            "row of Table C.2, and float64 holds every step",
+            source=_kzgw("eq. 6.20, p. 98, and Table C.2, pp. 132-133, from N = 1.10"),
+            satisfied={"length_km": 4.3, "centroid_length_km": 2.7},
+            violated={"length_km": 1e-30, "centroid_length_km": 1e-30},
+        ),
+    ),
+    properties=Properties(
+        units="unit_specific",
+        monotonic={
+            "length_km": 1,
+            "centroid_length_km": 1,
+            "slope_m_per_m": -1,
+            "manning_n": 1,
+            "urban_pct": -1,
+            "forest_pct": 1,
+        },
+        limits=(
+            Limit(
+                name="decimal_steps",
+                text="tp and up equal eqs. 6.17-6.19 evaluated in decimal arithmetic "
+                "at 50 digits",
+                check=_decimal_oracle,
+            ),
+            Limit(
+                name="cascade_peak",
+                text="the gamma density of shape N and scale K, Nash's IUH, peaks at "
+                "(N - 1) K = tp with the ordinate up (scipy.stats.gamma)",
+                check=_cascade_peak,
+            ),
+            Limit(
+                name="power_law",
+                text="doubling L or Lc multiplies tp by 2^0.26, doubling Jg by "
+                "2^-0.39; adding 10 to U or W multiplies it by exp(-0.16) or "
+                "exp(0.04)",
+                check=_power_law,
+            ),
+        ),
+    ),
+    validation=(
+        "Lutz (1984) fitted the relations to 75 watersheds of south-west Germany of up "
+        "to 250 km2 (Sikorska et al. 2012, p. 1225); KZGW (2017, Fig. 6.3) gives R2 = "
+        "0.9974 for P1 against Manning's n; no source open to Hydrolog reports the "
+        "errors of tp, up or the peak flows against observations"
+    ),
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        (
+            "up = 0.66 / tp**1.04 is Lutz's relation for dt -> 0 (KZGW 2017, eq. "
+            "6.19, p. 98), the peak of the instantaneous unit hydrograph; the unit "
+            "hydrograph of a step dt averages that IUH exactly over dt "
+            "(NashIUH.to_unit_hydrograph). KZGW's Ex. 6.2 (p. 100) takes instead the "
+            "relation of dt = 1 h, up = 0.464 / tp**0.824, and Sikorska et al. (2012, "
+            "Table 1) state that P2 and P3 depend on the interval: that route gives "
+            "N 2.55 and k 0.70 h where this one gives N 3.88 and K 0.377 h (case "
+            "kzgw2017-ex6-2-n-k, a discrepancy)"
+        ),
+        (
+            "P1 = 3.989 nM + 0.028: eq. 6.18 (KZGW 2017, p. 97) prints '- 0,028', a "
+            "misprint, as Fig. 6.3 (P1 = 3.9886 n + 0.0284) and Ex. 6.2 (P1 = 0.128 "
+            "for n = 0.025) show"
+        ),
+        (
+            "0.66 of KZGW eq. 6.19, not the 0.64 of Sikorska et al. (2012, Table 1), "
+            "who cite the same Lutz (1984)"
+        ),
+        (
+            "L and Lc in km, Jg in m/m, the equal-area slope of the main stream's "
+            "profile (KZGW 2017, p. 97; spec equal_area_slope), nM in s m^-1/3, U "
+            "and W in percent of the watershed's area; tp in h, up in 1/h, K returned "
+            "in min by the exact 60 min/h"
+        ),
+        (
+            "N solves f(N) = tp up on [1.1, 20] by Brent's method "
+            "(scipy.optimize.brentq, xtol 1e-6) where KZGW reads it from Table C.2 "
+            "(pp. 132-133); f increases strictly there, from 0.0755 to 1.731, and "
+            "matches the table's 13 rows from N = 1.10 to 7.99 within half its "
+            "printed digit"
+        ),
+    ),
+    assumptions=(
+        (
+            "watersheds of up to 236 km2 with development spread fairly evenly (KZGW "
+            "2017, p. 97); NashIUH.from_lutz warns of a larger area; Lutz's data were "
+            "75 watersheds of up to 250 km2 (Sikorska et al. 2012, p. 1225)"
+        ),
+        (
+            "a near-natural watershed: KZGW (2017, p. 96) uses Nash's model with "
+            "Lutz's parameters for imperviousness below 5 %"
+        ),
+    ),
+    traps={
+        "singular_at_bound": "range cases slope_m_per_m-physical_low_*: tp grows "
+        "without bound as Jg tends to 0 (Jg^-0.39), and as tp tends to 0 the target "
+        "tp up = 0.66 tp^-0.04 grows; beyond the bracket of N the precondition "
+        "root_in_bracket refuses, as for the smallest positive Jg, whose Jg^1.5 "
+        "underflows",
+        "exp_overflow": "range cases urban_pct-physical_high and "
+        "forest_pct-physical_high: exp(-0.016 U) and exp(0.004 W) at 100 % are "
+        "0.2019 and 1.4918",
+    },
+    reference_cases=("tests/fixtures/formulas/lutz-cases.json",),
+    oracles=(
+        Oracle(
+            kind="exact",
+            description="tp and up of eqs. 6.17-6.19 with the decimal constants, "
+            "evaluated with the decimal module at 50 digits",
+            test="tests/unit/test_formulas_lutz.py (limit decimal_steps)",
+        ),
+        Oracle(
+            kind="established",
+            description="scipy.stats.gamma (SciPy 1.18.1): the density of shape N "
+            "and scale K, Nash's IUH, at its mode (N - 1) K",
+            test="tests/unit/test_formulas_lutz.py (limit cascade_peak)",
+            conventions=(
+                "scale K in h, the density in 1/h; its mode (N - 1) K is tp and its "
+                "value there up, by eqs. 6.14 and 6.16 of KZGW (2017, p. 96)",
+            ),
+        ),
+    ),
+    base={"urban_pct": 0.0, "forest_pct": 0.0},
+)
+
+SPECS: Final[tuple[FormulaSpec, ...]] = (LUTZ,)
+"""The specs of the module, in the order of ``docs/FORMULAS.md``."""
+
+
+@dataclass(frozen=True)
+class LutzEstimate(JsonResultMixin):
+    """Nash's n and K estimated by Lutz's method, spec lutz, with its steps.
+
+    Attributes
+    ----------
+    time_to_peak_h : float
+        Time to the peak of the instantaneous unit hydrograph, tp [h].
+    peak_ordinate_per_h : float
+        Its peak ordinate, up [1/h].
+    n : float
+        Number of reservoirs, N [-].
+    k_min : float
+        Storage constant of each reservoir, K [min].
+    p1 : float
+        Lutz's roughness parameter of tp.
+    geometric_factor, urban_factor, forest_factor : float
+        The factors of tp after P1: of the lengths and the slope, of U and of W.
+    peak_product : float
+        tp up, the value of f(N) the root solves.
+    k_h : float
+        K [h].
+    """
+
+    time_to_peak_h: float
+    peak_ordinate_per_h: float
+    n: float
+    k_min: float
+    p1: float
+    geometric_factor: float
+    urban_factor: float
+    forest_factor: float
+    peak_product: float
+    k_h: float
+
+
+def lutz_parameters(
+    length_km: float,
+    centroid_length_km: float,
+    slope_m_per_m: float,
+    manning_n: float,
+    urban_pct: float,
+    forest_pct: float,
+) -> LutzEstimate:
+    """Return Nash's n and K of an ungauged watershed by Lutz's method, spec lutz.
+
+    Parameters
+    ----------
+    length_km : float
+        Length along the main stream from the outlet to the divide [km].
+    centroid_length_km : float
+        Length along the main stream from the outlet to its point nearest the
+        watershed's centroid [km].
+    slope_m_per_m : float
+        Equal-area slope of the main stream's longitudinal profile [m/m]
+        (:func:`hydrolog.morphometry.equal_area_slope`).
+    manning_n : float
+        Manning's roughness coefficient of the main channel.
+    urban_pct : float
+        Share of urbanized land in the watershed [%].
+    forest_pct : float
+        Share of forest in the watershed [%].
+
+    Returns
+    -------
+    LutzEstimate
+        tp, up, N, K and Lutz's roughness parameter, with the steps between them.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the spec refuses the inputs (``details.reason``, ``details.option`` or
+        ``details.constraint``): a value outside its physical range, Lc longer than
+        L, shares of urbanized and forest land above the whole area, or a tp whose
+        N lies outside the bracket the root is searched in.
+    """
+    x = checked_inputs(
+        LUTZ,
+        length_km=length_km,
+        centroid_length_km=centroid_length_km,
+        slope_m_per_m=slope_m_per_m,
+        manning_n=manning_n,
+        urban_pct=urban_pct,
+        forest_pct=forest_pct,
+    )
+    steps = _steps(x)
+    target = steps.peak_product
+    n = brentq(
+        lambda value: float(_peak_product(value) - target),
+        _N_LOW,
+        _N_HIGH,
+        xtol=_N_XTOL,
+    )
+    k_h = steps.time_to_peak_h / (n - 1)
+    outputs = checked_outputs(
+        LUTZ,
+        {
+            "time_to_peak_h": float(steps.time_to_peak_h),
+            "peak_ordinate_per_h": float(steps.peak_ordinate_per_h),
+            "n": float(n),
+            "k_min": convert(float(k_h), "h", "min"),
+            "p1": float(steps.p1),
+        },
+    )
+    return LutzEstimate(
+        time_to_peak_h=outputs.real("time_to_peak_h"),
+        peak_ordinate_per_h=outputs.real("peak_ordinate_per_h"),
+        n=outputs.real("n"),
+        k_min=outputs.real("k_min"),
+        p1=outputs.real("p1"),
+        geometric_factor=float(steps.geometric_factor),
+        urban_factor=float(steps.urban_factor),
+        forest_factor=float(steps.forest_factor),
+        peak_product=float(target),
+        k_h=float(k_h),
+    )
+
+
+_FROM_LUTZ_ARGUMENTS: Final = {
+    "length_km": "L_km",
+    "centroid_length_km": "Lc_km",
+    "slope_m_per_m": "slope",
+    "manning_n": "manning_n",
+    "urban_pct": "urban_pct",
+    "forest_pct": "forest_pct",
+    "centroid_within_length": "Lc_km",
+    "shares_within_catchment": "forest_pct",
+}
+"""The argument of ``NashIUH.from_lutz`` a refusal of the spec lutz names: that of the
+input, or of a constraint the input that breaks it (the precondition names none)."""
+
+
+def _from_lutz_error(exc: InvalidParameterError) -> InvalidParameterError:
+    """Return a refusal of ``lutz_parameters`` with the argument of ``from_lutz``."""
+    subject = exc.details.get("variable") or exc.details.get("constraint")
+    argument = _FROM_LUTZ_ARGUMENTS.get(subject) if isinstance(subject, str) else None
+    if argument is None:
+        return InvalidParameterError(str(exc), details=exc.details, hint=exc.hint)
+    return InvalidParameterError(
+        f"{exc} (argument {argument} of NashIUH.from_lutz)",
+        details={**exc.details, "option": argument},
+        hint=exc.hint,
+    )
