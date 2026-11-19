@@ -154,6 +154,7 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
         "channel_length_km": "14,78",
         "flow_path_length_km": "15,88",
         "flow_path_slope_m_per_m": "0,0114",
+        "flow_path_equal_area_slope_m_per_m": "0,00848",
         "pmaxtp_latitude": "51,01544",
         "pmaxtp_longitude": "15,88984",
         "timestep_min": "10",
