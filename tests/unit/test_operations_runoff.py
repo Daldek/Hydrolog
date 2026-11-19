@@ -2797,9 +2797,10 @@ class TestTypicalRangesOfTheModels:
         [
             # NEH 630 ch. 16, p. 16-4: subareas of at most 20 mi2 (51.8 km2)
             ("scs", "area_km2", 51.9, 0.0, 51.8),
-            # Snyder (1938): 10-10 000 mi2 of the Appalachian Highlands
-            ("snyder", "area_km2", 25.9, 26.0, 26000.0),
-            ("snyder", "area_km2", 26000.1, 26.0, 26000.0),
+            # Snyder (1938): 30-30 000 km2 (10-10 000 mi2) of the Appalachian
+            # Highlands (Chow et al. 1988 after Rajagopalan's notes, p. 76)
+            ("snyder", "area_km2", 29.9, 30.0, 30000.0),
+            ("snyder", "area_km2", 30000.1, 30.0, 30000.0),
             # KZGW (2017), annex 2, eq. 6.5 and 6.7
             ("snyder", "ct", 1.349, 1.35, 1.65),
             ("snyder", "ct", 1.651, 1.35, 1.65),
@@ -2838,8 +2839,8 @@ class TestTypicalRangesOfTheModels:
         "method, option, value",
         [
             ("scs", "area_km2", 51.8),
-            ("snyder", "area_km2", 26.0),
-            ("snyder", "area_km2", 26000.0),
+            ("snyder", "area_km2", 30.0),
+            ("snyder", "area_km2", 30000.0),
             ("snyder", "ct", 1.35),
             ("snyder", "ct", 1.65),
             ("snyder", "cp", 0.4),

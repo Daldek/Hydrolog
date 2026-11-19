@@ -437,10 +437,11 @@ def uh_snyder(
     Raises
     ------
     InvalidParameterError
-        If a parameter is not positive, or no unit hydrograph of 1 mm has the peak
-        of ``cp`` (``details.option`` ``cp``).
+        If the specs ``snyder`` and ``snyder_shape`` refuse a value
+        (``details.reason``), or no unit hydrograph of 1 mm has the peak of ``cp``
+        (``precondition_failed``, ``details.option`` ``cp``).
     """
-    names = {"L_km": "length_km", "Lc_km": "centroid_length_km"}
+    names = {"duration_min": "rainfall_duration_min", "peak_discharge_m3s": "cp"}
     with capture_warnings() as notices, option_names(names):
         model = SnyderUH(
             area_km2=area_km2,

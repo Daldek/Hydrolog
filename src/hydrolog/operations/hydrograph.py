@@ -64,15 +64,17 @@ NASH_ESTIMATIONS: tuple[str, ...] = get_args(NashEstimation)
 
 _TC_MODELS = ("scs", "clark")
 
-# The arguments of the unit hydrographs and the options of the command they come
+# The inputs of the unit hydrographs' specs and the options of the command they come
 # from: errors and typical-range notices name the option
 _MODEL_OPTIONS: dict[str, dict[str, str]] = {
     "nash": {"n": "nash_n", "k_min": "nash_k_min"},
     "snyder": {
-        "L_km": "snyder_length_km",
-        "Lc_km": "snyder_centroid_length_km",
+        "length_km": "snyder_length_km",
+        "centroid_length_km": "snyder_centroid_length_km",
         "ct": "snyder_ct",
         "cp": "snyder_cp",
+        "duration_min": "timestep_min",
+        "peak_discharge_m3s": "snyder_cp",
     },
 }
 

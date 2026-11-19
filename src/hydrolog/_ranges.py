@@ -196,6 +196,18 @@ _SOURCE_PL: Final[Mapping[tuple[str, str], str]] = {
         "USDA-NRCS (2007), NEH 630, rozdz. 16, s. 16-4: zlewnia cząstkowa nie większa "
         "niż 20 mil kw. (51,8 km²), największa najwyżej 10 razy większa od najmniejszej"
     ),
+    ("snyder", "area_km2"): (
+        "Rajagopalan, notatki do wykładu według Chow i in. (1988), s. 76: zlewnie "
+        "Snydera w Appalachach, od 30 do 30 000 km² (10–10 000 mil kw.)"
+    ),
+    ("snyder", "ct"): (
+        "KZGW (2017), zał. 2, s. 90, wzór 6.5: Ct od 1,35 do 1,65 w jednostkach SI, "
+        "0,75 wartości Snydera 1,8–2,2"
+    ),
+    ("snyder", "cp"): (
+        "KZGW (2017), zał. 2, s. 91, wzór 6.7: Cp od 0,4 do 0,8; HEC-HMS 2000, model "
+        "Snydera, s. 54: od 0,4 do 0,8"
+    ),
 }
 """The Polish text of the source of each range of a formula with a spec."""
 
@@ -402,36 +414,7 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
         "0,8–1,5 płaskie, podmokłe (USACE, HEC-HMS Technical Reference Manual; "
         "praktyka inżynierska)",
     ),
-    TypicalRange(
-        "snyder",
-        "ct",
-        1.35,
-        1.65,
-        "-",
-        "KZGW (2017), annex 2, eq. 6.5; Snyder's (1938) 1.8-2.2 in English units "
-        "times 0.75 in SI (Chow et al. 1988, 7.7)",
-        "KZGW (2017), zał. 2, wzór 6.5; 1,8–2,2 Snydera (1938) w jednostkach "
-        "angielskich razy 0,75 w SI (Chow i in. 1988, 7.7)",
-    ),
-    TypicalRange(
-        "snyder",
-        "cp",
-        0.4,
-        0.8,
-        "-",
-        "KZGW (2017), annex 2, eq. 6.7; Snyder (1938): 0.56-0.69 (USACE 2000, HEC-HMS)",
-        "KZGW (2017), zał. 2, wzór 6.7; Snyder (1938): 0,56–0,69 (USACE 2000, HEC-HMS)",
-    ),
-    TypicalRange(
-        "snyder",
-        "area_km2",
-        26.0,
-        26000.0,
-        "km2",
-        "Snyder (1938): watersheds of the Appalachian Highlands, 10-10,000 mi² (Chow "
-        "et al. 1988, 7.7)",
-        "Snyder (1938): zlewnie Appalachów, 10–10 000 mi² (Chow i in. 1988, 7.7)",
-    ),
+    *_specified("snyder"),
     *(
         TypicalRange(
             model,

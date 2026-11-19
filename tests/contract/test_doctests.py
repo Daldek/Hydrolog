@@ -7,8 +7,8 @@ the list once its examples pass; those of the visualisation modules and of
 examples fail (2026-11-18): ``hydrometrics.rating_curve``,
 ``morphometry.geometric``, ``morphometry.hypsometry``,
 ``network.stream_order``, ``operations.config``, ``precipitation.interpolation``,
-``reports``, ``runoff.clark_iuh``, ``runoff.generator``, ``runoff.nash_iuh``,
-``runoff.snyder_uh`` and the ``visualization`` modules.
+``reports``, ``runoff.clark_iuh``, ``runoff.generator``, ``runoff.nash_iuh`` and
+the ``visualization`` modules.
 """
 
 import doctest
@@ -53,6 +53,7 @@ MODULES = (
     "hydrolog.runoff.cn_lookup",
     "hydrolog.runoff.convolution",
     "hydrolog.runoff.scs_cn",
+    "hydrolog.runoff.snyder_uh",
     "hydrolog.runoff.unit_hydrograph",
     "hydrolog.soil",
     "hydrolog.soil.hsg",

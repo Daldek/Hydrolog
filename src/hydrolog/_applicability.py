@@ -59,4 +59,47 @@ APPLICABILITY: Final[tuple[Applicability, ...]] = (
             "times the smallest"
         ),
     ),
+    Applicability(
+        method="snyder",
+        parameter="area_km2",
+        minimum=30.0,
+        maximum=30000.0,
+        unit="km2",
+        source=(
+            "Rajagopalan, B. CVEN 5333 lecture notes, Unit Hydrographs, after Chow,"
+            " V.T., Maidment, D.R. and Mays, L.W. (1988), Applied Hydrology, "
+            "chapter 7, University of Colorado Boulder, p. 76: Snyder's watersheds "
+            "in the Appalachian Highlands, of 30 to 30,000 km2 (10 to 10,000 mi2)"
+        ),
+    ),
+    Applicability(
+        method="snyder",
+        parameter="ct",
+        minimum=1.35,
+        maximum=1.65,
+        unit="-",
+        source=(
+            "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów "
+            "maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni"
+            " kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja "
+            "ujednolicona), p. 90, eq. 6.5: Ct from 1.35 to 1.65 in SI units, 0.75 "
+            "times Snyder's 1.8 to 2.2"
+        ),
+    ),
+    Applicability(
+        method="snyder",
+        parameter="cp",
+        minimum=0.4,
+        maximum=0.8,
+        unit="-",
+        source=(
+            "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów "
+            "maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni"
+            " kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja "
+            "ujednolicona); and USACE-HEC (2000). Hydrologic Modeling System "
+            "HEC-HMS, Technical Reference Manual (CPD-74B, March 2000), KZGW 2017, "
+            "annex 2, p. 91, eq. 6.7: Cp from 0.4 to 0.8; HEC-HMS 2000, Snyder's "
+            "unit hydrograph model, p. 54: 0.4 to 0.8"
+        ),
+    ),
 )

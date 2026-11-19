@@ -27,41 +27,28 @@ class TestSnyderUHInit:
         assert uh.ct == 1.8
         assert uh.cp == 0.7
 
-    def test_init_zero_area_raises(self):
-        """Test that zero area raises error."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            SnyderUH(area_km2=0.0, L_km=15.0, Lc_km=8.0)
-        assert "area_km2 must be positive" in str(exc_info.value)
+    @pytest.mark.parametrize(
+        ("changed", "option"),
+        [
+            ({"area_km2": 0.0}, "area_km2"),
+            ({"area_km2": -100.0}, "area_km2"),
+            ({"L_km": 0.0}, "length_km"),
+            ({"Lc_km": 0.0}, "centroid_length_km"),
+            ({"ct": 0.0}, "ct"),
+            ({"cp": 0.0}, "cp"),
+        ],
+    )
+    def test_a_value_outside_its_physical_range_is_refused_by_the_spec(
+        self, changed, option
+    ):
+        """The constructor keeps the values; the spec snyder refuses them."""
+        uh = SnyderUH(**{"area_km2": 100.0, "L_km": 15.0, "Lc_km": 8.0, **changed})
 
-    def test_init_negative_area_raises(self):
-        """Test that negative area raises error."""
         with pytest.raises(InvalidParameterError) as exc_info:
-            SnyderUH(area_km2=-100.0, L_km=15.0, Lc_km=8.0)
-        assert "area_km2 must be positive" in str(exc_info.value)
+            uh.generate()
 
-    def test_init_zero_L_raises(self):
-        """Test that zero L raises error."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            SnyderUH(area_km2=100.0, L_km=0.0, Lc_km=8.0)
-        assert "L_km must be positive" in str(exc_info.value)
-
-    def test_init_zero_Lc_raises(self):
-        """Test that zero Lc raises error."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=0.0)
-        assert "Lc_km must be positive" in str(exc_info.value)
-
-    def test_init_zero_ct_raises(self):
-        """Test that zero ct raises error."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0, ct=0.0)
-        assert "ct must be positive" in str(exc_info.value)
-
-    def test_init_zero_cp_raises(self):
-        """Test that zero cp raises error."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0, cp=0.0)
-        assert "cp must be positive" in str(exc_info.value)
+        assert exc_info.value.details["reason"] == "outside_physical_range"
+        assert exc_info.value.details["option"] == option
 
 
 class TestSnyderUHProperties:
@@ -281,12 +268,13 @@ class TestSnyderUHGenerate:
         assert result.n_steps == len(result.times_min)
 
     def test_generate_invalid_timestep_raises(self):
-        """Test that invalid timestep raises error."""
+        """The spec snyder_shape refuses a step outside its physical range."""
         uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
 
         with pytest.raises(InvalidParameterError) as exc_info:
             uh.generate(timestep_min=0.0)
-        assert "timestep_min must be positive" in str(exc_info.value)
+        assert exc_info.value.details["reason"] == "outside_physical_range"
+        assert exc_info.value.details["option"] == "timestep_min"
 
     def test_generate_custom_duration(self):
         """Test generation with custom duration."""
@@ -446,5 +434,9 @@ class TestSnyderUHRecession:
         """No hydrograph of 1 mm peaks at qpR when qp·tp/V is about 10^6."""
         model = SnyderUH(self.AREA, self.L_KM, self.LC_KM, ct=self.CT, cp=1e6)
 
-        with pytest.raises(InvalidParameterError, match="no unit hydrograph"):
+        with pytest.raises(InvalidParameterError) as caught:
             model.generate(timestep_min=self.STEP, duration_min=self.STEP)
+
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "root_bracketed"
+        assert caught.value.details["option"] == "peak_discharge_m3s"

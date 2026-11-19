@@ -13,6 +13,7 @@ from typing import Any
 import hydrolog
 from hydrolog._warnings import UhModelMismatch, UnknownHietogramType
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.nogat_formulas import convert
 from hydrolog.precipitation.hietogram import HietogramResult
 from hydrolog.reports.formatters import TableGenerator
 from hydrolog.reports.sections.concentration import generate_tc_section
@@ -26,7 +27,11 @@ from hydrolog.reports.templates import REPORT_HEADER_TEMPLATE, SECTION_HEADERS
 from hydrolog.runoff.clark_iuh import ClarkUHResult
 from hydrolog.runoff.generator import HydrographGeneratorResult
 from hydrolog.runoff.nash_iuh import NashUHResult
-from hydrolog.runoff.snyder_uh import SnyderUHResult
+from hydrolog.runoff.snyder_uh import (
+    SnyderParameters,
+    SnyderUHResult,
+    snyder_parameters,
+)
 from hydrolog.runoff.unit_hydrograph import UnitHydrographResult
 from hydrolog.time import ConcentrationTime
 
@@ -470,22 +475,35 @@ class HydrologyReportGenerator:
             )
             section_tc_min = unit.tc_min
         elif isinstance(unit, SnyderUHResult):
-            # The section explains the standard-duration formulas; tpR and qpR are
-            # the adjusted values for the duration that was used
-            lag_h = unit.lag_time_min / 60.0
-            adjusted_lag_h = unit.adjusted_lag_time_min / 60.0
+            # The section explains the formulas of the standard duration and the
+            # adjustment to the duration that was used, both by the spec snyder
+            def parameters(duration: float) -> SnyderParameters:
+                return snyder_parameters(
+                    unit.area_km2,
+                    unit.length_km,
+                    unit.centroid_length_km,
+                    unit.ct,
+                    unit.cp,
+                    duration,
+                )
+
+            standard = parameters(unit.standard_duration_min)
+            adjusted = parameters(unit.duration_min)
             params.update(
-                lag_time_min=unit.lag_time_min,
-                standard_duration_min=unit.standard_duration_min,
+                lag_time_min=standard.lag_time_min,
+                standard_duration_min=standard.standard_duration_min,
+                time_base_min=standard.time_base_min,
+                w50_h=convert(standard.width_50_min, "min", "h"),
+                w75_h=convert(standard.width_75_min, "min", "h"),
                 ct=unit.ct,
                 cp=unit.cp,
                 duration_min=unit.duration_min,
-                adjusted_lag_time_min=unit.adjusted_lag_time_min,
-                adjusted_tp_min=unit.time_to_peak_min,
-                adjusted_qp_m3s=0.275 * unit.cp * unit.area_km2 / adjusted_lag_h,
+                adjusted_lag_time_min=adjusted.adjusted_lag_time_min,
+                adjusted_tp_min=adjusted.time_to_peak_min,
+                adjusted_qp_m3s=adjusted.peak_discharge_m3s,
             )
-            tp_min = unit.lag_time_min + unit.standard_duration_min / 2.0
-            qp_m3s = 0.275 * unit.cp * unit.area_km2 / lag_h
+            tp_min = standard.time_to_peak_min
+            qp_m3s = standard.peak_discharge_m3s
 
         return generate_uh_section(
             model=model,

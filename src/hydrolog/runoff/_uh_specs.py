@@ -20,6 +20,7 @@ __all__ = [
     "CHOW_NOTES",
     "HEC_TRM_2000",
     "HEC_TRM_ONLINE",
+    "INNOVYZE_SNYDER",
     "KZGW",
     "MAX_ORDINATES",
     "NEH4_16",
@@ -29,8 +30,10 @@ __all__ = [
     "TC_TYPICAL",
     "TIMESTEP",
     "TIMESTEP_TYPICAL",
+    "chow_notes",
     "handoffs",
     "hec_trm_2000",
+    "hec_trm_online",
     "kzgw",
     "neh630_16",
 ]
@@ -60,6 +63,9 @@ HEC_TRM_ONLINE: Final = (
     "USACE-HEC. HEC-HMS Technical Reference Manual (online, read 2026-11-19), "
     "chapter Transform"
 )
+_HEC_TRM_ONLINE_URL: Final = (
+    "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/transform/"
+)
 KZGW: Final = (
     "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych "
     "o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i "
@@ -80,6 +86,15 @@ CHOW_NOTES: Final = Source(
     url="https://civil.colorado.edu/~balajir/CVEN5333/Lectures/"
     "Unit-Hydrographs-Chow-Chap7.pdf",
 )
+INNOVYZE_SNYDER: Final = Source(
+    citation="Innovyze. InfoSWMM help, Snyder Unit Hydrograph Method (online, read "
+    "2026-11-19)",
+    locator="the widths W50 and W75 of the unit hydrograph: C50 = 770 and C75 = 440 "
+    "in U.S. customary units, 2.14 and 1.22 in S.I. units; C2 = 640 and 2.75 of the "
+    "peak",
+    url="https://help.innovyze.com/space/infoswmm/17598671/"
+    "Snyder+Unit+Hydrograph+Method",
+)
 _HANDOFFS: Final = (
     "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November "
     "2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa "
@@ -99,6 +114,18 @@ def neh630_16(locator: str) -> Source:
 def hec_trm_2000(locator: str) -> Source:
     """Return the HEC-HMS Technical Reference Manual of 2000 at ``locator``."""
     return Source(citation=HEC_TRM_2000, locator=locator, url=_HEC_TRM_2000_URL)
+
+
+def hec_trm_online(page: str, locator: str) -> Source:
+    """Return the ``page`` of the online HEC-HMS Technical Reference Manual."""
+    return Source(
+        citation=HEC_TRM_ONLINE, locator=locator, url=f"{_HEC_TRM_ONLINE_URL}{page}"
+    )
+
+
+def chow_notes(locator: str) -> Source:
+    """Return Rajagopalan's notes after Chow et al. (1988) at ``locator``."""
+    return Source(citation=CHOW_NOTES.citation, locator=locator, url=CHOW_NOTES.url)
 
 
 def kzgw(locator: str) -> Source:
