@@ -2117,7 +2117,7 @@ Plain text: `x(t) = A0 + sum_k (a_k cos(2 pi k t / P) + b_k sin(2 pi k t / P)), 
 - `unbounded_iteration`: the least squares are LAPACK's divide and conquer singular value decomposition (numpy.linalg.lstsq, delegated), bounded by its own count; the precondition year_covered keeps the design well conditioned (test_a_season_of_values_is_refused)
 - `gap_propagation`: a NaN day is left out of the fit: type case values-nan_element and test_gaps_are_left_out_of_the_fit
 - `many_small_terms`: test_thirty_years_of_temperature_match_the_normal_equations: 10,958 days of Warszawa-Okęcie
-- `moment_cancellation`: SST from the deviations from the mean, not as E[x^2] - E[x]^2: test_a_large_offset_keeps_the_amplitudes, a signal on top of 1e6
+- `moment_cancellation`: the fit runs on the deviations from the mean and SST is taken from them, not as E[x^2] - E[x]^2: test_a_large_offset_keeps_the_amplitudes, a signal on top of 1e6, and the pinned example of test_properties_of_annual_cycles, a cycle of 1e-14 on 2.0
 
 **Properties (CMP-6.5)**
 

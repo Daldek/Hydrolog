@@ -288,7 +288,7 @@ test = "test_thirty_years_of_temperature_match_the_normal_equations: 10,958 days
 [[traps]]
 name = "moment_cancellation"
 description = "Cancellation in moments computed as E[x^2] - E[x]^2."
-test = "SST from the deviations from the mean, not as E[x^2] - E[x]^2: test_a_large_offset_keeps_the_amplitudes, a signal on top of 1e6"
+test = "the fit runs on the deviations from the mean and SST is taken from them, not as E[x^2] - E[x]^2: test_a_large_offset_keeps_the_amplitudes, a signal on top of 1e6, and the pinned example of test_properties_of_annual_cycles, a cycle of 1e-14 on 2.0"
 
 [[oracles]]
 kind = "exact"

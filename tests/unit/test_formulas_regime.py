@@ -23,7 +23,7 @@ from pathlib import Path
 import hypothesis.strategies as st
 import numpy as np
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 from scipy import stats as scipy_stats
 
 from hydrolog._formula_versions import recording
@@ -218,6 +218,20 @@ def test_properties_of_dates(inputs):
 
 
 @given(inputs=annual_cycles())
+@example(  # the ci profile's counterexample: R2 of -245 before the fit was centred
+    inputs={
+        "day_of_year": np.arange(1.0, 366.0),
+        "values": 2.00830802 + 1e-14 * np.cos(np.arange(365.0) / 58.1),
+        "n_harmonics": 3,
+    }
+)
+@example(  # the second: values of 1e-161, whose squares were subnormal
+    inputs={
+        "day_of_year": np.arange(1.0, 366.0),
+        "values": 1e-161 * (1.0 + np.sin(np.arange(365.0) / 58.1)),
+        "n_harmonics": 1,
+    }
+)
 def test_properties_of_annual_cycles(inputs):
     assert_property_contract(HARMONIC_FIT, harmonic_fit, inputs, ERRORS)
     assert_properties(HARMONIC_FIT, harmonic_fit, inputs, ERRORS)

@@ -305,6 +305,22 @@ def _sum_of_squares(y: NDArray[np.float64]) -> float:
         return float(np.sum((y - y.mean()) ** 2))
 
 
+def _centred(values: NDArray[np.float64]) -> tuple[float, NDArray[np.float64], int]:
+    """Return the mean of the values, their deviations over a power of two and it.
+
+    The deviations are divided by the power of two that brings the largest into
+    [1/2, 1), exactly, so their squares neither underflow nor overflow and doubling
+    the values changes no rounding of the fit.
+    """
+    if values.size == 0:
+        return 0.0, values, 0
+    centre = float(np.mean(values))
+    deviations = values - centre
+    largest = float(np.max(np.abs(deviations)))
+    exponent = math.frexp(largest)[1] if largest > 0.0 else 0
+    return centre, np.ldexp(deviations, -exponent), exponent
+
+
 def _largest_gap(t: NDArray[np.float64]) -> float:
     """Return the longest gap between the days with a value on the circle of P."""
     days = np.unique(t)
@@ -315,8 +331,15 @@ def _largest_gap(t: NDArray[np.float64]) -> float:
 
 
 def _fit(x: Values) -> dict[str, object]:
-    """Return the outputs of the spec: the full fit and the nested ones for R²."""
-    t, y = _known(x)
+    """Return the outputs of the spec: the full fit and the nested ones for R².
+
+    The fit runs on the deviations from the mean over a power of two, so the
+    residuals of values that vary far less than their magnitude keep their digits
+    (the trap moment_cancellation) and tiny values keep their squares; the mean and
+    the amplitudes come back scaled exactly.
+    """
+    t, values = _known(x)
+    centre, y, exponent = _centred(values)
     count = x.integer("n_harmonics")
     design = _design(t, count)
     coefficients = np.linalg.lstsq(design, y, rcond=None)[0]
@@ -327,7 +350,7 @@ def _fit(x: Values) -> dict[str, object]:
     explained = 0.0
     for k in range(1, count + 1):
         a, b = float(coefficients[2 * k - 1]), float(coefficients[2 * k])
-        amplitudes.append(math.hypot(a, b))
+        amplitudes.append(math.ldexp(math.hypot(a, b), exponent))
         phase = math.atan2(b, a) % (2.0 * math.pi)
         phases.append(phase * PERIOD_DAYS / (2.0 * math.pi * k) + 1.0)
         nested = design[:, : 2 * k + 1]
@@ -336,7 +359,7 @@ def _fit(x: Values) -> dict[str, object]:
         shares.append(cumulative - explained)
         explained = cumulative
     return {
-        "mean": float(coefficients[0]),
+        "mean": centre + math.ldexp(float(coefficients[0]), exponent),
         "amplitudes": amplitudes,
         "phase_days": phases,
         "explained_variances": shares,
@@ -583,7 +606,7 @@ HARMONIC_FIT: Final[FormulaSpec] = FormulaSpec(
         Constraint(
             name="values_not_all_equal",
             cls="precondition",
-            check=lambda x: 0.0 < _sum_of_squares(_known(x)[1]) < math.inf,
+            check=lambda x: 0.0 < _sum_of_squares(_centred(_known(x)[1])[1]) < math.inf,
             text="0 < sum((x - mean)^2) < inf: the values are not all equal and "
             "float64 holds their variance, so R2 and the phases exist",
             source=_WILKS,
@@ -675,8 +698,10 @@ HARMONIC_FIT: Final[FormulaSpec] = FormulaSpec(
         "values-nan_element and test_gaps_are_left_out_of_the_fit",
         "many_small_terms": "test_thirty_years_of_temperature_match_the_normal_"
         "equations: 10,958 days of Warszawa-Okęcie",
-        "moment_cancellation": "SST from the deviations from the mean, not as E[x^2] - "
-        "E[x]^2: test_a_large_offset_keeps_the_amplitudes, a signal on top of 1e6",
+        "moment_cancellation": "the fit runs on the deviations from the mean and SST "
+        "is taken from them, not as E[x^2] - E[x]^2: "
+        "test_a_large_offset_keeps_the_amplitudes, a signal on top of 1e6, and the "
+        "pinned example of test_properties_of_annual_cycles, a cycle of 1e-14 on 2.0",
     },
     oracles=(
         Oracle(
