@@ -366,7 +366,8 @@ COMMANDS: tuple[Command, ...] = (
                     "sums": "Sumy miesięcy, półroczy, pór roku, lat; normalne, %.",
                     "maxima": "Największe sumy dobowe i n-dniowe lat i miesięcy.",
                     "days": "Dni z P co najmniej każdego z `thresholds_mm`.",
-                    "intensity": "Średnia suma roczna i opad dnia mokrego (SDII).",
+                    "intensity": "Średnia suma roczna i wskaźnik intensywności opadu "
+                    "(SDII).",
                     "heavy": "Sumy powyżej percentyli dni mokrych (R95pTOT).",
                     "seasonality": "Reżim normalnych, PCI i SI.",
                 },

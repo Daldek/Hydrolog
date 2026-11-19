@@ -319,7 +319,7 @@ export const resultFields = {
   mean_n_spells: "Średnia liczba ciągów w roku",
   mean_pci: "Średni wskaźnik koncentracji PCI",
   mean_pci_class: "Klasa średniego PCI",
-  mean_sdii_mm: "Średnia wydajność dnia mokrego SDII",
+  mean_sdii_mm: "Średni wskaźnik intensywności opadu SDII",
   mean_season_class: "Klasa średniego współczynnika",
   mean_season_coefficient: "Średni współczynnik hydrotermiczny",
   mean_shares_percent: "Średni udział opadów dużych",
