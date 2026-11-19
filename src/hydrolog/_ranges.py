@@ -343,9 +343,9 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
         0.0,
         236.0,
         "km2",
-        "KZGW (2017), annex 2, p. 96: the largest watershed the Lutz method is "
+        "KZGW (2017), annex 2, p. 97: the largest watershed the Lutz method is "
         "recommended for",
-        "KZGW (2017), zał. 2, s. 96: największa zlewnia, dla której zaleca się "
+        "KZGW (2017), zał. 2, s. 97: największa zlewnia, dla której zaleca się "
         "metodę Lutza",
     ),
     TypicalRange(

@@ -1,0 +1,96 @@
+[
+ {
+  "formula": "lutz",
+  "case_id": "kzgw2017-ex6-2-tp",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "locator": "Ex. 6.2, steps 7-8, pp. 99-100: the Niedźwiadka at km 3+450, n = 0.025, L = 4.3 km, Lc = 2.7 km, Jg = 0.03, U = 0 %, W = 33.6 %; P1 = 0.128, tp = 1.09 h",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "length_km": 4.3,
+   "centroid_length_km": 2.7,
+   "slope_m_per_m": 0.03,
+   "manning_n": 0.025,
+   "urban_pct": 0.0,
+   "forest_pct": 33.6
+  },
+  "expected": {
+   "p1": 0.128,
+   "time_to_peak_h": 1.09
+  },
+  "printed_precision": {
+   "p1": 0.001,
+   "time_to_peak_h": 0.01
+  },
+  "intermediate_rounding": [
+   {
+    "step": "P1 = 3.989 x 0.025 + 0.028 = 0.127725 printed and used as 0.128 in tp: tp x 0.128 / 0.127725 - tp = 0.0023360 h",
+    "effect": {
+     "time_to_peak_h": 0.002337
+    }
+   }
+  ],
+  "conventions": [
+   "the example's data as given, not rounded measurements: L and Lc in km, Jg in m/m, n in s m^-1/3, U and W in %",
+   "P1 by Fig. 6.3 (3.9886 n + 0.0284) and the example; eq. 6.18 prints '- 0,028', a misprint"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Sikorska, A.E., Scheidegger, A., Banasik, K., Rieckermann, J. (2012). Bayesian uncertainty assessment of flood predictions in ungauged urban basins for conceptual rainfall-runoff models. Hydrology and Earth System Sciences 16, 1221-1236",
+   "locator": "Table 1, p. 1226: the same tp equation (exponent 0.26, exp(-0.016 U), exp(0.004 W)), which with the example's P1 = 0.128 gives 1.0873 h, printed 1.09 h",
+   "url": "https://hess.copernicus.org/articles/16/1221/2012/hess-16-1221-2012.pdf",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "lutz",
+  "case_id": "kzgw2017-ex6-2-n-k",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "locator": "Ex. 6.2, steps 9-10, p. 100: for dt = 1 h up = 0.464 / tp^0.824 = 0.433 1/h ('the transformed eq. 6.19'), f(N) = 0.471, N = 2.55 from Table C.2, k = 0.70 h",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "length_km": 4.3,
+   "centroid_length_km": 2.7,
+   "slope_m_per_m": 0.03,
+   "manning_n": 0.025,
+   "urban_pct": 0.0,
+   "forest_pct": 33.6
+  },
+  "expected": {
+   "peak_ordinate_per_h": 0.433,
+   "n": 2.55,
+   "k_min": 42.0
+  },
+  "printed_precision": {
+   "peak_ordinate_per_h": 0.001,
+   "n": 0.01,
+   "k_min": 0.6
+  },
+  "intermediate_rounding": [
+   {
+    "step": "tp printed and used as 1.09 h (1.0873 h with P1 = 0.128)",
+    "effect": {}
+   },
+   {
+    "step": "N read from Table C.2 to two decimals",
+    "effect": {}
+   }
+  ],
+  "conventions": [
+   "the example computes for dt = 1 h with up = 0.464 / tp^0.824; the spec takes eq. 6.19, up = 0.66 / tp^1.04 for dt -> 0, and averages the IUH over dt: up 0.6063 1/h, N 3.8805, K 22.600 min (0.3767 h)"
+  ],
+  "status": "discrepancy",
+  "second_source": {
+   "citation": "Sikorska, A.E., Scheidegger, A., Banasik, K., Rieckermann, J. (2012). Bayesian uncertainty assessment of flood predictions in ungauged urban basins for conceptual rainfall-runoff models. Hydrology and Earth System Sciences 16, 1221-1236",
+   "locator": "Table 1, p. 1226: up = P2 / tp^P3 with P2 = 0.64 and P3 = 1.04, 'dependent on the interval of estimation'",
+   "url": "https://hess.copernicus.org/articles/16/1221/2012/hess-16-1221-2012.pdf",
+   "access": "open"
+  },
+  "discrepancy": "the relation between up and tp depends on the computation step dt: KZGW's eq. 6.19 (0.66 / tp^1.04) holds for dt -> 0 and Sikorska et al. state that P2 and P3 depend on the interval, while the example uses the relation of dt = 1 h (0.464 / tp^0.824). The spec keeps the instantaneous relation and averages the IUH over dt exactly; the example's route gives a unit hydrograph peak of 0.771 m3/s per mm against 0.989 (+28 %), and its design flood 13.66 m3/s against 14.03 (+2.7 %). Only Lutz (1984), not open to Hydrolog, can tell which relations of dt the method intends"
+ }
+]
