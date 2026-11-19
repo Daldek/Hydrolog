@@ -35,8 +35,8 @@ area_km2 = 2.0
 drainage_density = -1.0
 
 [properties.scalings.tolerance]
-reason = "lengths doubled and areas quadrupled: the quotient halves exactly, unless it underflows"
-abs = 0.0
+reason = "lengths doubled and areas quadrupled: the quotient halves exactly, but below the smallest normal float, 2.2e-308, both quotients round to the subnormal step of 5e-324"
+abs = 5e-324
 
 [[properties.limits]]
 name = "exact_rational"

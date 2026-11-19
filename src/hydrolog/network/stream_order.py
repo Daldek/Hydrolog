@@ -765,9 +765,10 @@ DRAINAGE_DENSITY: Final = FormulaSpec(
                 inputs={"total_length_km": 1, "area_km2": 2},
                 outputs={"drainage_density": -1},
                 tolerance=Tolerance(
-                    abs=0.0,
+                    abs=5e-324,
                     reason="lengths doubled and areas quadrupled: the quotient halves "
-                    "exactly, unless it underflows",
+                    "exactly, but below the smallest normal float, 2.2e-308, both "
+                    "quotients round to the subnormal step of 5e-324",
                 ),
             ),
         ),
