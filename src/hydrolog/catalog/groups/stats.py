@@ -990,7 +990,7 @@ COMMANDS: tuple[Command, ...] = (
                 ),
                 default=0.925,
                 exclusive_minimum=0,
-                maximum=1,
+                exclusive_maximum=1,
             ),
             Option(
                 name="passes",
