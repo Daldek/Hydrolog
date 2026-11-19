@@ -5,10 +5,10 @@ Against the real server of ``gui_server``: „Plik przekazania” of Hydrogram z
 valid ``hydrolog-network/1``, whose outlet through ``route network`` peaks as the run of
 ``hydrograph generate``; opened again with „Wczytaj z Hydrografa” it gives the same
 inputs and result without fetching the PMAXTP depth it names the point of, and written
-once more the same hand-off. Nogat's own example (D15), whose watershed lacks the
-longest flow path Kirpich reads, opens from the clipboard with its depth fetched at
-Hydrograf's outlet and those two fields asked for; typed, they give 57,88 m³/s at 6:40
-and 1 046 713 m³ beside the example's 60,21 m³/s;
+once more the same hand-off. Nogat's own example (D15), which carries Kamiennik's
+longest flow path, opens from the clipboard with its depth fetched at Hydrograf's outlet
+and nothing asked for; Hydrolog gives its recorded result again, 57,90 m³/s at 6:40 and
+1 046 738 m³, so the verdict says they agree and only the producer's version is marked;
 Hydrograf's own hand-offs, written by its builder, open from the clipboard too: one with
 its hydrograph gives Hydrograf's result again with the exact values it handed, and the
 watershed alone opens with PMAXTP at Hydrograf's outlet, the probability, the duration
@@ -113,6 +113,7 @@ SENT = {
         "channel_length_km",
         "flow_path_length_km",
         "flow_path_slope_m_per_m",
+        "flow_path_equal_area_slope_m_per_m",
         "cn",
     ]
 }
@@ -218,7 +219,7 @@ def open_hydrogram(tab: Tab) -> Page:
     """Open Hydrogram zlewni with the guide's worked example; wait for its result."""
     seed_hydrogram(tab)
     tab.open("#hydrogram")
-    shows(tab.page, "57,88", "6:40", "1 046 713")
+    shows(tab.page, "57,90", "6:40", "1 046 738")
     return tab.page
 
 
@@ -439,7 +440,7 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
         "cn": "65",
     }.items():
         expect(page.locator(f"#hg-{field}")).to_have_value(value)
-    shows(page, "57,88", "6:40", "1 046 713")
+    shows(page, "57,90", "6:40", "1 046 738")
     received = page.locator(f"{HG} [data-handoff-received]")
     expect(received).to_have_attribute("data-handoff-received", "same")
     expect(page.locator(f"{HG} [data-handoff-verdict]")).to_have_attribute(
@@ -447,9 +448,9 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
     )
     assert compared(page, HG) == {
         "version": [f"Hydrolog {hydrolog.__version__}"] * 2,
-        "q": ["57,88 m³/s", "57,88 m³/s"],
+        "q": ["57,90 m³/s", "57,90 m³/s"],
         "tp": ["6:40 h", "6:40 h"],
-        "volume": ["1 046 713 m³", "1 046 713 m³"],
+        "volume": ["1 046 738 m³", "1 046 738 m³"],
     }
     # The comparison fits the panel Wyniki, at its default width and at the narrowest
     # desktop's (1240 px, a panel of 340 px), without its columns scrolling out of sight
@@ -539,23 +540,32 @@ def test_nogats_example_opens_from_the_clipboard_and_matches_its_result(
         "Kamiennik — Świerzawa · p 1% · 12 h"
     )
 
-    # Hydrolog reproduces the example's result
-    shows(page, "57,88", "6:40", "1 046 713")
+    # Hydrolog reproduces the example's result, recorded with Kirpich's own constant
+    # (ADR-0052) and the exact Beta storm (ADR-0046): only the producer's version
+    # differs
+    shows(page, "57,90", "6:40", "1 046 738")
     expect(page.locator(f"{HG} [data-handoff-received]")).to_have_attribute(
         "data-handoff-received", "same"
     )
     expect(page.locator(f"{HG} [data-handoff-verdict]")).to_have_attribute(
         "data-handoff-verdict", "ok"
     )
+    expect(page.locator(f"{HG} [data-handoff-verdict] li")).to_have_text(
+        "Wynik producenta zgodny z wynikiem Hydrologa."
+    )
     assert compared(page, HG) == {
         "version": [
             f"Hydrolog {D15['producer']['version']}",
             f"Hydrolog {hydrolog.__version__}",
         ],
-        "q": ["57,88 m³/s", "57,88 m³/s"],
+        "q": ["57,90 m³/s", "57,90 m³/s"],
         "tp": ["6:40 h", "6:40 h"],
-        "volume": ["1 046 713 m³", "1 046 713 m³"],
+        "volume": ["1 046 738 m³", "1 046 738 m³"],
     }
+    marked = page.locator(f'{HG} [data-table="handoff-compare"] tbody tr.conflict')
+    assert marked.evaluate_all("rows => rows.map((row) => row.dataset.row)") == [
+        "version"
+    ]
 
     # A changed field marks the producer's result as of the data handed
     page.locator(f"{left} #hg-flow_path_slope_m_per_m").fill("0,0120")
@@ -837,7 +847,7 @@ def test_a_network_of_two_subcatchments_opens_in_siec_beside_hydrografs_result(
             f"{peak} m³/s",
         ],
         "tp": ["5:50 h", "5:50 h"],
-        "volume": ["1 051 951 m³", "1 051 951 m³"],
+        "volume": ["1 051 991 m³", "1 051 991 m³"],
     }
     rows = page.locator(f'{SIEC} [data-table="handoff-compare"] tbody tr')
     expect(rows.locator("xpath=self::*[@class='conflict']")).to_have_count(2)
@@ -945,7 +955,7 @@ def test_the_markdown_report_downloads_from_report_generate(tab: Tab) -> None:
     report = data.decode("utf-8")
     assert report.startswith("# Raport Hydrologiczny: Kamiennik — Świerzawa\n")
     assert f"Hydrolog v{hydrolog.__version__}" in report
-    assert "57.88" in report
+    assert "57.90" in report
     # The report stays listed: fetched again with the session's header, the same file
     listed = page.locator(f"{HG} .view-panel.right .file-list button")
     expect(listed).to_have_attribute("data-file", "out/Kamiennik _ Swierzawa.md")
@@ -998,7 +1008,7 @@ def test_the_print_view_is_linked_and_fits_a4(new_tab: Any) -> None:
     )
     # On paper (A4 less the margins, 703 px): the section in one column, no controls
     page.goto(tab.base + "#hydrogram")
-    shows(page, "57,88", "6:40", "1 046 713")
+    shows(page, "57,90", "6:40", "1 046 738")
     page.emulate_media(media="print")
     page.set_viewport_size({"width": 703, "height": 1000})
     assert page.evaluate("() => document.documentElement.scrollWidth") <= 703
@@ -1453,6 +1463,34 @@ def test_a_handoff_of_nash_by_lutz_carries_the_estimation_not_n_and_k(
         f"{minutes // 60}:{minutes % 60:02d}",
         f"{before['total_volume_m3']:,.0f}".replace(",", " "),
     )
+
+    # A hand-off of Nash by Lutz without Jg, the equal-area slope of the flow path's
+    # profile (Hydrograf's, which carries the slope between the path's ends only):
+    # the field is asked for and nothing runs, no estimate from that slope is shown
+    bare = copy.deepcopy(doc)
+    del bare["payload"]["nodes"][0]["watershed"]["flow_path_equal_area_slope_m_per_m"]
+    bare.pop("result", None)
+    valid(bare)
+    unsloped = tmp_path / "bez-jg.handoff.json"
+    unsloped.write_text(json.dumps(bare), encoding="utf-8")
+    requested: list[str] = []
+    page.on("request", lambda request: requested.append(request.url))
+    load_file(page, HG, unsloped)
+    expect(chosen).to_have_text("Metoda Lutza")
+    jg = page.locator("#hg-flow_path_equal_area_slope_m_per_m")
+    expect(jg).to_have_value("")
+    expect(jg).to_have_attribute("aria-invalid", "true")
+    expect(page.locator("#hg-flow_path_equal_area_slope_m_per_m-err")).to_have_text(
+        "Podaj wartość: potrzebna dla metody Lutza · required"
+    )
+    expect(page.locator("#hg-flow_path_slope_m_per_m")).to_have_value("0,0114")
+    expect(page.locator(BADGE)).to_have_text(
+        "Dane niepełne: flow_path_equal_area_slope_m_per_m"
+    )
+    expect(page.locator("#hg-nash_n")).to_have_value("")
+    expect(page.locator("#hg-nash_k_min")).to_have_value("")
+    page.wait_for_timeout(600)
+    assert [url for url in requested if RUN in url] == []
 
 
 def test_snyders_lengths_of_a_handoff_go_to_the_watersheds_fields(tab: Tab) -> None:

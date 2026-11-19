@@ -15,15 +15,17 @@ export const tcInfo = {
       "empiryczny Kirpicha dla małych zlewni rolniczych z wyraźnym korytem liczy go z długości i spadku " +
       "najdłuższej drogi spływu.</p>",
     formula:
-      "<math display='block'><msub><mi>t</mi><mi>c</mi></msub><mo>=</mo><mn>3,981</mn><mo>·</mo>" +
+      "<math display='block'><msub><mi>t</mi><mi>c</mi></msub><mo>=</mo><mn>0,0078</mn><mo>·</mo>" +
       "<msup><mi>L</mi><mn>0,77</mn></msup><mo>·</mo>" +
       "<msup><mi>S</mi><mrow><mo>−</mo><mn>0,385</mn></mrow></msup></math>",
     vars: [
       { symbol: "<math><msub><mi>t</mi><mi>c</mi></msub></math>", text: "czas koncentracji", unit: "min" },
       {
         symbol: "<math><mi>L</mi></math>",
-        text: "długość najdłuższej drogi spływu, od przekroju zamykającego do punktu najdalszego hydraulicznie",
-        unit: "km",
+        text:
+          "długość najdłuższej drogi spływu, od przekroju zamykającego do punktu najdalszego hydraulicznie, w " +
+          "stopach, jak we wzorze źródła: Hydrolog przelicza na nie pole podane w km (1 ft = 0,3048 m)",
+        unit: "ft",
       },
       {
         symbol: "<math><mi>S</mi></math>",
@@ -48,27 +50,37 @@ export const tcInfo = {
       "z opóźnienia zlewni równaniem NRCS: t<sub>c</sub> = t<sub>lag</sub>/0,6. Opór powierzchni zlewni " +
       "ujmuje w nim liczba krzywej CN.</p>",
     formula:
-      "<math display='block'><msub><mi>t</mi><mi>c</mi></msub><mo>=</mo><mn>0,01416</mn><mo>·</mo>" +
+      "<math display='block'><msub><mi>t</mi><mi>c</mi></msub><mo>=</mo><mfrac><mrow>" +
       "<msup><mi>L</mi><mn>0,8</mn></msup><mo>·</mo>" +
-      "<msup><mrow><mo>(</mo><mi>S</mi><mo>+</mo><mn>25,4</mn><mo>)</mo></mrow><mn>0,7</mn></msup>" +
-      "<mo>·</mo><msup><mi>Y</mi><mrow><mo>−</mo><mn>0,5</mn></mrow></msup></math>" +
-      "<math display='block'><mi>S</mi><mo>=</mo><mfrac><mn>25400</mn><mi>CN</mi></mfrac><mo>−</mo>" +
-      "<mn>254</mn></math>",
+      "<msup><mrow><mo>(</mo><mi>S</mi><mo>+</mo><mn>1</mn><mo>)</mo></mrow><mn>0,7</mn></msup></mrow>" +
+      "<mrow><mn>1140</mn><mo>·</mo><msup><mi>Y</mi><mn>0,5</mn></msup></mrow></mfrac></math>" +
+      "<math display='block'><mi>S</mi><mo>=</mo><mfrac><mn>1000</mn><mi>CN</mi></mfrac><mo>−</mo>" +
+      "<mn>10</mn></math>",
     vars: [
       {
         symbol: "<math><msub><mi>t</mi><mi>c</mi></msub></math>",
-        text: "czas koncentracji, t<sub>lag</sub>/0,6",
-        unit: "min",
+        text:
+          "czas koncentracji, t<sub>lag</sub>/0,6 (NEH 630 podaje t<sub>lag</sub> z 1900 w mianowniku, stąd " +
+          "1140 = 0,6·1900); Hydrolog podaje go w minutach",
+        unit: "h",
       },
       {
         symbol: "<math><mi>L</mi></math>",
-        text: "długość najdłuższej drogi spływu, od punktu najdalszego hydraulicznie do przekroju zamykającego",
-        unit: "m",
+        text:
+          "długość najdłuższej drogi spływu, od punktu najdalszego hydraulicznie do przekroju zamykającego, w " +
+          "stopach, jak we wzorze źródła: Hydrolog przelicza na nie pole podane w km (1 ft = 0,3048 m)",
+        unit: "ft",
       },
-      { symbol: "<math><mi>S</mi></math>", text: "retencja maksymalna zlewni; dla CN = 100: S = 0", unit: "mm" },
+      {
+        symbol: "<math><mi>S</mi></math>",
+        text: "retencja maksymalna zlewni w calach (1 in = 25,4 mm); dla CN = 100: S = 0",
+        unit: "in",
+      },
       {
         symbol: "<math><mi>Y</mi></math>",
-        text: "średni spadek terenu zlewni w procentach, nie spadek cieku ani drogi spływu",
+        text:
+          "średni spadek terenu zlewni w procentach, nie spadek cieku ani drogi spływu: Hydrolog przelicza na " +
+          "procenty pole podane w m/m",
         unit: "%",
       },
       {
@@ -84,7 +96,7 @@ export const tcInfo = {
       "ma wtedy uwagę.</p>",
     guide: "metoda-tc-nrcs",
     sources:
-      "Mockus 1961 (za USDA-NRCS 2010); USDA-NRCS 2010 (NEH 630, rozdz. 15, wzór 15-4); Fang i in. 2005 " +
+      "Mockus 1961 (za USDA-NRCS 2010); USDA-NRCS 2010 (NEH 630, rozdz. 15, wzór 15-4b); Fang i in. 2005 " +
       "(TxDOT 0-4696-1)",
   },
 
@@ -126,7 +138,7 @@ export const tcInfo = {
       "<p>Czas spływu wody po powierzchni terenu z najdalszego punktu do wpustu, bez przepływu korytem, " +
       "liczony wzorem Federal Aviation Administration do projektowania odwodnienia lotnisk.</p>",
     formula:
-      "<math display='block'><msub><mi>t</mi><mi>c</mi></msub><mo>=</mo><mn>22,213</mn><mo>·</mo>" +
+      "<math display='block'><msub><mi>t</mi><mi>c</mi></msub><mo>=</mo><mn>1,8</mn><mo>·</mo>" +
       "<mrow><mo>(</mo><mn>1,1</mn><mo>−</mo><mi>C</mi><mo>)</mo></mrow><mo>·</mo>" +
       "<mfrac><msup><mi>L</mi><mn>0,5</mn></msup><msup><mi>S</mi><mrow><mn>1</mn><mo>/</mo><mn>3</mn>" +
       "</mrow></msup></mfrac></math>",
@@ -135,10 +147,16 @@ export const tcInfo = {
       { symbol: "<math><mi>C</mi></math>", text: "współczynnik spływu metody wymiernej, 0 &lt; C ≤ 1", unit: "–" },
       {
         symbol: "<math><mi>L</mi></math>",
-        text: "długość spływu powierzchniowego, od najdalszego punktu do wpustu",
-        unit: "km",
+        text:
+          "długość spływu powierzchniowego, od najdalszego punktu do wpustu, w stopach, jak we wzorze źródła: " +
+          "Hydrolog przelicza na nie pole podane w km (1 ft = 0,3048 m)",
+        unit: "ft",
       },
-      { symbol: "<math><mi>S</mi></math>", text: "średni spadek powierzchni spływu", unit: "m/m" },
+      {
+        symbol: "<math><mi>S</mi></math>",
+        text: "średni spadek powierzchni spływu w procentach: Hydrolog przelicza na procenty pole podane w m/m",
+        unit: "%",
+      },
     ],
     symbols: { length_km: "L", slope_m_per_m: "S", runoff_coeff: "C" },
     note:
@@ -155,9 +173,9 @@ export const tcInfo = {
       "Kerby’ego, wyprowadzony dla bardzo małych, płaskich zlewni, liczy go z długości i spadku stoku oraz " +
       "współczynnika oporu N.</p>",
     formula:
-      "<math display='block'><msub><mi>t</mi><mi>c</mi></msub><mo>=</mo><mn>36,37</mn><mo>·</mo>" +
-      "<msup><mrow><mo>(</mo><mi>L</mi><mo>·</mo><mi>N</mi><mo>)</mo></mrow><mn>0,467</mn></msup>" +
-      "<mo>·</mo><msup><mi>S</mi><mrow><mo>−</mo><mn>0,2335</mn></mrow></msup></math>" +
+      "<math display='block'><msub><mi>t</mi><mi>c</mi></msub><mo>=</mo><msup><mrow><mo>(</mo><mfrac><mrow>" +
+      "<mn>0,67</mn><mo>·</mo><mi>N</mi><mo>·</mo><mi>L</mi></mrow><msqrt><mi>S</mi></msqrt></mfrac>" +
+      "<mo>)</mo></mrow><mn>0,467</mn></msup></math>" +
       "<math display='block'><mtext>dla</mtext><mspace width='0.4em'></mspace><mi>S</mi><mo>&lt;</mo>" +
       "<mn>0,002</mn><mo>:</mo><mspace width='0.6em'></mspace><mi>S</mi><mo>→</mo><mi>S</mi><mo>+</mo>" +
       "<mn>0,0005</mn></math>",
@@ -165,8 +183,10 @@ export const tcInfo = {
       { symbol: "<math><msub><mi>t</mi><mi>c</mi></msub></math>", text: "czas spływu po stoku", unit: "min" },
       {
         symbol: "<math><mi>L</mi></math>",
-        text: "długość spływu po stoku, do początku wyraźnego koryta",
-        unit: "km",
+        text:
+          "długość spływu po stoku, do początku wyraźnego koryta, w stopach, jak we wzorze źródła: Hydrolog " +
+          "przelicza na nie pole podane w km (1 ft = 0,3048 m)",
+        unit: "ft",
       },
       {
         symbol: "<math><mi>N</mi></math>",
@@ -182,7 +202,11 @@ export const tcInfo = {
     symbols: { area_km2: "A", length_km: "L", slope_m_per_m: "S", retardance: "N" },
     note:
       "<p>Wynik to czas spływu po stoku, nie t<sub>c</sub> zlewni z korytem (ten daje Kerby–Kirpich). " +
-      "Gęstsza roślinność (większe N) oraz dłuższy i łagodniejszy stok wydłużają czas spływu.</p>",
+      "Gęstsza roślinność (większe N) i dłuższy stok wydłużają czas spływu, łagodniejszy stok też, z " +
+      "wyjątkiem progu poprawki: przy S = 0,002 poprawka 0,0005 znika, więc czas skacze tam w górę o " +
+      "5,35&nbsp;% (1,25<sup>0,2335</sup>), a stok o spadku 0,002 daje czas dłuższy niż stok nieco łagodniejszy. " +
+      "Hydrolog decyduje o poprawce według spadku stoku; Cleveland i in. (2012) decydują według spadku " +
+      "cieku głównego, a przy spadku od 0,002 do 0,003 zostawiają decyzję projektantowi.</p>",
     guide: "metoda-tc-kerby",
     sources:
       "Kerby 1959 (za Roussel i in. 2005); Fang i in. 2005 (TxDOT 0-4696-1); Cleveland i in. 2012 (TxDOT " +
@@ -198,11 +222,11 @@ export const tcInfo = {
     formula:
       "<math display='block'><msub><mi>t</mi><mi>c</mi></msub><mo>=</mo><msub><mi>t</mi><mi>sp</mi></msub>" +
       "<mo>+</mo><msub><mi>t</mi><mi>k</mi></msub></math>" +
-      "<math display='block'><msub><mi>t</mi><mi>sp</mi></msub><mo>=</mo><mn>36,37</mn><mo>·</mo>" +
-      "<msup><mrow><mo>(</mo><msub><mi>L</mi><mi>sp</mi></msub><mo>·</mo><mi>N</mi><mo>)</mo></mrow>" +
-      "<mn>0,467</mn></msup><mo>·</mo><msubsup><mi>S</mi><mi>sp</mi><mrow><mo>−</mo><mn>0,2335</mn>" +
-      "</mrow></msubsup></math>" +
-      "<math display='block'><msub><mi>t</mi><mi>k</mi></msub><mo>=</mo><mn>3,981</mn><mo>·</mo>" +
+      "<math display='block'><msub><mi>t</mi><mi>sp</mi></msub><mo>=</mo><msup><mrow><mo>(</mo><mfrac>" +
+      "<mrow><mn>0,67</mn><mo>·</mo><mi>N</mi><mo>·</mo><msub><mi>L</mi><mi>sp</mi></msub></mrow>" +
+      "<msqrt><msub><mi>S</mi><mi>sp</mi></msub></msqrt></mfrac><mo>)</mo></mrow><mn>0,467</mn></msup>" +
+      "</math>" +
+      "<math display='block'><msub><mi>t</mi><mi>k</mi></msub><mo>=</mo><mn>0,0078</mn><mo>·</mo>" +
       "<msubsup><mi>L</mi><mi>k</mi><mn>0,77</mn></msubsup><mo>·</mo><msubsup><mi>S</mi><mi>k</mi>" +
       "<mrow><mo>−</mo><mn>0,385</mn></mrow></msubsup></math>" +
       "<math display='block'><msub><mi>L</mi><mi>k</mi></msub><mo>=</mo><mi>L</mi><mo>−</mo>" +
@@ -224,15 +248,17 @@ export const tcInfo = {
       },
       {
         symbol: "<math><msub><mi>L</mi><mi>sp</mi></msub></math>",
-        text: "długość spływu po stoku, od najdalszego punktu do początku wyraźnego koryta",
-        unit: "km",
+        text:
+          "długość spływu po stoku, od najdalszego punktu do początku wyraźnego koryta; długości są we " +
+          "wzorze w stopach, jak u źródła: Hydrolog przelicza na nie pola podane w km (1 ft = 0,3048 m)",
+        unit: "ft",
       },
       { symbol: "<math><msub><mi>S</mi><mi>sp</mi></msub></math>", text: "średni spadek stoku", unit: "m/m" },
       { symbol: "<math><mi>N</mi></math>", text: "współczynnik oporu (retardacji) Kerby’ego", unit: "–" },
       {
         symbol: "<math><mi>L</mi></math>",
         text: "długość najdłuższej drogi spływu, z odcinkiem po stoku; większa niż L<sub>sp</sub>",
-        unit: "km",
+        unit: "ft",
       },
       {
         symbol: "<math><mi>S</mi></math>",
@@ -242,7 +268,7 @@ export const tcInfo = {
       {
         symbol: "<math><msub><mi>L</mi><mi>k</mi></msub></math>",
         text: "długość odcinka korytem: najdłuższa droga spływu bez odcinka po stoku",
-        unit: "km",
+        unit: "ft",
       },
       {
         symbol: "<math><msub><mi>S</mi><mi>k</mi></msub></math>",
@@ -259,8 +285,13 @@ export const tcInfo = {
       flow_path_slope_m_per_m: "S (droga spływu)",
     },
     note:
-      "<p>Wynik to t<sub>c</sub> zlewni z korytem, nie sam spływ po stoku. Dłuższa i łagodniejsza droga " +
-      "spływu oraz gęstsza roślinność na stoku (większe N) wydłużają t<sub>c</sub>.</p>",
+      "<p>Wynik to t<sub>c</sub> zlewni z korytem, nie sam spływ po stoku. Dłuższa droga spływu i gęstsza " +
+      "roślinność na stoku (większe N) wydłużają t<sub>c</sub>, łagodniejsze spadki też, z wyjątkiem progu " +
+      "poprawki: przy spadku 0,002 poprawka 0,0005 znika, więc czas skacze tam w górę, przepływu korytem o " +
+      "8,97&nbsp;% (1,25<sup>0,385</sup>), a spływu po stoku o 5,35&nbsp;% (1,25<sup>0,2335</sup>). Hydrolog " +
+      "decyduje o poprawce osobno dla stoku i dla drogi spływu, każdej według jej spadku; Cleveland i in. (2012) " +
+      "decydują o obu odcinkach według spadku cieku głównego, a przy spadku od 0,002 do 0,003 zostawiają " +
+      "decyzję projektantowi.</p>",
     guide: "metoda-tc-kerby-kirpich",
     sources:
       "Roussel i in. 2005 (TxDOT 0-4696-2, suplement); Cleveland i in. 2012 (TxDOT 0-6382-P1); Kerby 1959; " +

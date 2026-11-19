@@ -43,10 +43,10 @@ This document serves as a guide that:
 |---------|-------|
 | **Type** | Synthetic, empirical |
 | **Input parameters** | `area_km2`, `tc_min` |
-| **Source** | USDA-NRCS TR-55 (1986) |
+| **Source** | USDA-NRCS NEH 630 ch. 16 (2007), table 16-1 and eqs. 16A-6 to 16A-9; HEC-HMS Technical Reference Manual, "SCS Unit Hydrograph Model" |
 | **Characteristics** | NRCS dimensionless curve (33 points) |
 
-**Key relation:** `tlag = 0.6 × Tc` (part of the SCS method)
+**Key relation:** `tlag = 0.6 × Tc` (NEH 630 ch. 15, eq. 15-3, after Mockus 1957 and Simas 1996; HEC-HMS Technical Reference Manual, "SCS Unit Hydrograph Model", eq. 3)
 
 ### 2.2 Nash IUH
 
@@ -101,9 +101,9 @@ This document serves as a guide that:
               ▼              ▼              ▼
     ┌─────────────────┐ ┌─────────────┐ ┌─────────────┐
     │    KIRPICH      │ │    NRCS     │ │  GIANDOTTI  │
-    │ tc=3.981×L^0.77 │ │ tc=f(L,S,CN)│ │ tc=f(A,L,H) │
+    │tc=0.0078×L^0.77 │ │ tc=f(L,S,CN)│ │ tc=f(A,L,H) │
     │  ×S^(-0.385)    │ │             │ │             │
-    │    [min]        │ │             │ │             │
+    │ [min], L in ft  │ │             │ │             │
     └────────┬────────┘ └──────┬──────┘ └──────┬──────┘
              │                 │               │
              └─────────────────┼───────────────┘
@@ -117,7 +117,8 @@ This document serves as a guide that:
             ▼                 │                 ▼
     ┌───────────────┐         │         ┌───────────────┐
     │  tlag = 0.6×Tc│ ←───────┴─────────│ SCS RELATION  │
-    └───────┬───────┘                   │ (TR-55, 1986) │
+    └───────┬───────┘                   │ (NEH 630,     │
+            │                           │ eq. 15-3)     │
             │                           └───────────────┘
             ▼
     ┌───────────────────────┐
@@ -132,11 +133,7 @@ This document serves as a guide that:
     └───────────────────────┘
 ```
 
-> **Note on the Kirpich constant:** The literature contains two equivalent forms:
-> - `tc[min] = 3.981 × L[km]^0.77 × S^(-0.385)` (result in minutes -- used in the code)
-> - `tc[h] = 0.0663 × L[km]^0.77 × S^(-0.385)` (result in hours)
->
-> Both forms are identical: `3.981 / 60 ≈ 0.0663`. The Hydrolog implementation uses the constant **3.981** and returns the result in **minutes**.
+> **Note on the Kirpich constant:** Kirpich's formula is published as `tc[min] = 0.0078 × L[ft]^0.77 × S^(-0.385)`, S in ft/ft (Fang et al. 2005, eq. 3.14, p. 22; Roussel et al. 2005, eq. 7). Hydrolog takes L in km and converts it to feet exactly (1 ft = 0.3048 m), so it computes the published formula. The metric constants met in the literature are rounded conversions of it: 0.0195 with L in m (Roussel et al. 2005, supplement; exactly 0.019472), 3.981 with L in km and the result in minutes, 0.0663 with L in km and the result in hours. Before 0.9.0 Hydrolog used 3.981, 0.136 % above the exact `0.0078 × (1000/0.3048)^0.77 = 3.97560`. The constants and applicability ranges of every method are in [FORMULAS.md](FORMULAS.md).
 
 The inputs in the diagram are generic; each method takes those its source defines (section 3.7): Kirpich the length and slope of the longest flow path, NRCS that length, the average land slope Y and CN, Giandotti A, the main channel and H = mean elevation − outlet elevation.
 
@@ -145,15 +142,15 @@ The inputs in the diagram are generic; each method takes those its source define
 | Method | Status | Justification |
 |--------|--------|---------------|
 | Kirpich | ✅ OK | Tc is an input parameter of the SCS method |
-| NRCS | ✅ OK | Lag method of the SCS UH (NEH 630, ch. 15: L = 0.6 Tc, eq. 15-4) |
+| NRCS | ✅ OK | Lag method of the SCS UH (NEH 630, ch. 15: lag equation 15-4a; its tc form, eq. 15-4b, follows from L = 0.6 Tc, eq. 15-3) |
 | Giandotti | ✅ OK | Tc is an input parameter of the SCS method |
 | FAA | ✅ OK¹ | Tc is an input parameter of the SCS method (overland flow time) |
 | Kerby | ✅ OK¹ | Tc is an input parameter of the SCS method (sheet flow time, path up to 366 m) |
 | Kerby-Kirpich | ✅ OK | Composite Tc (overland + channel flow) is an input parameter of SCS |
 
 **Literature justification:**
-- The relation `tlag = 0.6 × Tc` comes from USDA TR-55 (1986)
-- It was developed **specifically** for the SCS Dimensionless Unit Hydrograph
+- The relation `tlag = 0.6 × Tc` is NEH 630 ch. 15, eq. 15-3 (Mockus 1957; Simas 1996: "for average natural watershed conditions and an approximately uniform distribution of runoff", p. 15-3); HEC-HMS takes it as `tp = 0.6 × Tc` with `Tp = Δt/2 + tp` (Technical Reference Manual, "SCS Unit Hydrograph Model", eqs. 3 and 1). TR-55 (1986) does not contain it
+- The SCS dimensionless unit hydrograph is built on it: `Tp = ΔD/2 + L` and `qp = 484 A Q / (ΔD/2 + 0.6 Tc)` (NEH 630 ch. 16, eqs. 16A-7 and 16A-9)
 - All Tc computation methods are suitable as input
 - ¹ FAA and Kerby are formulas for overland flow time, not for the time of concentration of a catchment with a channel; for such a catchment use Kerby-Kirpich (section 3.7)
 
@@ -231,7 +228,7 @@ print(f"Qmax = {hydrograph.peak_discharge_m3s:.2f} m³/s")
     │     Jg^1.5)^0.26         │ │    ×(1+U)^(-1.66)    │    │
     │    ×e^(-0.016U)          │ │    ×H^(-0.27)        │    │
     │    ×e^(0.004W)           │ │    ×D^0.37           │    │
-    │  3. up = 0.66/tp^1.04    │ │ 2. k = 0.56×A^0.39   │    │
+    │  3. up=0.66/tp^1.04 Δt→0 │ │ 2. k = 0.56×A^0.39   │    │
     │  4. f(N) = tp×up →      │ │    ×(1+U)^(-0.62)    │    │
     │     solve for N          │ │    ×H^(-0.11)        │    │
     │  5. K = tp / (N-1)       │ │    ×D^0.22           │    │
@@ -260,8 +257,8 @@ deprecated since v0.6.2, was removed in v0.8.0:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  The relation tlag = 0.6 × Tc comes from the SCS method (TR-55,    │
-│  1986) and has NO scientific justification for the Nash model.     │
+│  The relation tlag = 0.6 × Tc comes from the SCS method (NEH 630,   │
+│  eq. 15-3) and has NO scientific justification for the Nash model.  │
 │                                                                     │
 │  In the Nash model: tlag = n × K is a MATHEMATICAL RESULT          │
 │  of the reservoir cascade, NOT an input parameter!                 │
@@ -291,18 +288,28 @@ deprecated since v0.6.2, was removed in v0.8.0:
 
 #### 3.2.4 Lutz Method Formulas
 
+The spec `lutz` ([FORMULAS.md](FORMULAS.md#lutz)) declares the equations, their constants,
+ranges and sources (KZGW 2017, annex 2, pp. 97–100 and Table C.2;
+`hydrolog.runoff.nash_iuh.lutz_parameters`, which `NashIUH.from_lutz` computes with):
+
 ```
-1. P₁ = 3.989 × n_manning + 0.028
+1. P₁ = 3.989 × n_manning + 0.028     (eq. 6.18 prints "− 0,028", a misprint)
 
 2. tp = P₁ × (L × Lc / Jg^1.5)^0.26 × e^(-0.016U) × e^(0.004W)   [h]
 
-3. up = 0.66 / tp^1.04                                            [1/h]
+3. up = 0.66 / tp^1.04                for Δt → 0 (eq. 6.19)       [1/h]
 
-4. f(N) = tp × up → solve numerically for N
-   (where f(N) = (N-1)^N × e^(-(N-1)) / Γ(N))
+4. f(N) = tp × up → solve numerically for N on [1.1, 20]
+   (where f(N) = (N-1)^N × e^(-(N-1)) / Γ(N), KZGW's Table C.2)
 
 5. K = tp / (N-1)                                                 [h]
 ```
+
+Step 3 is Lutz's relation for an infinitesimal step: the unit hydrograph of a step Δt
+averages the IUH over Δt exactly. KZGW's Ex. 6.2 takes the relation of Δt = 1 h
+(`up = 0.464 / tp^0.824`) and gets N 2.55 and k 0.70 h where Hydrolog gets 3.88 and
+0.377 h (a UH peak 28 % higher); the spec records it as a discrepancy. The spec refuses
+Lc > L, U + W > 100 % and a tp whose N lies outside the bracket.
 
 **Influence of physiographic parameters:**
 
@@ -412,7 +419,7 @@ is the watershed field the method defines (`hydrolog._ranges.NASH_INPUTS`,
 |--------|-------|------|
 | L | `flow_path_length_km` | the main stream from the divide to the outlet: the longest flow path (ADR-0019), not the channel, which ends at the channel head |
 | Lc | `Lc_km` | along the stream to the point nearest the centroid; not longer than L (`maximum` on `Lc_km`) |
-| Jg | `flow_path_slope_m_per_m` | the mean slope of that stream, > 0 |
+| Jg | `flow_path_equal_area_slope_m_per_m` | the equal-area slope of that stream's longitudinal profile (KZGW 2017, annex 2, p. 97; spec `equal_area_slope`, `hydrolog.morphometry.equal_area_slope`; ADR-0053), > 0; not `flow_path_slope_m_per_m`, the slope between its ends, which Kirpich takes |
 | n_M | `manning_n` | Manning's coefficient of the channel |
 | U, W | `urban_pct`, `forest_pct` | 0 when the watershed has none |
 | A | `area_km2` | scales the unit hydrograph; above 236 km2 the notice `outside_typical_range` (method `lutz`, KZGW 2017) |
@@ -479,7 +486,7 @@ hydrograph section, and a network node lists `nash_estimation` (given) and `nash
 | Kerby → Tc | ✅ OK¹ | Tc = translation time (sheet flow time) |
 | Kerby-Kirpich → Tc | ✅ OK | Tc = translation time (composite: overland + channel flow) |
 | Directly Tc, R | ✅ OK | When you have measured/calibrated values |
-| R/Tc ratio | ✅ OK | Typical values: 0.2-1.5 |
+| R/Tc ratio | ✅ OK | 0.2-1.5 without a notice; no published source (to be verified) |
 
 **Literature justification:**
 - In the Clark model, Tc represents the **translation time** - the time water takes to travel from the farthest point of the catchment to the outlet
@@ -489,11 +496,13 @@ hydrograph section, and a network node lists `nash_estimation` (given) and `nash
 
 #### 3.3.3 Choosing the R Coefficient
 
-| Catchment type | R/Tc ratio | Description |
-|----------------|------------|-------------|
-| Steep, urban | 0.2-0.4 | Little storage, fast runoff |
-| Natural, average | 0.4-0.8 | Typical conditions |
-| Flat, swampy | 0.8-1.5 | Large storage, slow runoff |
+R is best calibrated on measured floods. Outside R/Tc 0.2–1.5 Hydrolog warns with
+`outside_unverified_range` (`clark.r_tc_ratio`), but no source publishes that range: the
+HEC-HMS Technical Reference Manual gives no R/Tc, and the Polish calibrations of the
+Stobnica (335.84 km², Wałęga and Cupak 2013, table 2) give R/Tc 1.7–2.3. A larger R/Tc
+gives a lower and later peak. The classes of earlier versions (0.2–0.4 steep and urban,
+0.4–0.8 average, 0.8–1.5 flat and swampy) were credited to HEC-HMS, which does not
+contain them.
 
 #### 3.3.4 Formulas
 
@@ -522,7 +531,8 @@ The scheme is the Muskingum routing with X = 0. The weight of the previous outfl
 (2R - dt) / (2R + dt), is negative for dt > 2R and the hydrograph would oscillate, so
 `ClarkIUH` (and `uh clark`, `hydrograph generate` with `uh_model=clark`) accepts a time
 step of at most 2R; a longer one is a `validation_error` with
-`details.reason = "unstable_timestep"`.
+`details.reason = "precondition_failed"` (`details.constraint = "step_stable"`,
+`details.option = "timestep_min"`).
 
 #### 3.3.5 Code Example
 
@@ -535,7 +545,7 @@ from hydrolog.precipitation import BetaHietogram
 tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 
 # Step 2: Determine the storage coefficient R
-r_min = 0.5 * tc  # R/Tc = 0.5 (typical value)
+r_min = 0.5 * tc  # R/Tc = 0.5, assumed: no source publishes a typical R/Tc
 
 # Step 3: Create the Clark IUH
 clark = ClarkIUH(tc_min=tc, r_min=r_min, area_km2=45.0)
@@ -927,7 +937,7 @@ The same analysis in the CLI: `hydrolog stats low-flow --input-file q_dobowe.csv
 - **The longest flow path** (`flow_path_length_km`, `flow_path_slope_m_per_m`) runs from the hydraulically most distant point of the watershed (the cell with the greatest flow distance to the outlet; usually on the divide, but possibly on a ridge inside the watershed) to the outlet; its slope is the elevation of that point minus the outlet elevation, over its length. Hydrograf's hydraulic length is this length. Before v0.8.0 Kirpich and NRCS took the channel length, else the catchment length, and Kirpich the channel slope, else the mean slope, else the relief over the length (which equals Kirpich's S only when the most remote point is also the highest), and Giandotti took the catchment length without a channel and the middle of the elevation range without a mean.
 - **FAA and Kerby are formulas for overland flow time** (FAA 1970, AC 150/5320-5B, fig. 7; Kerby 1959). Kerby derived his formula for flow paths up to 366 m (1200 ft; Roussel et al. 2005; TxDOT Hydraulic Design Manual, ch. 4, section 11); the FAA gives no limit of the length (its curves end at 800 ft). Before v0.8.0 the channel length and slope timed the channel with an overland flow formula, far beyond Kerby's paths. The result is the overland flow time; **the tc of a catchment with a channel is given by Kerby-Kirpich (or Kirpich)**. The later circulars AC 150/5320-5C and 5D do not have the FAA formula.
 - **NRCS**: in the lag equation (NEH 630, ch. 15, eq. 15-4; TR-55 does not contain it) Y is the mean land slope of the catchment [%], "not to be confused with the slope of the flow path".
-- **Kerby-Kirpich** splits the longest flow path: Kerby on the overland segment, Kirpich on the rest of the path at the slope of the whole path, with S + 0.0005 below 0.002 on both (Cleveland et al. 2012). Hydrolog reproduces the published examples: 24.6 + 32.0 = 56.5 min against "about 57" (Roussel et al. 2005; L 5,280 ft, overland 500 ft at 2%, N 0.40, S 0.0095), and 52.1 + 86.8 = 138.9 min against "about 140" with the low-slope offset (Cleveland et al. 2012). A flow path not longer than the overland segment is `exclusive_minimum` on `flow_path_length_km`.
+- **Kerby-Kirpich** splits the longest flow path: Kerby on the overland segment, Kirpich on the rest of the path at the slope of the whole path, with S + 0.0005 for a slope below 0.002 (Cleveland et al. 2012, pp. 1–2, eqs. 1–3). Hydrolog decides the offset per segment, by the slope of that segment; Cleveland et al. decide it for both segments by the main-channel slope, with a transitional band of 0.002–0.003 left to the engineer's judgement: a deviation declared in the spec `kerby_kirpich` ([FORMULAS.md](FORMULAS.md)). tc is therefore not monotonic in a slope at 0.002: where the offset is dropped, the Kerby part steps up by 1.25^0.2335 − 1 = +5.35 % and the Kirpich part by 1.25^0.385 − 1 = +8.97 %. Hydrolog reproduces the published examples: 24.6 + 31.9 = 56.5 min against "about 57" (Roussel et al. 2005; L 5,280 ft, overland 500 ft at 2%, N 0.40, S 0.0095), and 52.1 + 86.7 = 138.7 min against "about 140" with the low-slope offset (Cleveland et al. 2012). A flow path not longer than the overland segment is `exclusive_minimum` on `flow_path_length_km`.
 
 Example (catchment: L = 12 km, channel 10 km with slope 0.02, longest flow path 10.5 km with slope 0.019, terrain slope 0.025, CN 72, overland flow 0.2 km with slope 0.01, C = 0.5, N = 0.4):
 
@@ -935,13 +945,15 @@ Example (catchment: L = 12 km, channel 10 km with slope 0.02, longest flow path 
 |--------|-----------------------:|----------------------:|--------|
 | FAA | 155.3 (warning: L = 10 km outside 0.015–3 km) | 27.7 | overland flow 0.2 km, S = 0.01 |
 | Kerby | 173.2 (two warnings) | 32.8 | as FAA |
-| NRCS | 463.9 | 431.4 | the flow path (10.5 km) instead of the channel; Y = 2.5% (terrain) instead of 2.0% (channel) |
-| Kirpich | 105.7 | 111.9 | the flow path, 10.5 km at 0.019, instead of the channel, 10 km at 0.02 |
-| Kerby-Kirpich | 138.5 | 143.1 | channel = 10.5 − 0.2 km at 0.019 instead of the given channel |
+| NRCS | 463.9 | 431.0 | the flow path (10.5 km) instead of the channel; Y = 2.5% (terrain) instead of 2.0% (channel) |
+| Kirpich | 105.7 | 111.8 | the flow path, 10.5 km at 0.019, instead of the channel, 10 km at 0.02 |
+| Kerby-Kirpich | 138.5 | 142.9 | channel = 10.5 − 0.2 km at 0.019 instead of the given channel |
+
+The column since v0.8.0 is computed with the constants of 0.9.0, the sources' own with exact unit conversion (Kirpich 0.0078 with L in ft, NRCS eq. 15-4b in ft, in and %); v0.8.x gave NRCS 431.4, Kirpich 111.9 and Kerby-Kirpich 143.1 min.
 
 #### 3.7.1 `cn` Alongside a Catchment in `hydrograph generate` and `report generate`
 
-The `cn` option given alongside a catchment is the CN of the whole calculation: it overrides the catchment's `cn` both in SCS-CN and in the time of concentration by the `nrcs` method, in which the retention S = 25400/CN − 254 of the lag equation (NEH 630, ch. 15, eq. 15-4) comes from the same CN. A catchment without `cn` also works when `cn` is given. Formerly the NRCS time of concentration took CN from the file and the effective precipitation took CN from the option. Example (CN 60 in the file, `cn` = 85, L = 12 km, Y = 2.5%, beta rainfall 50 mm/120 min): tc 657.7 → 322.1 min, Qmax 27.64 → 55.62 m³/s, time to peak 440 → 240 min.
+The `cn` option given alongside a catchment is the CN of the whole calculation: it overrides the catchment's `cn` both in SCS-CN and in the time of concentration by the `nrcs` method, in which the retention S = 25400/CN − 254 of the lag equation (NEH 630, ch. 15, eq. 15-4) comes from the same CN. A catchment without `cn` also works when `cn` is given. Formerly the NRCS time of concentration took CN from the file and the effective precipitation took CN from the option. Example (CN 60 in the file, `cn` = 85, L = 12 km, Y = 2.5%, beta rainfall 50 mm/120 min; 0.9.0 constants): tc 657.1 → 321.8 min, Qmax 27.66 → 55.68 m³/s, time to peak 440 → 240 min.
 
 ### 3.8 Rating Curve Q = a·(H − H₀)^b: the H₀ Starting Point and the Plausibility (`RatingCurve`, fixes in v0.8.0 and 0.8.1)
 
@@ -1354,20 +1366,20 @@ print(round(float(beta.intensities_mm[0]), 4))   # 0.6372 = I_(1/12)(0.5, 5)
 
 | Computation path | Source | Status |
 |------------------|--------|:------:|
-| SCS UH + Kirpich → Tc | USDA TR-55 (1986), Kirpich (1940) | ✅ |
+| SCS UH + Kirpich → Tc | Kirpich (1940), NEH Part 630 ch. 15 eq. 15-3 (tlag = 0.6 × Tc) | ✅ |
 | SCS UH + NRCS → Tc | USDA-NRCS (2010), NEH Part 630 ch. 15 | ✅ |
-| SCS UH + Giandotti → Tc | Giandotti (1934), TR-55 | ✅ |
-| SCS UH + FAA → Tc | FAA AC 150/5320-5B (1970), TR-55 | ✅ (small catchments without a channel) |
-| SCS UH + Kerby → Tc | Kerby (1959), TR-55 | ✅ (small catchments without a channel) |
+| SCS UH + Giandotti → Tc | Giandotti (1934), NEH Part 630 ch. 15 eq. 15-3 | ✅ |
+| SCS UH + FAA → Tc | FAA AC 150/5320-5B (1970), NEH Part 630 ch. 15 eq. 15-3 | ✅ (small catchments without a channel) |
+| SCS UH + Kerby → Tc | Kerby (1959), NEH Part 630 ch. 15 eq. 15-3 | ✅ (small catchments without a channel) |
 | Clark IUH + FAA → Tc | FAA AC 150/5320-5B (1970), Clark (1945) | ✅ (small catchments without a channel) |
 | Clark IUH + Kerby → Tc | Kerby (1959), Clark (1945) | ✅ (small catchments without a channel) |
-| SCS UH + Kerby-Kirpich → Tc | Roussel et al. (2005), TR-55 | ✅ |
+| SCS UH + Kerby-Kirpich → Tc | Roussel et al. (2005), NEH Part 630 ch. 15 eq. 15-3 | ✅ |
 | Clark IUH + Kerby-Kirpich → Tc | Roussel et al. (2005), Clark (1945) | ✅ |
 | Nash IUH + from_lutz() | Lutz (1984), KZGW (2017) | ✅ |
 | Nash IUH + from_urban_regression() | Rao, Delleur, Sarma (1972), Banasik (2009) | ✅ |
 | Nash IUH + directly n, K | Nash (1957) | ✅ |
 | Clark IUH + Tc (any method) | Clark (1945), HEC-HMS | ✅ |
-| Clark IUH + R/Tc ratio | HEC-HMS, engineering practice | ✅ |
+| Clark IUH + R/Tc ratio | Clark (1945), HEC-HMS; the range of R/Tc has no published source (to be verified) | ✅ |
 | Snyder UH + L, Lc, Ct, Cp | Snyder (1938) | ✅ |
 | Snyder UH in `HydrographGenerator` (D = time step: tLR, tpR, qpR) | Snyder (1938), HEC-HMS Technical Reference Manual, Chow, Maidment, Mays (1988) | ✅ |
 | Kirpich from a catchment (the longest flow path, `flow_path_length_km`, `flow_path_slope_m_per_m`) | Fang et al. (2005) eq. 3.14, Mota and Kobiyama (2015) | ✅ |
@@ -1420,11 +1432,11 @@ print(round(float(beta.intensities_mm[0]), 4))   # 0.6372 = I_(1/12)(0.5, 5)
 | Giandotti, M. | 1934 | Tc formula for Italian catchments |
 | Roussel, M.C. et al. | 2005 | Composite Kerby-Kirpich method (TxDOT 0-4696-2) |
 | Fang, X. et al. | 2005 | Kirpich's L and S: the length to the most remote point and its drop (TxDOT 0-4696-1) |
-| USDA-NRCS, NEH 630 ch. 15 | 2010 | NRCS lag equation: flow length ℓ and land slope Y |
+| USDA-NRCS, NEH 630 ch. 15 | 2010 | NRCS lag equation: flow length ℓ and land slope Y; the relation tlag = 0.6×Tc (eq. 15-3, after Mockus 1957) |
 | Cleveland, T.G. et al. | 2012 | Low-slope offset of Kerby-Kirpich (TxDOT 0-6382-P1) |
 | Rao, Delleur, Sarma | 1972 | Regression of Nash parameters for urbanised catchments |
 | Lutz, W. | 1984 | Estimation of Nash parameters from physiographic characteristics |
-| USDA TR-55 | 1986 | SCS-CN method, the relation tlag = 0.6×Tc |
+| USDA TR-55 | 1986 | SCS-CN method (it contains neither the relation tlag = 0.6×Tc nor the dimensionless unit hydrograph) |
 | KZGW | 2017 | Polish methodology, f(N) table for Lutz |
 | Fisher, R.A. and Tippett, L.H.C. | 1928 | Limiting distributions of the smallest and largest sample value |
 | Gumbel, E.J. | 1958 | Statistics of extreme values (distribution for minima) |
@@ -1587,7 +1599,7 @@ print(round(float(beta.intensities_mm[0]), 4))   # 0.6372 = I_(1/12)(0.5, 5)
 
 25. **Chow, V.T., Maidment, D.R. & Mays, L.W.** (1988). *Applied Hydrology*. McGraw-Hill (S-curve method for unit hydrographs, synthetic hydrographs including Snyder's).
 
-26. **USDA-NRCS** (2010). National Engineering Handbook, Part 630 Hydrology, Chapter 15: Time of Concentration (lag equation 15-4: ℓ is the longest flow path from the hydraulically most distant point of the watershed to the outlet, Y the mean terrain slope of the catchment).
+26. **USDA-NRCS** (2010). National Engineering Handbook, Part 630 Hydrology, Chapter 15: Time of Concentration (eq. 15-3: lag L = 0.6 Tc, after Mockus 1957 and Simas 1996; lag equation 15-4: ℓ is the longest flow path from the hydraulically most distant point of the watershed to the outlet, Y the mean terrain slope of the catchment).
 
 27. **TxDOT**. Hydraulic Design Manual, Chapter 4 Hydrology, Section 11: Time of Concentration (the 1200 ft = 366 m limit for the Kerby formula; the Kerby-Kirpich method).
 

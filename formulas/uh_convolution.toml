@@ -1,0 +1,263 @@
+schema = "nogat-formula-card/1"
+name = "uh_convolution"
+title = "Direct runoff of excess rainfall by discrete convolution with a unit hydrograph"
+function = "hydrolog.runoff.convolution.convolve_discrete"
+family = "scheme"
+formula_version = 1
+status = "referenced"
+equation = "Q_n = sum over m of Pe_m * U_(n - m), n = 0 .. M + K - 2, Pe_m the excess of the interval starting at m dt, U_k the unit hydrograph's ordinate at k dt; t_n = n dt; V = sum(Q_n) dt"
+latex = "Q_n = \\sum_{m} P_{e,m}\\,U_{n-m},\\quad t_n = n\\,\\Delta t,\\quad V = \\Delta t \\sum_n Q_n"
+validation = "none: the convolution is the superposition that the unit hydrograph assumes; its sources report no agreement of their own with observations"
+conventions = ["SI units: depths in mm, ordinates in m3/s per mm, discharges in m3/s", "Pe_m is the excess of the interval from m dt to (m + 1) dt and U_0 the ordinate at t = 0: Q_n at t = n dt is the response at the end of interval n, as KZGW eq. 6.12 and NEH example 16-1 align them (Q(0.6 h) = 0.12 in x UH(0.3 h))", "the unit hydrograph is that of the duration dt, the step of the rainfall", "V = dt sum(Q_n), the sum taken exactly (math.fsum)"]
+assumptions = ["linearity and time invariance of the watershed's response to excess rainfall, uniform over the watershed"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/unit-hydrographs-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+symmetries = []
+
+[properties.monotonic]
+effective_precip_mm = 1
+unit_hydrograph_m3s = 1
+
+[[properties.scalings]]
+name = "rainfall"
+
+[properties.scalings.inputs]
+effective_precip_mm = 1.0
+
+[properties.scalings.outputs]
+peak_discharge_m3s = 1.0
+total_volume_m3 = 1.0
+discharge_m3s = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling every depth doubles every product and sum exactly in binary, but for subnormal values"
+abs = 1e-300
+rel = 1e-14
+
+[[properties.scalings]]
+name = "unit_hydrograph"
+
+[properties.scalings.inputs]
+unit_hydrograph_m3s = 1.0
+
+[properties.scalings.outputs]
+peak_discharge_m3s = 1.0
+total_volume_m3 = 1.0
+discharge_m3s = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling every ordinate doubles every product and sum exactly in binary, but for subnormal values"
+abs = 1e-300
+rel = 1e-14
+
+[[properties.scalings]]
+name = "time"
+
+[properties.scalings.inputs]
+timestep_min = 1.0
+
+[properties.scalings.outputs]
+time_to_peak_min = 1.0
+total_volume_m3 = 1.0
+times_min = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling the step doubles the times and the volume exactly in binary and leaves the discharges as they are"
+abs = 1e-300
+rel = 1e-14
+
+[[properties.limits]]
+name = "exact_sums"
+text = "every ordinate equals its sum of products in exact rational arithmetic"
+
+[[properties.conservation]]
+name = "volume"
+text = "the volume is the excess times the unit hydrograph's volume, sum(Q) dt = sum(Pe) sum(U) dt"
+
+[properties.conservation.tolerance]
+reason = "np.convolve's float64 products and pairwise sums against two fsum totals: a few units in the last place per term, relative"
+abs = 1e-12
+
+[[sources]]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "eq. 6.12, p. 92; examples 6.2 and 6.4, pp. 100-110"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[sources]]
+citation = "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)"
+access = "open"
+locator = "example 16-1, steps 4-10 and table 16-4, pp. 16-10 to 16-13"
+url = "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf"
+
+[[variables]]
+name = "effective_precip_mm"
+symbol = "P_{e,m}"
+unit = "mm"
+kind = "real_array"
+description = "Effective rainfall of each step."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO)"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 20.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 6.1, 6.2 and 6.4, tables 6.1, 6.3 and 6.4, pp. 94-110: effective rainfall of 0 to 15.3 mm per step"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "unit_hydrograph_m3s"
+symbol = "U_k"
+unit = "m3/s per mm"
+kind = "real_array"
+description = "Ordinates of the unit hydrograph of the step's duration, the first at t = 0."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 100000.0
+test_reason = "the SCS peak of a million km2 at a time to peak of 2 h (1.04e5 m3/s per mm)"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 15.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 6.2 and 6.4, tables 6.2 and 6.3, pp. 100-110: ordinates up to 1.911 m3/s per mm; NEH 630 example 16-1 (11.9 km2): 1.62"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "timestep_min"
+symbol = "\\Delta t"
+unit = "min"
+kind = "real"
+description = "Time step of the rainfall and of the unit hydrograph."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1440.0
+test_reason = "a day, the step of a daily rainfall series (E5b-07: tc 90.7 min at a step of 1440 min)"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 60.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2); and KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: 5 min; KZGW 2017, annex 2, ex. 6.1 and 6.2 (1 h) and 6.4 (0.5 h), pp. 92-110"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[constraints]]
+name = "length_bounded"
+class = "precondition"
+text = "the hydrograph has at most a million ordinates, M + K - 1"
+
+[constraints.source]
+citation = "Hydrolog's bound of a hydrograph's length (hydrolog.routing.reach.MAX_ORDINATES)"
+access = "open"
+locator = "a million ordinates: the routing of a hydrograph refuses a longer one"
+
+[[outputs]]
+name = "peak_discharge_m3s"
+unit = "m3/s"
+kind = "real"
+symbol = "Q_{max}"
+description = "Largest ordinate of the hydrograph."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "time_to_peak_min"
+unit = "min"
+kind = "real"
+symbol = "t_{max}"
+description = "Time of the first largest ordinate."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "total_volume_m3"
+unit = "m3"
+kind = "real"
+symbol = "V"
+description = "Volume of the hydrograph, sum(Q_n) dt."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "discharge_m3s"
+unit = "m3/s"
+kind = "real_array"
+symbol = "Q_n"
+description = "Direct runoff at t_n."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "times_min"
+unit = "min"
+kind = "real_array"
+symbol = "t_n"
+description = "Times of the ordinates."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "limit exact_sums: 200 steps of 0.001 mm against the sums in exact rational arithmetic"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases effective_precip_mm-nan_element and unit_hydrograph_m3s-nan_element: a gap is refused before it spreads"
+
+[[oracles]]
+kind = "exact"
+description = "the ordinates as sums of products in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_unit_hydrographs.py (limit exact_sums)"
+conventions = []

@@ -1,0 +1,185 @@
+schema = "nogat-formula-card/1"
+name = "faa"
+title = "Overland flow time by the FAA formula (AC 150/5320-5B, 1970)"
+function = "hydrolog.time.concentration.ConcentrationTime.faa"
+family = "empirical"
+formula_version = 1
+status = "referenced"
+equation = "T = 1.8 * (1.1 - C) * D**0.5 / S**(1/3) [min], D in ft, S in percent (100 * slope)"
+latex = "T = \\frac{1.8\\,(1.1 - C)\\,\\sqrt{D}}{\\sqrt[3]{S}},\\quad D\\ \\mathrm{[ft]},\\ S\\ [\\%]"
+validation = "none reported by the source"
+conventions = ["figure 7 in its source units: D in feet by the exact 0.3048 m/ft of the units table, S in percent (100 per m/m; the curves are labelled in percent), T in minutes; Hydrolog's 22.213 for L in km and S in m/m up to 0.8.1 rounded 22.2125", "the inlet time: overland flow 'from the most remote point in the drainage subarea to the inlet' (§6b), not the time of concentration of a watershed with a channel", "C of table I in (0, 1]: C = 0, which the table lists for moderately pervious soils with turf (0.00-0.10), is refused"]
+assumptions = ["'Use the formula for distances in excess of 800 feet' (figure 7): the curves end at 800 ft and the formula serves longer paths; the later circulars AC 150/5320-5C (2006) and 5D (2013) time the flow with the NRCS segment method instead"]
+notices = ["outside_applicability"]
+reference_cases = ["tests/fixtures/formulas/tc-cases.json"]
+constraints = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+length_km = 1
+slope_m_per_m = -1
+runoff_coeff = -1
+
+[[properties.limits]]
+name = "decimal"
+text = "T equals 1.8 (1000/0.3048)^0.5 / 100^(1/3) (1.1 - C) L[km]^0.5 S[m/m]^(-1/3) evaluated in decimal arithmetic at 50 digits"
+
+[[properties.limits]]
+name = "runoff_coefficient"
+text = "T is proportional to 1.1 - C"
+
+[[sources]]
+citation = "Federal Aviation Agency (1970). Airport Drainage. Advisory Circular AC 150/5320-5B"
+access = "open"
+locator = "chapter 3, §6, figure 7 'Surface flow time curves', p. 11; table I, p. 10"
+url = "https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_150_5320-5B.pdf"
+
+[[variables]]
+name = "length_km"
+symbol = "L"
+unit = "km"
+kind = "real"
+description = "Overland (sheet) flow length, from the most remote point to a defined channel or the inlet."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000.0
+test_reason = "1,000 km, about the length of the Vistula, the longest river of Poland: no flow path of a Polish watershed is longer"
+
+[variables.typical]
+low = 0.04
+low_inclusive = true
+high = 0.7
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: overland segments of 0.0495 to 0.693 km"
+
+[[variables]]
+name = "slope_m_per_m"
+symbol = "S"
+unit = "m/m"
+kind = "real"
+description = "Slope of the surface the overland flow runs on."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1.0
+test_reason = "a mean slope of 1 m/m (45 degrees), steeper than any flow path or land surface of a watershed on average"
+
+[variables.typical]
+low = 0.005
+low_inclusive = true
+high = 0.19
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: overland slopes of 0.00594 to 0.1804 m/m"
+
+[[variables]]
+name = "runoff_coeff"
+symbol = "C"
+unit = "-"
+kind = "real"
+description = "Runoff coefficient of the rational method."
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+high = 1.0
+high_inclusive = true
+
+[variables.applicability]
+low = 0.0
+low_inclusive = true
+high = 0.95
+high_inclusive = true
+
+[variables.applicability.source]
+citation = "Federal Aviation Agency (1970). Airport Drainage. Advisory Circular AC 150/5320-5B"
+access = "open"
+locator = "table I, p. 10: the values of factor C, 0.00 to 0.95"
+url = "https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_150_5320-5B.pdf"
+
+[variables.typical]
+low = 0.05
+low_inclusive = true
+high = 0.95
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's catalog: the coefficients of table I of AC 150/5320-5B, which the option runoff_coeff of tc faa quotes, without its 0.00"
+access = "open"
+locator = "table I, p. 10: moderately pervious soils 0.05-0.20 to watertight roofs 0.75-0.95"
+
+[[constants]]
+name = "faa_coefficient"
+value = 1.8
+unit = "min ft^-0.5 %^(1/3)"
+symbol = "1.8"
+
+[constants.source]
+citation = "Federal Aviation Agency (1970). Airport Drainage. Advisory Circular AC 150/5320-5B"
+access = "open"
+locator = "figure 7, p. 11"
+url = "https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_150_5320-5B.pdf"
+
+[[constants]]
+name = "c_offset"
+value = 1.1
+unit = "-"
+symbol = "1.1"
+
+[constants.source]
+citation = "Federal Aviation Agency (1970). Airport Drainage. Advisory Circular AC 150/5320-5B"
+access = "open"
+locator = "figure 7, p. 11"
+url = "https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_150_5320-5B.pdf"
+
+[[constants]]
+name = "percent"
+value = 100.0
+unit = "% per m/m"
+symbol = "100"
+
+[constants.source]
+citation = "BIPM (2019). The International System of Units (SI), 9th edition, version 4.01"
+access = "open"
+locator = "section 5.4.7: the symbol % (percent) is the number 0.01"
+url = "https://www.bipm.org/documents/20126/41483022/SI-Brochure-9-EN.pdf"
+
+[[outputs]]
+name = "tc_min"
+unit = "min"
+kind = "real"
+symbol = "t_c"
+description = "Time of concentration."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "range cases slope_m_per_m-physical_low_*: T grows as S^(-1/3) when S tends to 0 and stays finite; S = 0 is refused"
+
+[[oracles]]
+kind = "exact"
+description = "the SI form with the unrounded constant 1.8 (1000/0.3048)^0.5 / 100^(1/3), evaluated with the decimal module at 50 digits"
+test = "tests/unit/test_formulas_tc.py (limit decimal)"
+conventions = []

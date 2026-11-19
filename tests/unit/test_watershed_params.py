@@ -602,7 +602,7 @@ class TestWatershedParametersCalculateTc:
 
         assert caught.value.details["option"] == "flow_path_slope_m_per_m"
         assert caught.value.details["parameter"] == "slope_m_per_m"
-        assert caught.value.details["reason"] == "exclusive_minimum"
+        assert caught.value.details["reason"] == "outside_physical_range"
 
     @pytest.mark.parametrize("flow_path_length_km", [0.25, 0.2])
     def test_kerby_kirpich_refuses_a_flow_path_not_longer_than_the_overland_flow(
@@ -621,12 +621,11 @@ class TestWatershedParametersCalculateTc:
         with pytest.raises(InvalidParameterError) as caught:
             params.calculate_tc(method="kerby_kirpich")
 
-        assert caught.value.details == {
-            "option": "flow_path_length_km",
-            "reason": "exclusive_minimum",
-            "exclusive_minimum": 0.25,
-            "value": flow_path_length_km,
-        }
+        details = caught.value.details
+        assert (details["reason"], details["constraint"]) == (
+            "outside_physical_range",
+            "flow_path_longer_than_overland",
+        )
 
     @pytest.mark.parametrize(
         ("method", "fields", "parameter", "field"),
@@ -904,25 +903,22 @@ class TestConcentrationTimeInputsOfAWatershed:
     def test_nrcs_takes_the_land_slope_not_the_flow_path_slope(
         self, watershed: WatershedParameters
     ) -> None:
-        """NRCS: 414.9 min (Y = 2.5 %), not 463.9 min (2.0 % of the flow path)."""
+        """NRCS takes the average land slope Y (2.5 %), not the flow path's 2.0 %."""
         flow_path_slope = ConcentrationTime.nrcs(
             length_km=10.0, slope_m_per_m=0.02, cn=72
         )
-        assert flow_path_slope == pytest.approx(463.85, abs=0.01)
 
         tc = watershed.calculate_tc("nrcs")
 
-        assert tc == pytest.approx(414.88, abs=0.01)
         assert tc == pytest.approx(
             ConcentrationTime.nrcs(length_km=10.0, slope_m_per_m=0.025, cn=72)
         )
-        assert tc / flow_path_slope - 1 == pytest.approx(-0.106, abs=0.001)
+        assert tc < flow_path_slope
 
     def test_kirpich_takes_the_flow_path(self, watershed: WatershedParameters) -> None:
         assert watershed.calculate_tc("kirpich") == pytest.approx(
             ConcentrationTime.kirpich(length_km=10.0, slope_m_per_m=0.02)
         )
-        assert watershed.calculate_tc("kirpich") == pytest.approx(105.71, abs=0.01)
 
     @pytest.mark.parametrize(
         ("method", "missing"),

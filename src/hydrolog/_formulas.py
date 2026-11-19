@@ -12,7 +12,8 @@ and leaves its checks to that module (CMP-3.5) through the two calls of this one
 into :class:`~hydrolog.exceptions.InvalidParameterError` (code ``validation_error``,
 ``details.reason`` of the standard: ``outside_physical_range``,
 ``precondition_failed``, ``invalid_type``, ``invalid_shape`` or ``invalid_choice``,
-``details.option`` the input it names), and issues each notice as a warning of the
+``details.option`` the input it names, for a precondition the input of
+:data:`CONSTRAINT_OPTIONS`), and issues each notice as a warning of the
 library. The standard's notice ``outside_applicability`` (CMP-3.3) is issued as
 Hydrolog's :class:`~hydrolog._warnings.OutsideTypicalRange`, code
 ``outside_typical_range``, whose ``method`` is the name of the spec and whose
@@ -32,6 +33,7 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Final, cast
 
 from hydrolog._formula_versions import record
@@ -48,6 +50,7 @@ from hydrolog.nogat_formulas import (
 )
 
 __all__ = [
+    "CONSTRAINT_OPTIONS",
     "DELEGATED",
     "ERRORS",
     "FORMULA_MODULES",
@@ -60,6 +63,13 @@ __all__ = [
 FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.runoff.scs_cn",
     "hydrolog.runoff.cn_lookup",
+    "hydrolog.time.concentration",
+    "hydrolog.morphometry.profile",
+    "hydrolog.runoff.nash_iuh",
+    "hydrolog.runoff.unit_hydrograph",
+    "hydrolog.runoff.snyder_uh",
+    "hydrolog.runoff.clark_iuh",
+    "hydrolog.runoff.convolution",
     "hydrolog.statistics.meteo_spi",
     "hydrolog.statistics.meteo_temperature",
     "hydrolog.statistics.meteo_spells",
@@ -72,8 +82,28 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
 """The modules whose ``SPECS`` (and ``TIER_B``) declare Hydrolog's formulas, in the
 order of ``docs/FORMULAS.md``."""
 
-DELEGATED: Final[tuple[Delegated, ...]] = ()
+DELEGATED: Final[tuple[Delegated, ...]] = (
+    Delegated(
+        name="nash_shape_root",
+        library="scipy.optimize.brentq",
+        versions="scipy>=1.10 (1.18.1 locked)",
+        smoke_case="the root N of f(N) = (N-1)^N e^-(N-1) / Gamma(N) = f(2.55) on "
+        "[1.1, 20] with xtol 1e-6 is 2.55 within 1e-6 (spec lutz)",
+        test="tests/unit/test_formulas_lutz.py::"
+        "test_the_delegated_root_finder_finds_a_known_root",
+    ),
+)
 """Computations delegated to third-party libraries (CMP-1.2)."""
+
+CONSTRAINT_OPTIONS: Final[Mapping[tuple[str, str], str]] = MappingProxyType(
+    {
+        ("snyder_shape", "root_bracketed"): "peak_discharge_m3s",
+        ("clark", "step_stable"): "timestep_min",
+    }
+)
+"""The input a precondition is about, by spec and constraint: its refusal names it in
+``details.option`` as the refusal of an input does, so that a command can name its
+option."""
 
 
 class _HydrologErrors:
@@ -82,6 +112,9 @@ class _HydrologErrors:
     def validation(self, message: str, details: dict[str, object]) -> Exception:
         """Return an ``InvalidParameterError`` whose ``option`` is the input."""
         variable = details.get("variable")
+        if not isinstance(variable, str):
+            subject = (details.get("formula"), details.get("constraint"))
+            variable = CONSTRAINT_OPTIONS.get(cast("tuple[str, str]", subject))
         named = {"option": variable} if isinstance(variable, str) else {}
         return InvalidParameterError(message, details={**details, **named})
 

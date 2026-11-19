@@ -86,7 +86,7 @@ def test_a_report_goes_as_its_text_and_the_context_of_the_view(
     seed_hydrogram(tab)
     tab.open("#hydrogram")
     page = tab.page
-    expect(page.locator(READY)).to_contain_text("57,88")
+    expect(page.locator(READY)).to_contain_text("57,90")
     version = page.request.get(gui_server.url("api/session")).json()["version"]
 
     found = open_dialog(page)

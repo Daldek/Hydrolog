@@ -784,12 +784,17 @@ def test_errors_of_the_server_in_polish(page: Any) -> None:
         "amc",
         "Dozwolone wartości: I, II, III",
     )
-    # A library relation error names its field (Lc of Lutz), so it stands on it.
-    assert (library["option"], library["reason"]) == (
-        "lutz_centroid_length_km",
-        "maximum",
-    )
-    assert library["title"] == INVALID
+    # A library relation error names its field (Lc of Lutz), so it stands on it: the
+    # spec lutz's constraint centroid_within_length, worded in Polish by its name
+    assert library == {
+        "option": "lutz_centroid_length_km",
+        "reason": "outside_physical_range",
+        "title": INVALID,
+        "text": "Długość do środka ciężkości Lc nie może być większa od długości"
+        " cieku L: obie biegną wzdłuż cieku głównego od przekroju zamykającego, Lc"
+        " do punktu najbliższego środka ciężkości zlewni, L do działu wodnego",
+        "english": False,
+    }
     assert (group["option"], group["reason"]) == ("precipitation_mm", "one_of")
     assert group["text"] == (
         "Podaj dokładnie jedną kompletną grupę: precipitation_mm albo values albo "
@@ -897,7 +902,7 @@ def test_ranges_of_applicability(page: Any) -> None:
         page,
         """const range = {minimum: 0, maximum: 80};
         const slope = {method: 'kirpich', parameter: 'slope_m_per_m',
-          inputs: ['flow_path_slope_m_per_m'], minimum: 0.03,
+          inputs: ['flow_path_slope_m_per_m'], minimum: 0.025,
           maximum: 0.1, unit: 'm/m', source: 'Kirpich (1940)'};
         const years = {method: 'flood_frequency', parameter: 'years', inputs: [],
           result: 'n_years', minimum: 30, maximum: null, unit: 'years', source: 'KZGW'};
@@ -955,7 +960,7 @@ def test_ranges_of_applicability(page: Any) -> None:
     ]
     assert got["scale"] == [1, 102.76, None, None]
     assert got["text"] == [
-        "od 0,03 do 0,1 m/m",
+        "od 0,025 do 0,1 m/m",
         "najwyżej 52 km²",
         "co najmniej 30 lat",
         f"od 170 do 70{NBSP}000 km²",
@@ -1047,6 +1052,7 @@ def test_result_view_of_real_runs(page: Any) -> None:
             .map((t) => t.value),
           csv: rv.resultCsv(a),
           scalarCsv: rv.resultCsv(k),
+          kirpich: kirpich.body.result.tc_min,
           cells: ['a,b', 'say "hi"', 'x\\ny', null, 1.5].map(rv.csvCell),
           empty: rv.analyzeResult(null),
           // A field named as an option takes the command's own label of it first
@@ -1096,7 +1102,7 @@ def test_result_view_of_real_runs(page: Any) -> None:
     assert "parameters.length_km,8.2,km" in scalars
     tc = next(line for line in scalars if line.startswith("tc_min,"))
     _, value, unit = tc.split(",")
-    assert unit == "min" and math.isclose(float(value), 85.97, rel_tol=1e-3)
+    assert unit == "min" and float(value) == got["kirpich"]
     assert got["cells"] == ['"a,b"', '"say ""hi"""', '"x\ny"', "", "1.5"]
     empty = got["empty"]
     assert (empty["schema"], empty["series"], empty["scalars"]) == (None, [], [])

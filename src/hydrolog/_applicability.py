@@ -46,4 +46,226 @@ APPLICABILITY: Final[tuple[Applicability, ...]] = (
             "15: eqs. 15-16 applicable in the range 55 <= CN <= 95"
         ),
     ),
+    Applicability(
+        method="kirpich",
+        parameter="length_km",
+        minimum=0.10668,
+        maximum=1.2192,
+        unit="km",
+        source=(
+            "Mota, A.A. and Kobiyama, M. (2015). Reconsiderações sobre a fórmula de"
+            " Kirpich para o cálculo de tempo de concentração. Revista Brasileira "
+            "de Recursos Hídricos 20(1), 55-59, p. 58: the data of Kirpich (1940), "
+            "table 1, give the range of the formula, L between 350 and 4,000 ft"
+        ),
+    ),
+    Applicability(
+        method="kirpich",
+        parameter="slope_m_per_m",
+        minimum=0.025,
+        maximum=0.1,
+        unit="m/m",
+        source=(
+            "Mota, A.A. and Kobiyama, M. (2015). Reconsiderações sobre a fórmula de"
+            " Kirpich para o cálculo de tempo de concentração. Revista Brasileira "
+            "de Recursos Hídricos 20(1), 55-59, p. 58: the data of Kirpich (1940), "
+            "table 1, give the range of the formula, S from 0.025 to 0.1"
+        ),
+    ),
+    Applicability(
+        method="nrcs",
+        parameter="cn",
+        minimum=50.0,
+        maximum=95.0,
+        unit="-",
+        source=(
+            "USDA-NRCS (2010). National Engineering Handbook, Part 630 Hydrology, "
+            "Chapter 15: Time of Concentration (210-VI-NEH, May 2010), p. 15-6: a "
+            "CN of less than 50, or greater than 95 should not be used in the "
+            "solution of equations 15-4a and 15-4b (Mockus 1961)"
+        ),
+    ),
+    Applicability(
+        method="giandotti",
+        parameter="area_km2",
+        minimum=170.0,
+        maximum=70000.0,
+        unit="km2",
+        source=(
+            "Almeida, I.K., Almeida, A.K., Anache, J.A.A., Steffen, J.L. and Alves "
+            "Sobrinho, T. (2014). Estimation on time of concentration of overland "
+            "flow in watersheds: a review. Geociências 33(4), 661-671, table 1, "
+            "Giandotti: basins of central and northern Italy, 170-70,000 km2 (after"
+            " Giandotti 1940, Preti et al. 2011, Radice et al. 2012)"
+        ),
+    ),
+    Applicability(
+        method="faa",
+        parameter="runoff_coeff",
+        minimum=0.0,
+        maximum=0.95,
+        unit="-",
+        source=(
+            "Federal Aviation Agency (1970). Airport Drainage. Advisory Circular AC"
+            " 150/5320-5B, table I, p. 10: the values of factor C, 0.00 to 0.95"
+        ),
+    ),
+    Applicability(
+        method="kerby",
+        parameter="length_km",
+        minimum=0.0,
+        maximum=0.366,
+        unit="km",
+        source=(
+            "Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, "
+            "C.A. (2005). Time-parameter estimation for applicable Texas "
+            "watersheds. TxDOT Research Report 0-4696-2, Lamar University, "
+            "supplement, p. 29: in the development of Kerby's equation the length "
+            "of overland flow was as much as about 1,200 feet (366 meters), an "
+            "upper limit"
+        ),
+    ),
+    Applicability(
+        method="kerby",
+        parameter="slope_m_per_m",
+        minimum=0.0,
+        maximum=0.01,
+        unit="m/m",
+        source=(
+            "Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, "
+            "C.A. (2005). Time-parameter estimation for applicable Texas "
+            "watersheds. TxDOT Research Report 0-4696-2, Lamar University, p. 5: "
+            "the watersheds of Kerby (1959) have dimensionless slopes less than "
+            "0.01"
+        ),
+    ),
+    Applicability(
+        method="kerby",
+        parameter="retardance",
+        minimum=0.02,
+        maximum=0.8,
+        unit="-",
+        source=(
+            "Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, "
+            "C.A. (2005). Time-parameter estimation for applicable Texas "
+            "watersheds. TxDOT Research Report 0-4696-2, Lamar University, "
+            "supplement, p. 29: Kerby's table of the retardance N, pavement 0.02 to"
+            " dense grass, coniferous forest or deciduous forest with deep litter "
+            "0.80"
+        ),
+    ),
+    Applicability(
+        method="kerby_kirpich",
+        parameter="overland_length_km",
+        minimum=0.0,
+        maximum=0.366,
+        unit="km",
+        source=(
+            "Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, "
+            "C.A. (2005). Time-parameter estimation for applicable Texas "
+            "watersheds. TxDOT Research Report 0-4696-2, Lamar University, "
+            "supplement, p. 29: in the development of Kerby's equation the length "
+            "of overland flow was as much as about 1,200 feet (366 meters), an "
+            "upper limit"
+        ),
+    ),
+    Applicability(
+        method="kerby_kirpich",
+        parameter="retardance",
+        minimum=0.02,
+        maximum=0.8,
+        unit="-",
+        source=(
+            "Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, "
+            "C.A. (2005). Time-parameter estimation for applicable Texas "
+            "watersheds. TxDOT Research Report 0-4696-2, Lamar University, "
+            "supplement, p. 29: Kerby's table of the retardance N, pavement 0.02 to"
+            " dense grass, coniferous forest or deciduous forest with deep litter "
+            "0.80"
+        ),
+    ),
+    Applicability(
+        method="kerby_kirpich",
+        parameter="flow_path_length_km",
+        minimum=1.6,
+        maximum=80.0,
+        unit="km",
+        source=(
+            "Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, "
+            "C.A. (2005). Time-parameter estimation for applicable Texas "
+            "watersheds. TxDOT Research Report 0-4696-2, Lamar University, "
+            "supplement, p. 29: main channel lengths of the 92 Texas watersheds "
+            "approximately 1 to 50 miles, from the outlet to the divide"
+        ),
+    ),
+    Applicability(
+        method="kerby_kirpich",
+        parameter="flow_path_slope_m_per_m",
+        minimum=0.002,
+        maximum=0.02,
+        unit="m/m",
+        source=(
+            "Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, "
+            "C.A. (2005). Time-parameter estimation for applicable Texas "
+            "watersheds. TxDOT Research Report 0-4696-2, Lamar University, "
+            "supplement, p. 29: dimensionless main channel slopes approximately "
+            "0.002 to 0.02, from the divide to the outlet"
+        ),
+    ),
+    Applicability(
+        method="scs",
+        parameter="area_km2",
+        minimum=0.0,
+        maximum=51.8,
+        unit="km2",
+        source=(
+            "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, "
+            "Chapter 16: Hydrographs (210-VI-NEH, March 2007), p. 16-4: no subarea "
+            "to exceed 20 square miles (51.8 km2), the largest no more than 10 "
+            "times the smallest"
+        ),
+    ),
+    Applicability(
+        method="snyder",
+        parameter="area_km2",
+        minimum=30.0,
+        maximum=30000.0,
+        unit="km2",
+        source=(
+            "Rajagopalan, B. CVEN 5333 lecture notes, Unit Hydrographs, after Chow,"
+            " V.T., Maidment, D.R. and Mays, L.W. (1988), Applied Hydrology, "
+            "chapter 7, University of Colorado Boulder, p. 76: Snyder's watersheds "
+            "in the Appalachian Highlands, of 30 to 30,000 km2 (10 to 10,000 mi2)"
+        ),
+    ),
+    Applicability(
+        method="snyder",
+        parameter="ct",
+        minimum=1.35,
+        maximum=1.65,
+        unit="-",
+        source=(
+            "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów "
+            "maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni"
+            " kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja "
+            "ujednolicona), p. 90, eq. 6.5: Ct from 1.35 to 1.65 in SI units, 0.75 "
+            "times Snyder's 1.8 to 2.2"
+        ),
+    ),
+    Applicability(
+        method="snyder",
+        parameter="cp",
+        minimum=0.4,
+        maximum=0.8,
+        unit="-",
+        source=(
+            "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów "
+            "maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni"
+            " kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja "
+            "ujednolicona); and USACE-HEC (2000). Hydrologic Modeling System "
+            "HEC-HMS, Technical Reference Manual (CPD-74B, March 2000), KZGW 2017, "
+            "annex 2, p. 91, eq. 6.7: Cp from 0.4 to 0.8; HEC-HMS 2000, Snyder's "
+            "unit hydrograph model, p. 54: 0.4 to 0.8"
+        ),
+    ),
 )

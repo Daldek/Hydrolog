@@ -51,6 +51,7 @@ export const hydrogram = {
     channel_length_km: { label: "Długość cieku głównego" },
     flow_path_length_km: { label: "Długość najdłuższej drogi spływu", symbol: "L" },
     flow_path_slope_m_per_m: { label: "Spadek najdłuższej drogi spływu", symbol: "S" },
+    flow_path_equal_area_slope_m_per_m: { label: "Spadek wyrównany najdłuższej drogi spływu", symbol: "Jg" },
     Lc_km: { label: "Długość do środka ciężkości", symbol: "Lc" },
     manning_n: { label: "Szorstkość koryta", symbol: "n" },
     forest_pct: { label: "Udział lasów" },
@@ -239,7 +240,7 @@ export const hydrogram = {
     nashSource: "Parametry kaskady",
     nashSources: { lutz: "Metoda Lutza", given: "Podane n i K" },
     lutzNote:
-      "Lutz w tym samym obliczeniu (`hydrograph generate`, `nash_estimation` = lutz): n i K z długości i spadku najdłuższej drogi spływu (krok 1) oraz Lc, n Manninga, lasów i zabudowy (powyżej); tc nie jest używany.",
+      "Lutz w tym samym obliczeniu (`hydrograph generate`, `nash_estimation` = lutz): n i K z długości najdłuższej drogi spływu i jej spadku wyrównanego Jg (krok 1) oraz Lc, n Manninga, lasów i zabudowy (powyżej); tc nie jest używany. Jg to spadek prostej z ujścia, nad i pod którą pola profilu podłużnego drogi spływu są równe (KZGW 2017, zał. 2, s. 97); spadek między końcami drogi go nie zastępuje.",
     lutzPending: "z obliczenia (Lutz)",
     givenNote: "n i K skalibrowane albo z innego źródła; typowo {ranges}.",
     givenNotePlain: "n i K skalibrowane albo z innego źródła.",

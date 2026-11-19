@@ -250,11 +250,11 @@ class TestCatalogDocument:
                 "slope_m_per_m",
                 {
                     "inputs": ["slope_m_per_m"],
-                    "minimum": 0.03,
+                    "minimum": 0.025,
                     "maximum": 0.1,
                     "unit": "m/m",
                 },
-                "Kirpich (1940)",
+                "Mota",
             ),
             # On a watershed the inputs are its fields: the one the method's source
             # defines
@@ -264,11 +264,11 @@ class TestCatalogDocument:
                 "slope_m_per_m",
                 {
                     "inputs": ["flow_path_slope_m_per_m"],
-                    "minimum": 0.03,
+                    "minimum": 0.025,
                     "maximum": 0.1,
                     "unit": "m/m",
                 },
-                "Kirpich (1940)",
+                "Mota",
             ),
             (
                 "tc watershed",

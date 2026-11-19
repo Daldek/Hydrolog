@@ -1542,8 +1542,8 @@ COMMANDS: tuple[Command, ...] = (
                     },
                     {
                         "id": "B",
-                        "peak_m3s": 1.191303,
-                        "parameters": {"total_mm": 30.0, "tc_min": 44.70827},
+                        "peak_m3s": 1.192943,
+                        "parameters": {"total_mm": 30.0, "tc_min": 44.64767},
                     },
                     {
                         "id": "R1",
@@ -1555,7 +1555,7 @@ COMMANDS: tuple[Command, ...] = (
                     {
                         "id": "J1",
                         "type": "junction",
-                        "peak_m3s": 13.621908,
+                        "peak_m3s": 13.621164,
                         "time_to_peak_min": 120.0,
                         "times_min": [0.0, 5.0, 10.0],
                         "discharge_m3s": [0.0, 0.0, 0.0],

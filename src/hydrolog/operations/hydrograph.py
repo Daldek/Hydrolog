@@ -64,25 +64,27 @@ NASH_ESTIMATIONS: tuple[str, ...] = get_args(NashEstimation)
 
 _TC_MODELS = ("scs", "clark")
 
-# The arguments of the unit hydrographs and the options of the command they come
+# The inputs of the unit hydrographs' specs and the options of the command they come
 # from: errors and typical-range notices name the option
 _MODEL_OPTIONS: dict[str, dict[str, str]] = {
     "nash": {"n": "nash_n", "k_min": "nash_k_min"},
     "snyder": {
-        "L_km": "snyder_length_km",
-        "Lc_km": "snyder_centroid_length_km",
+        "length_km": "snyder_length_km",
+        "centroid_length_km": "snyder_centroid_length_km",
         "ct": "snyder_ct",
         "cp": "snyder_cp",
+        "duration_min": "timestep_min",
+        "peak_discharge_m3s": "snyder_cp",
     },
 }
 
 
 def _model_options(model: str, clark_r_tc_ratio: float | None) -> dict[str, str]:
-    """Argument of the unit hydrograph of ``model`` to the option it comes from."""
+    """Input of the unit hydrograph of ``model`` to the option it comes from."""
     if model == "clark":
-        # R/tc is checked from R: the option that gave R
+        # R and R/tc are named by the option that gave R; D is the time step
         given = "clark_r_min" if clark_r_tc_ratio is None else "clark_r_tc_ratio"
-        return {"r_tc_ratio": given}
+        return {"r_tc_ratio": given, "r_min": given, "duration_min": "timestep_min"}
     return _MODEL_OPTIONS.get(model, {})
 
 
@@ -211,8 +213,10 @@ class HydrographGenerateResult(JsonResultMixin):
         Time to peak of the unit hydrograph [min]. For the ``snyder`` model it is
         tpR of the unit hydrograph for the duration of the time step.
     uh_peak_discharge_m3s_per_mm : float
-        Peak ordinate of the unit hydrograph [m3/s per mm]. For the ``snyder``
-        model the unit hydrograph is the one for the duration of the time step.
+        Peak of the unit hydrograph [m3/s per mm]: its largest ordinate for
+        ``nash``, ``clark`` and ``snyder`` (for ``snyder`` the unit hydrograph is the
+        one for the duration of the time step), and for ``scs`` the formula's qp of
+        the duration of the time step (spec ``scs``).
     timestep_min : float
         Time step [min].
     duration_min : float
@@ -232,9 +236,12 @@ class HydrographGenerateResult(JsonResultMixin):
     uh_discharge_m3s_per_mm : numpy.ndarray
         Ordinates of that unit hydrograph [m3/s per mm]: ``discharge_m3s`` is the
         discrete convolution of ``effective_precipitation_mm`` with them. Their
-        largest value is ``uh_peak_discharge_m3s_per_mm`` at
-        ``uh_time_to_peak_min`` for ``nash`` and ``clark``; the ``scs`` and
-        ``snyder`` peak is the analytic one, which may fall between two ordinates.
+        largest value is ``uh_peak_discharge_m3s_per_mm`` for ``nash``, ``clark``
+        and ``snyder``, at ``uh_time_to_peak_min`` for ``nash`` and ``clark``; the
+        ``snyder`` time to peak tpR and the ``scs`` time to peak and peak are the
+        formulas' values, which may fall between two ordinates (the ``scs`` qp then
+        exceeds the largest ordinate by up to 1.7 %, and by much more when the
+        step was computed on sub-steps, notice ``uh_substeps``).
     """
 
     peak_discharge_m3s: float
@@ -749,9 +756,10 @@ def hydrograph_generate(
         ``lutz`` is the Lutz method (Lutz 1984, after KZGW 2017,
         :meth:`~hydrolog.runoff.NashIUH.from_lutz`) with the fields
         :meth:`~hydrolog.morphometry.WatershedParameters.nash_parameters` takes:
-        L and J of the longest flow path (``flow_path_length_km``,
-        ``flow_path_slope_m_per_m``), ``Lc_km``, ``manning_n``, ``urban_pct`` and
-        ``forest_pct`` (0 when not set). The estimate is not checked against the
+        the length L of the longest flow path (``flow_path_length_km``), the
+        equal-area slope Jg of its profile (``flow_path_equal_area_slope_m_per_m``),
+        ``Lc_km``, ``manning_n``, ``urban_pct`` and ``forest_pct`` (0 when not
+        set). The estimate is not checked against the
         typical ranges of given n and K; the area is checked against Lutz's.
     clark_r_min : float, optional
         Clark storage constant R [min]; exactly one of ``clark_r_min`` and
