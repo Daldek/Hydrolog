@@ -93,6 +93,7 @@ STEP_ONE = [
     "channel_length_km",
     "flow_path_length_km",
     "flow_path_slope_m_per_m",
+    "flow_path_equal_area_slope_m_per_m",
     "cn",
 ]
 """The fields of the watershed in step 1, which a run sends when they hold a value."""
@@ -125,20 +126,22 @@ LUTZ_OPTIONS = {
     "area_km2": 37.22,
     "lutz_length_km": 15.88,
     "lutz_centroid_length_km": 6.76,
-    "lutz_slope_m_per_m": 0.0114,
+    "lutz_slope_m_per_m": 0.00848,
     "lutz_manning_n": 0.035,
     "lutz_forest_pct": 57.4,
     "lutz_urban_pct": 1.0,
     "timestep_min": 10,
 }
-"""The example's Nash by Lutz as ``uh nash`` takes it (L and J of the longest flow path,
-which ``nash_estimation`` reads): the first of the two runs the page made before."""
+"""The example's Nash by Lutz as ``uh nash`` takes it (L of the longest flow path and J
+the equal-area slope of its profile, which ``nash_estimation`` reads): the first of the
+two runs the page made before."""
 # What the page writes in the KPI tiles (Qmax, time to peak, volume) for the mockup's
 # runs (its #hg-data, 6 tc methods x AMC I-III x 4 models), by (model, tc method, AMC),
 # as Hydrolog computes them: tc from the inputs each method's source defines (Kirpich
 # and NRCS from the longest flow path) with the sources' own constants in their units,
-# Snyder's peak since its unit hydrograph peaks at qpR, Nash by Lutz from L and J of the
-# longest flow path (the mockup's tc and Snyder's 29,14 came before those changes).
+# Snyder's peak since its unit hydrograph peaks at qpR, Nash by Lutz from L of the
+# longest flow path and J the equal-area slope of its profile (ADR-0053; the mockup's
+# tc and Snyder's 29,14 came before those changes).
 MOCKUP = {
     ("scs", "kirpich", "II"): ("57,90", "6:40", "1 046 738"),
     ("scs", "nrcs", "II"): ("41,66", "9:00", "1 046 960"),
@@ -147,7 +150,7 @@ MOCKUP = {
     ("scs", "kirpich", "III"): ("111,13", "6:00", "2 112 838"),
     ("scs", "kirpich", "I"): ("12,19", "7:50", "193 991"),
     ("clark", "kirpich", "II"): ("52,76", "7:10", "1 046 551"),
-    ("nash", None, "II"): ("37,48", "9:10", "1 046 543"),
+    ("nash", None, "II"): ("34,42", "9:40", "1 046 543"),
     ("snyder", None, "II"): ("27,46", "11:00", "1 046 551"),
 }
 # Scroll containers that must not scroll sideways: the page and an open sheet.
@@ -432,16 +435,20 @@ def test_the_worked_example_shows_the_result_of_the_mockup(tab: Tab) -> None:
     assert needs.evaluate_all(
         "items => items.map((item) => item.closest('.frow').dataset.field)"
     ) == ["area_km2", "cn", "flow_path_length_km", "flow_path_slope_m_per_m"]
-    # The longest flow path's rows of step 1: its length in km, its slope in m/m with
-    # the slope in % beside it
+    # The longest flow path's rows of step 1: its length in km, its slopes in m/m with
+    # the slope in % beside each
     flow_path = page.locator(
         f'{LEFT} [data-step="watershed"] [data-field^="flow_path_"]'
     )
     expect(flow_path.locator("label")).to_contain_text(
-        ["Długość najdłuższej drogi spływu", "Spadek najdłuższej drogi spływu"]
+        [
+            "Długość najdłuższej drogi spływu",
+            "Spadek najdłuższej drogi spływu",
+            "Spadek wyrównany najdłuższej drogi spływu",
+        ]
     )
-    expect(flow_path.locator(".unit")).to_have_text(["km", "m/m"])
-    expect(flow_path.locator(".aux")).to_have_text("= 1,14 %")
+    expect(flow_path.locator(".unit")).to_have_text(["km", "m/m", "m/m"])
+    expect(flow_path.locator(".aux")).to_have_text(["= 1,14 %", "= 0,848 %"])
     expect(page.locator(f'{LEFT} [data-summary="ok"]')).to_have_text(
         "Model ma wszystkie potrzebne dane."
     )
@@ -581,7 +588,7 @@ def test_the_tc_method_amc_and_model_reproduce_the_mockups_runs(tab: Tab) -> Non
         choose(page, "hg-nash-source-label", "Podane n i K")
     given = asked.value.post_data_json
     assert isinstance(given, dict)
-    assert (given["nash_n"], given["nash_k_min"]) == (3.61, 92.13)
+    assert (given["nash_n"], given["nash_k_min"]) == (3.587, 104.3)
     assert "nash_estimation" not in given and given["watershed"] == SENT
     shows_peak(page, given)
 
@@ -656,13 +663,14 @@ def test_choosing_a_model_marks_the_fields_it_lacks(tab: Tab) -> None:
     invalid = page.locator(f'{LEFT} [aria-invalid="true"]')
     expect(invalid).to_have_count(0)
 
-    # Nash by Lutz reads L and J of the longest flow path, for which the channel the
-    # watershed gives does not stand in, then Lc and Manning's n: exactly those
+    # Nash by Lutz reads L of the longest flow path and Jg, the equal-area slope of its
+    # profile, for which the channel the watershed gives does not stand in, then Lc and
+    # Manning's n: exactly those
     choose(page, "hg-uh-label", "Nash")
     expect(invalid).to_have_count(4)
     assert invalid.evaluate_all(IDS) == [
         "hg-flow_path_length_km",
-        "hg-flow_path_slope_m_per_m",
+        "hg-flow_path_equal_area_slope_m_per_m",
         "hg-Lc_km",
         "hg-manning_n",
     ]
@@ -675,9 +683,9 @@ def test_choosing_a_model_marks_the_fields_it_lacks(tab: Tab) -> None:
     )
     missing = page.locator(f'{LEFT} [data-summary="missing"]')
     expect(missing).to_have_text(
-        "Brakuje: Długość najdłuższej drogi spływu (krok 1), Spadek najdłuższej drogi"
-        " spływu (krok 1), Długość do środka ciężkości (krok 3), Szorstkość koryta"
-        " (krok 3)"
+        "Brakuje: Długość najdłuższej drogi spływu (krok 1), Spadek wyrównany"
+        " najdłuższej drogi spływu (krok 1), Długość do środka ciężkości (krok 3),"
+        " Szorstkość koryta (krok 3)"
     )
     missing.get_by_role("button", name="Szorstkość koryta").click()
     expect(field(page, "manning_n")).to_be_focused()
@@ -707,11 +715,21 @@ def test_choosing_a_model_marks_the_fields_it_lacks(tab: Tab) -> None:
     ) == (15.88, 0.0114)
     shows_peak(page, sent)
 
-    # Back to Nash by Lutz: Lc and Manning's n are left; the fields of step 1 that Lutz
-    # reads say so, the channel's do not
+    # Back to Nash by Lutz: the slope between the ends of the flow path, now given, does
+    # not stand in for Jg, which is asked for with Lc and Manning's n
     choose(page, "hg-uh-label", "Nash")
-    expect(invalid).to_have_count(2)
-    assert invalid.evaluate_all(IDS) == ["hg-Lc_km", "hg-manning_n"]
+    expect(invalid).to_have_count(3)
+    assert invalid.evaluate_all(IDS) == [
+        "hg-flow_path_equal_area_slope_m_per_m",
+        "hg-Lc_km",
+        "hg-manning_n",
+    ]
+    expect(message(page, "flow_path_equal_area_slope_m_per_m")).to_have_text(
+        "Podaj wartość: potrzebna dla metody Lutza · required"
+    )
+    field(page, "flow_path_equal_area_slope_m_per_m").fill("0,00848")
+    # The fields of step 1 that Lutz reads say so, the end-point slope and the
+    # channel's do not
     needs = page.locator(f"{LEFT} .frow .need")
     expect(needs).to_have_text(
         [
@@ -723,7 +741,7 @@ def test_choosing_a_model_marks_the_fields_it_lacks(tab: Tab) -> None:
     )
     assert needs.evaluate_all(
         "items => items.map((item) => item.closest('.frow').dataset.field)"
-    ) == ["area_km2", "cn", "flow_path_length_km", "flow_path_slope_m_per_m"]
+    ) == ["area_km2", "cn", "flow_path_length_km", "flow_path_equal_area_slope_m_per_m"]
     # Lutz refuses a centroid farther than the flow path is long: said before any run
     before = len(runs.generate)
     field(page, "manning_n").fill("0,035")
@@ -1116,7 +1134,7 @@ def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
         "duration_min": "hietogram",
         "flow_path_length_km": "lutz",
         "Lc_km": "lutz",
-        "flow_path_slope_m_per_m": "lutz",
+        "flow_path_equal_area_slope_m_per_m": "lutz",
         "manning_n": "lutz",
     }
     assert got["given"] == {
@@ -1383,7 +1401,7 @@ def test_a_watershed_file_is_read_in_the_browser(tab: Tab, tmp_path: Path) -> No
     expect(field(page, "area_km2")).to_have_value("20,5")
     source = page.locator(f"{LEFT} .handoff")
     expect(source.locator("strong")).to_have_text("Z pliku: potok.json")
-    expect(source.locator(".muted")).to_have_text(re.compile(r"· 20 pól$"))
+    expect(source.locator(".muted")).to_have_text(re.compile(r"· 21 pól$"))
     shows_peak(page, {**KAMIENNIK, "watershed": {name: own[name] for name in STEP_ONE}})
     expect(page.locator(".crumb-context")).to_have_text("Potok testowy · p 1% · 12 h")
     assert "Lc_km" not in page.evaluate(STORED)["watershed"]

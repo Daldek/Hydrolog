@@ -100,7 +100,7 @@ export const options = {
   lutz_forest_pct: "Tereny leśne W",
   lutz_length_km: "Długość cieku L",
   lutz_manning_n: "Szorstkość koryta n_M",
-  lutz_slope_m_per_m: "Spadek cieku J",
+  lutz_slope_m_per_m: "Spadek wyrównany cieku Jg",
   lutz_urban_pct: "Tereny zurbanizowane U",
   main_stem: "Linia główna schematu",
   manning_n: "Szorstkość Manninga n",

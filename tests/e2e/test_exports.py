@@ -114,6 +114,7 @@ SENT = {
         "channel_length_km",
         "flow_path_length_km",
         "flow_path_slope_m_per_m",
+        "flow_path_equal_area_slope_m_per_m",
         "cn",
     ]
 }
@@ -1466,6 +1467,34 @@ def test_a_handoff_of_nash_by_lutz_carries_the_estimation_not_n_and_k(
         f"{minutes // 60}:{minutes % 60:02d}",
         f"{before['total_volume_m3']:,.0f}".replace(",", " "),
     )
+
+    # A hand-off of Nash by Lutz without Jg, the equal-area slope of the flow path's
+    # profile (Hydrograf's, which carries the slope between the path's ends only):
+    # the field is asked for and nothing runs, no estimate from that slope is shown
+    bare = copy.deepcopy(doc)
+    del bare["payload"]["nodes"][0]["watershed"]["flow_path_equal_area_slope_m_per_m"]
+    bare.pop("result", None)
+    valid(bare)
+    unsloped = tmp_path / "bez-jg.handoff.json"
+    unsloped.write_text(json.dumps(bare), encoding="utf-8")
+    requested: list[str] = []
+    page.on("request", lambda request: requested.append(request.url))
+    load_file(page, HG, unsloped)
+    expect(chosen).to_have_text("Metoda Lutza")
+    jg = page.locator("#hg-flow_path_equal_area_slope_m_per_m")
+    expect(jg).to_have_value("")
+    expect(jg).to_have_attribute("aria-invalid", "true")
+    expect(page.locator("#hg-flow_path_equal_area_slope_m_per_m-err")).to_have_text(
+        "Podaj wartość: potrzebna dla metody Lutza · required"
+    )
+    expect(page.locator("#hg-flow_path_slope_m_per_m")).to_have_value("0,0114")
+    expect(page.locator(BADGE)).to_have_text(
+        "Dane niepełne: flow_path_equal_area_slope_m_per_m"
+    )
+    expect(page.locator("#hg-nash_n")).to_have_value("")
+    expect(page.locator("#hg-nash_k_min")).to_have_value("")
+    page.wait_for_timeout(600)
+    assert [url for url in requested if RUN in url] == []
 
 
 def test_snyders_lengths_of_a_handoff_go_to_the_watersheds_fields(tab: Tab) -> None:

@@ -125,7 +125,10 @@ export const uhInfo = {
       },
       {
         symbol: "<math><mi>J</mi></math>",
-        text: "Lutz: średni spadek cieku głównego, czyli najdłuższej drogi spływu",
+        text:
+          "Lutz: spadek wyrównany J<sub>g</sub> cieku głównego, czyli najdłuższej drogi spływu: spadek prostej z " +
+          "przekroju, nad i pod którą pola profilu podłużnego są równe (KZGW 2017, zał. 2, s. 97), nie spadek " +
+          "między końcami drogi",
         unit: "m/m",
       },
       {
