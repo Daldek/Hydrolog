@@ -1,0 +1,149 @@
+schema = "nogat-formula-card/1"
+name = "coefficient_of_variation"
+title = "Coefficient of variation of a sample of a quantity with a true zero"
+function = "hydrolog.statistics.characteristic.coefficient_of_variation"
+family = "statistic"
+formula_version = 1
+status = "oracle only"
+equation = "Cv = s / mean with s = sqrt(sum((x - mean)**2) / (n - 1)) and mean = sum(x) / n"
+latex = "C_v = \\frac{s}{\\bar{x}},\\quad s = \\sqrt{\\frac{\\sum_i (x_i - \\bar{x})^2}{n - 1}},\\quad \\bar{x} = \\frac{1}{n}\\sum_i x_i"
+validation = "none: the definition of a sample statistic"
+conventions = ["a ratio scale: values not below zero, of a quantity with a true zero such as discharge (Dataplot); the coefficient of a stage above an arbitrary gauge zero or of a temperature in degrees Celsius changes with the datum and is not defined here for values below zero", "the divisor n - 1 of the standard deviation; the coefficient as a ratio", "the deviations from the mean, centred twice, on the sample divided by a power of two"]
+assumptions = []
+notices = []
+reference_cases = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_sample"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "the statistics run on the sample scaled by a power of two, so doubling or negating it changes no rounding; a result below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[properties.limits]]
+name = "exact_rational"
+text = "the coefficient of the definition in exact rational arithmetic"
+
+[[properties.limits]]
+name = "one_positive_value"
+text = "one positive value among n - 1 zeros has the largest coefficient of n values not below zero, sqrt(n)"
+
+[[properties.limits]]
+name = "equal_values"
+text = "equal positive values have no relative spread"
+
+[[sources]]
+citation = "NIST, Dataplot Reference Manual, vol. 2, Let Subcommands: COEFFICIENT OF VARIATION"
+access = "open"
+locator = "cv = s / mean; 'should typically only be used for data measured on a ratio scale'; 'if the mean value is near zero, the coefficient of variation is sensitive to small changes in the mean'"
+url = "https://www.itl.nist.gov/div898/software/dataplot/refman2/auxillar/coefvari.htm"
+
+[[sources]]
+citation = "NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology"
+access = "open"
+locator = "sect. 1.3.5.6, Measures of Scale: the standard deviation s = sqrt(sum((Y - mean)**2) / (N - 1))"
+url = "https://www.itl.nist.gov/div898/handbook/eda/section3/eda356.htm"
+
+[[variables]]
+name = "values"
+symbol = "x_i"
+unit = "m3/s"
+kind = "real_array"
+description = "The sample of a quantity with a true zero (a ratio scale), such as discharge: the values of a calendar month over the years."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river; the formula is homogeneous (its scaling), so the bound tests its arithmetic"
+
+[variables.typical]
+low = 4.93
+low_inclusive = true
+high = 96.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "IMGW-PIB, public hydrological data: codz_2010_01..12.csv, station 150160180 Kłodzko (Nysa Kłodzka)"
+access = "open"
+locator = "the daily discharges of the hydrological year 2010, 4.93 to 96.0 m3/s (tests/oracles/characteristic/imgw_150160180_codz_2010.csv)"
+url = "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/"
+
+[[constraints]]
+name = "enough_values"
+class = "precondition"
+text = "n >= 2"
+
+[constraints.source]
+citation = "NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology"
+access = "open"
+locator = "sect. 1.3.5.6: the divisor N - 1 of s needs two values"
+url = "https://www.itl.nist.gov/div898/handbook/eda/section3/eda356.htm"
+
+[[constraints]]
+name = "positive_mean"
+class = "precondition"
+text = "max(x) > 0, so that mean > 0"
+
+[constraints.source]
+citation = "NIST, Dataplot Reference Manual, vol. 2, Let Subcommands: COEFFICIENT OF VARIATION"
+access = "open"
+locator = "cv = s / mean; 'should typically only be used for data measured on a ratio scale'; 'if the mean value is near zero, the coefficient of variation is sensitive to small changes in the mean'"
+url = "https://www.itl.nist.gov/div898/software/dataplot/refman2/auxillar/coefvari.htm"
+
+[[outputs]]
+name = "cv"
+unit = "-"
+kind = "real"
+symbol = "C_v"
+description = "Coefficient of variation, a ratio (not in per cent)."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "constraint case positive_mean-violated: the mean 0 of zeros is refused before the division"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case values-nan_element: a gap is refused"
+
+[[traps]]
+name = "moment_cancellation"
+description = "Cancellation in moments computed as E[x^2] - E[x]^2."
+test = "limit exact_rational: a mean of 1e9 with a spread of 0.03"
+
+[[oracles]]
+kind = "exact"
+description = "the square of the coefficient in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_characteristic.py (limit exact_rational)"
+conventions = []
+
+[[oracles]]
+kind = "established"
+description = "scipy.stats.variation with ddof=1"
+test = "tests/unit/test_formulas_characteristic.py (test_the_estimators_are_numpys_and_scipys)"
+conventions = ["scipy.stats.variation(ddof=1) is std(ddof=1) / mean, the spec's"]

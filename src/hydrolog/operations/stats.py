@@ -780,7 +780,10 @@ def stats_daily(
 
     For every day of the hydrological year (1 = 1 November) gives the maximum, mean,
     median, minimum and number of observations over all years of the series
-    (:func:`hydrolog.statistics.calculate_daily_statistics`).
+    (:func:`hydrolog.statistics.calculate_daily_statistics`). The days are counted,
+    not dated: from 1 March a leap year's days are one higher than a common year's,
+    so a day after 28 February pools two calendar dates and day 366 holds the leap
+    years only.
 
     Parameters
     ----------
@@ -872,7 +875,9 @@ def stats_monthly(
         report removed missing values, months with a single value (they have no
         standard deviation, coefficient of variation, skewness or confidence
         interval: ``None`` in JSON), months with more values but all of one year
-        (no confidence interval), and numerical warnings.
+        (no confidence interval), and numerical warnings. A month with a value
+        below zero or with values all zero has no coefficient of variation
+        (``None``): it is defined for a quantity with a true zero.
 
     Raises
     ------

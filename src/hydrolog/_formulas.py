@@ -67,6 +67,8 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.statistics.events",
     "hydrolog.statistics.volumes",
     "hydrolog.statistics.baseflow",
+    "hydrolog.statistics.characteristic",
+    "hydrolog.statistics._hydrological_year",
 )
 """The modules whose ``SPECS`` (and ``TIER_B``) declare Hydrolog's formulas, in the
 order of ``docs/FORMULAS.md``."""
@@ -91,6 +93,16 @@ DELEGATED: Final[tuple[Delegated, ...]] = (
         "after 96 and 158 (spec lyne_hollick)",
         test="tests/unit/test_formulas_baseflow.py::"
         "test_the_delegated_recursion_is_the_first_pass_of_table_4",
+    ),
+    Delegated(
+        name="student_t_quantile",
+        library="scipy.stats.t.isf",
+        versions="scipy>=1.10 (1.18.1 locked)",
+        smoke_case="the upper quantile of the tail 0.025 with one degree of freedom "
+        "is tan(0.475 pi) = 12.7062047361747 within 1e-13 relative (spec "
+        "mean_interval_half_width)",
+        test="tests/unit/test_formulas_characteristic.py::"
+        "test_the_delegated_t_quantile_is_a_known_one",
     ),
 )
 """Computations delegated to third-party libraries (CMP-1.2)."""

@@ -22,6 +22,10 @@
 | [Baseflow of a daily series by the Lyne and Hollick filter (standard approach of Ladson et al. 2013)](#lyne_hollick) | `hydrolog.statistics.baseflow.lyne_hollick_filter` | referenced | 1 | not measured |
 | [Baseflow index: the volume of baseflow over the volume of flow](#baseflow_index) | `hydrolog.statistics.baseflow.baseflow_index` | referenced | 1 | not measured |
 | [Recession constant of the total flow: the median daily ratio of runs of falling flow](#recession_constant) | `hydrolog.statistics.baseflow.recession_ratio` | oracle only | 1 | not measured |
+| [Standard deviation of a sample, with the divisor n - 1](#sample_standard_deviation) | `hydrolog.statistics.characteristic.sample_standard_deviation` | referenced | 1 | not measured |
+| [Coefficient of variation of a sample of a quantity with a true zero](#coefficient_of_variation) | `hydrolog.statistics.characteristic.coefficient_of_variation` | oracle only | 1 | not measured |
+| [Fisher-Pearson coefficient of skewness g1 of a sample](#fisher_pearson_skewness) | `hydrolog.statistics.characteristic.fisher_pearson_skewness` | oracle only | 1 | not measured |
+| [Half-width of the Student t confidence interval of a mean of yearly means](#mean_interval_half_width) | `hydrolog.statistics.characteristic.mean_interval_half_width` | referenced | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
 ### Potential maximum retention S of the SCS curve number
@@ -1288,6 +1292,306 @@ None.
 
 **Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
 
+<a id="sample_standard_deviation"></a>
+### Standard deviation of a sample, with the divisor n - 1
+
+`hydrolog.statistics.characteristic.sample_standard_deviation` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+s = \sqrt{\frac{\sum_i (x_i - \bar{x})^2}{n - 1}},\quad \bar{x} = \frac{1}{n}\sum_i x_i
+$$
+
+Plain text: `s = sqrt(sum((x - mean)**2) / (n - 1)) with mean = sum(x) / n`
+
+**Sources**
+
+- NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology, sect. 1.3.5.6, Measures of Scale: the standard deviation s = sqrt(sum((Y - mean)**2) / (N - 1)) (open) <https://www.itl.nist.gov/div898/handbook/eda/section3/eda356.htm>
+- NIST Statistical Reference Datasets, Univariate Summary Statistics: NumAcc1 to NumAcc4 (Simon and Lesage 1989), certified values, sample standard deviation (denom. = n-1), exact (open) <https://www.itl.nist.gov/div898/strd/univ/homepage.html>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [4.93, 96.0]: IMGW-PIB, public hydrological data: codz_2010_01..12.csv, station 150160180 Kłodzko (Nysa Kłodzka), the daily discharges of the hydrological year 2010, 4.93 to 96.0 m3/s (tests/oracles/characteristic/imgw_150160180_codz_2010.csv) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 2 | NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology, sect. 1.3.5.6: the divisor N - 1 needs two values |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `std` | m3/s | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the divisor n - 1 (NIST sect. 1.3.5.6; numpy.std with ddof=1)
+- the sample in any unit; the standard deviation in its unit
+- the deviations from the mean, centred twice, on the sample divided by a power of two; never the sums of powers E[x**2] - E[x]**2
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: the definition of a sample statistic
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: limit equal_values: the square root at a variance of 0 is exactly 0
+- `gap_propagation`: type case values-nan_element: a gap is refused
+- `many_small_terms`: reference cases nist_strd_numacc2 to nist_strd_numacc4: 1001 values against the certified s
+- `moment_cancellation`: reference case nist_strd_numacc4: a mean of 1e7 with s = 0.1; limit exact_rational: a mean of 1e9 with a spread of 0.03
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_sample`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`std` e = 1.0)
+- limit `exact_rational`: the standard deviation of the definition in exact rational arithmetic
+- limit `equal_values`: equal values have no spread
+- symmetry `mirror`: the negated sample has the same standard deviation
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/characteristic-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the variance in exact rational arithmetic (fractions) (`tests/unit/test_formulas_characteristic.py (limit exact_rational)`)
+- established: numpy.std with ddof=1 (`tests/unit/test_formulas_characteristic.py (test_the_estimators_are_numpys_and_scipys)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="coefficient_of_variation"></a>
+### Coefficient of variation of a sample of a quantity with a true zero
+
+`hydrolog.statistics.characteristic.coefficient_of_variation` · family `statistic` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+C_v = \frac{s}{\bar{x}},\quad s = \sqrt{\frac{\sum_i (x_i - \bar{x})^2}{n - 1}},\quad \bar{x} = \frac{1}{n}\sum_i x_i
+$$
+
+Plain text: `Cv = s / mean with s = sqrt(sum((x - mean)**2) / (n - 1)) and mean = sum(x) / n`
+
+**Sources**
+
+- NIST, Dataplot Reference Manual, vol. 2, Let Subcommands: COEFFICIENT OF VARIATION, cv = s / mean; 'should typically only be used for data measured on a ratio scale'; 'if the mean value is near zero, the coefficient of variation is sensitive to small changes in the mean' (open) <https://www.itl.nist.gov/div898/software/dataplot/refman2/auxillar/coefvari.htm>
+- NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology, sect. 1.3.5.6, Measures of Scale: the standard deviation s = sqrt(sum((Y - mean)**2) / (N - 1)) (open) <https://www.itl.nist.gov/div898/handbook/eda/section3/eda356.htm>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $x_i$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (a million m3/s exceeds the discharge of every river; the formula is homogeneous (its scaling), so the bound tests its arithmetic) | unstated | [4.93, 96.0]: IMGW-PIB, public hydrological data: codz_2010_01..12.csv, station 150160180 Kłodzko (Nysa Kłodzka), the daily discharges of the hydrological year 2010, 4.93 to 96.0 m3/s (tests/oracles/characteristic/imgw_150160180_codz_2010.csv) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 2 | NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology, sect. 1.3.5.6: the divisor N - 1 of s needs two values |
+| `positive_mean` | precondition | max(x) > 0, so that mean > 0 | NIST, Dataplot Reference Manual, vol. 2, Let Subcommands: COEFFICIENT OF VARIATION, cv = s / mean; 'should typically only be used for data measured on a ratio scale'; 'if the mean value is near zero, the coefficient of variation is sensitive to small changes in the mean' |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `cv` | - | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- a ratio scale: values not below zero, of a quantity with a true zero such as discharge (Dataplot); the coefficient of a stage above an arbitrary gauge zero or of a temperature in degrees Celsius changes with the datum and is not defined here for values below zero
+- the divisor n - 1 of the standard deviation; the coefficient as a ratio
+- the deviations from the mean, centred twice, on the sample divided by a power of two
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: the definition of a sample statistic
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case positive_mean-violated: the mean 0 of zeros is refused before the division
+- `gap_propagation`: type case values-nan_element: a gap is refused
+- `moment_cancellation`: limit exact_rational: a mean of 1e9 with a spread of 0.03
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_sample`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (none)
+- limit `exact_rational`: the coefficient of the definition in exact rational arithmetic
+- limit `one_positive_value`: one positive value among n - 1 zeros has the largest coefficient of n values not below zero, sqrt(n)
+- limit `equal_values`: equal positive values have no relative spread
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the square of the coefficient in exact rational arithmetic (fractions) (`tests/unit/test_formulas_characteristic.py (limit exact_rational)`)
+- established: scipy.stats.variation with ddof=1 (`tests/unit/test_formulas_characteristic.py (test_the_estimators_are_numpys_and_scipys)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="fisher_pearson_skewness"></a>
+### Fisher-Pearson coefficient of skewness g1 of a sample
+
+`hydrolog.statistics.characteristic.fisher_pearson_skewness` · family `statistic` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+g_1 = \frac{m_3}{m_2^{3/2}},\quad m_k = \frac{1}{n}\sum_i (x_i - \bar{x})^k
+$$
+
+Plain text: `g1 = m3 / m2**1.5 with m_k = sum((x - mean)**k) / n`
+
+**Sources**
+
+- NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology, sect. 1.3.5.11, Measures of Skewness and Kurtosis: the Fisher-Pearson coefficient of skewness g1 = sum((Y - mean)**3) / N / s**3, s with the divisor N (open) <https://www.itl.nist.gov/div898/handbook/eda/section3/eda35b.htm>
+- Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.skew with bias=True, its default: the Fisher-Pearson coefficient g1 = m3 / m2**1.5 (open) <https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.skew.html>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [4.93, 96.0]: IMGW-PIB, public hydrological data: codz_2010_01..12.csv, station 150160180 Kłodzko (Nysa Kłodzka), the daily discharges of the hydrological year 2010, 4.93 to 96.0 m3/s (tests/oracles/characteristic/imgw_150160180_codz_2010.csv) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 2 | NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology, sect. 1.3.5.11: a sample of one value has no s |
+| `values_not_all_equal` | precondition | min(x) < max(x) | NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology, sect. 1.3.5.11: g1 divides by s**3, 0 for equal values |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `skewness` | - | real | (-inf, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the Fisher-Pearson coefficient g1 of NIST sect. 1.3.5.11, the moments with the divisor n (scipy.stats.skew with bias=True), not the adjusted G1 = sqrt(n (n - 1)) / (n - 2) g1 of flood frequency analysis (Bulletin 17B)
+- the sample in any unit; the skewness without one
+- the deviations from the mean, centred twice, on the sample divided by a power of two
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: the definition of a sample statistic
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case values_not_all_equal-violated: m2 = 0 of equal values is refused before the division by m2**1.5
+- `gap_propagation`: type case values-nan_element: a gap is refused
+- `moment_cancellation`: limit exact_rational: a mean of 1e9 with a spread of 0.03
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_sample`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (none)
+- limit `exact_rational`: the skewness of the definition in exact rational arithmetic
+- limit `symmetric_sample`: a sample symmetric about its mean has no skewness
+- limit `one_positive_value`: one value apart from n - 1 equal ones has the largest skewness of n values, (n - 2) / sqrt(n - 1)
+- symmetry `mirror`: the negated sample has the negated skewness
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the skewness in exact rational arithmetic (fractions) (`tests/unit/test_formulas_characteristic.py (limit exact_rational)`)
+- established: scipy.stats.skew with bias=True (`tests/unit/test_formulas_characteristic.py (test_the_estimators_are_numpys_and_scipys)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="mean_interval_half_width"></a>
+### Half-width of the Student t confidence interval of a mean of yearly means
+
+`hydrolog.statistics.characteristic.mean_interval_half_width` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+h = t_{1 - \alpha/2,\,k - 1}\,\frac{s}{\sqrt{k}},\quad \alpha = 1 - c,\quad s = \sqrt{\frac{\sum_j (m_j - \bar{m})^2}{k - 1}}
+$$
+
+Plain text: `h = t(1 - alpha/2, k - 1) s / sqrt(k) with alpha = 1 - c and s = sqrt(sum((m - mean(m))**2) / (k - 1)) of the k yearly means m`
+
+**Sources**
+
+- NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology, sect. 1.3.5.2, Confidence Limits for the Mean: mean +- t(1 - alpha/2, N - 1) s / sqrt(N); the example of ZARR13.DAT (open) <https://www.itl.nist.gov/div898/handbook/eda/section3/eda352.htm>
+- Student (1908). The probable error of a mean. Biometrika 6(1), 1-25, the distribution of the deviation of a sample's mean in units of its standard deviation (author-provided)
+- Hydrolog, ADR-0049: exact small-sample p-values and intervals on independent values, docs/decisions/0049-exact-small-sample-p-values-and-intervals-of-independent-values.md, decision 5: the interval on the means of the month in the separate years (open)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `yearly_means` | $m_j$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [4.93, 96.0]: IMGW-PIB, public hydrological data: codz_2010_01..12.csv, station 150160180 Kłodzko (Nysa Kłodzka), the daily discharges of the hydrological year 2010, 4.93 to 96.0 m3/s (tests/oracles/characteristic/imgw_150160180_codz_2010.csv) |
+| `confidence_level` | $c$ | - | real | (0.0, 1.0) | unstated | [0.9, 0.95]: Hydrolog, catalog command stats monthly, src/hydrolog/catalog/groups/stats.py: confidence_level 0.95 by default, 0.9 in its example |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 2 | NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology, sect. 1.3.5.2: N - 1 degrees of freedom need two values |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `half_width` | m3/s | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- two-sided, the upper quantile of the tail (1 - c) / 2 by scipy.stats.t.isf, the tail kept exact up to the largest level below 1
+- s with the divisor k - 1, of the yearly means centred twice on their values divided by a power of two
+- the interval of the long-term mean of a month is its mean of all values +- h (calculate_monthly_statistics, ADR-0049), not clipped at zero
+
+**Assumptions**
+
+- the yearly means of a month are independent and about normal; its daily values are not independent (ADR-0049)
+
+**Validation:** none: an interval estimate; the coverage holds for independent, about normal yearly means (Student 1908)
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: test_a_level_next_to_one_has_a_finite_half_width: the quantile grows without bound as c nears 1; at the largest float below 1 the tail 1 - c is exact and the half-width finite
+- `gap_propagation`: type case yearly_means-nan_element: a gap is refused
+- `moment_cancellation`: limit exact_rational: yearly means of 1e9 with a spread of 0.003
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `confidence_level` increasing
+- scaling `unit_of_the_sample`: inputs times 2^e (`yearly_means` e = 1.0) give outputs times 2^e (`half_width` e = 1.0)
+- limit `exact_rational`: three means, two degrees of freedom: the closed-form quantile and the variance in exact rational arithmetic
+- limit `closed_forms`: one and four degrees of freedom: the quantiles tan(pi c / 2) and the trigonometric form of Hill (1970)
+- limit `equal_means`: equal yearly means give an interval of no width
+- symmetry `mirror`: the negated means have the same half-width
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/characteristic-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the closed-form quantile of two degrees of freedom and the variance in exact rational arithmetic (fractions) (`tests/unit/test_formulas_characteristic.py (limit exact_rational)`)
+- algorithm: the closed-form quantiles of one and four degrees of freedom against scipy's inversion of the incomplete beta function (`tests/unit/test_formulas_characteristic.py (limit closed_forms)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
 ## Tier B
 
 | Formula | Function | Definition | Constants | Convention | Source |
@@ -1303,6 +1607,18 @@ None.
 | `baseflow_spans` | `hydrolog.statistics.baseflow.baseflow_separation` | the daily series is laid on a calendar of consecutive days (an absent date is a day without a value); each gapless span of at least 60 days is filtered on its own (spec lyne_hollick), reflected at both of its ends; a day of a shorter span has no baseflow; series_baseflow is the baseflow of each day of series_year, by default the last complete hydrological year | min_span_days = 60.0 d (Hydrolog's own rules, ADR-0031: Regime, seasonality, harmonics, Sen's slope and baseflow of a station, point 5: the filter on each gapless span of at least 60 days, a year's index from 300 days with a baseflow (no published source; Ladson et al. 2013 filter every segment longer than the 30 reflected values, sect. 2.1 and 2.4)) | spans of at least 60 days are Hydrolog's own rule; Ladson et al. (2013, sect. 2.4) filter every segment of non-missing values and their BFI.R every one longer than the 30 reflected values | Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript), sect. 2.4, p. 9: 'Flow data should be divided into segments of non-missing values ... data should be reflected at each end of each segment' |
 | `baseflow_index_by_year` | `hydrolog.statistics.baseflow.baseflow_separation` | the baseflow index of the period and of each hydrological year (1 November - 31 October, named after its end) is the index (spec baseflow_index) of their days with a baseflow; a year needs 300 such days for an index of its own, and a year without flow on them has none (null); a period without flow on them is refused | min_year_days = 300.0 d (Hydrolog's own rules, ADR-0031: Regime, seasonality, harmonics, Sen's slope and baseflow of a station, point 5: the filter on each gapless span of at least 60 days, a year's index from 300 days with a baseflow (no published source; Ladson et al. 2013 filter every segment longer than the 30 reflected values, sect. 2.1 and 2.4)) | the ratio of the volumes over the days with a baseflow (Ladson et al., sect. 2.4; WMO-No. 1029, sect. 5.2), not BFI.R's mean of the spans' indices weighted by their lengths; 300 days a year is Hydrolog's own rule | WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 5.2, p. 44: 'Annual BFI values can be determined by summing up the base-flow and total-flow volume separately for each year' |
 | `recession_without_segment` | `hydrolog.statistics.baseflow.recession_constant` | the recession constant of a series (spec recession_constant) with k and the half-life null and no segments when the series has no recession segment | – | the recession of baseflow_separation is that of the whole daily calendar of the series, gaps included as ends of segments | WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 5.3, p. 45 |
+| `characteristic_first_degree` | `hydrolog.statistics.characteristic.calculate_characteristic_values` | The first degree of each hydrological year and of its half-years from a daily series: the minimum, mean and maximum of the days with a value, each extreme dated by the first day it occurs. | summer_first_month = 5 month (IMGW-PIB (2023). Rocznik Hydrologiczny 2022, pp. 5-8: WQ, SQ, NQ the largest, mean and smallest value of a month, of the half-years Zima XI-IV and Lato V-X and of the year Rok XI-X; WWQ, SWQ, SSQ, SNQ, NNQ of a period; 'Wartości ekstremalne opracowane zostały na podstawie wszystkich dostępnych pomiarów i obserwacji' (p. 7)) | Winter XI-IV, summer V-X, year XI-X. The extremes are those of the daily values, as a rule milder than IMGW-PIB's extremes of all observations (Kłodzko 2010: WQ 96.0 against 145 m3/s); a year with days without a value stays, with the days it has, and is listed in incomplete_years, where IMGW-PIB publishes no characteristic. | IMGW-PIB (2023). Rocznik Hydrologiczny 2022, pp. 5-8: WQ, SQ, NQ the largest, mean and smallest value of a month, of the half-years Zima XI-IV and Lato V-X and of the year Rok XI-X; WWQ, SWQ, SSQ, SNQ, NNQ of a period; 'Wartości ekstremalne opracowane zostały na podstawie wszystkich dostępnych pomiarów i obserwacji' (p. 7) |
+| `characteristic_second_degree` | `hydrolog.statistics.characteristic.calculate_characteristic_values` | The second degree of the year and of each half-year: the highest (W), mean (S), median (Z) and lowest (N) over the years of the first-degree maxima, means and minima (WWQ ... NNQ), each of the years that have it. | – | SWQ is the mean of the annual maxima, never of the pooled half-year maxima; the medians (ZWQ, ZSQ, ZNQ) and WSQ, NSQ, WNQ, NWQ follow the pattern of Byczkowski (1996, author-provided); W, S, N of a stage are WWW ... NNW and of water temperature WWT ... NNT. | IMGW-PIB (2023). Rocznik Hydrologiczny 2022, pp. 5-8: WQ, SQ, NQ the largest, mean and smallest value of a month, of the half-years Zima XI-IV and Lato V-X and of the year Rok XI-X; WWQ, SWQ, SSQ, SNQ, NNQ of a period; 'Wartości ekstremalne opracowane zostały na podstawie wszystkich dostępnych pomiarów i obserwacji' (p. 7) |
+| `characteristic_from_half_years` | `hydrolog.statistics.characteristic.characteristic_values_from_half_years` | The first degree from IMGW-PIB's published half-year characteristics: the half-years keep their minimum, mean and maximum with dates; the annual maximum is the larger of the half-year maxima and the annual minimum the smaller of the minima, with that half-year's date; the annual mean is the published one. | – | The winter value on a tie; an annual extreme with a half-year missing (a break in observations) is unknown; a year without any value is left out; the second degree as from a daily series. | IMGW-PIB, public hydrological data: POLR_publiczne_format.txt (file of 2026-04-29), PLWSKP 13 winter half-year XI-IV, 14 summer half-year V-X, 15 year; PLWSKEX 1 minimum, 2 mean, 3 maximum; a value 99999.999 or NULL is a break in observations |
+| `half_year_annual_extremes` | `hydrolog.statistics.characteristic.annual_extremes_from_half_years` | The annual maxima (minima) of IMGW-PIB's half-year characteristics: the larger (smaller) of the winter and the summer value of each year that has both. | – | The winter value on a tie, dated from its half-year; a year with one half-year only is left out and named in incomplete_years. | IMGW-PIB, public hydrological data: POLR_publiczne_format.txt (file of 2026-04-29), PLWSKP 13 winter half-year XI-IV, 14 summer half-year V-X, 15 year; PLWSKEX 1 minimum, 2 mean, 3 maximum; a value 99999.999 or NULL is a break in observations |
+| `daily_statistics` | `hydrolog.statistics.characteristic.calculate_daily_statistics` | The maximum, mean, median, minimum and number of the values of each day of the hydrological year over the years. | – | Days counted from 1 November (TIER_B hydrological_day_of_year): after 28 February a day pools two adjacent calendar dates of leap and common years (day 121: 29 February and 1 March) and day 366 holds leap years only; every value counts, a NaN makes its day's statistics NaN. | IMGW-PIB (2023). Rocznik Hydrologiczny 2022, pp. 5-8: WQ, SQ, NQ the largest, mean and smallest value of a month, of the half-years Zima XI-IV and Lato V-X and of the year Rok XI-X; WWQ, SWQ, SSQ, SNQ, NNQ of a period; 'Wartości ekstremalne opracowane zostały na podstawie wszystkich dostępnych pomiarów i obserwacji' (p. 7) |
+| `monthly_statistics` | `hydrolog.statistics.characteristic.calculate_monthly_statistics` | The maximum, mean, median and minimum of all values of each calendar month; their standard deviation, coefficient of variation and skewness by the specs; the interval of the month's long-term mean, its mean +- the half-width of spec mean_interval_half_width on its yearly means. | – | Calendar months and years; an estimate whose spec refuses the month's values is NaN; the interval is centred on the mean of all values of the month (ADR-0049) and not clipped. | Hydrolog, ADR-0049: exact small-sample p-values and intervals on independent values, docs/decisions/0049-exact-small-sample-p-values-and-intervals-of-independent-values.md, decision 5: the interval on the means of the month in the separate years |
+| `hydrological_year` | `hydrolog.statistics._hydrological_year.hydrological_year` | The hydrological year of a date: its calendar year, one more for November and December. | first_month = 11 month (IMGW-PIB, public hydrological data: hydrologia_info_ogolne.txt (file of 2020-06-23), 'rok hydrologiczny 2016 to okres od 1.11.2015 r. do 31.10.2016 r.'; 'półrocze zimowe odpowiada okresowi 1.11.2015-30.04.2016, natomiast półrocze letnie - okresowi 1.05.2016-31.10.2016') | IMGW-PIB's year 1 November - 31 October, named after the calendar year in which it ends (2016 = 1.11.2015 - 31.10.2016); ČHMÚ's the same (Hydrologická ročenka České republiky 2010, introduction). | IMGW-PIB, public hydrological data: hydrologia_info_ogolne.txt (file of 2020-06-23), 'rok hydrologiczny 2016 to okres od 1.11.2015 r. do 31.10.2016 r.'; 'półrocze zimowe odpowiada okresowi 1.11.2015-30.04.2016, natomiast półrocze letnie - okresowi 1.05.2016-31.10.2016' |
+| `hydrological_day_of_year` | `hydrolog.statistics._hydrological_year.hydrological_day_of_year` | The day of a date in its hydrological year: the days since 1 November, plus one. | first_month = 11 month (IMGW-PIB, public hydrological data: hydrologia_info_ogolne.txt (file of 2020-06-23), 'rok hydrologiczny 2016 to okres od 1.11.2015 r. do 31.10.2016 r.'; 'półrocze zimowe odpowiada okresowi 1.11.2015-30.04.2016, natomiast półrocze letnie - okresowi 1.05.2016-31.10.2016') | 1 November is day 1 and 29 February day 121; from 1 March a leap year's days are one higher than a common year's (1 March is day 122 or 121, 31 October day 366 or 365): a day number names no calendar date. | IMGW-PIB, public hydrological data: hydrologia_info_ogolne.txt (file of 2020-06-23), 'rok hydrologiczny 2016 to okres od 1.11.2015 r. do 31.10.2016 r.'; 'półrocze zimowe odpowiada okresowi 1.11.2015-30.04.2016, natomiast półrocze letnie - okresowi 1.05.2016-31.10.2016' |
+| `days_in_hydrological_year` | `hydrolog.statistics._hydrological_year.days_in_hydrological_year` | The calendar days of a hydrological year: 366 when its name is a leap year, else 365. | – | A year holds 29 February of the calendar year it is named after; leap years of the Gregorian calendar, a multiple of 4 but not of 100 unless of 400 (2000 leap, 2100 common). | IMGW-PIB, public hydrological data: hydrologia_info_ogolne.txt (file of 2020-06-23), 'rok hydrologiczny 2016 to okres od 1.11.2015 r. do 31.10.2016 r.'; 'półrocze zimowe odpowiada okresowi 1.11.2015-30.04.2016, natomiast półrocze letnie - okresowi 1.05.2016-31.10.2016' |
+| `hydrological_year_start` | `hydrolog.statistics._hydrological_year.hydrological_year_start` | The first day of a hydrological year: 1 November of the calendar year before its name. | first_month = 11 month (IMGW-PIB, public hydrological data: hydrologia_info_ogolne.txt (file of 2020-06-23), 'rok hydrologiczny 2016 to okres od 1.11.2015 r. do 31.10.2016 r.'; 'półrocze zimowe odpowiada okresowi 1.11.2015-30.04.2016, natomiast półrocze letnie - okresowi 1.05.2016-31.10.2016') | The year named after the calendar year in which it ends. | IMGW-PIB, public hydrological data: hydrologia_info_ogolne.txt (file of 2020-06-23), 'rok hydrologiczny 2016 to okres od 1.11.2015 r. do 31.10.2016 r.'; 'półrocze zimowe odpowiada okresowi 1.11.2015-30.04.2016, natomiast półrocze letnie - okresowi 1.05.2016-31.10.2016' |
+| `daily_calendar` | `hydrolog.statistics._hydrological_year.on_daily_calendar` | Every day from the first to the last date of a series, with its value. | – | A day whose date is absent or whose value is NaN has no value (NaN); no value is filled in. | Hydrolog, ADR-0029: station analyses for Obserwator, docs/decisions/0029-station-analyses-for-obserwator.md: a day whose date is absent or whose value is empty has no value |
+| `complete_year_extremes` | `hydrolog.statistics._hydrological_year.annual_extremes` | The maximum or the minimum of each complete hydrological year, one with a value on each of its 365 or 366 days. | – | A year with a day without a value is skipped and reported (its extreme may fall on that day); a date given twice counts once. | IMGW-PIB, public hydrological data: POLR_publiczne_format.txt (file of 2026-04-29), 'Wartość stanu wody/przepływu/temperatury wody równa 99999.999 albo NULL oznacza przerwy w obserwacjach': no characteristic of a period with a break |
 
 ## Delegated computations (CMP-1.2)
 
@@ -1310,3 +1626,4 @@ None.
 |---|---|---|---|---|
 | nash_shape_root | scipy.optimize.brentq | scipy>=1.10 (1.18.1 locked) | the root N of f(N) = (N-1)^N e^-(N-1) / Gamma(N) = f(2.55) on [1.1, 20] with xtol 1e-6 is 2.55 within 1e-6 (spec lutz) | `tests/unit/test_formulas_lutz.py::test_the_delegated_root_finder_finds_a_known_root` |
 | lyne_hollick_recursion | scipy.signal.lfilter | scipy>=1.10 (1.18.1 locked) | lfilter([(1 + a) / 2], [1, -a], diff(Q), zi=[a Q_1]) gives the quickflow q_t = a q_(t-1) + (1 + a)/2 (Q_t - Q_(t-1)) from q_1 = Q_1 of the first pass of Ladson et al. (2013), Table 4 (Bass River, a = 0.98): 155.46 after 96 and 158 (spec lyne_hollick) | `tests/unit/test_formulas_baseflow.py::test_the_delegated_recursion_is_the_first_pass_of_table_4` |
+| student_t_quantile | scipy.stats.t.isf | scipy>=1.10 (1.18.1 locked) | the upper quantile of the tail 0.025 with one degree of freedom is tan(0.475 pi) = 12.7062047361747 within 1e-13 relative (spec mean_interval_half_width) | `tests/unit/test_formulas_characteristic.py::test_the_delegated_t_quantile_is_a_known_one` |

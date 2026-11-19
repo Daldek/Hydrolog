@@ -1,0 +1,176 @@
+schema = "nogat-formula-card/1"
+name = "mean_interval_half_width"
+title = "Half-width of the Student t confidence interval of a mean of yearly means"
+function = "hydrolog.statistics.characteristic.mean_interval_half_width"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "h = t(1 - alpha/2, k - 1) s / sqrt(k) with alpha = 1 - c and s = sqrt(sum((m - mean(m))**2) / (k - 1)) of the k yearly means m"
+latex = "h = t_{1 - \\alpha/2,\\,k - 1}\\,\\frac{s}{\\sqrt{k}},\\quad \\alpha = 1 - c,\\quad s = \\sqrt{\\frac{\\sum_j (m_j - \\bar{m})^2}{k - 1}}"
+validation = "none: an interval estimate; the coverage holds for independent, about normal yearly means (Student 1908)"
+conventions = ["two-sided, the upper quantile of the tail (1 - c) / 2 by scipy.stats.t.isf, the tail kept exact up to the largest level below 1", "s with the divisor k - 1, of the yearly means centred twice on their values divided by a power of two", "the interval of the long-term mean of a month is its mean of all values +- h (calculate_monthly_statistics, ADR-0049), not clipped at zero"]
+assumptions = ["the yearly means of a month are independent and about normal; its daily values are not independent (ADR-0049)"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/characteristic-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+confidence_level = 1
+
+[[properties.scalings]]
+name = "unit_of_the_sample"
+
+[properties.scalings.inputs]
+yearly_means = 1.0
+
+[properties.scalings.outputs]
+half_width = 1.0
+
+[properties.scalings.tolerance]
+reason = "the statistics run on the sample scaled by a power of two, so doubling or negating it changes no rounding; a result below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[properties.limits]]
+name = "exact_rational"
+text = "three means, two degrees of freedom: the closed-form quantile and the variance in exact rational arithmetic"
+
+[[properties.limits]]
+name = "closed_forms"
+text = "one and four degrees of freedom: the quantiles tan(pi c / 2) and the trigonometric form of Hill (1970)"
+
+[[properties.limits]]
+name = "equal_means"
+text = "equal yearly means give an interval of no width"
+
+[[properties.symmetries]]
+name = "mirror"
+text = "the negated means have the same half-width"
+
+[properties.symmetries.tolerance]
+reason = "the statistics run on the sample scaled by a power of two, so doubling or negating it changes no rounding; a result below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[sources]]
+citation = "NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology"
+access = "open"
+locator = "sect. 1.3.5.2, Confidence Limits for the Mean: mean +- t(1 - alpha/2, N - 1) s / sqrt(N); the example of ZARR13.DAT"
+url = "https://www.itl.nist.gov/div898/handbook/eda/section3/eda352.htm"
+
+[[sources]]
+citation = "Student (1908). The probable error of a mean. Biometrika 6(1), 1-25"
+access = "author-provided"
+locator = "the distribution of the deviation of a sample's mean in units of its standard deviation"
+
+[[sources]]
+citation = "Hydrolog, ADR-0049: exact small-sample p-values and intervals on independent values"
+access = "open"
+locator = "docs/decisions/0049-exact-small-sample-p-values-and-intervals-of-independent-values.md, decision 5: the interval on the means of the month in the separate years"
+
+[[variables]]
+name = "yearly_means"
+symbol = "m_j"
+unit = "m3/s"
+kind = "real_array"
+description = "Independent values: the means of a calendar month in the separate years."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0"
+
+[variables.typical]
+low = 4.93
+low_inclusive = true
+high = 96.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "IMGW-PIB, public hydrological data: codz_2010_01..12.csv, station 150160180 Kłodzko (Nysa Kłodzka)"
+access = "open"
+locator = "the daily discharges of the hydrological year 2010, 4.93 to 96.0 m3/s (tests/oracles/characteristic/imgw_150160180_codz_2010.csv)"
+url = "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/"
+
+[[variables]]
+name = "confidence_level"
+symbol = "c"
+unit = "-"
+kind = "real"
+description = "Confidence level of the two-sided interval."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+high = 1.0
+high_inclusive = false
+
+[variables.typical]
+low = 0.9
+low_inclusive = true
+high = 0.95
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog, catalog command stats monthly"
+access = "open"
+locator = "src/hydrolog/catalog/groups/stats.py: confidence_level 0.95 by default, 0.9 in its example"
+
+[[constraints]]
+name = "enough_values"
+class = "precondition"
+text = "n >= 2"
+
+[constraints.source]
+citation = "NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology"
+access = "open"
+locator = "sect. 1.3.5.2: N - 1 degrees of freedom need two values"
+url = "https://www.itl.nist.gov/div898/handbook/eda/section3/eda352.htm"
+
+[[outputs]]
+name = "half_width"
+unit = "m3/s"
+kind = "real"
+symbol = "h"
+description = "Half-width of the interval around the long-term mean."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "test_a_level_next_to_one_has_a_finite_half_width: the quantile grows without bound as c nears 1; at the largest float below 1 the tail 1 - c is exact and the half-width finite"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case yearly_means-nan_element: a gap is refused"
+
+[[traps]]
+name = "moment_cancellation"
+description = "Cancellation in moments computed as E[x^2] - E[x]^2."
+test = "limit exact_rational: yearly means of 1e9 with a spread of 0.003"
+
+[[oracles]]
+kind = "exact"
+description = "the closed-form quantile of two degrees of freedom and the variance in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_characteristic.py (limit exact_rational)"
+conventions = []
+
+[[oracles]]
+kind = "algorithm"
+description = "the closed-form quantiles of one and four degrees of freedom against scipy's inversion of the incomplete beta function"
+test = "tests/unit/test_formulas_characteristic.py (limit closed_forms)"
+conventions = ["both the upper quantile of the tail (1 - c) / 2 of Student's t"]

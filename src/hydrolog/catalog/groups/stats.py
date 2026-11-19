@@ -1037,15 +1037,19 @@ COMMANDS: tuple[Command, ...] = (
         summary=("Compute day-of-year statistics over all years of a daily series"),
         description_pl=(
             "Maksimum, średnia, mediana, minimum i liczba obserwacji dla każdej "
-            "doby roku hydrologicznego (1 = 1 XI, do 366) ze wszystkich lat. Do "
-            "krzywych reżimu dobowego; wartości miesięczne daje `stats monthly`. "
+            "doby roku hydrologicznego (1 = 1 XI, do 366) ze wszystkich lat. Doby są "
+            "liczone: od 1 III doba roku przestępnego ma numer o 1 większy, więc "
+            "dalsza doba łączy dwie daty, a doba 366 jest tylko z lat przestępnych. "
+            "Do krzywych reżimu dobowego; wartości miesięczne daje `stats monthly`. "
             "Wymaga dat; NaN jest pomijane. Wynik to tablice o jednakowej długości."
         ),
         description=(
             "Maximum, mean, median, minimum and count for each day of the "
-            "hydrological year (1 = 1 Nov, up to 366) over all years. Use for daily"
-            " regime curves; for monthly values use `stats monthly`. Needs dates; "
-            "NaN is skipped. The result is arrays of equal length."
+            "hydrological year (1 = 1 Nov, up to 366) over all years. Days are "
+            "counted: from 1 Mar a leap year's day is one higher, so a later day pools "
+            "two dates and day 366 holds leap years only. Use for daily regime "
+            "curves; for monthly values use `stats monthly`. Needs dates; NaN is "
+            "skipped. The result is arrays of equal length."
         ),
         result_schema="hydrolog-stats-daily/1",
         cardinality="bounded",
@@ -1099,14 +1103,17 @@ COMMANDS: tuple[Command, ...] = (
             "Dla miesięcy 1–12: maksimum, średnia, mediana, minimum, odchylenie "
             "standardowe, współczynnik zmienności, skośność i przedział ufności "
             "średniej wieloletniej ze średnich miesiąca w kolejnych latach (wartości "
-            "dobowe nie są niezależne). Do tabel reżimu miesięcznego; wartości dobowe "
-            "daje `stats daily`. Wymaga dat i wartości we wszystkich 12 miesiącach."
+            "dobowe nie są niezależne). Współczynnik zmienności jest `null` dla "
+            "miesiąca z wartością poniżej 0 albo z samych zer (wymaga prawdziwego "
+            "zera, jak przepływ). Do tabel reżimu miesięcznego; wartości dobowe daje "
+            "`stats daily`. Wymaga dat i wartości we wszystkich 12 miesiącach."
         ),
         description=(
             "For months 1–12: maximum, mean, median, minimum, standard deviation, "
             "variation coefficient, skewness and the confidence interval of the "
-            "long-term mean from the yearly means of the month. Use for monthly regime "
-            "tables; for daily values use `stats daily`."
+            "long-term mean from the yearly means of the month. The variation "
+            "coefficient is null for a month with a value below 0 or all 0. Use for "
+            "monthly regime tables; for daily values use `stats daily`."
         ),
         result_schema="hydrolog-stats-monthly/1",
         cardinality="bounded",
