@@ -75,6 +75,7 @@ from hydrolog.statistics._types import (
 from hydrolog.statistics.events import threshold_runs
 from hydrolog.statistics.frequency import (
     _ANY_VALUE,
+    _MINIMA,
     _SMITH_1985,
     _WMO_1029,
     _WMO_1029_URL,
@@ -758,16 +759,7 @@ FISHER_TIPPETT: Final = FormulaSpec(
             description="Annual minima of a discharge or a stage.",
             physical=_ANY_VALUE,
             applicability="unstated",
-            typical=Range(
-                low=0.0,
-                high=78.0,
-                source=Source(
-                    citation=_WMO_1029,
-                    locator="table 7.1, p. 64: the AM(7) annual minima of stations "
-                    "223204 and 223207, 0 to 78 in the unit of the table",
-                    url=_WMO_1029_URL,
-                ),
-            ),
+            typical=_MINIMA,
         ),
         Variable(
             name="return_periods_years",

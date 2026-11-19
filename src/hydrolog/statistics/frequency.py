@@ -226,6 +226,18 @@ _ANY_VALUE: Final = Range(
 
 _MAXIMA: Final = Range(low=0.81, high=111.0, source=_KZGW_MAXIMA)
 """The annual maxima of the worked examples of Polish practice."""
+_MINIMA: Final = Range(
+    low=0.0,
+    high=78.0,
+    source=Source(
+        citation=_WMO_1029,
+        locator="table 7.1, p. 64: the AM(7) annual minima of stations 223204 and "
+        "223207, 0 to 78 in the unit of the table",
+        url=_WMO_1029_URL,
+    ),
+)
+"""The annual minima of the worked examples of WMO-No. 1029."""
+
 
 _POLANA: Final = (
     10.2, 9.24, 58.8, 8.23, 16.2, 4.92, 26.8, 25.1, 97.2, 23.5, 22.3, 21.1, 59.9,

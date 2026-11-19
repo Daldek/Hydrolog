@@ -20,6 +20,8 @@
 | [Parameters of a distribution of annual maxima by the method of moments](#fit_moments) | `hydrolog.statistics.frequency.fit_moments` | referenced | 1 | not measured |
 | [Parameters of a distribution of annual maxima by maximum likelihood](#fit_maximum_likelihood) | `hydrolog.statistics.frequency.fit_maximum_likelihood` | referenced | 1 | not measured |
 | [Parameters of a distribution of annual maxima by least squares on the plotting positions](#fit_least_squares) | `hydrolog.statistics.frequency.fit_least_squares` | oracle only | 1 | not measured |
+| [Plotting positions of annual maxima: exceedance probabilities and return periods](#plotting_positions) | `hydrolog.statistics._types.compute_plotting_positions` | referenced | 1 | not measured |
+| [Plotting positions of annual minima: non-exceedance probabilities and return periods](#non_exceedance_positions) | `hydrolog.statistics._types.compute_non_exceedance_positions` | referenced | 1 | not measured |
 | [Fisher-Tippett distribution of annual minima by maximum likelihood and its quantiles](#fisher_tippett_minima) | `hydrolog.statistics.low_flows.fisher_tippett_minima` | oracle only | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
@@ -1108,6 +1110,165 @@ None.
 - algorithm: Powell's method from the estimate finds no smaller sum of squares (`tests/unit/test_formulas_flood_frequency.py (test_powell_finds_no_smaller_squares)`)
 
 **Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="plotting_positions"></a>
+### Plotting positions of annual maxima: exceedance probabilities and return periods
+
+`hydrolog.statistics._types.compute_plotting_positions` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+p_i = \frac{i - a}{n + 1 - 2a},\qquad T_i = \frac{1}{p_i}
+$$
+
+Plain text: `p_i = (i - a) / (n + 1 - 2a) and T_i = 1 / p_i of the value of rank i = 1 ... n, ranked from the largest (rank 1); a = 0 (Weibull, i / (n + 1)), 1/2 (Hazen, (i - 1/2) / n) or 2/5 (Cunnane, (i - 2/5) / (n + 1/5))`
+
+**Sources**
+
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+- KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eq. 3.7, p. 29: p_i = i / (N + 1) 100 %, the empirical exceedance probability of the ith largest annual maximum; example 3.4, table 3.13, pp. 54-55 (open) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+- WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.3, eq. 7.3, p. 59: P_i = (i - a) / (n + 1 - 2a), the non-exceedance probability of the ith smallest of n events; p. 60: the Weibull formula is a = 0; sect. 7.8, step I, p. 65: the AM(7) values ranked ascending, the smallest rank 1, and the Weibull formula (open) <https://library.wmo.int/idurl/4/32176>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $x_{(i)}$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+| `method` | $a$ | - | choice of weibull, hazen, cunnane | – | – | – |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `a_weibull` | $a$ | 0 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n |
+| `a_hazen` | $a$ | 1/2 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n |
+| `a_cunnane` | $a$ | 2/5 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `values_sorted` | m3/s | real_array | (-inf, inf) | 4 ulp of the bound |
+| `exceedance_prob` | - | real_array | (0.0, 1.0) | 4 ulp of the bound |
+| `return_periods` | years | real_array | (1.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the exceedance probability of the ith largest value, rank 1 the largest (WMO-No. 168 sect. 5.6.1; KZGW 2017 eq. 3.7, Polish p_i = i / (N + 1)); the return period T = 1 / p, as of the quantiles of the maxima
+- the general form (i - a) / (n + 1 - 2a) of WMO-No. 1029 eq. 7.3 with the a of WMO-No. 168 sect. 5.6.1; no Gringorten formula
+- tied values keep consecutive ranks, each with its own position, as KZGW 2017 table 3.13 ranks its two values of 10.3 and of 7.88 m3/s
+- the sample in any unit: the positions depend on the ranks only
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: an estimate of the probability of each value of the ranked sample
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: limit exact_rational: the return period one over the smallest position, about 1 / n, of up to 10,000 values; the positions never reach 0 or 1
+- `gap_propagation`: type case values-nan_element: a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `values` increasing
+- scaling `unit_of_the_sample`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`values_sorted` e = 1.0)
+- limit `exact_rational`: the positions and return periods of the definition in exact rational arithmetic, for samples of 1 to 10,000 values
+- symmetry `order`: the sample in the reverse order has the same positions
+- symmetry `mirror`: the negated sample has the negated values in the reverse order and the same positions
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the positions and return periods in exact rational arithmetic (fractions) (`tests/unit/test_formulas_flood_frequency.py (limit exact_rational)`)
+- established: scipy.stats.mstats.plotting_positions with alpha = beta = a (`tests/unit/test_formulas_flood_frequency.py (test_the_plotting_positions_are_scipys)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="non_exceedance_positions"></a>
+### Plotting positions of annual minima: non-exceedance probabilities and return periods
+
+`hydrolog.statistics._types.compute_non_exceedance_positions` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+p_i = \frac{i - a}{n + 1 - 2a},\qquad T_i = \frac{1}{p_i}
+$$
+
+Plain text: `p_i = (i - a) / (n + 1 - 2a) and T_i = 1 / p_i of the value of rank i = 1 ... n, ranked from the smallest (rank 1); a = 0 (Weibull, i / (n + 1)), 1/2 (Hazen, (i - 1/2) / n) or 2/5 (Cunnane, (i - 2/5) / (n + 1/5))`
+
+**Sources**
+
+- WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.3, eq. 7.3, p. 59: P_i = (i - a) / (n + 1 - 2a), the non-exceedance probability of the ith smallest of n events; p. 60: the Weibull formula is a = 0; sect. 7.8, step I, p. 65: the AM(7) values ranked ascending, the smallest rank 1, and the Weibull formula (open) <https://library.wmo.int/idurl/4/32176>
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $x_{(i)}$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.0, 78.0]: WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, table 7.1, p. 64: the AM(7) annual minima of stations 223204 and 223207, 0 to 78 in the unit of the table |
+| `method` | $a$ | - | choice of weibull, hazen, cunnane | – | – | – |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `a_weibull` | $a$ | 0 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n |
+| `a_hazen` | $a$ | 1/2 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n |
+| `a_cunnane` | $a$ | 2/5 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `values_ascending` | m3/s | real_array | (-inf, inf) | 4 ulp of the bound |
+| `non_exceedance_probabilities` | - | real_array | (0.0, 1.0) | 4 ulp of the bound |
+| `return_periods` | years | real_array | (1.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the non-exceedance probability of the ith smallest value, rank 1 the smallest (WMO-No. 1029 eq. 7.3 and sect. 7.8, step I); the return period T = 1 / F of a low flow undercut once in T years (WMO-No. 1029 eq. 7.14), as of the quantiles of fisher_tippett_minima
+- the general form (i - a) / (n + 1 - 2a) of WMO-No. 1029 eq. 7.3 with the a of WMO-No. 168 sect. 5.6.1; no Gringorten formula
+- tied values keep consecutive ranks, each with its own position, as KZGW 2017 table 3.13 ranks its two values of 10.3 and of 7.88 m3/s
+- the sample in any unit: the positions depend on the ranks only
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: an estimate of the probability of each value of the ranked sample
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: limit exact_rational: the return period one over the smallest position, about 1 / n, of up to 10,000 values; the positions never reach 0 or 1
+- `gap_propagation`: type case values-nan_element: a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `values` increasing
+- scaling `unit_of_the_sample`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`values_ascending` e = 1.0)
+- limit `exact_rational`: the positions and return periods of the definition in exact rational arithmetic, for samples of 1 to 10,000 values
+- symmetry `order`: the sample in the reverse order has the same positions
+- symmetry `mirror`: the negated sample has the negated values in the reverse order and the same positions
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the positions and return periods in exact rational arithmetic (fractions) (`tests/unit/test_formulas_flood_frequency.py (limit exact_rational)`)
+- established: scipy.stats.mstats.plotting_positions with alpha = beta = a (`tests/unit/test_formulas_flood_frequency.py (test_the_plotting_positions_are_scipys)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
 
 <a id="fisher_tippett_minima"></a>
 ### Fisher-Tippett distribution of annual minima by maximum likelihood and its quantiles

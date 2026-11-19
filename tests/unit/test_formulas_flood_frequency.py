@@ -18,6 +18,7 @@ import pytest
 from hypothesis import example, given
 from scipy.optimize import minimize
 from scipy.stats import skew
+from scipy.stats.mstats import plotting_positions
 
 from hydrolog._formula_versions import recording
 from hydrolog._formulas import ERRORS
@@ -39,6 +40,12 @@ from hydrolog.nogat_formulas import (
     type_cases,
 )
 from hydrolog.statistics import frequency
+from hydrolog.statistics._types import (
+    NON_EXCEEDANCE_POSITIONS,
+    PLOTTING_POSITIONS,
+    compute_non_exceedance_positions,
+    compute_plotting_positions,
+)
 from hydrolog.statistics.frequency import (
     FIT_L_MOMENTS,
     FIT_LEAST_SQUARES,
@@ -80,6 +87,8 @@ FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
     (FIT_MOMENTS, fit_moments),
     (FIT_MAXIMUM_LIKELIHOOD, fit_maximum_likelihood),
     (FIT_LEAST_SQUARES, fit_least_squares),
+    (PLOTTING_POSITIONS, compute_plotting_positions),
+    (NON_EXCEEDANCE_POSITIONS, compute_non_exceedance_positions),
 )
 DISTRIBUTIONS = ("log_normal", "gev", "pearson3", "weibull")
 POLANA = list(frequency._POLANA)
@@ -297,6 +306,8 @@ def test_the_formulas_record_their_versions():
         for fit in (fit_l_moments, fit_moments, fit_maximum_likelihood):
             fit(POLANA, "gev")
         fit_least_squares(POLANA, "gev")
+        compute_plotting_positions(POLANA, "weibull")
+        compute_non_exceedance_positions(POLANA, "weibull")
 
     assert used == {spec.name: spec.formula_version for spec, _ in FAMILY}
 
@@ -325,6 +336,40 @@ def test_fit_least_squares_properties(inputs):
     function = as_standard(fit_least_squares)
     assert_property_contract(FIT_LEAST_SQUARES, function, inputs, ERRORS)
     assert_properties(FIT_LEAST_SQUARES, function, inputs, ERRORS)
+
+
+@given(inputs=strategies(PLOTTING_POSITIONS))
+def test_plotting_positions_properties(inputs):
+    function = as_standard(compute_plotting_positions)
+    assert_property_contract(PLOTTING_POSITIONS, function, inputs, ERRORS)
+    assert_properties(PLOTTING_POSITIONS, function, inputs, ERRORS)
+
+
+@given(inputs=strategies(NON_EXCEEDANCE_POSITIONS))
+def test_non_exceedance_positions_properties(inputs):
+    function = as_standard(compute_non_exceedance_positions)
+    assert_property_contract(NON_EXCEEDANCE_POSITIONS, function, inputs, ERRORS)
+    assert_properties(NON_EXCEEDANCE_POSITIONS, function, inputs, ERRORS)
+
+
+@pytest.mark.parametrize(
+    ("method", "a"), [("weibull", 0.0), ("hazen", 0.5), ("cunnane", 0.4)]
+)
+@pytest.mark.parametrize("sample", [POLANA, list(frequency._FLOODS11)])
+def test_the_plotting_positions_are_scipys(sample, method, a):
+    """CMP-6.3: scipy's (i - alpha) / (n + 1 - alpha - beta), alpha = beta = a."""
+    minima = compute_non_exceedance_positions(sample, method)
+    maxima = compute_plotting_positions(sample, method)
+    ascending = np.sort(plotting_positions(np.array(sample), alpha=a, beta=a))
+    of_the_negated = np.sort(plotting_positions(-np.array(sample), alpha=a, beta=a))
+
+    assert_within(
+        [minima.non_exceedance_probabilities, maxima.exceedance_prob],
+        [ascending, of_the_negated],
+        rel=4.5e-16,
+        reason="scipy rounds (i - a) / (n + 1 - 2a) as the code does, with alpha + "
+        "beta for 2a: the same value within an ulp or two",
+    )
 
 
 @pytest.mark.parametrize("dataset", sorted(SAMPLES))
