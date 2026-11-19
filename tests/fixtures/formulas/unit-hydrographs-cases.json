@@ -255,5 +255,260 @@
    "the ordinates at k dD, dD = 0.3 h, from t = 0"
   ],
   "status": "single_source"
+ },
+ {
+  "formula": "uh_convolution",
+  "case_id": "neh630-ex16-1-flood-hydrograph",
+  "source": {
+   "citation": "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16 Hydrographs (210-VI-NEH, March 2007)",
+   "locator": "example 16-1, table 16-4(a)-(d), column 3, and step 10, pp. 16-11 to 16-13: the composite flood hydrograph at 0.3 h, peak 2,356 ft3/s at 6.3 h, sum 33,409",
+   "url": "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "effective_precip_mm": [
+    0.0,
+    3.048,
+    6.858,
+    8.382,
+    6.604,
+    4.572,
+    3.048,
+    1.524,
+    0.0,
+    0.0,
+    0.254,
+    1.27,
+    2.794,
+    6.35,
+    9.144,
+    10.668,
+    7.874,
+    6.096,
+    4.826,
+    2.286
+   ],
+   "unit_hydrograph_m3s": [
+    0.0,
+    0.1560771072,
+    0.48941321472,
+    1.02899407104,
+    1.48496219136,
+    1.6220870784,
+    1.53624466944,
+    1.29989933568,
+    0.97325224704,
+    0.67001672448,
+    0.48606870528,
+    0.36120701952,
+    0.2619865728,
+    0.19063703808,
+    0.13823972352,
+    0.1003352832,
+    0.0724643712,
+    0.05239731456,
+    0.0390192768,
+    0.027870912,
+    0.02006705664,
+    0.01560771072,
+    0.01226320128,
+    0.00780385536,
+    0.00445934592,
+    0.00111483648,
+    0.0
+   ],
+   "timestep_min": 18.0
+  },
+  "expected": {
+   "discharge_m3s": [
+    0.0,
+    0.0,
+    0.481386392064,
+    2.54851619328,
+    7.7871328128,
+    16.7069394893,
+    27.693875967,
+    37.7746733537,
+    44.3441817631,
+    46.1281430984,
+    43.2681415926,
+    37.0950690355,
+    29.9025900012,
+    23.8427848305,
+    20.6712980122,
+    21.7756550292,
+    28.0053612795,
+    38.4542776719,
+    50.4889374735,
+    60.6546854001,
+    66.4313221048,
+    66.7144905708,
+    61.702408724,
+    52.7542852009,
+    42.3053688084,
+    32.3944725012,
+    23.9277353702,
+    17.3015932677,
+    12.4877293471,
+    9.06139090944,
+    6.56950840934,
+    4.75723022746,
+    3.45465528422,
+    2.52019934669,
+    1.84059502848,
+    1.33089178982,
+    0.962772784128,
+    0.7079211648,
+    0.481386392064,
+    0.311485312512,
+    0.198217926144,
+    0.113267386368,
+    0.056633693184,
+    0.028316846592,
+    0.0,
+    0.0
+   ],
+   "peak_discharge_m3s": 66.7144905708,
+   "time_to_peak_min": 378.0
+  },
+  "printed_precision": {
+   "discharge_m3s": 0.028316846592,
+   "peak_discharge_m3s": 0.028316846592
+  },
+  "tolerance": {
+   "abs": 0.028316846592,
+   "reason": "NEH rounds every product of the strips of paper to whole ft3/s before adding them (step 8: 16.8 -> 17)"
+  },
+  "conventions": [
+   "the source's foot-pound units converted exactly: 1 in = 25.4 mm, 1 ft3/s = 0.028316846592 m3/s; a unit hydrograph per inch is per 25.4 mm",
+   "the increment of the interval ending at t_m starts the unit hydrograph at t_(m-1): Q(0.6 h) = 0.12 in x UH(0.3 h)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "uh_convolution",
+  "case_id": "kzgw2017-ex6-2-niedzwiadka",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych. Załącznik nr 2 do OPZ (ujednolicony)",
+   "locator": "przykład 6.2 (potok Niedźwiadka km 3+450), tabela 6.2 (h_t) and tabela 6.3 (H_t, Q_t), pp. 100-101; eq. 6.12: peak 13.66 m3/s at 22 h",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "effective_precip_mm": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.07,
+    0.73,
+    1.73,
+    2.95,
+    4.25,
+    5.51,
+    6.54,
+    7.18,
+    7.23,
+    6.5,
+    4.79,
+    1.89
+   ],
+   "unit_hydrograph_m3s": [
+    0.0,
+    0.528,
+    0.771,
+    0.425,
+    0.175,
+    0.063,
+    0.021,
+    0.007,
+    0.002,
+    0.001,
+    0.0
+   ],
+   "timestep_min": 60.0
+  },
+  "expected": {
+   "peak_discharge_m3s": 13.66,
+   "time_to_peak_min": 1320.0
+  },
+  "printed_precision": {
+   "peak_discharge_m3s": 0.01,
+   "effective_precip_mm": 0.01,
+   "unit_hydrograph_m3s": 0.001
+  },
+  "conventions": [
+   "Q_t = sum_i h_i H_(t-i+1) (KZGW 2017 eq. 6.12), h_i the ordinate at the end of interval i, H_t the excess of interval t"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "uh_convolution",
+  "case_id": "kzgw2017-ex6-4-sluzewiecki",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych. Załącznik nr 2 do OPZ (ujednolicony)",
+   "locator": "przykład 6.4 (Potok Służewiecki, al. KEN), tabela 6.3 (h_i, dt 0.5 h) and tabela 6.4, pp. 108-110: peak 9.51 m3/s at 3.5 h",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "effective_precip_mm": [
+    0.0,
+    1.4,
+    1.6,
+    2.1
+   ],
+   "unit_hydrograph_m3s": [
+    0,
+    0.57,
+    1.371,
+    1.772,
+    1.911,
+    1.887,
+    1.769,
+    1.602,
+    1.415,
+    1.227,
+    1.05,
+    0.887,
+    0.743,
+    0.618,
+    0.51,
+    0.419,
+    0.342,
+    0.278,
+    0.225,
+    0.182,
+    0.147,
+    0.118,
+    0.094,
+    0.075,
+    0.06,
+    0.048,
+    0.038,
+    0.03,
+    0.024
+   ],
+   "timestep_min": 30.0
+  },
+  "expected": {
+   "peak_discharge_m3s": 9.51,
+   "time_to_peak_min": 210.0
+  },
+  "printed_precision": {
+   "peak_discharge_m3s": 0.01
+  },
+  "conventions": [
+   "Q_t = sum_i h_i H_(t-i+1) (KZGW 2017 eq. 6.12), h_i the ordinate at the end of interval i, H_t the excess of interval t"
+  ],
+  "status": "single_source"
  }
 ]

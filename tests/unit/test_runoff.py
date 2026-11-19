@@ -1,6 +1,6 @@
 """Tests for runoff generation module.
 
-The SCS unit hydrograph is tested against its spec in
+The SCS unit hydrograph and the convolution are tested against their specs in
 ``test_formulas_unit_hydrographs.py``.
 """
 
@@ -17,65 +17,6 @@ from hydrolog.runoff import (
     SnyderUH,
     convolve_discrete,
 )
-
-
-class TestConvolution:
-    """Tests for discrete convolution."""
-
-    def test_convolution_simple(self):
-        """Test simple convolution."""
-        pe = np.array([0.0, 5.0, 10.0, 5.0, 0.0])
-        uh = np.array([0.0, 0.5, 1.0, 0.5, 0.0])
-
-        result = convolve_discrete(pe, uh, timestep_min=5.0)
-
-        # Result length should be len(pe) + len(uh) - 1
-        assert result.n_steps == 9
-
-    def test_convolution_peak(self):
-        """Test that convolution produces a peak."""
-        pe = np.array([0.0, 5.0, 10.0, 5.0, 0.0])
-        uh = np.array([0.0, 0.5, 1.0, 0.5, 0.0])
-
-        result = convolve_discrete(pe, uh, timestep_min=5.0)
-
-        assert result.peak_discharge_m3s > 0
-
-    def test_convolution_volume(self):
-        """Test that convolution preserves volume."""
-        pe = np.array([5.0, 10.0, 5.0])  # 20 mm total
-        uh = np.array([0.5, 1.0, 0.5])  # Simple unit hydrograph
-
-        result = convolve_discrete(pe, uh, timestep_min=10.0)
-
-        # Volume should be positive
-        assert result.total_volume_m3 > 0
-
-    def test_convolution_time_array(self):
-        """Test that time array is correct."""
-        pe = np.array([5.0, 10.0, 5.0])
-        uh = np.array([0.5, 1.0])
-
-        result = convolve_discrete(pe, uh, timestep_min=10.0)
-
-        # Check time increments
-        expected_times = np.array([0.0, 10.0, 20.0, 30.0])
-        np.testing.assert_array_almost_equal(result.times_min, expected_times)
-
-    def test_convolution_empty_precip_raises(self):
-        """Test that empty precipitation raises error."""
-        with pytest.raises(InvalidParameterError, match="cannot be empty"):
-            convolve_discrete(np.array([]), np.array([1.0]), timestep_min=5.0)
-
-    def test_convolution_empty_uh_raises(self):
-        """Test that empty unit hydrograph raises error."""
-        with pytest.raises(InvalidParameterError, match="cannot be empty"):
-            convolve_discrete(np.array([1.0]), np.array([]), timestep_min=5.0)
-
-    def test_convolution_invalid_timestep(self):
-        """Test that invalid timestep raises error."""
-        with pytest.raises(InvalidParameterError, match="timestep_min"):
-            convolve_discrete(np.array([1.0]), np.array([1.0]), timestep_min=0)
 
 
 class TestHydrographGenerator:

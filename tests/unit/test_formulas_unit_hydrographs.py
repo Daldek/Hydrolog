@@ -35,6 +35,7 @@ from hydrolog.nogat_formulas import (
     type_cases,
 )
 from hydrolog.runoff import SCSUnitHydrograph
+from hydrolog.runoff.convolution import CONVOLUTION, convolve_discrete
 from hydrolog.runoff.unit_hydrograph import (
     SCS,
     SCS_DIMENSIONLESS_UH,
@@ -48,7 +49,10 @@ pytestmark = pytest.mark.formula
 ROOT = Path(__file__).parents[2]
 CASES = ROOT / "tests" / "fixtures" / "formulas" / "unit-hydrographs-cases.json"
 ORACLES = ROOT / "tests" / "oracles"
-FAMILY: tuple[tuple[FormulaSpec, object], ...] = ((SCS, scs_unit_hydrograph),)
+FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
+    (SCS, scs_unit_hydrograph),
+    (CONVOLUTION, convolve_discrete),
+)
 
 
 def _generated() -> list[object]:
@@ -86,6 +90,13 @@ def test_limits_and_oracles(spec: FormulaSpec, function):
 def test_scs_properties(inputs):
     assert_property_contract(SCS, as_standard(scs_unit_hydrograph), inputs, ERRORS)
     assert_properties(SCS, as_standard(scs_unit_hydrograph), inputs, ERRORS)
+
+
+@given(inputs=strategies(CONVOLUTION))
+def test_convolution_properties(inputs):
+    function = as_standard(convolve_discrete)
+    assert_property_contract(CONVOLUTION, function, inputs, ERRORS)
+    assert_properties(CONVOLUTION, function, inputs, ERRORS)
 
 
 # --- table 16-1 of NEH 630 chapter 16 (CMP-2.5) ---------------------------------------
