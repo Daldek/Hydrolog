@@ -33,8 +33,8 @@ sdii_mm = 1.0
 wet_day_total_mm = 1.0
 
 [properties.scalings.tolerance]
-reason = "doubling every value is exact in binary"
-abs = 0.0
+reason = "doubling every value is exact in binary but for a quotient in the subnormal range, rounded to a multiple of 5e-324"
+abs = 2e-323
 
 [[properties.limits]]
 name = "exact_oracle"

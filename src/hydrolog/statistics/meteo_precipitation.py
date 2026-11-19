@@ -462,7 +462,9 @@ SDII: Final = FormulaSpec(
                 inputs={"precipitation_mm": 1.0, "wet_day_mm": 1.0},
                 outputs={"sdii_mm": 1.0, "wet_day_total_mm": 1.0},
                 tolerance=Tolerance(
-                    abs=0.0, reason="doubling every value is exact in binary"
+                    abs=2e-323,
+                    reason="doubling every value is exact in binary but for a "
+                    "quotient in the subnormal range, rounded to a multiple of 5e-324",
                 ),
             ),
         ),
@@ -650,7 +652,10 @@ WET_DAY_PERCENTILE: Final = FormulaSpec(
                 inputs={"precipitation_mm": 1.0, "wet_day_mm": 1.0},
                 outputs={"percentile_mm": 1.0},
                 tolerance=Tolerance(
-                    abs=0.0, reason="doubling every value is exact in binary"
+                    abs=2e-323,
+                    reason="doubling every value is exact in binary but for an "
+                    "interpolation in the subnormal range, rounded to a multiple of "
+                    "5e-324",
                 ),
             ),
         ),

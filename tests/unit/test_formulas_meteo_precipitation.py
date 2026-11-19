@@ -8,8 +8,9 @@ assertions through :func:`as_standard` (ADR-0050, point 3).
 
 from pathlib import Path
 
+import numpy as np
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 
 from hydrolog._formulas import ERRORS
 from hydrolog.catalog import run_command
@@ -101,6 +102,12 @@ def _properties(spec: FormulaSpec, function, inputs) -> None:
 
 
 @given(inputs=strategies(SDII))
+@example(  # SDII in the subnormal range: 2 fl(t / W) and fl(2 t / W) differ by 5e-324
+    inputs={
+        "precipitation_mm": np.full(46, 2.225073858507203e-309),
+        "wet_day_mm": 5e-324,
+    }
+)
 def test_sdii_properties(inputs):
     _properties(SDII, wet_day_intensity, inputs)
 
