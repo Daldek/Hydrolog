@@ -58,10 +58,13 @@ MODULES = (
     "hydrolog.soil.hsg",
     "hydrolog.soil.texture",
     "hydrolog.statistics.baseflow",
+    "hydrolog.statistics.duration",
+    "hydrolog.statistics.events",
     "hydrolog.statistics.high_flows",
     "hydrolog.statistics.homogeneity",
     "hydrolog.statistics.low_flows",
     "hydrolog.statistics.stationarity",
+    "hydrolog.statistics.volumes",
     "hydrolog.testing",
     "hydrolog.time.concentration",
 )

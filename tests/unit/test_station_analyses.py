@@ -13,7 +13,6 @@ from hydrolog.operations import stats_low_flow_sequences
 from hydrolog.statistics import (
     calculate_characteristic_values,
     duration_curve,
-    exceedance_values,
     runoff_volumes,
     threshold_events,
     threshold_runs,
@@ -163,22 +162,6 @@ class TestCharacteristicValues:
 
 
 class TestDurationCurve:
-    def test_weibull_positions_interpolated_between_ranks(self):
-        values = np.array([10.0, 20.0, 30.0, 40.0])  # positions 20, 40, 60, 80 %
-        assert exceedance_values(values, [20, 50, 80]).tolist() == [40.0, 25.0, 10.0]
-
-    def test_a_value_on_a_decimal_class_bound_is_in_the_class_it_starts(self):
-        """0.3 / 0.1 = 2.9999999999999996 in binary floating point; the rule is
-        lower <= v < upper (case FDC-CLASSES-DECIMAL-WIDTH-BOUNDARY of the audit)."""
-        values = np.array([0.1, 0.2, 0.3, 0.3, 0.7, 0.6])
-        dates = np.arange("2020-01-01", "2020-01-07", dtype="datetime64[D]")
-        result = duration_curve(values, dates, bin_width=0.1)
-        days = {(c.lower, c.upper): c.days for c in result.classes}
-        assert days[(0.3, 0.4)] == 2
-        assert days[(0.2, 0.3)] == 1
-        assert days[(0.6, 0.7)] == 1
-        assert days[(0.7, 0.8)] == 1
-
     def test_classes_from_a_multiple_of_the_width_with_cumulative_days(self):
         values = np.array([31.0, 38.0, 45.0, 45.0, 52.0])
         dates = np.array(

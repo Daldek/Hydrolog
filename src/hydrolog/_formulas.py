@@ -63,6 +63,9 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.time.concentration",
     "hydrolog.morphometry.profile",
     "hydrolog.runoff.nash_iuh",
+    "hydrolog.statistics.duration",
+    "hydrolog.statistics.events",
+    "hydrolog.statistics.volumes",
     "hydrolog.statistics.baseflow",
 )
 """The modules whose ``SPECS`` (and ``TIER_B``) declare Hydrolog's formulas, in the
