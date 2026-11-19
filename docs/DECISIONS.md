@@ -56,3 +56,4 @@ the adoption of the Nogat standard 1.0 (then called 2.1) are in the plans of [pl
 | [0050](decisions/0050-formulas-declared-by-specs.md) | Formulas declared by specs: Nogat's reference module, `formula_versions` in the envelope, the notice code kept until its rename | accepted | 2026-11-18 |
 | [0051](decisions/0051-the-tr55-table-as-data-no-invented-fair-rows.md) | The TR-55 curve number table as data: no invented `fair` rows, no silent condition where TR-55 has none | accepted | 2026-11-18 |
 | [0057](decisions/0057-the-unit-hydrographs-declared-by-specs.md) | The unit hydrographs declared by specs: NEH 630's table 16-1 as data, C = 2.08 per cm, the 20 mi² of NEH, preconditions of what float64 holds | accepted | 2026-11-19 |
+| [0058](decisions/0058-snyder-and-clark-declared-by-specs.md) | Snyder's and Clark's unit hydrographs declared by specs: two Snyder formulas, Clark's step a precondition, the ranges without a source to be verified | accepted | 2026-11-19 |
