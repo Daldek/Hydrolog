@@ -67,6 +67,9 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.routing.reach",
     "hydrolog.routing.formulas.muskingum",
     "hydrolog.routing.muskingum",
+    "hydrolog.routing.formulas.cascade",
+    "hydrolog.routing.cascade",
+    "hydrolog.routing.formulas.lag",
     "hydrolog.routing.network",
 )
 """The modules whose ``SPECS`` (and ``TIER_B``) declare Hydrolog's formulas, in the

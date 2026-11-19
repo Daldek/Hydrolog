@@ -40,6 +40,8 @@ MODULES = (
     "hydrolog.routing._svg",
     "hydrolog.routing.cascade",
     "hydrolog.routing.document",
+    "hydrolog.routing.formulas.cascade",
+    "hydrolog.routing.formulas.lag",
     "hydrolog.routing.formulas.muskingum",
     "hydrolog.routing.hydrograph",
     "hydrolog.routing.lag",
