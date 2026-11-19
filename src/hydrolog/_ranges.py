@@ -182,6 +182,18 @@ _TIMESTEP = (
         "jednostkowego (krok) nie odwzorowuje szczytu hydrogramu jednostkowego"
     ),
 )
+_TIMESTEP_RULE = (
+    (
+        "Hydrolog: the rule of NEH 630 ch. 16 for the SCS unit hydrograph (D at most "
+        "0.25 Tp) taken as a rule of thumb; no published source for this model, to "
+        "be verified"
+    ),
+    (
+        "Hydrolog: reguła NEH 630 rozdz. 16 dla hydrogramu SCS (D najwyżej 0,25 Tp) "
+        "przyjęta jako reguła praktyczna; brak opublikowanego źródła dla tego modelu, "
+        "do weryfikacji"
+    ),
+)
 
 _SOURCE_PL: Final[Mapping[tuple[str, str], str]] = {
     ("scs_cn_runoff", "cn"): (
@@ -418,6 +430,15 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
         verified=False,
     ),
     *_specified("snyder"),
+    TypicalRange(
+        "scs",
+        "timestep_min",
+        0.0,
+        _TIMESTEP_SHARE,
+        "min",
+        *_TIMESTEP,
+        relative_to="uh_time_to_peak_min",
+    ),
     *(
         TypicalRange(
             model,
@@ -425,10 +446,13 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
             0.0,
             _TIMESTEP_SHARE,
             "min",
-            *_TIMESTEP,
+            *_TIMESTEP_RULE,
             relative_to="uh_time_to_peak_min",
+            notice="outside_unverified_range",
+            verified=False,
         )
         for model in UH_MODELS
+        if model != "scs"
     ),
     # --- statistics --------------------------------------------------------------
     TypicalRange(

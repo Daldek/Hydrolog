@@ -37,7 +37,12 @@ from hydrolog.nogat_formulas import (
     strategies,
     type_cases,
 )
-from hydrolog.runoff import ClarkIUH, SCSUnitHydrograph, SnyderUH
+from hydrolog.runoff import (
+    ClarkIUH,
+    HydrographGenerator,
+    SCSUnitHydrograph,
+    SnyderUH,
+)
 from hydrolog.runoff.clark_iuh import CLARK, clark_unit_hydrograph
 from hydrolog.runoff.convolution import CONVOLUTION, convolve_discrete
 from hydrolog.runoff.snyder_uh import (
@@ -361,3 +366,48 @@ def test_the_clark_wrapper_computes_through_the_spec():
     assert np.array_equal(result.ordinates_m3s, found.ordinates_m3s)
     with pytest.warns(OutsideUnverifiedRange):
         ClarkIUH(tc_min=60.0, r_min=6.0).generate_iuh(timestep_min=5.0)
+
+
+# --- the hydrograph generator: the volume of every model ------------------------------
+
+_GENERATOR_MODELS: tuple[tuple[str, dict[str, float]], ...] = (
+    ("scs", {}),
+    ("nash", {"n": 1.0, "k": 0.8}),
+    ("nash", {"n": 3.0, "k": 0.8}),
+    ("clark", {"r": 45.0}),
+    ("snyder", {"L_km": 15.0, "Lc_km": 8.0}),
+)
+
+
+@pytest.mark.parametrize("timestep_min", [5.0, 60.0])
+@pytest.mark.parametrize(
+    ("model", "params"),
+    _GENERATOR_MODELS,
+    ids=["scs", "nash-1", "nash-3", "clark", "snyder"],
+)
+def test_the_generator_keeps_the_volume_of_every_model(model, params, timestep_min):
+    """The runoff hydrograph holds the effective rainfall over the watershed.
+
+    Hand-written (CMP-6.5): the generator composes the specs scs_cn_runoff, a unit
+    hydrograph and uh_convolution, and no spec declares the composition. The research
+    case generator-volume-conservation-property (A 45 km2, CN 80, tc 90 min, 2, 5, 12,
+    20, 9, 4 and 2 mm in seven steps) measured 0.9943 to 1.0006 of Pe A.
+    """
+    generator = HydrographGenerator(
+        area_km2=45.0, cn=80, tc_min=90.0, uh_model=model, uh_params=params
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # a step beyond 0.25 tp, SCS's sub-steps
+        result = generator.generate(
+            [2.0, 5.0, 12.0, 20.0, 9.0, 4.0, 2.0], timestep_min=timestep_min
+        )
+
+    assert_within(
+        result.hydrograph.total_volume_m3,
+        result.total_effective_mm * 45.0 * 1000.0,
+        rel=0.01,
+        reason="the unit hydrographs hold 1 mm within their sampling: the SCS table "
+        "at the step (0.998 to 1.001 mm), a Nash cascade of one reservoir sampled at "
+        "5 min (0.994 mm), Clark and Snyder rescaled to 1 mm; the report's water "
+        "balance flags more than 1 %",
+    )
