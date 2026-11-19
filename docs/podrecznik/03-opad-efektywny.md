@@ -2,7 +2,7 @@
 
 Nie cały opad, który spadnie na zlewnię, odpływa z niej w czasie wezbrania. Część zatrzymują
 rośliny (intercepcja), część zagłębienia terenu, część wsiąka w glebę i dopiero ta, która
-pozostanie, tworzy **odpływ bezpośredni** (powierzchniowy i szybki podpowierzchniowy). Wysokość
+pozostanie, tworzy **odpływ bezpośredni** (ang. *direct runoff*; powierzchniowy i szybki podpowierzchniowy). Wysokość
 tej części, wyrażoną w milimetrach nad całą zlewnią, nazywa się **opadem efektywnym** (ang.
 *effective rainfall*, *rainfall excess*). To ona jest daną wejściową hydrogramu jednostkowego
 (rozdział 5), który rozkłada ją w czasie na hydrogram odpływu.
@@ -44,7 +44,7 @@ Poszczególne wielkości to:
 - **retencja potencjalna** $S$ [mm] (ang. *potential maximum retention*; w części polskiej
   literatury $R$): największa ilość wody, jaką zlewnia może jeszcze zatrzymać po rozpoczęciu
   odpływu;
-- **retencja rzeczywista** $F$ [mm]: woda zatrzymana po rozpoczęciu odpływu, czyli opad minus
+- **retencja rzeczywista** $F$ [mm] (ang. *actual retention*): woda zatrzymana po rozpoczęciu odpływu, czyli opad minus
   straty początkowe minus odpływ;
 - **opad efektywny** $Q$ [mm] (w Hydrologu $P_e$): wysokość odpływu bezpośredniego.
 
@@ -106,7 +106,7 @@ każdego kroku jest błędem: straty początkowe odejmowałoby się wtedy w każ
 
 **Interpretacja wyniku.** Opad efektywny to wysokość warstwy odpływu nad całą zlewnią; objętość
 fali to opad efektywny razy powierzchnia zlewni. Stosunek opadu efektywnego do opadu to
-**współczynnik odpływu** zdarzenia $C$. Odpływ nie jest proporcjonalny ani do CN, ani do opadu
+**współczynnik odpływu** zdarzenia $C$ (ang. *runoff coefficient*). Odpływ nie jest proporcjonalny ani do CN, ani do opadu
 (NEH 630, rozdz. 10, przykład 10-2): wyników nie wolno skalować, każdy wariant trzeba policzyć.
 
 **Współczynnik strat początkowych.** Hydrolog przyjmuje domyślnie wartość standardową, dla której
@@ -315,7 +315,7 @@ połączonych z odwodnieniem (NEH 630, rozdz. 9, wzór 9-1): to ta sama średnia
 przepuszczalnej i nieprzepuszczalnej, z CN powierzchni nieprzepuszczalnych z tablicy.
 
 Równanie odpływu jest nieliniowe, więc odpływ obliczony z CN ważonego nie jest równy średniej
-ważonej odpływów obliczonych osobno dla każdego kompleksu. Ten drugi sposób, **ważony odpływ**,
+ważonej odpływów obliczonych osobno dla każdego kompleksu. Ten drugi sposób, **ważony odpływ** (ang. *weighted runoff*),
 NEH 630 (rozdz. 10, s. 10-11) uznaje za zgodny z danymi, a ważony CN za prostszy; różnica jest
 największa przy dużym zróżnicowaniu CN i małych opadach (przykład 10-5 NEH 630: przy opadzie
 2 cali odpływ z ważonego CN 0,17 cala, a ważony odpływ 0,26 cala; przy 10 calach 5,83 i 5,85

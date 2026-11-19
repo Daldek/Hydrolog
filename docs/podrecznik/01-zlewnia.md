@@ -75,13 +75,13 @@ pomnożonej przez powierzchnię komórki. W terenie górskim powierzchnia rzeczy
 większa od rzutu (Baścik 2006, wzór 1.2.4), ale wszystkie wzory hydrologiczne tego podręcznika
 używają rzutu.
 
-**Obwód** $P$ to długość działu wodnego. Ma on cechę, o której łatwo zapomnieć: dział wodny jest
+**Obwód** $P$ (ang. *perimeter*) to długość działu wodnego. Ma on cechę, o której łatwo zapomnieć: dział wodny jest
 nieregularny w każdej skali, więc jego zmierzona długość rośnie wraz ze szczegółowością mapy lub
 NMT (Bendjoudi i Hubert 2002, s. 924–928). Ta sama zlewnia ma inny obwód na mapie 1:50 000, inny
 na granicy złożonej ze schodków komórek NMT i jeszcze inny na granicy wygładzonej. Wskaźniki
 zależne od obwodu wolno więc porównywać tylko między zlewniami wyznaczonymi tą samą metodą.
 
-**Długość zlewni** $L$ ma w literaturze co najmniej trzy definicje:
+**Długość zlewni** $L$ (ang. *basin length*) ma w literaturze co najmniej trzy definicje:
 
 | Długość | Definicja | Źródło |
 |---|---|---|
@@ -97,7 +97,7 @@ od przekroju do najdalszego punktu działu wodnego 10,88 km (zmierzony na grani
 Hydrografu). Którą długość przyjąć we wskaźnikach kształtu, pozostaje otwartym pytaniem ADR-0065
 Hydrologu; zawsze trzeba podać, którą się przyjęło.
 
-**Średnia szerokość** zlewni to szerokość prostokąta o powierzchni i długości zlewni. Hydrolog
+**Średnia szerokość** zlewni (ang. *mean width*) to szerokość prostokąta o powierzchni i długości zlewni. Hydrolog
 podaje ją jako `width_km`; Baścik (2006, s. 21) dzieli przez długość doliny $L_m$.
 
 <!-- spec:mean_width -->
@@ -453,7 +453,7 @@ BDOT10k obniżył o 2 m. Krzywą hipsograficzną liczy się z NMT surowego, bo 
 
 ### Cieki, odcinki i rzędy
 
-Sieć rzeczną opisuje się jako drzewo: **odcinki** (ang. *links*, *segments*) łączą **węzły**
+Sieć rzeczną opisuje się jako drzewo: **odcinki** (ang. *links*, *segments*) łączą **węzły** (ang. *nodes*)
 (źródła, połączenia cieków i przekrój zamykający). **Ciek** w sensie Strahlera to ciąg odcinków
 tego samego rzędu, od miejsca, w którym ten rząd powstał, do połączenia z ciekiem rzędu równego
 lub wyższego.
