@@ -24,9 +24,9 @@ Kartograf and Obserwator supply the input files. User documentation:
   generator (DEV-10.4).
 - The frames of the handbook `docs/podrecznik/` (Polish) are generated from the formula
   specs by `uv run scripts/generate_handbook.py`, with the Polish texts of
-  `docs/podrecznik/_specs_pl.toml`; a changed spec text stops it until its Polish entry is
-  reviewed (the error gives the new `en_sha256`), and `--template NAME` prints the entry
-  of a new formula.
+  `docs/podrecznik/_specs_pl.toml`; a changed text of a spec the handbook shows stops it
+  until its Polish entry is reviewed (the error gives the new `en_sha256`), and
+  `--template NAME` prints the entry of a new formula.
 - The catalog (`src/hydrolog/catalog/groups/`) is the single source of truth for the
   library API, CLI, MCP tools and guides (AGI-1.1). Add a command there, not in the CLI.
 - Code, comments, docstrings, commit messages and docs are English (DEV-2.1); human

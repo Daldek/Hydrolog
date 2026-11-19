@@ -22,9 +22,10 @@ and the meaning of each input, output, constant and constraint, the conventions,
 assumptions and validation (Tier A) or the definition and convention (Tier B); the
 name of each unit, the words of the equations and the headers of the tables' columns.
 An entry carries the SHA-256 of the English texts it translates (``en_sha256``), and
-every translated text keeps the numbers of its English one, so a change of a spec
-stops the generator until its Polish texts are reviewed. A formula the handbook shows
-needs its entry; ``--template NAME`` prints one to fill.
+every translated text keeps the numbers of its English one, so a change of the spec of
+a formula the handbook shows stops the generator until its Polish texts are reviewed.
+A formula the handbook shows needs its entry; ``--template NAME`` prints one to fill.
+The entries of formulas no frame shows are checked when a frame first shows them.
 
 ``tests/contract/test_handbook.py`` checks the fragments fresh (DEV-10.4).
 
@@ -611,9 +612,10 @@ class Handbook:
     def polish_problems(self) -> list[str]:
         """Return what is missing, unknown or stale in the Polish texts.
 
-        Every entry of ``_specs_pl.toml`` translates its formula completely and fresh;
-        every formula, unit, word of an equation and column of a table the handbook
-        shows has its Polish text.
+        Every formula the handbook shows has an entry of ``_specs_pl.toml`` that
+        translates it completely and fresh, and every unit, word of an equation and
+        column of a table it shows has its Polish text; no entry names a formula, unit,
+        word or column that the specs no longer have.
         """
         data = self.polish
         problems = [
@@ -621,14 +623,14 @@ class Handbook:
             for key in data
             if key not in ("formulas", "rules", "units", "words", "columns")
         ]
+        shown = self.shown()
         for section, known in (("formulas", self.formulas), ("rules", self.rules)):
             entries = data.get(section, {})
             for name, entry in entries.items():
                 if name not in known:
                     problems.append(f"{POLISH} [{section}.{name}]: no such formula")
-                else:
+                elif name in shown:
                     problems += entry_problems(known[name], entry)
-        shown = self.shown()
         for name, paths in shown.items():
             section = "formulas" if name in self.formulas else "rules"
             if name not in data.get(section, {}):

@@ -124,7 +124,7 @@ def test_a_formula_without_polish_texts_stops_the_generator():
     assert any("--template kirpich" in problem for problem in book.polish_problems())
 
 
-def test_a_changed_spec_or_number_makes_its_polish_texts_stale():
+def test_a_changed_spec_or_number_makes_the_polish_texts_of_a_shown_formula_stale():
     polish = _polish()
     stale = copy.deepcopy(polish)
     stale["formulas"]["kirpich"]["en_sha256"] = "0" * 64
@@ -132,9 +132,11 @@ def test_a_changed_spec_or_number_makes_its_polish_texts_stale():
     conventions = renumbered["formulas"]["kirpich"]["conventions"]
     conventions[0] += " 7"
     text = "<!-- spec:kirpich -->\n<!-- /spec:kirpich -->\n"
+    other = "<!-- spec:nrcs -->\n<!-- /spec:nrcs -->\n"
 
     assert any("en_sha256" in p for p in _book(text, stale).polish_problems())
     assert any("adds 7" in p for p in _book(text, renumbered).polish_problems())
+    assert _book(other, stale).polish_problems() == []
 
 
 def test_markers_in_a_code_fence_are_text_and_broken_markers_are_refused():

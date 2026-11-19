@@ -237,11 +237,11 @@ pokazuje opublikowaną tablicę wiersz po wierszu, z jej źródłem i skrótem S
 Liczby, jednostki i zakresy pochodzą wprost ze specyfikacji. Polskie słowa (nazwy wzorów,
 znaczenia zmiennych, konwencje, założenia, nazwy jednostek) są w pliku
 [`_specs_pl.toml`](_specs_pl.toml); każdy wpis ma skrót SHA-256 angielskich tekstów, które
-tłumaczy, a każde tłumaczenie zachowuje liczby oryginału, więc zmiana specyfikacji zatrzymuje
-generator, dopóki ktoś nie przejrzy polskiego tekstu. Test kontraktowy
-`tests/contract/test_handbook.py` sprawdza, że ramki są aktualne, że każda nazwa wskazuje
-istniejący wzór, że żadna ramka nie została pusta i że polskie teksty są kompletne. Ramki
-odświeża polecenie:
+tłumaczy, a każde tłumaczenie zachowuje liczby oryginału, więc zmiana specyfikacji wzoru
+pokazanego w podręczniku zatrzymuje generator, dopóki ktoś nie przejrzy polskiego tekstu.
+Test kontraktowy `tests/contract/test_handbook.py` sprawdza, że ramki są aktualne, że każda
+nazwa wskazuje istniejący wzór, że żadna ramka nie została pusta i że polskie teksty
+pokazanych wzorów są kompletne. Ramki odświeża polecenie:
 
 ```sh
 uv run scripts/generate_handbook.py          # wypełnia ramki
