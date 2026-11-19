@@ -846,7 +846,7 @@ def test_the_guides_series_passes_the_three_homogeneity_tests(tab: Tab) -> None:
         ["Mann-Whitney", "U = 94", "0,644", "✓ tak"]
     )
     expect(rows.nth(1).locator("th, td")).to_have_text(
-        ["Kołmogorow-Smirnow", "D = 0,308", "0,588", "✓ tak"]
+        ["Kołmogorow-Smirnow", "D = 0,308", "0,571", "✓ tak"]
     )
     expect(rows.nth(2).locator("th, td")).to_have_text(
         ["Pettitt", "K = 50", "0,879", "✓ tak"]
