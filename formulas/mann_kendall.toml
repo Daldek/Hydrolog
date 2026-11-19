@@ -1,0 +1,245 @@
+schema = "nogat-formula-card/1"
+name = "mann_kendall"
+title = "Mann-Kendall test of a monotonic trend: S, Var(S) with ties, Z and the two-sided p"
+function = "hydrolog.statistics.stationarity.mann_kendall"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "S = sum_{i<j} sgn(x_j - x_i); Var(S) = [n (n - 1) (2n + 5) - sum_p t_p (t_p - 1) (2 t_p + 5)] / 18 over the groups of t_p equal values; Z = (S - 1) / sqrt(Var(S)) for S > 0, 0 for S = 0, (S + 1) / sqrt(Var(S)) for S < 0; p = P(|S'| >= |S|) of the exact distribution of S below n0 values, else 2 P(Z' > |Z|) of the standard normal"
+latex = "S = \\sum_{i<j} \\operatorname{sgn}(x_j - x_i),\\quad \\operatorname{Var}(S) = \\frac{n(n-1)(2n+5) - \\sum_p t_p(t_p-1)(2t_p+5)}{18},\\quad Z = \\frac{S - \\operatorname{sgn} S}{\\sqrt{\\operatorname{Var}(S)}},\\quad p = \\begin{cases} P(|S'| \\ge |S|) & n < n_0 \\\\ 2\\,P(Z' > |Z|) & n \\ge n_0 \\end{cases}"
+validation = "none: a test of the hypothesis of no trend; its sources compare it with no observations"
+conventions = ["values tie when exactly equal (round a series computed in floating point to its precision first); sgn(0) = 0, as KZGW (2017) eq. 1.2 defines it, though its worked examples count a tied pair as -1", "Var(S) corrected for the groups of ties (Gilbert eq. 16.3, Hirsch et al. eq. 3b, R's trend); KZGW (2017, p. 11) leaves the correction out", "Z with a continuity correction of one toward 0 and Z = 0 for S = 0 (Gilbert eq. 16.4, KZGW eq. 1.4)", "the p-value is two-sided: below n0 values the exact P(|S'| >= |S|) over every distinct ordering of the values, equally likely under no trend, ties respected (the q-multinomial coefficients, MacMahon 1916); from n0 values 2 P(Z' > |Z|) from the upper tail of the normal distribution (scipy's norm.sf, as R's trend), which keeps its digits for a strong trend", "a p-value below the smallest positive float (|Z| above about 38.5) is set to it, the end of the physical range (0, 1]", "the series in any unit: the statistics have none"]
+assumptions = ["the values are independent and identically distributed under no trend (Gilbert 1987, p. 213; KZGW 2017, p. 10): serial correlation, as of daily or monthly flows, makes the test reject too often", "the values are in time order, one per time step; gaps of the record do not enter the test"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/trend-cases.json"]
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_series"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "the statistics count signs of differences and groups of equal values, which doubling, negating or reversing the series keeps or mirrors exactly"
+abs = 0.0
+
+[[properties.limits]]
+name = "equal_values"
+text = "a series of equal values: S = 0, Var(S) = 0, Z = 0 (Gilbert's eq. 16.4 for S = 0) and p = 1, every ordering being the same"
+
+[properties.limits.source]
+citation = "Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York"
+access = "open"
+locator = "eqs. 16.1 to 16.4, pp. 209-211: S, Var(S) corrected for ties, Z with a continuity correction of one; section 16.4.1 and table A18: the exact probabilities of S below n = 10"
+url = "https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf"
+
+[[properties.limits]]
+name = "monotone_series_exact"
+text = "a strictly monotone series below n0 values has the exact p 2/n!"
+
+[[properties.limits]]
+name = "normal_tail"
+text = "from n0 values p equals erfc(|Z| / sqrt(2)), the normal tail of another algorithm"
+
+[[properties.symmetries]]
+name = "negated_series"
+text = "the negated series has the negated S and Z, the same Var(S) and p"
+
+[properties.symmetries.tolerance]
+reason = "the statistics count signs of differences and groups of equal values, which doubling, negating or reversing the series keeps or mirrors exactly"
+abs = 0.0
+
+[[properties.symmetries]]
+name = "reversed_series"
+text = "the series in reverse order has the negated S and Z, the same Var(S) and p"
+
+[properties.symmetries.tolerance]
+reason = "the statistics count signs of differences and groups of equal values, which doubling, negating or reversing the series keeps or mirrors exactly"
+abs = 0.0
+
+[[sources]]
+citation = "Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York"
+access = "open"
+locator = "eqs. 16.1 to 16.4, pp. 209-211: S, Var(S) corrected for ties, Z with a continuity correction of one; section 16.4.1 and table A18: the exact probabilities of S below n = 10"
+url = "https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf"
+
+[[sources]]
+citation = "Hirsch, R.M., Slack, J.R., Smith, R.A. (1981). Techniques of trend analysis for monthly water quality data. U.S. Geological Survey Open-File Report 81-488 (Water Resources Research 18(1), 107-121, 1982)"
+access = "open"
+locator = "eqs. 1, 2, 3b and 4, PDF pp. 6-7: S, its variance with ties after Kendall (1975) and Z; 'even for n = 10 the normal approximation is excellent, provided one uses a continuity correction of one unit'"
+url = "https://pubs.usgs.gov/of/1981/0488/report.pdf"
+
+[[sources]]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "eqs. 1.1 to 1.4, pp. 10-11: S with sgn(0) = 0, its variance without the correction for ties, u = (S - sgn S) / sigma, the normal approximation 'już dla N >= 10'"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[sources]]
+citation = "Pohlert, T. trend: Non-Parametric Trend Tests and Change-Point Detection, R package version 1.1.10, CRAN"
+access = "open"
+locator = "R/mk.test.R: at least 3 values ('x' must have at least 3 elements), S, varS corrected for ties, z = sgn(S) (|S| - 1) / sigma, the two-sided p 2 min(0.5, P(Z > |z|))"
+url = "https://cran.r-project.org/package=trend"
+
+[[sources]]
+citation = "Mann, H.B. (1945). Nonparametric tests against trend. Econometrica 13, 245-259"
+access = "author-provided"
+
+[[sources]]
+citation = "Kendall, M.G. (1975). Rank Correlation Methods, 4th ed. Griffin, London"
+access = "author-provided"
+locator = "p. 55: the normal approximation of S from n = 10 (quoted by Gilbert 1987, p. 211)"
+
+[[variables]]
+name = "values"
+symbol = "x_i"
+unit = "m3/s"
+kind = "real_array"
+description = "The series in time order, one value per time step: annual maxima, means or minima, sums or counts, in any unit."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the test counts the signs of differences and Sen's slope scales with the unit of the series, so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage or a temperature may lie below 0, so the same bound holds below 0"
+
+[variables.typical]
+low = 0.81
+low_inclusive = true
+high = 111.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[constraints]]
+name = "enough_values"
+class = "precondition"
+text = "n >= 3"
+
+[constraints.source]
+citation = "Pohlert, T. trend: Non-Parametric Trend Tests and Change-Point Detection, R package version 1.1.10, CRAN"
+access = "open"
+locator = "R/mk.test.R: at least 3 values ('x' must have at least 3 elements), S, varS corrected for ties, z = sgn(S) (|S| - 1) / sigma, the two-sided p 2 min(0.5, P(Z > |z|))"
+url = "https://cran.r-project.org/package=trend"
+
+[[constants]]
+name = "exact_below"
+value = 10.0
+unit = "values"
+symbol = "n_0"
+exact = "10"
+
+[constants.source]
+citation = "Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York"
+access = "open"
+locator = "section 16.4.2, p. 211: the normal approximation from n = 10 after Kendall (1975, p. 55), as KZGW (2017, p. 11) and Hirsch et al. (1981, PDF p. 7) state it; section 16.4.1 and table A18: the exact probabilities below"
+url = "https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf"
+
+[[outputs]]
+name = "s"
+unit = "-"
+kind = "integer"
+symbol = "S"
+description = "Kendall's score: the pairs in ascending order less the pairs in descending order."
+
+[outputs.physical]
+
+[[outputs]]
+name = "var_s"
+unit = "-"
+kind = "real"
+symbol = "\\operatorname{Var}(S)"
+description = "The variance of S under no trend, corrected for the groups of equal values; 0 for a series of equal values."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "z"
+unit = "-"
+kind = "real"
+symbol = "Z"
+description = "The standardised score with a continuity correction of one."
+
+[outputs.physical]
+
+[[outputs]]
+name = "p_value"
+unit = "-"
+kind = "real"
+symbol = "p"
+description = "Two-sided p-value of no trend; one below the smallest positive float is set to it."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "p_value_method"
+unit = "-"
+kind = "choice"
+description = "exact below n0 values, normal from n0."
+choices = ["exact", "normal"]
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "sqrt(Var(S)) at Var(S) = 0, a series of equal values: Z = 0 by S = 0, limit equal_values"
+
+[[traps]]
+name = "exp_overflow"
+description = "exp of a scaled input at its test bound."
+test = "the normal tail exp(-z^2/2) of a strong trend: 50 increasing values keep p = 1.3e-24 and 10,000 give the smallest positive float, not 0 (test_a_strong_trend_keeps_a_p_value_above_zero)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case values-nan_element: a gap is refused"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "S sums n(n - 1)/2 signs in integers and Var(S) is one division of integers (test_s_of_a_long_series_is_exact)"
+
+[[oracles]]
+kind = "exact"
+description = "the null distribution of S by every ordering of the series (the permutation test's definition), with Fraction probabilities: p and the variance of the distribution, which is Var(S) with ties"
+test = "tests/unit/test_formulas_trend.py (test_the_exact_p_and_var_s_are_those_of_every_ordering)"
+conventions = []
+
+[[oracles]]
+kind = "exact"
+description = "the Mahonian numbers of the inversions of the permutations of n by the recurrence M(n, k) = M(n, k - 1) + M(n - 1, k) - M(n - 1, k - n), not the product of the q-factorial"
+test = "tests/unit/test_formulas_trend.py (test_the_exact_p_without_ties_is_that_of_the_mahonian_numbers)"
+conventions = []
+
+[[oracles]]
+kind = "established"
+description = "scipy.stats.kendalltau of the series against its times (SciPy 1.18.1): S from tau-b and, without ties below n0 values, the exact p"
+test = "tests/unit/test_formulas_trend.py (test_s_and_the_exact_p_are_scipys_kendalltau)"
+conventions = ["kendalltau(method='exact') is the two-sided p of the permutation distribution of the inversions without ties, the p of the spec below n0 values", "tau-b times sqrt(n0 (n0 - n1)), n0 = n (n - 1)/2 and n1 the tied pairs of the values, is S"]
+
+[[oracles]]
+kind = "frozen"
+description = "R 4.4.3 trend 1.1.10 mk.test, modifiedmk 1.6 mkttest and Kendall 2.2.2 MannKendall on 13 series"
+test = "tests/oracles/trend_regime/r_oracle_outputs_headed.csv (tests/unit/test_formulas_trend.py, test_mann_kendall_is_rs)"
+conventions = ["trend::mk.test: S, varS corrected for ties, z with the continuity correction, p = 2 min(0.5, P(Z > |z|)) for every n; Hydrolog's p below n0 values is exact, so only S, Var(S) and Z are compared there", "Kendall::MannKendall copies the data to single precision; the series of the oracle tie in both precisions"]

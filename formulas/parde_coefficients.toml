@@ -1,0 +1,229 @@
+schema = "nogat-formula-card/1"
+name = "parde_coefficients"
+title = "Pardé's coefficients: the mean discharge of each month over the mean annual discharge"
+function = "hydrolog.statistics.regime.parde_coefficients"
+family = "index"
+formula_version = 1
+status = "referenced"
+equation = "K_m = Qbar_m / Qbar, Qbar_m the mean of the days with a value of calendar month m over the period, Qbar the mean of all days with a value"
+latex = "K_m = \\frac{\\bar{Q}_m}{\\bar{Q}},\\quad \\bar{Q}_m = \\frac{1}{n_m}\\sum_{d \\in m} Q_d,\\quad \\bar{Q} = \\frac{1}{N}\\sum_{d} Q_d"
+validation = "none: Pardé's coefficients describe the mean annual cycle of discharge; their sources compare them with no observations"
+conventions = ["Qbar_m the mean of the days with a value of calendar month m over the whole period (the month's days of every year together), Qbar the mean of all days with a value, as IMGW-PIB's monthly and annual means of a year: the twelve coefficients weighted by the days of their months average one and sum to 12 only when every month has as many days (a gapless year: about 11.96 for a strong spring flood); the mean of the twelve monthly means would make them sum to 12", "a day without a value (NaN) counts in neither mean; with gaps gathered in some months Qbar leans towards the better observed ones", "the input months are calendar months (January = 1), the outputs run from November to October, the months of the hydrological year", "discharge in m3/s or any unit (the coefficients have none); Wrzesiński's tables print them in % of the mean annual flow"]
+assumptions = ["the period's days represent its months: a period of a few years describes those years, not the climate (the regime of Polish rivers is read from 30 to 40 years, Wrzesiński 2017)"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/regime-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+symmetries = []
+
+[properties.monotonic]
+values = 1
+
+[[properties.scalings]]
+name = "discharge_in_another_unit"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+monthly_mean = 1.0
+annual_mean = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling every discharge doubles each sum and mean exactly and leaves each quotient as it was; a mean below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[properties.limits]]
+name = "constant_discharge"
+text = "a constant discharge gives every coefficient one"
+
+[[properties.limits]]
+name = "exact_rational"
+text = "the means and coefficients of the float inputs in exact rational arithmetic"
+
+[[properties.conservation]]
+name = "day_weighted_mean_of_one"
+text = "the coefficients weighted by the days with a value of their months average one, sum(n_m K_m) = N; they sum to twelve only when every month has as many days"
+
+[properties.conservation.tolerance]
+reason = "twelve coefficients of three roundings each, weighted and summed by math.fsum"
+abs = 4e-15
+
+[[sources]]
+citation = "Bundesanstalt für Wasserbau, BAWiki glossary: Parde coefficient"
+access = "open"
+locator = "the quotient of the long-term mean monthly discharge and the long-term mean annual runoff"
+url = "http://wiki.baw.de/en/index.php/Parde_coefficient"
+
+[[sources]]
+citation = "Wrzesiński, D. (2017). Typologia reżimu odpływu rzek w Polsce w podejściu nadzorowanym i nienadzorowanym. Badania Fizjograficzne, Seria A, R. VIII (A68), 253-264. doi:10.14746/bfg.2017.8.19"
+access = "open"
+locator = "p. 254: Dynowska's (1997) types read from the monthly flow coefficients W (miesięczne współczynniki przepływu); Table 1, p. 260, in % of the mean annual flow"
+url = "https://repozytorium.amu.edu.pl/server/api/core/bitstreams/2a303457-aae6-4476-a766-985a3a4ac0b6/content"
+
+[[sources]]
+citation = "Pardé, M. (1933). Fleuves et rivières. Armand Colin, Paris"
+access = "author-provided"
+locator = "the monthly coefficient of discharge; not opened"
+
+[[variables]]
+name = "values"
+symbol = "Q_d"
+unit = "m3/s"
+kind = "real_array"
+description = "Daily mean discharge, in m3/s or any unit; NaN marks a day without a value."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s, about five times the mean discharge of the Amazon (about 2.1e5 m3/s), the largest of any river"
+
+[variables.typical]
+low = 1.24
+low_inclusive = true
+high = 522.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "IMGW-PIB, public hydrological data: the monthly characteristics of station 150160180 Kłodzko on the Nysa Kłodzka, hydrological years 1971-2015 but 1997 (tests/fixtures/imgw_klodzko/imgw_150160180_mies_1971_2015.csv)"
+access = "open"
+locator = "the smallest monthly minimum 1.24 m3/s and the largest monthly maximum 522 m3/s of discharge, which bound its daily means"
+url = "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/"
+
+[[variables]]
+name = "month"
+symbol = "m_d"
+unit = "-"
+kind = "real_array"
+description = "The calendar month of each day, January = 1."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 1.0
+low_inclusive = true
+high = 12.0
+high_inclusive = true
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 12.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "IMGW-PIB, MIES_publiczne_format.txt, the format of the public monthly files"
+access = "open"
+locator = "the calendar month of a row, 1 to 12"
+url = "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/"
+
+[[constraints]]
+name = "same_length"
+class = "physical"
+text = "one month per day"
+
+[constraints.source]
+citation = "Bundesanstalt für Wasserbau, BAWiki glossary: Parde coefficient"
+access = "open"
+locator = "the quotient of the long-term mean monthly discharge and the long-term mean annual runoff"
+url = "http://wiki.baw.de/en/index.php/Parde_coefficient"
+
+[[constraints]]
+name = "whole_months"
+class = "physical"
+text = "each month is a whole number, a calendar month 1 to 12"
+
+[constraints.source]
+citation = "Bundesanstalt für Wasserbau, BAWiki glossary: Parde coefficient"
+access = "open"
+locator = "the quotient of the long-term mean monthly discharge and the long-term mean annual runoff"
+url = "http://wiki.baw.de/en/index.php/Parde_coefficient"
+
+[[constraints]]
+name = "every_month_has_a_value"
+class = "precondition"
+text = "every calendar month has a day with a value: twelve means exist"
+
+[constraints.source]
+citation = "Bundesanstalt für Wasserbau, BAWiki glossary: Parde coefficient"
+access = "open"
+locator = "the quotient of the long-term mean monthly discharge and the long-term mean annual runoff"
+url = "http://wiki.baw.de/en/index.php/Parde_coefficient"
+
+[[constraints]]
+name = "positive_mean"
+class = "precondition"
+text = "0 < Qbar < inf: some day has a positive discharge, and float64 holds the mean and its sum"
+
+[constraints.source]
+citation = "Bundesanstalt für Wasserbau, BAWiki glossary: Parde coefficient"
+access = "open"
+locator = "the quotient of the long-term mean monthly discharge and the long-term mean annual runoff"
+url = "http://wiki.baw.de/en/index.php/Parde_coefficient"
+
+[[outputs]]
+name = "monthly_mean"
+unit = "m3/s"
+kind = "real_array"
+symbol = "\\bar{Q}_m"
+description = "Mean discharge of each month, November to October."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "annual_mean"
+unit = "m3/s"
+kind = "real"
+symbol = "\\bar{Q}"
+description = "Mean discharge of all days with a value."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "parde"
+unit = "-"
+kind = "real_array"
+symbol = "K_m"
+description = "Pardé's coefficient of each month, November to October."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "Qbar -> 0 divides every coefficient: the precondition positive_mean refuses a series without a positive day and a mean that underflows (test_a_tiny_or_vanishing_mean)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case values-nan_element and test_gaps_are_left_out_of_both_means: a NaN day is left out, never propagated"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_a_century_of_days_keeps_the_exact_means: 36,525 days of math.fsum against exact fractions"
+
+[[oracles]]
+kind = "exact"
+description = "the monthly and annual means and the coefficients of the float inputs in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_regime.py (limit exact_rational, trap many_small_terms)"
+conventions = []

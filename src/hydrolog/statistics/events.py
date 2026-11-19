@@ -9,23 +9,57 @@ events shorter than ``min_duration_days`` are dropped (:func:`threshold_runs`). 
 same rule finds the low-flow sequences of
 :meth:`hydrolog.statistics.LowFlowAnalysis.detect_sequences`.
 
+These are Tier B of Nogat's computation standard (CMP-1.1; ADR-0063): the method
+counts days, sums the daily deficits and picks extremes by a calendar definition and
+the conventions of its days and gaps (which day is beyond, how runs pool, how long an
+event lasts, the year it counts in); it estimates, fits or tests nothing. :data:`TIER_B`
+declares them with their sources, the low-flow sequences and their deficit volumes
+too; ``docs/FORMULAS.md`` shows them.
+
+Examples
+--------
+Two runs parted by two days merge when fewer than three days part them:
+
+>>> beyond = np.array([True, True, False, False, True, True, False])
+>>> [run.tolist() for run in threshold_runs(beyond, max_gap_days=3)]
+[[0], [5]]
+>>> [run.tolist() for run in threshold_runs(beyond, max_gap_days=2)]
+[[0, 4], [1, 5]]
+
+An event above 5 with its peak, and the days beyond the threshold of its hydrological
+year:
+
+>>> days = np.arange(np.datetime64("2021-03-01"), np.datetime64("2021-03-06"))
+>>> found = threshold_events([4.0, 6.0, 7.5, 5.0, 2.0], days, threshold=5.0)
+>>> event = found.events[0]
+>>> (event.start_date, event.duration_days, event.peak, event.peak_date)
+('2021-03-02', 3, 7.5, '2021-03-03')
+>>> (found.years[0].year, found.years[0].days_beyond)
+(2021, 3)
+
 References
 ----------
 Tallaksen, L. M. & van Lanen, H. A. J. (Eds., 2004): Hydrological Drought — Processes
     and Estimation Methods for Streamflow and Groundwater. Elsevier, ch. 5 (the
     threshold level method).
+WMO (2008): Manual on Low-flow Estimation and Prediction, WMO-No. 1029, sect. 8.2.
+Fleig, A. K., Tallaksen, L. M., Hisdal, H. & Demuth, S. (2006): A global evaluation
+    of streamflow drought characteristics. Hydrology and Earth System Sciences 10,
+    535-552.
+Tokarczyk, T. (2010): Niżówka jako wskaźnik suszy hydrologicznej. Monografie IMGW-PIB.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Final, Literal
 
 import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.nogat_formulas import UNITS, Constant, FormulaSpec, Source, TierBSpec
 from hydrolog.statistics._hydrological_year import (
     days_in_hydrological_year,
     hydrological_year,
@@ -33,6 +67,8 @@ from hydrolog.statistics._hydrological_year import (
 )
 
 __all__ = [
+    "SPECS",
+    "TIER_B",
     "ThresholdEvent",
     "ThresholdEventYear",
     "ThresholdEvents",
@@ -227,9 +263,10 @@ def threshold_events(
     Raises
     ------
     InvalidParameterError
-        If the arrays are empty or differ in length, ``threshold`` is not finite,
-        ``direction`` is unknown, ``min_duration_days`` is below 1 or
-        ``max_gap_days`` below 0, or no day has a value.
+        If the arrays are empty or differ in length, the dates do not increase
+        strictly, ``threshold`` is not finite, ``direction`` is unknown,
+        ``min_duration_days`` is below 1 or ``max_gap_days`` below 0, or no day has a
+        value.
     """
     values = np.asarray(values, dtype=np.float64)
     dates = np.asarray(dates).astype("datetime64[D]")
@@ -237,6 +274,8 @@ def threshold_events(
         raise InvalidParameterError(
             "values and dates must be non-empty and of the same length"
         )
+    if np.any(dates[1:] <= dates[:-1]):
+        raise InvalidParameterError("the dates must increase strictly")
     if not np.isfinite(threshold):
         raise InvalidParameterError(
             f"threshold must be a finite number, got {threshold}"
@@ -311,3 +350,127 @@ def threshold_events(
         events=events,
         years=rows,
     )
+
+
+# --- the Tier B formulas of the threshold level method --------------------------------
+
+_WMO_1029 = (
+    "WMO (2008). Manual on Low-flow Estimation and Prediction, WMO-No. 1029, "
+    "Operational Hydrology Report No. 50 (Gustard, A. and Demuth, S., eds.)"
+)
+_WMO_1029_URL = "https://library.wmo.int/idurl/4/32176"
+_THRESHOLD_LEVEL = Source(
+    citation=_WMO_1029,
+    locator="sect. 8.2, pp. 71-72: a deficit starts when the flow goes below the "
+    "threshold and ends as soon as it returns above it, with its duration, volume, "
+    "minimum flow and time of occurrence; the IT method pools deficits that occur "
+    "less than t_min days apart, d_pool = d_i + d_i+1 and v_pool = v_i + v_i+1 "
+    "(eqs. 8.1)",
+    url=_WMO_1029_URL,
+)
+_FLEIG = Source(
+    citation="Fleig, A.K., Tallaksen, L.M., Hisdal, H. and Demuth, S. (2006). A global "
+    "evaluation of streamflow drought characteristics. Hydrology and Earth System "
+    "Sciences 10, 535-552",
+    locator="sect. 2.1, p. 539, eqs. (1) and (2): the full duration of a pooled "
+    "drought runs from the first day of the first event to the last day of the last, "
+    "the excess periods included, and its deficit volume is the sum of the pooled "
+    "deficits",
+    url="https://hess.copernicus.org/articles/10/535/2006/hess-10-535-2006.pdf",
+)
+_DAY = Constant(
+    name="day",
+    value=UNITS["d"].factor,
+    unit="s/d",
+    symbol=r"\Delta t",
+    source=UNITS["d"].source,
+)
+
+SPECS: Final[tuple[FormulaSpec, ...]] = ()
+"""The module has no Tier A formula (CMP-1.1): see :data:`TIER_B`."""
+
+TIER_B: Final = (
+    TierBSpec(
+        name="threshold_runs",
+        function="hydrolog.statistics.events.threshold_runs",
+        definition="the runs of consecutive days flagged beyond a threshold; two runs "
+        "parted by fewer than max_gap_days days (without a value or not beyond) merge "
+        "into one, with the days between them; runs shorter than min_duration_days, "
+        "counted with the days merged in, are dropped; each run is the positions of "
+        "its first and last day, inclusive, in time order",
+        convention="the pooling of the inter-event time method: runs pool when the "
+        "gap is less than t_min = max_gap_days days (WMO-No. 1029, p. 72; lfstat's "
+        "pool_it, 'inter-event time is less than tmin'), where Fleig et al. (2006) "
+        "write tau_i <= t_c in their formula against 'less than' in their text; "
+        "max_gap_days 4 pools gaps of 1 to 3 days, as the program NIŻÓWKA pools low "
+        "flows parted by 3 days (Tokarczyk 2010, p. 34) and Tomaszewski (2012, pp. "
+        "68-69) breaks of at most 3 days; the duration of a pooled run includes the "
+        "gap, the full drought duration of Fleig et al. (2006, eq. 1) and lfstat's "
+        "duration, while WMO-No. 1029 (eq. 8.1(a)), NIŻÓWKA (Tokarczyk 2010, p. 34) "
+        "and Tomaszewski (2012, fig. 14) add the durations of the runs without the gap "
+        "(the real duration, days_beyond of threshold_events); the minimum duration "
+        "applies to the full duration after pooling (Fleig et al. apply d_min to the "
+        "real one); 0 pools nothing",
+        source=_THRESHOLD_LEVEL,
+    ),
+    TierBSpec(
+        name="threshold_events",
+        function="hydrolog.statistics.events.threshold_events",
+        definition="the series laid on the calendar of its days; a day is beyond the "
+        "threshold when its value is >= threshold (above) or < threshold (below); the "
+        "events are the threshold_runs of those days; per event its first and last "
+        "day, duration in calendar days (the days merged in included), days beyond, "
+        "days without a value, peak (the largest value above, the smallest below, "
+        "dated by its first day), the hydrological year of its first day and whether "
+        "the day before (after) it has no value; per hydrological year with a value "
+        "its days beyond, events starting in it, days with a value and calendar days "
+        "(365 or 366); the totals of the period",
+        convention="a day at the threshold is beyond it above it and not below it; a "
+        "day whose date is absent or whose value is NaN or not finite has no value and "
+        "is never beyond; an event counts in the hydrological year (1 November - 31 "
+        "October, named after the year of its end) in which it starts; the dates "
+        "increase strictly",
+        source=_THRESHOLD_LEVEL,
+    ),
+    TierBSpec(
+        name="low_flow_sequences",
+        function="hydrolog.statistics.low_flows.LowFlowAnalysis.detect_sequences",
+        definition="the flows laid on the calendar of their dates; the runs of days "
+        "with a value below the threshold T, Q < T (threshold_runs, by default "
+        "min_duration_days 5 and max_gap_days 4); per sequence its duration in "
+        "calendar days (gap days included), the minimum and the mean of its days with "
+        "a value, the deficit sum(max(T - Q, 0)) over its days with a value in the "
+        "unit of the series times a day, its days without a value and whether the day "
+        "before (after) it has no value; the sum of the deficits, the longest "
+        "duration and the number of sequences",
+        convention="below is Q < T, as WMO-No. 1029 (p. 71) and the IMGW-PIB glossary "
+        "(29, 'niższe od') say, not Q <= T of Yevjevich in Tokarczyk (2010, p. 33) "
+        "or of lfstat; the deficit of a pooled sequence is the sum of the deficits of "
+        "its runs, the excess of the days between them not subtracted (Fleig et al. "
+        "2006, eq. 2; WMO-No. 1029, eq. 8.1(b); lfstat's vbt, while lfstat's volume "
+        "subtracts it); a day without a value adds no deficit and is a gap day; the "
+        "defaults are NIŻÓWKA's minimum of 5 days and pooling across 3 days "
+        "(Tokarczyk 2010, p. 34); any finite threshold, so a stage below its gauge's "
+        "zero too",
+        source=_FLEIG,
+    ),
+    TierBSpec(
+        name="low_flow_deficit_volumes",
+        function="hydrolog.operations.stats.stats_low_flow_sequences",
+        definition="the deficit of a discharge series in m3/s as a volume, "
+        "deficit_volume_m3 = deficit x 86,400 s/d [m3], of each sequence, of each "
+        "hydrological year and of the period; None for a stage (parameter H); a "
+        "sequence counts in the hydrological year of its first day, with its whole "
+        "duration and deficit",
+        convention="the day of 86,400 s (the SI's non-SI day, BIPM 2019, table 8, "
+        "from the units table of nogat_formulas): the daily deficits [m3/s] times the "
+        "days give m3, the deficit volume of WMO-No. 1029 (sect. 8.3 (c)(iii), 'the "
+        "sum of the daily deficit flows multiplied by the duration in days'); "
+        "Tokarczyk (2010, p. 34, eq. 1) sums (Q0 - Q_t) Δt with Δt a day",
+        source=_THRESHOLD_LEVEL,
+        constants=(_DAY,),
+    ),
+)
+"""The Tier B formulas of the module (CMP-2.2), with the low-flow sequences of
+:meth:`~hydrolog.statistics.LowFlowAnalysis.detect_sequences` and their volumes in
+``stats low-flow-sequences``, which run :func:`threshold_runs`."""

@@ -1,0 +1,37 @@
+# tool: R version 4.5.3 (2026-03-11)
+# packages: base R and stats only; BFI.R of Ladson (github.com/TonyLadson/BaseflowSeparation_LyneHollick, commit 8d09646, 2014-02-12), unchanged, in this directory
+# platform: x86_64-conda-linux-gnu
+# date: 2026-11-19
+# script: tests/oracles/baseflow/lyne_hollick_r.R
+# conventions: Ladson et al. (2013): 30 values reflected at each end without the end value, the quickflow of each pass starting at the first value of its input and kept unclipped, the baseflow below 0 set to 0 after the last pass; BFI = sum(baseflow) / sum(flow)
+dataset,alpha,passes,bfi,fraction_used
+bass_river,0.9,3,0.41226019466433256,1
+bass_river,0.9,5,0.29033172098392063,1
+bass_river,0.9,9,0.15923381917468724,1
+bass_river,0.925,3,0.38751629707379742,1
+bass_river,0.925,5,0.26041585644796705,1
+bass_river,0.925,9,0.12598026369960585,1
+bass_river,0.95,3,0.34496141829732269,1
+bass_river,0.95,5,0.20946632209648075,1
+bass_river,0.95,9,0.069405520586395278,1
+bass_river,0.98,3,0.19657587147728858,1
+bass_river,0.98,5,0.07083123755800147,1
+bass_river,0.98,9,0.004946623162583973,1
+bass_river,0.987,3,0.12310632844448147,1
+bass_river,0.987,5,0.02986817789509635,1
+bass_river,0.987,9,0.00082391862183037461,1
+synthetic,0.9,3,0.80789911997299935,1
+synthetic,0.9,5,0.76106295620095854,1
+synthetic,0.9,9,0.67871993126469354,1
+synthetic,0.925,3,0.79625865029885978,1
+synthetic,0.925,5,0.73890086360908913,1
+synthetic,0.925,9,0.63223903939502701,1
+synthetic,0.95,3,0.7712326177135429,1
+synthetic,0.95,5,0.69195931006952693,1
+synthetic,0.95,9,0.55128516193163479,1
+synthetic,0.98,3,0.66927931632339233,1
+synthetic,0.98,5,0.5376840809573854,1
+synthetic,0.98,9,0.34395282808899391,1
+synthetic,0.987,3,0.6029122511107321,1
+synthetic,0.987,5,0.44276080379288557,1
+synthetic,0.987,9,0.21010556960854088,1

@@ -19,7 +19,7 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator
 
-from hydrolog._formulas import specs
+from hydrolog._formulas import constraint_ranges, specs
 from hydrolog.nogat_formulas import FormulaSpec, card, spec_problems, tolerance_problems
 
 from . import _nogat
@@ -78,6 +78,21 @@ def test_spec_names_are_unique():
     names = [spec.name for spec in specs()]
 
     assert len(names) == len(set(names))
+
+
+def test_every_applicability_constraint_names_the_range_its_notice_gives():
+    """A violated applicability constraint is issued as ``outside_typical_range`` of
+    the quantity it bounds, declared by ``hydrolog._formulas.constraint_range``."""
+    declared = constraint_ranges()
+    undeclared = [
+        f"{spec.name}.{constraint.name}"
+        for spec in specs()
+        for constraint in spec.constraints
+        if constraint.cls == "applicability"
+        and (spec.name, constraint.name) not in declared
+    ]
+
+    assert undeclared == []
 
 
 @pytest.mark.parametrize(

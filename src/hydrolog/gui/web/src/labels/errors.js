@@ -95,6 +95,14 @@ export const errors = {
       "Najwyższy punkt zlewni musi leżeć wyżej niż przekrój zamykający (Hmax > Hmin): woda spływa do przekroju",
     positive_total:
       "Zawartości iłu, piasku i pyłu nie mogą być wszystkie zerowe: klasa uziarnienia wynika z udziałów frakcji w ich sumie",
+    start_below_levels:
+      "Początkowe H₀ musi być niższe od najniższego stanu wody z pomiarów, w tej samej jednostce",
+    levels_not_all_equal:
+      "Wszystkie stany wody są równe: z takich par nie da się wyznaczyć wykładnika b ani stanu zerowego przepływu H₀",
+    discharges_not_all_equal:
+      "Wszystkie przepływy są równe: przepływ, który nie zmienia się ze stanem, nie wyznacza krzywej przepływu",
+    least_squares_minimum:
+      "Metoda najmniejszych kwadratów nie znajduje dla tych par minimum (np. przepływy rosną jak funkcja wykładnicza): sprawdź pary stan–przepływ albo podaj inne początkowe H₀",
   },
   /** The sentences of the errors of Euler II's depth-duration curve, by `details.reason`. */
   curve: {

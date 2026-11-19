@@ -1,0 +1,347 @@
+schema = "nogat-formula-card/1"
+name = "rating_curve_fit"
+title = "Rating curve Q = a (H - H0)^b fitted to stage-discharge pairs by least squares on Q"
+function = "hydrolog.hydrometrics.rating_curve.fit_rating_curve"
+family = "statistic"
+formula_version = 1
+status = "oracle only"
+equation = "(a, b, H0) minimise sum((Q_i - a * (H_i - H0)**b)**2) over a >= 0, b >= 0, H0 < min(H); R2 = 1 - SS_res / SS_tot with SS_tot = sum((Q_i - mean(Q))**2); s = sqrt(sum((r_i - mean(r))**2) / (n - 1)) of the residuals r_i"
+latex = "(\\hat a, \\hat b, \\hat H_0) = \\arg\\min_{a \\ge 0,\\, b \\ge 0,\\, H_0 < \\min H} \\sum_{i=1}^{n} \\left(Q_i - a\\,(H_i - H_0)^{b}\\right)^2,\\quad R^2 = 1 - \\frac{SS_{res}}{SS_{tot}}"
+validation = "none: the least squares give the curve closest to the gaugings on Q; WMO-No. 1044 (sect. 1.12.2) reports no statistic of the agreement of such a fit, and the research found no open worked example with gaugings and fitted parameters (WMO-No. 1044, Rantz 1982, Kennedy 1984)"
+conventions = ["least squares on Q, the arithmetic residuals of every pair weighted equally; WMO-No. 1044 (sect. 1.12.2) fits the straight line on logarithmic paper, log Q on log(H - H0), which gives another curve (the catalog's six gaugings: b = 1.640 on Q, 1.820 in logarithms)", "bounds a >= 0, b >= 0 and H0 below the lowest level by 2^-30 of the levels' scale (the power of two that brings the largest |H| into [1/2, 1)), about 5e-7 cm for stages of a few metres", "the search: SciPy's curve_fit, the trust region reflective method with ftol, xtol and gtol of 1e-12 and at most 10,000 evaluations, from a = 1, b = 1.5 and H0 = h0_initial, on the levels and discharges divided exactly by the powers of two that bring their largest magnitudes into [1/2, 1); the curve is scaled back, so levels in cm or m and discharges scaled by a power of two give the same curve", "R2 = 1 - SS_res / SS_tot on Q; s the standard deviation of the residuals with n - 1 (numpy.std, ddof 1)", "H, H0 and h0_initial in one unit of the levels (cm or m); a in m3/s per (unit of H)^b; Q in m3/s"]
+assumptions = ["the pairs follow one stage-discharge relation of one control over the period (no shift, hysteresis or variable backwater); the check of spec rating_curve_plausibility flags curves that do not", "errors in Q only, independent and of equal variance"]
+notices = ["outside_applicability"]
+reference_cases = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "discharges"
+
+[properties.scalings.inputs]
+discharges_m3s = 1.0
+
+[properties.scalings.outputs]
+a = 1.0
+std_residuals = 1.0
+
+[properties.scalings.tolerance]
+reason = "the search runs on the discharges divided by a power of two, so doubled discharges give the same search and a doubled exactly, but below the smallest normal float"
+abs = 2.2250738585072014e-308
+
+[[properties.limits]]
+name = "noise_free_power_law"
+text = "pairs of an exact power law give back its a, b and H0, with levels in cm and in m"
+
+[properties.limits.source]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[properties.limits]]
+name = "local_minimum"
+text = "no point a step of 1e-4 from the estimate has a smaller sum of squares"
+
+[[properties.limits]]
+name = "zero_flow_below_the_levels"
+text = "H0 lies below every level of the pairs"
+
+[[properties.symmetries]]
+name = "levels_in_another_unit"
+text = "levels and the start in a unit twice as small give the same curve: a times 2^-b, H0 doubled, b, R2 and s unchanged"
+
+[properties.symmetries.tolerance]
+reason = "the same search on the normalised levels; a is scaled back by 2^(-eH b), whose exponent rounds once: a few units in the last place times eH b"
+abs = 1e-300
+rel = 1e-12
+
+[[sources]]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[sources]]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.12.2, p. II.1-20: the equation of the relation may be computed by the method of least squares, which assumes that the relation plots as a straight line on logarithmic paper"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[sources]]
+citation = "ISO 1100-2:2010. Hydrometry - Measurement of liquid flow in open channels - Part 2: Determination of the stage-discharge relationship"
+access = "author-provided"
+locator = "the power-law rating equation and its fit to gaugings"
+
+[[variables]]
+name = "water_levels"
+symbol = "H"
+unit = "cm"
+kind = "real_array"
+description = "The water level H of each gauging, in one unit of the levels."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -10000.0
+test_high = 10000.0
+test_reason = "100 m above or below a gauge's zero in cm: the stages of the largest rivers in flood range over a few tens of metres, so every stage of a gauge lies within"
+
+[variables.typical]
+low = -10.0
+low_inclusive = true
+high = 330.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041"
+access = "open"
+locator = "stages of -10 cm (below the gauge zero, the catalog's example) to 329 cm (station_daily.csv); 6 to 161 cm at 150170070"
+
+[[variables]]
+name = "discharges_m3s"
+symbol = "Q"
+unit = "m3/s"
+kind = "real_array"
+description = "The discharge measured at each level."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s, above the largest flood discharge of any river (the Amazon's, a few hundred thousand m3/s)"
+
+[variables.typical]
+low = 0.5
+low_inclusive = true
+high = 125.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041"
+access = "open"
+locator = "discharges of 0.5 (the catalog's example) to 122.3 m3/s (station_daily.csv)"
+
+[[variables]]
+name = "h0_initial"
+symbol = "H_{0,start}"
+unit = "cm"
+kind = "real"
+description = "The start of the search for H0, below every level."
+applicability = "unstated"
+
+[variables.physical]
+test_low = -10000.0
+test_high = 10000.0
+test_reason = "100 m above or below a gauge's zero in cm: the stages of the largest rivers in flood range over a few tens of metres, so every stage of a gauge lies within"
+
+[variables.typical]
+low = -30.0
+low_inclusive = true
+high = 60.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041"
+access = "open"
+locator = "the starts of their fits: -23 (the catalog's example of stages below the gauge zero), 40 and 41.2 cm"
+
+[[constraints]]
+name = "same_length"
+class = "physical"
+text = "one discharge per level"
+
+[constraints.source]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.5.1, p. II.1-3: at a minimum the list of discharge measurements should include at least 12 to 15 measurements, all made during the period of analysis"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[constraints]]
+name = "enough_pairs"
+class = "precondition"
+text = "n >= 3: three pairs or more for the three parameters a, b and H0"
+
+[constraints.source]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[constraints]]
+name = "levels_not_all_equal"
+class = "precondition"
+text = "min(H) < max(H): levels all equal determine neither b nor H0"
+
+[constraints.source]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[constraints]]
+name = "discharges_not_all_equal"
+class = "precondition"
+text = "min(Q) < max(Q): a discharge that does not change with the level fits b = 0 at any H0"
+
+[constraints.source]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[constraints]]
+name = "start_below_levels"
+class = "precondition"
+text = "h0_initial < min(H): the search starts inside its bound, H0 below every level"
+
+[constraints.source]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[constraints]]
+name = "least_squares_minimum"
+class = "precondition"
+text = "the sum of squares has a minimum that the search reaches in 10,000 evaluations, at which the curve is a float64 number at every level"
+
+[constraints.source]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.12.2, p. II.1-20: the equation of the relation may be computed by the method of least squares, which assumes that the relation plots as a straight line on logarithmic paper"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[constraints]]
+name = "enough_gaugings"
+class = "applicability"
+text = "n >= 12: at least 12 to 15 gaugings of the period of analysis"
+
+[constraints.source]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.5.1, p. II.1-3: at a minimum the list of discharge measurements should include at least 12 to 15 measurements, all made during the period of analysis"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[constants]]
+name = "least_gaugings"
+value = 12.0
+unit = "-"
+
+[constants.source]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.5.1, p. II.1-3: at a minimum the list of discharge measurements should include at least 12 to 15 measurements, all made during the period of analysis"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[outputs]]
+name = "a"
+unit = "m3/s per cm^b"
+kind = "real"
+symbol = "a"
+description = "The discharge at a head of one unit of H."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "b"
+unit = "-"
+kind = "real"
+symbol = "b"
+description = "The exponent of the head."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "h0"
+unit = "cm"
+kind = "real"
+symbol = "H_0"
+description = "The gauge height of zero flow, below every level."
+
+[outputs.physical]
+
+[[outputs]]
+name = "r_squared"
+unit = "-"
+kind = "real"
+symbol = "R^2"
+description = "The coefficient of determination of the curve on Q."
+
+[outputs.physical]
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "std_residuals"
+unit = "m3/s"
+kind = "real"
+symbol = "s"
+description = "The standard deviation of the residuals Q - Q(H)."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "the fractional power of a head at H0's bound below the lowest level: test_a_curve_at_its_bound_is_finite"
+
+[[traps]]
+name = "exp_overflow"
+description = "exp of a scaled input at its test bound."
+test = "the power of the head at the levels' test bounds: test_levels_at_their_test_bounds_fit_or_are_refused"
+
+[[traps]]
+name = "unbounded_iteration"
+description = "An iteration without a bounded count (root finding, fit)."
+test = "the search's bounded count of 10,000 evaluations: test_a_search_that_does_not_settle_is_refused (precondition least_squares_minimum)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases water_levels-nan_element and discharges_m3s-nan_element: a gap is refused"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_many_pairs_keep_their_sums: 20,000 pairs against math.fsum"
+
+[[traps]]
+name = "moment_cancellation"
+description = "Cancellation in moments computed as E[x^2] - E[x]^2."
+test = "test_a_large_mean_discharge_keeps_r_squared: SS_tot of discharges near 1e6 against exact fractions"
+
+[[oracles]]
+kind = "frozen"
+description = "R 4.4.3 stats::nls(algorithm = 'port') from a = 1, b = 1.5 and H0 = min(H) - max(1, 0.1 range), bounds a, b >= 0, H0 <= min(H) - 1e-6: tests/oracles/rating_curve/r_rating_outputs.csv"
+test = "tests/unit/test_formulas_hydrometrics.py (test_the_fit_equals_r_nls_port; the cases of tests/fixtures/formulas/hydrometrics-cases.json)"
+conventions = ["both: least squares on Q, every pair weighted equally", "R: the port algorithm (PORT library's nl2sol), Hydrolog: SciPy's trust region reflective method on the normalised pairs"]
+
+[[oracles]]
+kind = "exact"
+description = "pairs of the exact power law Q = 0.012 (H - 32)^1.62 give back a, b and H0, with levels in cm and in m"
+test = "tests/unit/test_formulas_hydrometrics.py (limit noise_free_power_law; case rating_curve_exact_power_law_and_units)"
+conventions = []
+
+[[oracles]]
+kind = "algorithm"
+description = "the sum of squares at points a step of 1e-4 from the estimate, by math.fsum"
+test = "tests/unit/test_formulas_hydrometrics.py (limit local_minimum)"
+conventions = []

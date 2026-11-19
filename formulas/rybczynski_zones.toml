@@ -1,0 +1,189 @@
+schema = "nogat-formula-card/1"
+name = "rybczynski_zones"
+title = "Rybczyński's zones of low, medium and high background water levels (NTW, STW, WTW)"
+function = "hydrolog.hydrometrics.rating_curve.rybczynski_zones"
+family = "classification"
+formula_version = 1
+status = "unreferenced"
+equation = "NTW ends at the centre of the most frequent class; STW at the centre of the first class i with D_i < 50 %, D_i = 100 - sum(f_j, j < i), f_j = 100 n_j / sum(n)"
+latex = "H_{NTW} = c_{\\arg\\max_i f_i},\\quad H_{STW} = c_{\\min\\{i:\\, D_i < 50\\%\\}},\\quad D_i = 100 - \\sum_{j<i} f_j,\\quad f_j = \\frac{100\\,n_j}{\\sum n}"
+validation = "none: Rybczyński's source was not opened"
+conventions = ["the limits are class centres: NTW ends at the centre of the most frequent class (the first of equal ones), STW at the centre of the first class at whose lower edge the duration (the share of levels at or above it) is below 50 %", "when no class has a duration below 50 %, or STW would not lie above NTW, STW ends at the centre of the class above the most frequent one; when that is the last class, one class width above NTW, beyond the highest edge (WTW then runs backwards)", "the classes and counts of spec water_level_frequency (Tier B), levels in cm or m"]
+assumptions = ["the levels of a long series, daily or more often, of one gauge zero"]
+notices = ["unreferenced_formula"]
+reference_cases = []
+oracles = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "levels"
+
+[properties.scalings.inputs]
+bin_edges = 1.0
+
+[properties.scalings.outputs]
+ntw_upper = 1.0
+stw_upper = 1.0
+
+[properties.scalings.tolerance]
+reason = "centres and widths of doubled edges double exactly, but below the smallest normal float"
+abs = 2.2250738585072014e-308
+
+[[properties.scalings]]
+name = "counts"
+
+[properties.scalings.inputs]
+counts = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "doubled counts give the same frequencies to the last bit"
+abs = 0.0
+
+[[properties.limits]]
+name = "worked_example"
+text = "the most frequent class and the duration below 50 %"
+
+[[properties.limits]]
+name = "fallbacks"
+text = "STW when no duration falls below 50 % and when the most frequent class is the last; of equal classes, the first"
+
+[[properties.limits]]
+name = "half_duration"
+text = "a duration of exactly 50 % is not below it"
+
+[[sources]]
+citation = "Rybczyński, M. (1932). Kilka uwag o charakterystyce przepływów. Biuletyn Towarzystwa Geofizyków w Warszawie 4-5; and his lecture notes of 1923"
+access = "author-provided"
+locator = "not opened: the names NTW, STW and WTW and the limits of the zones are not confirmed from the source (research of 2026-11-18, trend-regime sect. 3.12)"
+
+[[variables]]
+name = "bin_edges"
+symbol = "e"
+unit = "cm"
+kind = "real_array"
+description = "The edges of the classes of levels, increasing."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 2
+
+[variables.physical]
+test_low = -10000.0
+test_high = 10000.0
+test_reason = "100 m above or below a gauge's zero in cm: the stages of the largest rivers in flood range over a few tens of metres, so every stage of a gauge lies within"
+
+[variables.typical]
+low = -10.0
+low_inclusive = true
+high = 340.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041"
+access = "open"
+locator = "stages of -10 cm (below the gauge zero, the catalog's example) to 329 cm (station_daily.csv); 6 to 161 cm at 150170070"
+
+[[variables]]
+name = "counts"
+symbol = "n"
+unit = "-"
+kind = "real_array"
+description = "The number of levels in each class."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million levels in a class, the hourly stages of more than a century"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 820.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's water level data: tests/fixtures/station_daily.csv and the classes of 5 to 20 cm of the catalog's and the tests' examples"
+access = "open"
+locator = "1,811 daily stages of 45 to 329 cm: classes of 10 cm hold up to 483 levels, of 20 cm up to 815"
+
+[[constraints]]
+name = "one_count_per_class"
+class = "physical"
+text = "one count per class between two edges"
+
+[constraints.source]
+citation = "Rybczyński, M. (1932). Kilka uwag o charakterystyce przepływów. Biuletyn Towarzystwa Geofizyków w Warszawie 4-5; and his lecture notes of 1923"
+access = "author-provided"
+locator = "not opened: the names NTW, STW and WTW and the limits of the zones are not confirmed from the source (research of 2026-11-18, trend-regime sect. 3.12)"
+
+[[constraints]]
+name = "edges_increasing"
+class = "physical"
+text = "e[i+1] > e[i]: classes of positive width, from the lowest level up"
+
+[constraints.source]
+citation = "Rybczyński, M. (1932). Kilka uwag o charakterystyce przepływów. Biuletyn Towarzystwa Geofizyków w Warszawie 4-5; and his lecture notes of 1923"
+access = "author-provided"
+locator = "not opened: the names NTW, STW and WTW and the limits of the zones are not confirmed from the source (research of 2026-11-18, trend-regime sect. 3.12)"
+
+[[constraints]]
+name = "some_levels"
+class = "precondition"
+text = "sum(n) > 0: the frequencies need levels"
+
+[constraints.source]
+citation = "Rybczyński, M. (1932). Kilka uwag o charakterystyce przepływów. Biuletyn Towarzystwa Geofizyków w Warszawie 4-5; and his lecture notes of 1923"
+access = "author-provided"
+locator = "not opened: the names NTW, STW and WTW and the limits of the zones are not confirmed from the source (research of 2026-11-18, trend-regime sect. 3.12)"
+
+[[constants]]
+name = "duration_limit_pct"
+value = 50.0
+unit = "%"
+
+[constants.source]
+citation = "Rybczyński, M. (1932). Kilka uwag o charakterystyce przepływów. Biuletyn Towarzystwa Geofizyków w Warszawie 4-5; and his lecture notes of 1923"
+access = "author-provided"
+locator = "not opened: the names NTW, STW and WTW and the limits of the zones are not confirmed from the source (research of 2026-11-18, trend-regime sect. 3.12)"
+
+[[outputs]]
+name = "ntw_upper"
+unit = "cm"
+kind = "real"
+symbol = "H_{NTW}"
+description = "The upper limit of the low background water (NTW)."
+
+[outputs.physical]
+
+[[outputs]]
+name = "stw_upper"
+unit = "cm"
+kind = "real"
+symbol = "H_{STW}"
+description = "The upper limit of the medium background water (STW)."
+
+[outputs.physical]
+
+[[traps]]
+name = "class_limit"
+description = "A value exactly at a limit of a published class or table."
+test = "limit half_duration: a duration of exactly 50 %; limit fallbacks: equal most frequent classes"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases bin_edges-nan_element and counts-nan_element: a gap is refused"

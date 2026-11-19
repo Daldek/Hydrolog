@@ -1816,7 +1816,7 @@ class TestRatingCurve:
             remove_outliers=True,
         )
         assert _fitted(result.result) == direct
-        assert result.notices == ()
+        assert [n.code for n in result.notices] == ["unreferenced_formula"]
 
     def test_inline_pairs_equal_the_file(self):
         levels, flows = _rating_pairs()
@@ -1903,7 +1903,10 @@ class TestRatingCurve:
             h0_initial=40.0
         )
         assert result.result.n_points == 13
-        assert [n.code for n in result.notices] == ["missing_pairs_removed"]
+        assert [n.code for n in result.notices] == [
+            "missing_pairs_removed",
+            "unreferenced_formula",
+        ]
         assert result.notices[0].details == {"missing": 2, "total": 15}
         assert "2 of 15 measurement pairs" in result.notices[0].message
 
@@ -1932,7 +1935,8 @@ class TestRatingCurve:
                 h0_initial=h0,
             )
         assert caught.value.details["option"] == "h0_initial"
-        assert caught.value.details["maximum"] == 62.0
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "start_below_levels"
 
     def test_the_default_initial_level_is_chosen_from_the_data_for_negative_levels(
         self,
@@ -1967,18 +1971,21 @@ class TestRatingCurve:
                 h0_initial=0.0,
             )
         assert caught.value.details["option"] == "h0_initial"
-        assert caught.value.details["maximum"] == -20.0
+        assert caught.value.details["constraint"] == "start_below_levels"
         assert "lower than every water level" in caught.value.hint
 
-    def test_a_numerically_failing_fit_is_a_calculation_error(self):
-        """Levels so large that the power law overflows: no fit, exit code 4."""
-        with pytest.raises(CalculationError) as caught:
+    def test_least_squares_without_a_minimum_are_refused(self):
+        """Discharges rising like an exponential: the search does not settle in its
+        10,000 evaluations (a calculation_error, exit code 13, up to 0.8.1)."""
+        with pytest.raises(InvalidParameterError) as caught:
             hydrometrics.hydrometrics_rating_curve(
-                water_levels=[1e250, 2e250, 3e250, 4e250],
-                discharges=[1.0, 2.0, 3.0, 4.0],
+                water_levels=[10.0, 20.0, 30.0], discharges=[1.0, 10.0, 1000.0]
             )
-        assert caught.value.code == "calculation_error"
-        assert caught.value.exit_code == 13
+        assert caught.value.code == "validation_error"
+        assert caught.value.exit_code == 2
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "least_squares_minimum"
+        assert "another h0_initial" in caught.value.hint
 
     @pytest.mark.parametrize("threshold", [0.0, -1.0, float("nan")])
     def test_outlier_threshold_must_be_positive(self, threshold):

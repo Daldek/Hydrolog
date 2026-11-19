@@ -281,4 +281,20 @@ APPLICABILITY: Final[tuple[Applicability, ...]] = (
             "travel time is about the time step"
         ),
     ),
+    Applicability(
+        method="lyne_hollick",
+        parameter="alpha",
+        minimum=0.9,
+        maximum=0.98,
+        unit="-",
+        source=(
+            "Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard "
+            "approach to baseflow separation using the Lyne and Hollick filter. "
+            "Australasian Journal of Water Resources 17(1), 25-34 (the authors' "
+            "accepted manuscript), sect. 2.5, pp. 9-10: Nathan and McMahon (1990) "
+            "found 0.9, 0.925 and 0.95 satisfactory against manual separation, and "
+            "0.98 matched chemical tracers better than 0.925 in 9 catchments; sect."
+            " 3.1, p. 16: alpha 'anywhere in the range 0.9 to 0.98'"
+        ),
+    ),
 )

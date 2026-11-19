@@ -1,0 +1,205 @@
+[
+  {
+    "formula": "rating_curve_fit",
+    "case_id": "rating_curve_negative_stages_vs_R_nls",
+    "source": {
+      "citation": "Frozen oracle: R 4.4.3 stats::nls(Q ~ a*(H - h0)^b, algorithm = 'port', lower = c(0, 0, -Inf), upper = c(Inf, Inf, min(H) - 1e-6)), tests/oracles/rating_curve/r_rating_outputs.csv (research: trend-regime-oracles/r_rating_outputs.csv)",
+      "locator": "dataset doc_negative_stages",
+      "access": "open"
+    },
+    "inputs": {
+      "water_levels": [
+        -10.0,
+        5.0,
+        20.0,
+        40.0,
+        80.0,
+        120.0
+      ],
+      "discharges_m3s": [
+        0.5,
+        1.2,
+        2.5,
+        4.8,
+        10.1,
+        17.3
+      ],
+      "h0_initial": -23.0
+    },
+    "expected": {
+      "a": 0.004917327664841096,
+      "b": 1.6401391192342285,
+      "h0": -25.169829788751926
+    },
+    "tolerance": {
+      "rel": 1e-05,
+      "reason": "two optimisers with default convergence tolerances (~1e-8 relative in SSE) on a flat optimum; SSE must agree to 1e-8 relative; R's sum of squares 0.052018155257551074 is compared by test_the_fit_equals_r_nls_port"
+    },
+    "conventions": [
+      "least squares on Q (arithmetic residuals)",
+      "bounds a >= 0, b >= 0, H0 < min(H)",
+      "H in cm, so a in m3/s per cm^b",
+      "h0_initial is R's start: min(H) - max(1, 0.1 (max(H) - min(H))) in cm",
+      "the research compared log-space least squares (WMO-No. 1044 Vol. II 1.12.2) gives a different curve: a=0.00191583, b=1.82039, H0=-30.9714; that is the fit of WMO-No. 1044 sect. 1.12.2, a different estimator, not a second source of this case"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "rating_curve_fit",
+    "case_id": "rating_curve_fixture_vs_R_nls",
+    "source": {
+      "citation": "Frozen oracle: R 4.4.3 stats::nls(Q ~ a*(H - h0)^b, algorithm = 'port', lower = c(0, 0, -Inf), upper = c(Inf, Inf, min(H) - 1e-6)), tests/oracles/rating_curve/r_rating_outputs.csv (research: trend-regime-oracles/r_rating_outputs.csv)",
+      "locator": "dataset fixture_pairs",
+      "access": "open"
+    },
+    "inputs": {
+      "water_levels": [
+        62.0,
+        75.0,
+        88.0,
+        101.0,
+        115.0,
+        128.0,
+        142.0,
+        155.0,
+        170.0,
+        185.0,
+        200.0,
+        218.0,
+        235.0,
+        252.0,
+        270.0
+      ],
+      "discharges_m3s": [
+        1.05,
+        2.14,
+        3.4,
+        4.67,
+        6.32,
+        8.27,
+        10.48,
+        12.46,
+        20.75,
+        17.72,
+        20.5,
+        23.4,
+        26.63,
+        31.8,
+        34.92
+      ],
+      "h0_initial": 41.2
+    },
+    "expected": {
+      "a": 0.03524693880017796,
+      "b": 1.2806579879193758,
+      "h0": 52.6288964284155
+    },
+    "tolerance": {
+      "rel": 1e-05,
+      "reason": "two optimisers with default convergence tolerances (~1e-8 relative in SSE) on a flat optimum; SSE must agree to 1e-8 relative; R's sum of squares 30.88307203971892 is compared by test_the_fit_equals_r_nls_port"
+    },
+    "conventions": [
+      "least squares on Q (arithmetic residuals)",
+      "bounds a >= 0, b >= 0, H0 < min(H)",
+      "H in cm, so a in m3/s per cm^b",
+      "h0_initial is R's start: min(H) - max(1, 0.1 (max(H) - min(H))) in cm",
+      "the research compared log-space least squares (WMO-No. 1044 Vol. II 1.12.2) gives a different curve: a=0.0107232, b=1.49326, H0=40.5801; that is the fit of WMO-No. 1044 sect. 1.12.2, a different estimator, not a second source of this case"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "rating_curve_fit",
+    "case_id": "rating_curve_exact_power_law_and_units",
+    "source": {
+      "citation": "Analytic oracle: Q = 0.012 (H - 32)^1.62 with H in cm, the rating equation Q = C (h - e)^beta of WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva",
+      "locator": "sect. 1.5.4, eq. 1.4, p. II.1-6; the discharges of the case are the equation evaluated at eight levels",
+      "url": "https://library.wmo.int/idurl/4/32726",
+      "access": "open"
+    },
+    "inputs": {
+      "water_levels": [
+        40.0,
+        55.0,
+        70.0,
+        90.0,
+        120.0,
+        160.0,
+        210.0,
+        270.0
+      ],
+      "discharges_m3s": [
+        0.34848735564178984,
+        1.928325482397689,
+        4.349413243986043,
+        8.62848593715762,
+        16.9528677831318,
+        31.107234053413617,
+        53.07153509526192,
+        84.96418902718409
+      ],
+      "h0_initial": 17.0
+    },
+    "expected": {
+      "a": 0.012,
+      "b": 1.62,
+      "h0": 32.0
+    },
+    "tolerance": {
+      "rel": 1e-06,
+      "reason": "noise-free data; optimiser tolerance"
+    },
+    "conventions": [
+      "a has the unit m3/s per (unit of H)^b: a_m = a_cm 100^b",
+      "H in cm, so a in m3/s per cm^b",
+      "h0_initial = min(H) - 0.1 (max(H) - min(H))"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "rating_curve_fit",
+    "case_id": "rating_curve_exact_power_law_and_units_in_metres",
+    "source": {
+      "citation": "Analytic oracle: Q = 0.012 (H - 32)^1.62 with H in cm, the rating equation Q = C (h - e)^beta of WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva",
+      "locator": "sect. 1.5.4, eq. 1.4, p. II.1-6; the discharges of the case are the equation evaluated at eight levels",
+      "url": "https://library.wmo.int/idurl/4/32726",
+      "access": "open"
+    },
+    "inputs": {
+      "water_levels": [
+        0.4,
+        0.55,
+        0.7,
+        0.9,
+        1.2,
+        1.6,
+        2.1,
+        2.7
+      ],
+      "discharges_m3s": [
+        0.34848735564178984,
+        1.928325482397689,
+        4.349413243986043,
+        8.62848593715762,
+        16.9528677831318,
+        31.107234053413617,
+        53.07153509526192,
+        84.96418902718409
+      ],
+      "h0_initial": 0.17
+    },
+    "expected": {
+      "a": 20.853609944992517,
+      "b": 1.62,
+      "h0": 0.32
+    },
+    "tolerance": {
+      "rel": 1e-06,
+      "reason": "noise-free data; optimiser tolerance"
+    },
+    "conventions": [
+      "a has the unit m3/s per (unit of H)^b: a_m = a_cm 100^b",
+      "the levels of rating_curve_exact_power_law_and_units in m, so a in m3/s per m^b: a_m = a_cm 100^b"
+    ],
+    "status": "single_source"
+  }
+]

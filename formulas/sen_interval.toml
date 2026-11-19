@@ -1,0 +1,277 @@
+schema = "nogat-formula-card/1"
+name = "sen_interval"
+title = "Gilbert's confidence interval of Sen's slope"
+function = "hydrolog.statistics.stationarity.sen_interval"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "C = z(1 - alpha/2) sqrt(Var(S)); M1 = (N' - C) / 2, M2 = (N' + C) / 2; lower = the M1-th and upper = the (M2 + 1)-th of the N' ordered slopes, interpolated linearly between ranks"
+latex = "C = z_{1-\\alpha/2}\\sqrt{\\operatorname{Var}(S)},\\quad M_1 = \\frac{N' - C}{2},\\quad M_2 = \\frac{N' + C}{2},\\quad b_L = Q_{(M_1)},\\quad b_U = Q_{(M_2+1)}"
+validation = "none: a non-parametric confidence interval of the slope (Gilbert 1987, section 16.5); its sources compare it with no observations"
+conventions = ["Gilbert's linear interpolation between ranks (his Example 16.5 and subroutine CONINT, appendix B); R's trend rounds the ranks (round(), half to even) and Helsel et al. (2020, eqs. 10.6-10.7) take whole ranks, which move the limits by up to 5 % of a limit at n <= 34 (frozen oracle, ADR-0063)", "the Var(S) of the test of the same values, given by the caller; Gilbert's Exercise 16.3 builds it without the correction for ties on purpose", "z(1 - alpha/2) of the standard normal distribution (scipy's norm.ppf); an alpha whose 1 - alpha/2 rounds to 1 has no interval", "stats mann-kendall gives the interval from ten values (Gilbert 1987, p. 218: the normal approximation of S it rests on), null below", "at most 5,000 values, as Sen's slope"]
+assumptions = ["S approximately normal under no trend, from about ten values unless there are many ties (Gilbert 1987, p. 218)"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/trend-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+var_s = -1
+alpha = 1
+
+[[properties.scalings]]
+name = "unit_of_the_values"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+lower = 1.0
+upper = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling the values doubles every slope and the interpolation between two of them exactly, but below the smallest normal float"
+abs = 2.2250738585072014e-308
+
+[[properties.scalings]]
+name = "unit_of_the_times"
+
+[properties.scalings.inputs]
+times = 1.0
+
+[properties.scalings.outputs]
+lower = -1.0
+upper = -1.0
+
+[properties.scalings.tolerance]
+reason = "doubling the times halves every slope and the interpolation exactly, but below the smallest normal float"
+abs = 2.2250738585072014e-308
+
+[[properties.limits]]
+name = "holds_the_slope"
+text = "the interval holds Sen's slope, and at Var(S) = 0 it is the middle slopes"
+
+[[sources]]
+citation = "Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York"
+access = "open"
+locator = "section 16.5, steps 1 to 4, p. 218: C = Z(1 - alpha/2) [Var(S)]^(1/2), M1 = (N' - C)/2, M2 = (N' + C)/2, the limits the M1-th and the (M2 + 1)-th of the ordered slopes, 'for n as small as 10 unless there are many ties'; Example 16.5, p. 219, interpolates between ranks, as subroutine CONINT, appendix B, p. 289"
+url = "https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf"
+
+[[sources]]
+citation = "Helsel, D.R., Hirsch, R.M., Ryberg, K.R., Archfield, S.A., Gilroy, E.J. (2020). Statistical Methods in Water Resources. U.S. Geological Survey Techniques and Methods 4-A3"
+access = "open"
+locator = "section 10.1.1, eqs. 10.1 to 10.3, pp. 266-268: the Theil-Sen slope, the median of all pairwise slopes, and the intercept b0 = y_med - b1 x_med (Conover 1999)"
+url = "https://pubs.usgs.gov/tm/04/a03/tm4a3.pdf"
+
+[[sources]]
+citation = "Sen, P.K. (1968). Estimates of the regression coefficient based on Kendall's tau. Journal of the American Statistical Association 63, 1379-1389"
+access = "author-provided"
+
+[[variables]]
+name = "values"
+symbol = "x_i"
+unit = "m3/s"
+kind = "real_array"
+description = "The series, one value per time of times, in any unit."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+max_length = 5000
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the test counts the signs of differences and Sen's slope scales with the unit of the series, so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage or a temperature may lie below 0, so the same bound holds below 0"
+
+[variables.typical]
+low = 0.81
+low_inclusive = true
+high = 111.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "times"
+symbol = "t_i"
+unit = "a"
+kind = "real_array"
+description = "The time of each value in order: its year, or its step 0, 1, 2 … of the series; several values may share a time. The slope is per unit of these times."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+max_length = 5000
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "years of the Common Era or steps of a series of at most 5,000 values: a million exceeds both"
+
+[variables.typical]
+low = 1965.0
+low_inclusive = true
+high = 2005.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: the years 1965 to 2005"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "var_s"
+symbol = "\\operatorname{Var}(S)"
+unit = "-"
+kind = "real"
+description = "The variance of Kendall's S the interval is built on: that of the Mann-Kendall test of the values, corrected for ties (Gilbert's eq. 16.3, or eq. 16.5 with several values of one time)."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 14000000000.0
+test_reason = "Var(S) of 5,000 values without ties, the most the spec takes, is 1.389e10"
+
+[variables.typical]
+low = 3139.0
+low_inclusive = true
+high = 7921.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: n = 30 to 41 with ties, Var(S) 3,139.7 to 7,920.7"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "alpha"
+symbol = "\\alpha"
+unit = "-"
+kind = "real"
+description = "The interval covers 1 - alpha."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+high = 1.0
+high_inclusive = false
+
+[variables.typical]
+low = 0.05
+low_inclusive = true
+high = 0.05
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Obserwator 3.1.0.dev0, analysis registry (src/obserwator/store/analysis_registry.py), the stored analyses mann_kendall.* of stats mann-kendall; KZGW (2017), p. 11"
+access = "open"
+locator = "options alpha = 0.05; the significance level 0.05 of KZGW's test"
+
+[[constraints]]
+name = "same_length"
+class = "physical"
+text = "one time per value"
+
+[constraints.source]
+citation = "Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York"
+access = "open"
+locator = "section 16.5, steps 1 to 4, p. 218: C = Z(1 - alpha/2) [Var(S)]^(1/2), M1 = (N' - C)/2, M2 = (N' + C)/2, the limits the M1-th and the (M2 + 1)-th of the ordered slopes, 'for n as small as 10 unless there are many ties'; Example 16.5, p. 219, interpolates between ranks, as subroutine CONINT, appendix B, p. 289"
+url = "https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf"
+
+[[constraints]]
+name = "times_in_order"
+class = "physical"
+text = "t[i+1] >= t[i]: the values in time order, several of one time allowed"
+
+[constraints.source]
+citation = "Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York"
+access = "open"
+locator = "section 16.5, steps 1 to 4, p. 218: C = Z(1 - alpha/2) [Var(S)]^(1/2), M1 = (N' - C)/2, M2 = (N' + C)/2, the limits the M1-th and the (M2 + 1)-th of the ordered slopes, 'for n as small as 10 unless there are many ties'; Example 16.5, p. 219, interpolates between ranks, as subroutine CONINT, appendix B, p. 289"
+url = "https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf"
+
+[[constraints]]
+name = "two_times"
+class = "precondition"
+text = "t[-1] > t[0]: two values of different times make a slope"
+
+[constraints.source]
+citation = "Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York"
+access = "open"
+locator = "section 16.5, steps 1 to 4, p. 218: C = Z(1 - alpha/2) [Var(S)]^(1/2), M1 = (N' - C)/2, M2 = (N' + C)/2, the limits the M1-th and the (M2 + 1)-th of the ordered slopes, 'for n as small as 10 unless there are many ties'; Example 16.5, p. 219, interpolates between ranks, as subroutine CONINT, appendix B, p. 289"
+url = "https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf"
+
+[[constraints]]
+name = "slopes_in_float64"
+class = "precondition"
+text = "2 (max x - min x) / (least step of t) and the line (max x - min x) / (least step of t) max|t| + max|x| are finite in float64: every slope, the difference of two slopes and the intercept are"
+
+[constraints.source]
+citation = "Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York"
+access = "open"
+locator = "section 16.5, steps 1 to 4, p. 218: C = Z(1 - alpha/2) [Var(S)]^(1/2), M1 = (N' - C)/2, M2 = (N' + C)/2, the limits the M1-th and the (M2 + 1)-th of the ordered slopes, 'for n as small as 10 unless there are many ties'; Example 16.5, p. 219, interpolates between ranks, as subroutine CONINT, appendix B, p. 289"
+url = "https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf"
+
+[[constraints]]
+name = "ranks_within_slopes"
+class = "precondition"
+text = "1 <= M1 and M2 + 1 <= N': both ranks lie among the N' ordered slopes (C <= N' - 2)"
+
+[constraints.source]
+citation = "Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York"
+access = "open"
+locator = "section 16.5, steps 1 to 4, p. 218: C = Z(1 - alpha/2) [Var(S)]^(1/2), M1 = (N' - C)/2, M2 = (N' + C)/2, the limits the M1-th and the (M2 + 1)-th of the ordered slopes, 'for n as small as 10 unless there are many ties'; Example 16.5, p. 219, interpolates between ranks, as subroutine CONINT, appendix B, p. 289"
+url = "https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf"
+
+[[outputs]]
+name = "lower"
+unit = "m3/s/a"
+kind = "real"
+symbol = "b_L"
+description = "The lower limit of the slope's interval."
+
+[outputs.physical]
+
+[[outputs]]
+name = "upper"
+unit = "m3/s/a"
+kind = "real"
+symbol = "b_U"
+description = "The upper limit of the slope's interval."
+
+[outputs.physical]
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "sqrt(Var(S)) at Var(S) = 0: the middle slopes, limit holds_the_slope; ranks outside the slopes are refused by the precondition ranks_within_slopes"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases values-nan_element and times-nan_element: a gap is refused"
+
+[[oracles]]
+kind = "algorithm"
+description = "the ordered slopes sorted in full (numpy.sort) and the ranks interpolated on the whole ladder of ranks (numpy.interp), as Hydrolog 0.9.0.dev2 computed them"
+test = "tests/unit/test_formulas_trend.py (test_the_interval_is_the_interpolation_of_the_sorted_slopes)"
+conventions = []
+
+[[oracles]]
+kind = "frozen"
+description = "R 4.4.3 trend 1.1.10 sens.slope at 90 and 95 % on 13 series"
+test = "tests/oracles/trend_regime/r_oracle_outputs_headed.csv (tests/unit/test_formulas_trend.py, test_sens_interval_rounds_as_rs)"
+conventions = ["R takes the slope of the rounded rank, the spec interpolates between the slopes of the ranks around it: R's limit is one of those two"]

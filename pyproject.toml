@@ -149,6 +149,8 @@ convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
+# The research script of a frozen oracle, kept byte for byte as it ran (Nogat CMP-6.4).
+"tests/oracles/trend_regime/build_datasets.py" = ["E501", "SIM905"]
 
 [tool.ruff.format]
 quote-style = "double"

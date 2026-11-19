@@ -7,13 +7,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from hydrolog.catalog import run_command
+from hydrolog.catalog import get_command, run_command
 from hydrolog.exceptions import CalculationError, InputDataError, InvalidParameterError
 from hydrolog.operations import stats_low_flow_sequences
 from hydrolog.statistics import (
     calculate_characteristic_values,
     duration_curve,
-    exceedance_values,
     runoff_volumes,
     threshold_events,
     threshold_runs,
@@ -163,22 +162,6 @@ class TestCharacteristicValues:
 
 
 class TestDurationCurve:
-    def test_weibull_positions_interpolated_between_ranks(self):
-        values = np.array([10.0, 20.0, 30.0, 40.0])  # positions 20, 40, 60, 80 %
-        assert exceedance_values(values, [20, 50, 80]).tolist() == [40.0, 25.0, 10.0]
-
-    def test_a_value_on_a_decimal_class_bound_is_in_the_class_it_starts(self):
-        """0.3 / 0.1 = 2.9999999999999996 in binary floating point; the rule is
-        lower <= v < upper (case FDC-CLASSES-DECIMAL-WIDTH-BOUNDARY of the audit)."""
-        values = np.array([0.1, 0.2, 0.3, 0.3, 0.7, 0.6])
-        dates = np.arange("2020-01-01", "2020-01-07", dtype="datetime64[D]")
-        result = duration_curve(values, dates, bin_width=0.1)
-        days = {(c.lower, c.upper): c.days for c in result.classes}
-        assert days[(0.3, 0.4)] == 2
-        assert days[(0.2, 0.3)] == 1
-        assert days[(0.6, 0.7)] == 1
-        assert days[(0.7, 0.8)] == 1
-
     def test_classes_from_a_multiple_of_the_width_with_cumulative_days(self):
         values = np.array([31.0, 38.0, 45.0, 45.0, 52.0])
         dates = np.array(
@@ -275,6 +258,51 @@ class TestLowFlowSequencesWithGaps:
                 },
             )
         assert caught.value.details == {"option": option, "reason": "not_applicable"}
+
+
+@pytest.mark.parametrize(
+    ("command", "options", "option", "index"),
+    [
+        (
+            "stats duration-curve",
+            {"exceedance_percents": [50, 100]},
+            "exceedance_percents",
+            1,
+        ),
+        (
+            "stats low-flow-sequences",
+            {"threshold_method": "exceedance", "exceedance_percent": 100},
+            "exceedance_percent",
+            None,
+        ),
+    ],
+)
+def test_an_exceedance_percentage_of_100_is_refused_by_the_catalog(
+    command, options, option, index
+):
+    """The declared range is the computation's open interval (0, 100): the catalog
+    declared an inclusive maximum of 100, which the commands refuse (research
+    flood-frequency §4.1); it refuses 100 before the command runs."""
+    with pytest.raises(InvalidParameterError) as caught:
+        run_command(
+            command,
+            {
+                "input_file": str(FIXTURES / "station_daily.csv"),
+                "value_column": "Q",
+                "date_column": "date",
+                **options,
+            },
+        )
+    details = caught.value.details
+    assert (details["option"], details["reason"], details["exclusive_maximum"]) == (
+        option,
+        "exclusive_maximum",
+        100,
+    )
+    assert details.get("index") == index
+    schema = get_command(command).option(option).json_schema()
+    bound = schema if index is None else schema["items"]
+    assert (bound["exclusiveMaximum"], "maximum" in bound) == (100, False)
 
 
 def _two_hydrological_years(low: dict[int, float], base: float) -> dict[str, list]:

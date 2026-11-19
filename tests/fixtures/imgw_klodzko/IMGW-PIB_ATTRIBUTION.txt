@@ -1,0 +1,8 @@
+imgw_150160180_codz_2010.csv, imgw_150160180_polr_Q_2010.csv, imgw_150160180_mies_1971_2015.csv:
+rows of station 150160180 KŁODZKO (Nysa Kłodzka) extracted unchanged (re-encoded cp1250 -> UTF-8, header added)
+from the public files codz_2010_01..12.csv, polr_Q_2010.csv and mies_1971..mies_2015.csv of
+https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/ (downloaded 2026-11-18).
+Field meanings: CODZ_publiczne_format.txt, POLR_publiczne_format.txt, MIES_publiczne_format.txt (same directory).
+
+Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy.
+Dane IMGW-PIB zostały przetworzone (wybór wierszy jednej stacji).

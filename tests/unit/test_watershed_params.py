@@ -711,6 +711,9 @@ class TestWatershedParametersCalculateTc:
                 "value": area_km2,
                 "minimum": minimum,
                 "maximum": maximum,
+                "constraint": None,
+                "condition": None,
+                "source": None,
             }
         ]
 

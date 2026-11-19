@@ -4,18 +4,42 @@ The volume of a day is its mean discharge times the 86,400 seconds of the day; t
 volume of a month or a hydrological year (1 November - 31 October) is the sum over its
 days with a value. A year or a month is *complete* when every one of its days has a
 value; the mean volumes take the complete ones only. The cumulative volume of a year
-adds the days in order (a day without a value adds nothing).
+adds the days in order (a day without a value adds nothing). These are Tier B of
+Nogat's computation standard (an aggregation by a calendar definition, CMP-1.1;
+ADR-0063), declared by :data:`TIER_B`; the day comes from the units table of
+:mod:`hydrolog.nogat_formulas` (CMP-4.3).
+
+Examples
+--------
+A discharge of 1 m³/s for every day of the hydrological year 2021 (365 days) and of
+the leap year 2020 (366 days):
+
+>>> days = np.arange(np.datetime64("2019-11-01"), np.datetime64("2021-11-01"))
+>>> volumes = runoff_volumes(np.ones(days.size), days)
+>>> [(year.year, year.volume_m3, year.days) for year in volumes.years]
+[(2020, 31622400.0, 366), (2021, 31536000.0, 365)]
+>>> volumes.mean_annual_volume_m3
+31579200.0
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Final
 
 import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.nogat_formulas import (
+    UNITS,
+    Constant,
+    FormulaSpec,
+    Source,
+    TierBSpec,
+    convert,
+)
 from hydrolog.statistics._hydrological_year import (
     hydrological_year,
     hydrological_year_start,
@@ -23,14 +47,16 @@ from hydrolog.statistics._hydrological_year import (
 
 __all__ = [
     "DAY_SECONDS",
+    "SPECS",
+    "TIER_B",
     "MonthVolume",
     "RunoffVolumes",
     "YearVolume",
     "runoff_volumes",
 ]
 
-DAY_SECONDS = 86_400.0
-"""Seconds of a day: a discharge of 1 m³/s for a day is 86,400 m³."""
+DAY_SECONDS: Final = convert(1.0, "d", "s")
+"""Seconds of a day (the units table): a discharge of 1 m³/s for a day is 86,400 m³."""
 
 # Calendar months in the order of the hydrological year: November first.
 _HYDROLOGICAL_MONTHS = (11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
@@ -154,8 +180,8 @@ def runoff_volumes(
     Raises
     ------
     InvalidParameterError
-        If the arrays are empty or differ in length, no day has a value, or
-        ``cumulative_year`` has no value.
+        If the arrays are empty or differ in length, the dates do not increase
+        strictly, no day has a value, or ``cumulative_year`` has no value.
     """
     flows = np.asarray(discharge, dtype=np.float64)
     days = np.asarray(dates).astype("datetime64[D]")
@@ -163,6 +189,8 @@ def runoff_volumes(
         raise InvalidParameterError(
             "discharge and dates must be non-empty and of the same length"
         )
+    if np.any(days[1:] <= days[:-1]):
+        raise InvalidParameterError("the dates must increase strictly")
     present = np.isfinite(flows)
     if not present.any():
         raise InvalidParameterError("the series has no value")
@@ -230,3 +258,47 @@ def runoff_volumes(
         cumulative_volume_m3=[float(item) for item in curves[int(cumulative_year)]],
         mean_cumulative_volume_m3=mean_curve,
     )
+
+
+SPECS: Final[tuple[FormulaSpec, ...]] = ()
+"""The module has no Tier A formula (CMP-1.1): see :data:`TIER_B`."""
+
+TIER_B: Final = (
+    TierBSpec(
+        name="runoff_volumes",
+        function="hydrolog.statistics.volumes.runoff_volumes",
+        definition="the volume of a day V = Q x 86,400 s [m3] for its mean discharge Q "
+        "[m3/s]; the volume of a month and of a hydrological year: the sum of the "
+        "volumes of its days with a value; complete: every day of it has a value; the "
+        "mean annual volume over the complete years and the mean volume of each month "
+        "(November to October) over its complete months; the cumulative volume of a "
+        "year at the end of each of its days, and the mean of the cumulative volumes "
+        "of the complete years over their first 365 days",
+        convention="the day of 86,400 s (BIPM 2019, table 8, from the units table of "
+        "nogat_formulas); the hydrological year 1 November - 31 October, named after "
+        "the year of its end, 366 days when it holds 29 February; a day whose value is "
+        "NaN or not finite, or whose date is absent, adds nothing and makes its month "
+        "and year incomplete; the 366th day of a leap year is not in the mean "
+        "cumulative volume; the dates increase strictly",
+        source=Source(
+            citation="IMGW-PIB, Słownik hydrologiczny (glossary of terms used in "
+            "hydrological forecasts), entry 54 (rok hydrologiczny); BIPM (2019), The "
+            "International System of Units (SI), 9th edition, table 8 (the day, d = "
+            "86 400 s)",
+            locator="the hydrological year in Poland from 1 November (00:00 UTC) to 31 "
+            "October (23:59 UTC); 1 d = 24 h = 86 400 s",
+            url="https://www.imgw.pl/sites/default/files/inline-files/"
+            "slownik-dla-mediow_chok.pdf",
+        ),
+        constants=(
+            Constant(
+                name="day",
+                value=UNITS["d"].factor,
+                unit="s/d",
+                symbol=r"\Delta t",
+                source=UNITS["d"].source,
+            ),
+        ),
+    ),
+)
+"""The Tier B formulas of the module (CMP-2.2)."""

@@ -25,9 +25,11 @@ from hydrolog.statistics.baseflow import (
     BaseflowSeparation,
     BaseflowYear,
     RecessionConstant,
+    baseflow_index,
     baseflow_separation,
     lyne_hollick_filter,
     recession_constant,
+    recession_ratio,
 )
 from hydrolog.statistics.characteristic import (
     CHARACTERISTIC_KEYS,
@@ -304,9 +306,11 @@ __all__ = [
     "BaseflowSeparation",
     "BaseflowYear",
     "RecessionConstant",
+    "baseflow_index",
     "baseflow_separation",
     "lyne_hollick_filter",
     "recession_constant",
+    "recession_ratio",
     # Flood frequency
     "FloodFrequencyAnalysis",
     "FrequencyAnalysisResult",

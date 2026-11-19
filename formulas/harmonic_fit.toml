@@ -1,0 +1,303 @@
+schema = "nogat-formula-card/1"
+name = "harmonic_fit"
+title = "Least squares fit of the mean and the harmonics of the annual cycle"
+function = "hydrolog.statistics.harmonics.harmonic_fit"
+family = "statistic"
+formula_version = 1
+status = "oracle only"
+equation = "x(t) = A0 + sum_k (a_k cos(2 pi k t / P) + b_k sin(2 pi k t / P)), k = 1 ... K, by least squares with t = day - 1; C_k = sqrt(a_k^2 + b_k^2); phase day = (atan2(b_k, a_k) mod 2 pi) P / (2 pi k) + 1; share_k = R2(1..k) - R2(1..k-1) of the nested fits"
+latex = "x(t) = A_0 + \\sum_{k=1}^{K}\\left(a_k \\cos\\frac{2\\pi k t}{P} + b_k \\sin\\frac{2\\pi k t}{P}\\right),\\quad C_k = \\sqrt{a_k^2 + b_k^2},\\quad d_k = \\frac{(\\operatorname{atan2}(b_k, a_k) \\bmod 2\\pi)\\,P}{2\\pi k} + 1"
+validation = "none: a description of the mean annual cycle; Wilks (2011) gives no measure of its agreement with observations"
+conventions = ["t is the day of the hydrological year minus one (1 November = 0), P = 365.25 days: a leap year's 31 October is t = 365, so t jumps by 1.25 days at the turn of the year", "the phase day is the day of the hydrological year whose value the harmonic peaks at: a day's value sits at t = day - 1 and the phase day is t + 1", "a harmonic's share of the variance is the increase of R2 when it joins the least squares fit of the harmonics before it (nested fits, the extra sum of squares of Draper and Smith); for a whole number of years of equally spaced days the harmonics are orthogonal and the share is Wilks's (n/2) C_k^2 / ((n - 1) s^2); Hydrolog 0.8 cut the coefficients of the whole fit instead, which gave negative shares on years with gaps", "R2 = 1 - SSR / SST with SST the sum of squared deviations from the mean of the values", "the values in any unit (degC in the documents): the mean and the amplitudes come in that unit"]
+assumptions = ["the annual cycle is periodic with the mean year; a trend or a change of regime over the period is spread over the harmonics", "a harmonic of no amplitude has no phase: its phase day is then noise of the rounding, read it only with its amplitude"]
+notices = []
+reference_cases = []
+tables = []
+
+[properties]
+units = "homogeneous"
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "values_in_another_unit"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+mean = 1.0
+amplitudes = 1.0
+
+[properties.scalings.tolerance]
+reason = "the fit is linear in the values; doubling them is exact but where LAPACK rescales a small or large right-hand side"
+abs = 1e-300
+rel = 1e-12
+
+[[properties.limits]]
+name = "two_harmonics"
+text = "an exact signal of two harmonics is recovered: mean 10, amplitudes 5 and 2, days 101 and 31, R2 = 1"
+
+[[properties.limits]]
+name = "normal_equations"
+text = "the mean and the amplitudes equal those of the normal equations of the same design solved in exact fractions"
+
+[[properties.conservation]]
+name = "shares_add_up_to_r_squared"
+text = "the shares of the harmonics add up to R2 of the whole fit"
+
+[properties.conservation.tolerance]
+reason = "differences of up to four nested R2 summed again: a few roundings"
+abs = 1e-14
+
+[[sources]]
+citation = "Wilks, D.S. (2011). Statistical Methods in the Atmospheric Sciences, 3rd ed. Academic Press, Oxford"
+access = "author-provided"
+locator = "section 9.4: the harmonic functions of a periodic series, their amplitude, phase and share of the variance, fitted by regression; not opened"
+
+[[sources]]
+citation = "Feichtinger, H.G., Gröchenig, K. and Strohmer, T. (1995). Efficient numerical methods in non-uniform sampling theory. Numerische Mathematik 69, 423-440"
+access = "open"
+locator = "section 4, Propositions 1 and 2, pp. 429-430: a trigonometric polynomial of degree M on a period of 1 sampled with a largest gap delta < 1/(2M) (on the circle) is a stable sampling set, its condition number at most ((1 + 2 delta M) / (1 - 2 delta M))^2; for larger gaps no estimate is known (after Gröchenig 1992, Math. Comp. 59, 181-194)"
+url = "http://www.math.ucdavis.edu/~strohmer/papers/1995/fgs0195.ps.gz"
+
+[[sources]]
+citation = "Draper, N.R. and Smith, H. (1998). Applied Regression Analysis, 3rd ed. Wiley, New York"
+access = "author-provided"
+locator = "section 6.1: the extra sum of squares of terms added to a fitted model, which never increases the residual sum of squares; not opened"
+
+[[variables]]
+name = "day_of_year"
+symbol = "d"
+unit = "day"
+kind = "real_array"
+description = "Day of the hydrological year of each value, 1 = 1 November."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 1.0
+low_inclusive = true
+high = 366.0
+high_inclusive = true
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 366.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "IMGW-PIB, hydrologia_info_ogolne.txt of the public hydrological data"
+access = "open"
+locator = "the hydrological year from 1 November to 31 October: days 1 to 365, or 366 when it ends in a leap year"
+url = "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/"
+
+[[variables]]
+name = "values"
+symbol = "x"
+unit = "degC"
+kind = "real_array"
+description = "The daily values in any unit, water or air temperature most often; NaN marks a day without a value."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "a million in the series' unit: a thousand times the largest water and air temperatures and Polish discharges, and above any river stage in cm"
+
+[variables.typical]
+low = -22.2
+low_inclusive = true
+high = 29.3
+high_inclusive = true
+
+[variables.typical.source]
+citation = "IMGW-PIB, synoptic station Warszawa-Okęcie (352200375), daily data 1991-2020 (tests/fixtures/warszawa_okecie_1991_2020.csv.gz)"
+access = "open"
+locator = "the daily mean air temperature, -22.2 to 29.3 degC"
+url = "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/"
+
+[[variables]]
+name = "n_harmonics"
+symbol = "K"
+unit = "-"
+kind = "integer"
+description = "Number of harmonics fitted."
+applicability = "unstated"
+
+[variables.physical]
+low = 1.0
+low_inclusive = true
+high = 4.0
+high_inclusive = true
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 4.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063"
+access = "open"
+locator = "point 3: harmonics 1 to 4 (default 2: the annual and the half-year one), as the option of stats harmonics"
+
+[[constraints]]
+name = "same_length"
+class = "physical"
+text = "one day per value"
+
+[constraints.source]
+citation = "Wilks, D.S. (2011). Statistical Methods in the Atmospheric Sciences, 3rd ed. Academic Press, Oxford"
+access = "author-provided"
+locator = "section 9.4: the harmonic functions of a periodic series, their amplitude, phase and share of the variance, fitted by regression; not opened"
+
+[[constraints]]
+name = "enough_values"
+class = "precondition"
+text = "at least 4 K + 2 values: twice the 2 K + 1 coefficients (Hydrolog's rule)"
+
+[constraints.source]
+citation = "Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063"
+access = "open"
+locator = "point 3: too_few_values"
+
+[[constraints]]
+name = "year_covered"
+class = "precondition"
+text = "the longest gap between days with a value, on the circle of the year, is shorter than P / (2 K): the harmonics are resolved"
+
+[constraints.source]
+citation = "Feichtinger, H.G., Gröchenig, K. and Strohmer, T. (1995). Efficient numerical methods in non-uniform sampling theory. Numerische Mathematik 69, 423-440"
+access = "open"
+locator = "section 4, Propositions 1 and 2, pp. 429-430: a trigonometric polynomial of degree M on a period of 1 sampled with a largest gap delta < 1/(2M) (on the circle) is a stable sampling set, its condition number at most ((1 + 2 delta M) / (1 - 2 delta M))^2; for larger gaps no estimate is known (after Gröchenig 1992, Math. Comp. 59, 181-194)"
+url = "http://www.math.ucdavis.edu/~strohmer/papers/1995/fgs0195.ps.gz"
+
+[[constraints]]
+name = "values_not_all_equal"
+class = "precondition"
+text = "0 < sum((x - mean)^2) < inf: the values are not all equal and float64 holds their variance, so R2 and the phases exist"
+
+[constraints.source]
+citation = "Wilks, D.S. (2011). Statistical Methods in the Atmospheric Sciences, 3rd ed. Academic Press, Oxford"
+access = "author-provided"
+locator = "section 9.4: the harmonic functions of a periodic series, their amplitude, phase and share of the variance, fitted by regression; not opened"
+
+[[constants]]
+name = "period_days"
+value = 365.25
+unit = "day"
+symbol = "P"
+exact = "1461/4"
+
+[constants.source]
+citation = "Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063"
+access = "open"
+locator = "point 3: the period P = 365.25 d, the mean year of 1901-2099, in which every fourth year is a leap year (the Julian year)"
+
+[[outputs]]
+name = "mean"
+unit = "degC"
+kind = "real"
+symbol = "A_0"
+description = "The mean of the fitted cycle, in the unit of the values."
+
+[outputs.physical]
+
+[[outputs]]
+name = "amplitudes"
+unit = "degC"
+kind = "real_array"
+symbol = "C_k"
+description = "The amplitude of each harmonic, in the unit of the values."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "phase_days"
+unit = "day"
+kind = "real_array"
+symbol = "d_k"
+description = "The day of the hydrological year of the first maximum of each harmonic."
+gaps_allowed = false
+
+[outputs.physical]
+low = 1.0
+low_inclusive = true
+high = 366.25
+high_inclusive = true
+
+[[outputs]]
+name = "explained_variances"
+unit = "-"
+kind = "real_array"
+description = "The share of the variance each harmonic adds to the fit of the harmonics before it."
+boundary_tolerance = 1e-12
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "r_squared"
+unit = "-"
+kind = "real"
+symbol = "R^2"
+description = "The share of the variance explained by the whole fit."
+boundary_tolerance = 1e-12
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "atan2 of a harmonic without amplitude: the precondition values_not_all_equal refuses a constant series (test_a_constant_series_is_refused); a harmonic missing from the signal keeps a finite phase in range (test_a_missing_harmonic_has_a_finite_phase)"
+
+[[traps]]
+name = "unbounded_iteration"
+description = "An iteration without a bounded count (root finding, fit)."
+test = "the least squares are LAPACK's divide and conquer singular value decomposition (numpy.linalg.lstsq, delegated), bounded by its own count; the precondition year_covered keeps the design well conditioned (test_a_season_of_values_is_refused)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "a NaN day is left out of the fit: type case values-nan_element and test_gaps_are_left_out_of_the_fit"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_thirty_years_of_temperature_match_the_normal_equations: 10,958 days of Warszawa-Okęcie"
+
+[[traps]]
+name = "moment_cancellation"
+description = "Cancellation in moments computed as E[x^2] - E[x]^2."
+test = "the fit runs on the deviations from the mean and SST is taken from them, not as E[x^2] - E[x]^2: test_a_large_offset_keeps_the_amplitudes, a signal on top of 1e6, and the pinned example of test_properties_of_annual_cycles, a cycle of 1e-14 on 2.0"
+
+[[oracles]]
+kind = "exact"
+description = "exact signals of one or two harmonics recovered: their mean, amplitudes, phase days and R2 = 1"
+test = "tests/unit/test_formulas_regime.py (limit two_harmonics)"
+conventions = []
+
+[[oracles]]
+kind = "algorithm"
+description = "the normal equations of the same design, summed by math.fsum and solved in exact fractions"
+test = "tests/unit/test_formulas_regime.py (limit normal_equations, trap many_small_terms)"
+conventions = []

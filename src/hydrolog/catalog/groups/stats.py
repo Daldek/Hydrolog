@@ -504,7 +504,7 @@ COMMANDS: tuple[Command, ...] = (
                 ),
                 default=(1.0, 5.0, 10.0, 30.0, 50.0, 70.0, 90.0, 95.0, 99.0),
                 exclusive_minimum=0,
-                maximum=100,
+                exclusive_maximum=100,
                 unit="%",
             ),
             Option(
@@ -849,16 +849,18 @@ COMMANDS: tuple[Command, ...] = (
             "Metoda najmniejszych kwadratów: średnia i 1–4 harmoniki o okresie "
             "365,25 d na dniu roku hydrologicznego (1 = 1 XI) dla całego okresu i "
             "każdego roku z co najmniej 300 wartościami: amplituda harmoniki, dzień "
-            "jej pierwszego maksimum i udział w wariancji. Do cyklu rocznego "
-            "temperatury wody lub powietrza albo przepływu; średnie dobowe: `stats "
-            "daily`."
+            "jej pierwszego maksimum i udział w wariancji. Dni z danymi nie mogą "
+            "mieć luki 365,25/(2·harmoniki) dni lub dłuższej, a wartości muszą się "
+            "różnić. Do cyklu rocznego temperatury wody lub powietrza albo "
+            "przepływu; średnie dobowe: `stats daily`."
         ),
         description=(
             "Least squares fit of the mean and 1–4 harmonics of period 365.25 d on "
-            "the day of the hydrological year (1 = 1 Nov), over the period and in "
-            "each year with 300 or more values: each harmonic's amplitude, day of its "
-            "first maximum and share of the variance. Use for the annual cycle of "
-            "water or air temperature or flow; for daily means use `stats daily`."
+            "the day of the hydrological year (1 = 1 Nov), over the period and each "
+            "year of 300+ values: each harmonic's amplitude, day of its first maximum "
+            "and share of the variance. Needs no gap of 365.25/(2·harmonics) days and "
+            "values not all equal. For the annual cycle of water or air temperature "
+            "or flow; daily means: `stats daily`."
         ),
         result_schema="hydrolog-stats-harmonics/1",
         cardinality="bounded",
@@ -960,6 +962,7 @@ COMMANDS: tuple[Command, ...] = (
             "`series_year` to domyślnie ostatni pełny rok.",
         ),
         errors=_STATION_ERRORS,
+        typical_ranges=(RangeCheck("lyne_hollick", "alpha", ("alpha",)),),
         example_results=(
             {
                 "alpha": 0.925,
@@ -989,7 +992,7 @@ COMMANDS: tuple[Command, ...] = (
                 ),
                 default=0.925,
                 exclusive_minimum=0,
-                maximum=1,
+                exclusive_maximum=1,
             ),
             Option(
                 name="passes",
@@ -1036,15 +1039,19 @@ COMMANDS: tuple[Command, ...] = (
         summary=("Compute day-of-year statistics over all years of a daily series"),
         description_pl=(
             "Maksimum, średnia, mediana, minimum i liczba obserwacji dla każdej "
-            "doby roku hydrologicznego (1 = 1 XI, do 366) ze wszystkich lat. Do "
-            "krzywych reżimu dobowego; wartości miesięczne daje `stats monthly`. "
+            "doby roku hydrologicznego (1 = 1 XI, do 366) ze wszystkich lat. Doby są "
+            "liczone: od 1 III doba roku przestępnego ma numer o 1 większy, więc "
+            "dalsza doba łączy dwie daty, a doba 366 jest tylko z lat przestępnych. "
+            "Do krzywych reżimu dobowego; wartości miesięczne daje `stats monthly`. "
             "Wymaga dat; NaN jest pomijane. Wynik to tablice o jednakowej długości."
         ),
         description=(
             "Maximum, mean, median, minimum and count for each day of the "
-            "hydrological year (1 = 1 Nov, up to 366) over all years. Use for daily"
-            " regime curves; for monthly values use `stats monthly`. Needs dates; "
-            "NaN is skipped. The result is arrays of equal length."
+            "hydrological year (1 = 1 Nov, up to 366) over all years. Days are "
+            "counted: from 1 Mar a leap year's day is one higher, so a later day pools "
+            "two dates and day 366 holds leap years only. Use for daily regime "
+            "curves; for monthly values use `stats monthly`. Needs dates; NaN is "
+            "skipped. The result is arrays of equal length."
         ),
         result_schema="hydrolog-stats-daily/1",
         cardinality="bounded",
@@ -1098,14 +1105,17 @@ COMMANDS: tuple[Command, ...] = (
             "Dla miesięcy 1–12: maksimum, średnia, mediana, minimum, odchylenie "
             "standardowe, współczynnik zmienności, skośność i przedział ufności "
             "średniej wieloletniej ze średnich miesiąca w kolejnych latach (wartości "
-            "dobowe nie są niezależne). Do tabel reżimu miesięcznego; wartości dobowe "
-            "daje `stats daily`. Wymaga dat i wartości we wszystkich 12 miesiącach."
+            "dobowe nie są niezależne). Współczynnik zmienności jest `null` dla "
+            "miesiąca z wartością poniżej 0 albo z samych zer (wymaga prawdziwego "
+            "zera, jak przepływ). Do tabel reżimu miesięcznego; wartości dobowe daje "
+            "`stats daily`. Wymaga dat i wartości we wszystkich 12 miesiącach."
         ),
         description=(
             "For months 1–12: maximum, mean, median, minimum, standard deviation, "
             "variation coefficient, skewness and the confidence interval of the "
-            "long-term mean from the yearly means of the month. Use for monthly regime "
-            "tables; for daily values use `stats daily`."
+            "long-term mean from the yearly means of the month. The variation "
+            "coefficient is null for a month with a value below 0 or all 0. Use for "
+            "monthly regime tables; for daily values use `stats daily`."
         ),
         result_schema="hydrolog-stats-monthly/1",
         cardinality="bounded",
@@ -1515,7 +1525,7 @@ COMMANDS: tuple[Command, ...] = (
                     "in (0, 100), 70 gives Q70, 90 gives Q90; default 70."
                 ),
                 exclusive_minimum=0,
-                maximum=100,
+                exclusive_maximum=100,
                 unit="%",
             ),
             Option(
@@ -1613,12 +1623,12 @@ COMMANDS: tuple[Command, ...] = (
         ),
         result_schema="hydrolog-stats-mann-kendall/1",
         rules=(
-            "Pass values in time order, at least 3; `years` make the slope per year.",
+            "Pass 3 to 5,000 values in time order; `years` make the slope per year.",
             "A trend is detected when `p_value` is below `alpha`.",
             "Check `notices` for skipped missing values.",
         ),
         rules_pl=(
-            "Podaj wartości w kolejności czasowej, co najmniej 3; z `years` nachylenie "
+            "Podaj od 3 do 5000 wartości w kolejności czasowej; z `years` nachylenie "
             "jest na rok.",
             "Trend jest wykryty, gdy `p_value` jest mniejsze niż `alpha`.",
             "Sprawdź `notices` pod kątem pominiętych braków danych.",
@@ -1665,11 +1675,11 @@ COMMANDS: tuple[Command, ...] = (
             replace(
                 VALUES,
                 description_pl=(
-                    "Szereg w kolejności czasowej, np. maksima roczne (co najmniej 3 "
+                    "Szereg w kolejności czasowej, np. maksima roczne (od 3 do 5000 "
                     "wartości). Długie szeregi podawaj w pliku (`input_file`)."
                 ),
                 description=(
-                    "Series in time order, e.g. annual maxima (at least 3 values). "
+                    "Series in time order, e.g. annual maxima (3 to 5,000 values). "
                     "Give long series in a file (`input_file`)."
                 ),
             ),
@@ -1726,7 +1736,7 @@ COMMANDS: tuple[Command, ...] = (
                 ),
                 default=0.05,
                 exclusive_minimum=0,
-                maximum=1,
+                exclusive_maximum=1,
             ),
             ATTRIBUTION,
         ),
@@ -1919,7 +1929,7 @@ COMMANDS: tuple[Command, ...] = (
                 ),
                 default=0.05,
                 exclusive_minimum=0,
-                maximum=1,
+                exclusive_maximum=1,
             ),
             *PERIOD_OPTIONS,
             ATTRIBUTION,

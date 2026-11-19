@@ -121,7 +121,7 @@ from hydrolog.statistics.baseflow import (
 from hydrolog.statistics.baseflow import (
     MIN_YEAR_DAYS as BASEFLOW_MIN_YEAR_DAYS,
 )
-from hydrolog.statistics.harmonics import MAX_HARMONICS, MIN_YEAR_VALUES
+from hydrolog.statistics.harmonics import MAX_HARMONICS, MIN_YEAR_VALUES, PERIOD_DAYS
 from hydrolog.statistics.volumes import DAY_SECONDS
 
 __all__ = [
@@ -780,7 +780,10 @@ def stats_daily(
 
     For every day of the hydrological year (1 = 1 November) gives the maximum, mean,
     median, minimum and number of observations over all years of the series
-    (:func:`hydrolog.statistics.calculate_daily_statistics`).
+    (:func:`hydrolog.statistics.calculate_daily_statistics`). The days are counted,
+    not dated: from 1 March a leap year's days are one higher than a common year's,
+    so a day after 28 February pools two calendar dates and day 366 holds the leap
+    years only.
 
     Parameters
     ----------
@@ -872,7 +875,9 @@ def stats_monthly(
         report removed missing values, months with a single value (they have no
         standard deviation, coefficient of variation, skewness or confidence
         interval: ``None`` in JSON), months with more values but all of one year
-        (no confidence interval), and numerical warnings.
+        (no confidence interval), and numerical warnings. A month with a value
+        below zero or with values all zero has no coefficient of variation
+        (``None``): it is defined for a quantity with a true zero.
 
     Raises
     ------
@@ -1909,6 +1914,50 @@ def _years_left_out(series: Series, kept: Sequence[int], minimum: int) -> list[N
     ]
 
 
+def _harmonic_years_left_out(
+    series: Series, kept: Sequence[int], harmonics: int
+) -> list[Notice]:
+    """Return the notices of the years with a value that have no fit of their own.
+
+    A year with fewer than :data:`MIN_YEAR_VALUES` days with a value is short
+    (``short_years_left_out``); one with as many that the fit refuses, its values all
+    equal or a gap of ``PERIOD_DAYS / (2 harmonics)`` days or more, has none
+    (``years_without_fit``).
+    """
+    present, counts = np.unique(
+        hydrological_year(_dates_of(series)[~np.isnan(series.values)]),
+        return_counts=True,
+    )
+    left_out = [
+        (int(year), int(count))
+        for year, count in zip(present.tolist(), counts.tolist(), strict=True)
+        if year not in kept
+    ]
+    short = [year for year, count in left_out if count < MIN_YEAR_VALUES]
+    refused = [year for year, count in left_out if count >= MIN_YEAR_VALUES]
+    notices: list[Notice] = []
+    if short:
+        notices.append(
+            notice(
+                "short_years_left_out",
+                count=len(short),
+                minimum=MIN_YEAR_VALUES,
+                years=short,
+            )
+        )
+    if refused:
+        notices.append(
+            notice(
+                "years_without_fit",
+                count=len(refused),
+                harmonics=harmonics,
+                max_gap_days=PERIOD_DAYS / (2 * harmonics),
+                years=refused,
+            )
+        )
+    return notices
+
+
 def stats_regime(
     *,
     values: Sequence[float] | None = None,
@@ -2199,14 +2248,18 @@ def stats_harmonics(
     OperationOutput
         ``result`` is a :class:`~hydrolog.statistics.AnnualCycle`; the notices report
         removed missing values, years with too few values for a fit of their own
-        (``short_years_left_out``) and a period shorter than 30 years
-        (``short_reference_period``).
+        (``short_years_left_out``), years whose values the fit refuses
+        (``years_without_fit``: all equal, or a gap the harmonics cannot span) and a
+        period shorter than 30 years (``short_reference_period``).
 
     Raises
     ------
     InvalidParameterError
-        If the series options are inconsistent, ``harmonics`` is not 1 to 4 or
-        ``first_year`` is after ``last_year``.
+        If the series options are inconsistent, ``harmonics`` is not 1 to 4,
+        ``first_year`` is after ``last_year``, or the spec ``harmonic_fit`` refuses the
+        period (``details.reason`` ``precondition_failed``: a gap of ``365.25 / (2
+        harmonics)`` days or more between the days with a value, ``year_covered``, or
+        values all equal, ``values_not_all_equal``).
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError
@@ -2248,7 +2301,7 @@ def stats_harmonics(
         )
     result: AnnualCycle = annual_cycle(series.values, _dates_of(series), harmonics)
     notices.extend(
-        _years_left_out(series, [row.year for row in result.years], MIN_YEAR_VALUES)
+        _harmonic_years_left_out(series, [row.year for row in result.years], harmonics)
     )
     notices.extend(
         reference_period_notices(
@@ -2312,16 +2365,20 @@ def stats_baseflow(
     -------
     OperationOutput
         ``result`` is a :class:`~hydrolog.statistics.BaseflowSeparation`; the notices
-        report years with too few days for an index of their own
-        (``short_years_left_out``) and a period shorter than 30 years
-        (``short_reference_period``).
+        report an ``alpha`` outside the values its sources validated
+        (``outside_typical_range``, spec ``lyne_hollick``), years with too few days
+        for an index of their own (``short_years_left_out``) and a period shorter
+        than 30 years (``short_reference_period``).
 
     Raises
     ------
     InvalidParameterError
         If the series options are inconsistent, ``alpha`` is outside (0, 1),
         ``passes`` is not an odd number of at least 3, ``first_year`` is after
-        ``last_year`` or ``series_year`` has no value in the period.
+        ``last_year`` or ``series_year`` has no value in the period; if a
+        discharge is negative (``outside_physical_range``) or no water flowed on
+        the days with a baseflow (``precondition_failed``, constraint
+        ``positive_flow_volume``).
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError
@@ -2376,16 +2433,20 @@ def stats_baseflow(
             },
             hint="Fill the gaps of the series or choose other years.",
         )
-    result: BaseflowSeparation = baseflow_separation(
-        series.values,
-        dates_array,
-        alpha=level,
-        passes=passes,
-        series_year=series_year,
-    )
-    notices = _years_left_out(
-        series, [row.year for row in result.years], BASEFLOW_MIN_YEAR_DAYS
-    )
+    with capture_warnings() as warned:
+        result: BaseflowSeparation = baseflow_separation(
+            series.values,
+            dates_array,
+            alpha=level,
+            passes=passes,
+            series_year=series_year,
+        )
+    notices = [
+        *warned,
+        *_years_left_out(
+            series, [row.year for row in result.years], BASEFLOW_MIN_YEAR_DAYS
+        ),
+    ]
     notices.extend(
         reference_period_notices(
             result.period_years, result.first_year, result.last_year

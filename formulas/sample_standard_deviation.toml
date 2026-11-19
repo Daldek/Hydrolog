@@ -1,0 +1,147 @@
+schema = "nogat-formula-card/1"
+name = "sample_standard_deviation"
+title = "Standard deviation of a sample, with the divisor n - 1"
+function = "hydrolog.statistics.characteristic.sample_standard_deviation"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "s = sqrt(sum((x - mean)**2) / (n - 1)) with mean = sum(x) / n"
+latex = "s = \\sqrt{\\frac{\\sum_i (x_i - \\bar{x})^2}{n - 1}},\\quad \\bar{x} = \\frac{1}{n}\\sum_i x_i"
+validation = "none: the definition of a sample statistic"
+conventions = ["the divisor n - 1 (NIST sect. 1.3.5.6; numpy.std with ddof=1)", "the sample in any unit; the standard deviation in its unit", "the deviations from the mean, centred twice, on the sample divided by a power of two; never the sums of powers E[x**2] - E[x]**2"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/characteristic-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_sample"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+std = 1.0
+
+[properties.scalings.tolerance]
+reason = "the statistics run on the sample scaled by a power of two, so doubling or negating it changes no rounding; a result below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[properties.limits]]
+name = "exact_rational"
+text = "the standard deviation of the definition in exact rational arithmetic"
+
+[[properties.limits]]
+name = "equal_values"
+text = "equal values have no spread"
+
+[[properties.symmetries]]
+name = "mirror"
+text = "the negated sample has the same standard deviation"
+
+[properties.symmetries.tolerance]
+reason = "the statistics run on the sample scaled by a power of two, so doubling or negating it changes no rounding; a result below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[sources]]
+citation = "NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology"
+access = "open"
+locator = "sect. 1.3.5.6, Measures of Scale: the standard deviation s = sqrt(sum((Y - mean)**2) / (N - 1))"
+url = "https://www.itl.nist.gov/div898/handbook/eda/section3/eda356.htm"
+
+[[sources]]
+citation = "NIST Statistical Reference Datasets, Univariate Summary Statistics: NumAcc1 to NumAcc4 (Simon and Lesage 1989), certified values"
+access = "open"
+locator = "sample standard deviation (denom. = n-1), exact"
+url = "https://www.itl.nist.gov/div898/strd/univ/homepage.html"
+
+[[variables]]
+name = "values"
+symbol = "x_i"
+unit = "m3/s"
+kind = "real_array"
+description = "The sample: the values of a calendar month over the years."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0"
+
+[variables.typical]
+low = 4.93
+low_inclusive = true
+high = 96.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "IMGW-PIB, public hydrological data: codz_2010_01..12.csv, station 150160180 Kłodzko (Nysa Kłodzka)"
+access = "open"
+locator = "the daily discharges of the hydrological year 2010, 4.93 to 96.0 m3/s (tests/oracles/characteristic/imgw_150160180_codz_2010.csv)"
+url = "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/"
+
+[[constraints]]
+name = "enough_values"
+class = "precondition"
+text = "n >= 2"
+
+[constraints.source]
+citation = "NIST/SEMATECH (2012). e-Handbook of Statistical Methods, National Institute of Standards and Technology"
+access = "open"
+locator = "sect. 1.3.5.6: the divisor N - 1 needs two values"
+url = "https://www.itl.nist.gov/div898/handbook/eda/section3/eda356.htm"
+
+[[outputs]]
+name = "std"
+unit = "m3/s"
+kind = "real"
+symbol = "s"
+description = "Standard deviation with the divisor n - 1."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "limit equal_values: the square root at a variance of 0 is exactly 0"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case values-nan_element: a gap is refused"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "reference cases nist_strd_numacc2 to nist_strd_numacc4: 1001 values against the certified s"
+
+[[traps]]
+name = "moment_cancellation"
+description = "Cancellation in moments computed as E[x^2] - E[x]^2."
+test = "reference case nist_strd_numacc4: a mean of 1e7 with s = 0.1; limit exact_rational: a mean of 1e9 with a spread of 0.03"
+
+[[oracles]]
+kind = "exact"
+description = "the variance in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_characteristic.py (limit exact_rational)"
+conventions = []
+
+[[oracles]]
+kind = "established"
+description = "numpy.std with ddof=1"
+test = "tests/unit/test_formulas_characteristic.py (test_the_estimators_are_numpys_and_scipys)"
+conventions = ["numpy.std(ddof=1) has the divisor n - 1 of the spec"]

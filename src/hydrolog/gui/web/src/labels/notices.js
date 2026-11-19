@@ -2,11 +2,13 @@
  * Notices of results in Polish (plan D16): one text per stable code of Hydrolog's NOTICES
  * registry, filled from the notice's `details`. A text with values has a plain form for a
  * notice without them (`route network` gives its nodes' notices only `node_id`), may
- * name the codes a detail holds (`names`: detail -> code -> Polish name), and may word a
- * list detail item by item (`each`: detail -> the text of one item, filled with the items
- * at its place in the lists of details of that length). A contract test fails for a code
- * without a text here; a code the GUI does not know shows the English message marked
- * „(EN)”.
+ * have partial forms for a notice that lacks some of them (a range with one end, whose
+ * other end is null: the first form whose values are all there is used), may name the
+ * codes a detail holds (`names`: detail -> code -> Polish name), and may word a list
+ * detail item by item (`each`: detail -> the text of one item, filled with the items at
+ * its place in the lists of details of that length). A null detail counts as absent. A
+ * contract test fails for a code without a text here; a code the GUI does not know shows
+ * the English message marked „(EN)”.
  */
 
 import { auto } from "../format.js";
@@ -111,11 +113,38 @@ export const notices = {
     },
     outside_typical_range: {
       text: "{method}: {parameter} = {value} poza typowym zakresem od {minimum} do {maximum}.",
+      partial: [
+        "{method}: {parameter} = {value}, mniej niż {minimum}: {constraint}.",
+        "{method}: {parameter} = {value} poniżej typowego zakresu, od {minimum}.",
+        "{method}: {parameter} = {value} powyżej typowego zakresu, do {maximum}.",
+      ],
       plain: "Parametr metody poza typowym zakresem.",
+      names: {
+        method: { rating_curve_fit: "Krzywa przepływu" },
+        parameter: { gaugings: "liczba par stan–przepływ" },
+        constraint: {
+          enough_gaugings:
+            "WMO-No. 1044 (tom II, rozdz. 1.5.1) zaleca do krzywej przepływu co najmniej 12–15 pomiarów przepływu z okresu analizy, więc krzywa jest mniej pewna",
+        },
+      },
     },
     outside_unverified_range: {
       text: "{method}: {parameter} = {value} poza typowym zakresem od {minimum} do {maximum}; zakres bez opublikowanego źródła, do weryfikacji.",
+      partial: [
+        "{method}: {parameter} = {value} poniżej typowego zakresu, od {minimum}; zakres bez opublikowanego źródła, do weryfikacji.",
+        "{method}: {parameter} = {value} powyżej typowego zakresu, do {maximum}; zakres bez opublikowanego źródła, do weryfikacji.",
+      ],
       plain: "Parametr metody poza typowym zakresem, który czeka na weryfikację.",
+    },
+    unreferenced_formula: {
+      text: "{formula} (wersja {formula_version}): źródła nie podają przykładu z wynikiem tej metody i nie ma niezależnego sposobu jej sprawdzenia, więc wyniku nie zweryfikowano.",
+      plain: "Źródła nie podają przykładu z wynikiem tej metody: wyniku nie zweryfikowano.",
+      names: {
+        formula: {
+          rating_curve_plausibility: "Ocena wiarygodności krzywej przepływu (reguła Hydrologa, ADR-0041)",
+          rybczynski_zones: "Strefy stanów wody wg Rybczyńskiego (źródła nie otwarto)",
+        },
+      },
     },
     small_sample: {
       text: "Mała próba: {years} lat (zalecane co najmniej {minimum}).",
@@ -175,6 +204,10 @@ export const notices = {
     short_years_left_out: {
       text: "{count} lat hydrologicznych okresu ma mniej niż {minimum} dni z danymi do obliczeń i nie ma własnych wartości: {years}.",
       plain: "Niektóre lata mają za mało dni z danymi, by mieć własne wartości.",
+    },
+    years_without_fit: {
+      text: "{count} lat hydrologicznych okresu ma dość dni z danymi, ale nie ma własnego dopasowania {harmonics} harmonik: ich wartości są wszystkie równe albo mają lukę co najmniej {max_gap_days} dni: {years}.",
+      plain: "Niektóre lata mają stałe wartości albo zbyt długą lukę w danych, by dopasować do nich harmoniki.",
     },
     undated_extremes: {
       text: "{count} ekstremów rocznych nie ma daty w pliku półroczy i pominięto je: {years}.",
@@ -264,7 +297,9 @@ export function describeNotice(notice) {
   const details = (notice && notice.details) || {};
   const values = { message };
   const names = (typeof entry === "object" && entry.names) || {};
-  for (const [key, value] of Object.entries(details)) values[key] = noticeValue(named(names[key], value));
+  for (const [key, value] of Object.entries(details)) {
+    if (value !== null && value !== undefined) values[key] = noticeValue(named(names[key], value));
+  }
   const each = (typeof entry === "object" && entry.each) || {};
   for (const [key, item] of Object.entries(each)) {
     const items = details[key];
@@ -273,9 +308,9 @@ export function describeNotice(notice) {
     const at = (index) => Object.fromEntries(lists.map(([name, value]) => [name, noticeValue(named(names[name], value[index]))]));
     values[key] = items.map((_, index) => t(item, at(index))).join(", ");
   }
-  const full = typeof entry === "string" ? entry : entry.text;
-  const needed = [...full.matchAll(/\{(\w+)\}/g)].map((match) => match[1]);
-  const template = needed.every((key) => Object.hasOwn(values, key)) ? full : entry.plain || full;
+  const forms = typeof entry === "string" ? [entry] : [entry.text, ...(entry.partial || [])];
+  const complete = (form) => [...form.matchAll(/\{(\w+)\}/g)].every((match) => Object.hasOwn(values, match[1]));
+  const template = forms.find(complete) || (typeof entry === "object" && entry.plain) || forms[0];
   const english = template.includes("{message}");
   let text = t(template, values);
   if (english) text = `${text} ${common.english}`;

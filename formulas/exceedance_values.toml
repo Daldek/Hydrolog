@@ -1,0 +1,180 @@
+schema = "nogat-formula-card/1"
+name = "exceedance_values"
+title = "Values of the duration curve equalled or exceeded on p % of the days (Weibull positions, linear interpolation)"
+function = "hydrolog.statistics.duration.exceedance_values"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "q(1) >= ... >= q(n) the n values with a value; h = (n + 1) p / 100, i = floor(h), theta = h - i; Q_p = q(i) + theta (q(i+1) - q(i)) for 1 <= i < n, q(1) for i < 1 and q(n) for i >= n"
+latex = "Q_p = q_{(i)} + \\theta\\,\\bigl(q_{(i+1)} - q_{(i)}\\bigr),\\quad i = \\left\\lfloor \\tfrac{(n+1)\\,p}{100} \\right\\rfloor,\\quad \\theta = \\tfrac{(n+1)\\,p}{100} - i,\\quad q_{(1)} \\ge \\dots \\ge q_{(n)}"
+validation = "none: a nonparametric estimate from the observed series itself; Vogel and Fennessey (1994) compare its sampling properties, not its agreement with observations"
+conventions = ["p is the exceedance percentage: the share of the days with a value on which the value is equalled or exceeded (krzywa sum czasów trwania wraz z wyższymi); Q_p is the (100 - p)-th percentile of the values", "the Weibull plotting position m / (n + 1) of the value of rank m from the highest, linear interpolation between positions: Q_p,2 of Vogel and Fennessey (1994, eq. 3), method R6 of Hyndman and Fan (NIST e-Handbook 7.2.6.2), numpy's method 'weibull' and R's quantile type 6", "beyond the extreme positions 100 / (n + 1) and 100 n / (n + 1) % the end values hold, as R6 sets k = 0 to the minimum and k >= N to the maximum; Vogel and Fennessey leave Q_p,2 undefined before the first position and recommend interpolating to q(n+1) = 0 after the last, which Hydrolog does not", "not the class method of Searcy (1959) and WMO-No. 1029 (sect. 6.1), whose share of a class is i / N, nor lfstat's Qxx (R's quantile type 7)", "equal values (ties) keep a position each and zeros are values; a day without a value (NaN) is left out, n counts the days with a value", "the series in any unit: the values of the curve in that unit (m3/s in the documents, cm for stages)", "the interpolation runs on the values divided by a power of two, so a difference of two values near the largest float does not overflow"]
+assumptions = ["the values are those of one station over one period: the curve describes that period (the period-of-record curve of Vogel and Fennessey), not a climate", "no independence of the days is needed: the curve is descriptive, and its confidence intervals (Vogel and Fennessey, sect. 5) are not computed"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/daily-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+values = 1
+exceedance_percent = -1
+
+[[properties.scalings]]
+name = "unit_of_the_series"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+exceedance_values = 1.0
+
+[properties.scalings.tolerance]
+reason = "the curve runs on the values divided by a power of two, so doubling them changes no rounding; a value below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[properties.limits]]
+name = "plotting_positions"
+text = "at its position m / (n + 1) the curve gives the m-th largest value, halfway between two positions their mean"
+
+[properties.limits.source]
+citation = "Vogel, R.M. and Fennessey, N.M. (1994). Flow-duration curves. I: New interpretation and confidence intervals. Journal of Water Resources Planning and Management 120(4), 485-504 (the authors' copy)"
+access = "open"
+locator = "pp. 488-489, eqs. (2a) and (3): Q_p,2 = (1 - theta) q(i) + theta q(i+1) with i = [(n + 1) p] and theta = (n + 1) p - i, the ordered observations q(i) plotted at the Weibull position p_i = i / (n + 1)"
+url = "https://sites.tufts.edu/richardvogel/files/2019/04/flowDuration1.pdf"
+
+[[properties.limits]]
+name = "end_values_held"
+text = "before the first position the curve holds the largest value, after the last the smallest (NIST's k = 0 and k >= N)"
+
+[properties.limits.source]
+citation = "NIST/SEMATECH (2012). e-Handbook of Statistical Methods, section 7.2.6.2, Percentiles"
+access = "open"
+locator = "p (N + 1) = k + d: Y(p) = Y[k] + d (Y[k+1] - Y[k]) for 0 < k < N, Y[1] for k = 0 and Y[N] for k >= N, method R6 of Hyndman and Fan (1996); the example of twelve resistivities, 90th percentile 95.1981 ohm.cm"
+url = "https://www.itl.nist.gov/div898/handbook/prc/section2/prc262.htm"
+
+[[properties.limits]]
+name = "constant_series"
+text = "a series of equal values (ties) gives that value at every percentage, and a day without a value changes nothing"
+
+[[properties.limits]]
+name = "exact_rational"
+text = "the values equal eq. (3) of Vogel and Fennessey in exact rational arithmetic, on whole numbers, decimal flows with zeros and ties, negative stages, gaps, one and two values and 400 seeded flows"
+
+[[properties.symmetries]]
+name = "mirror"
+text = "the negated series at 100 - p gives the negated value at p: the positions m / (n + 1) are symmetric"
+
+[properties.symmetries.tolerance]
+reason = "100 - p and (n + 1) p / 100 round, moving theta by a few units in the last place of n + 1 (at most 51 values are drawn), times a spread of at most 2e6 within the test bounds of the values: about 1e-8"
+abs = 1e-06
+
+[[sources]]
+citation = "Vogel, R.M. and Fennessey, N.M. (1994). Flow-duration curves. I: New interpretation and confidence intervals. Journal of Water Resources Planning and Management 120(4), 485-504 (the authors' copy)"
+access = "open"
+locator = "pp. 488-489, eqs. (2a) and (3): Q_p,2 = (1 - theta) q(i) + theta q(i+1) with i = [(n + 1) p] and theta = (n + 1) p - i, the ordered observations q(i) plotted at the Weibull position p_i = i / (n + 1)"
+url = "https://sites.tufts.edu/richardvogel/files/2019/04/flowDuration1.pdf"
+
+[[sources]]
+citation = "NIST/SEMATECH (2012). e-Handbook of Statistical Methods, section 7.2.6.2, Percentiles"
+access = "open"
+locator = "p (N + 1) = k + d: Y(p) = Y[k] + d (Y[k+1] - Y[k]) for 0 < k < N, Y[1] for k = 0 and Y[N] for k >= N, method R6 of Hyndman and Fan (1996); the example of twelve resistivities, 90th percentile 95.1981 ohm.cm"
+url = "https://www.itl.nist.gov/div898/handbook/prc/section2/prc262.htm"
+
+[[variables]]
+name = "values"
+symbol = "q"
+unit = "m3/s"
+kind = "real_array"
+description = "The daily values of the series, in any order; NaN on a day without a value, which is left out."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the curve is homogeneous in the unit of the series (its scaling), so any bound tests its arithmetic: a million m3/s exceeds the discharge of every river, and a stage below its gauge's zero or a temperature may be negative, so the same bound holds below 0"
+
+[variables.typical]
+low = 1.24
+low_inclusive = true
+high = 522.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "IMGW-PIB, public hydrological data: the half-yearly characteristic flows (polr_Q) of station 150160180 Kłodzko on the Nysa Kłodzka, hydrological years 1971-2015 (1997 absent)"
+access = "open"
+locator = "the lowest flow NNQ 1.24 m3/s (2015) and the highest WWQ 522 m3/s (2006), between which its daily mean flows lie"
+url = "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/"
+
+[[variables]]
+name = "exceedance_percent"
+symbol = "p"
+unit = "%"
+kind = "real_array"
+description = "The percentages of the days on which the value is equalled or exceeded."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+high = 100.0
+high_inclusive = false
+
+[variables.typical]
+low = 0.1
+low_inclusive = true
+high = 99.9
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's duration curve: CURVE_PERCENTS of hydrolog.statistics.duration, the percentages of every drawn curve, and the table's DEFAULT_PERCENTS; the thresholds Q70, Q90 and Q95 of Polish low-flow studies (Tokarczyk 2010, p. 32; Tomaszewski 2012, p. 68) lie between"
+access = "open"
+locator = "0.1 to 99.9 %"
+
+[[constraints]]
+name = "has_values"
+class = "precondition"
+text = "n >= 1: at least one day with a value"
+
+[constraints.source]
+citation = "NIST/SEMATECH (2012). e-Handbook of Statistical Methods, section 7.2.6.2, Percentiles"
+access = "open"
+locator = "p (N + 1) = k + d: Y(p) = Y[k] + d (Y[k+1] - Y[k]) for 0 < k < N, Y[1] for k = 0 and Y[N] for k >= N, method R6 of Hyndman and Fan (1996); the example of twelve resistivities, 90th percentile 95.1981 ohm.cm"
+url = "https://www.itl.nist.gov/div898/handbook/prc/section2/prc262.htm"
+
+[[outputs]]
+name = "exceedance_values"
+unit = "m3/s"
+kind = "real_array"
+symbol = "Q_p"
+description = "The value equalled or exceeded on each percentage of the days, in the unit of the series."
+gaps_allowed = false
+
+[outputs.physical]
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case values-nan_element, limit constant_series and test_gaps_are_left_out: a day without a value is left out, never a NaN of the curve"
+
+[[oracles]]
+kind = "exact"
+description = "eq. (3) of Vogel and Fennessey (1994), (1 - theta) q(i) + theta q(i+1), in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_daily.py (limit exact_rational)"
+conventions = []
+
+[[oracles]]
+kind = "established"
+description = "numpy.quantile with method='weibull' (NumPy 2.5) at the non-exceedance probability 1 - p / 100"
+test = "tests/unit/test_formulas_daily.py (test_the_values_are_numpys_weibull_quantiles)"
+conventions = ["numpy's 'weibull' is Hyndman and Fan's type 6: the k-th smallest of n values at k / (n + 1), linear interpolation, the ends held", "numpy takes the non-exceedance probability; the exceedance percentage p is 1 - p / 100 of it, the positions being symmetric"]
