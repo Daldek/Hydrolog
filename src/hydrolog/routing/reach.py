@@ -20,13 +20,14 @@ import math
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Literal
+from typing import Any, ClassVar, Final, Literal
 
 import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import CalculationError, InvalidParameterError
+from hydrolog.nogat_formulas import Constant, FormulaSpec, Source, TierBSpec
 from hydrolog.routing._reading import constructor_defaults
 from hydrolog.routing._registry import Registry
 from hydrolog.routing.hydrograph import Hydrograph
@@ -59,7 +60,6 @@ MAX_ORDINATES = 1_000_000
 
 _ROUNDING = 1e-9
 """Relative slack for whole numbers of steps and for the sign of the outflow."""
-_SECONDS_PER_MINUTE = 60.0
 
 NoticeLevel = Literal["info", "warning"]
 
@@ -475,3 +475,70 @@ REACH_METHODS: Registry[Reach] = Registry(
 )
 """The routing methods by name, the ``method`` of a reach in a document: a new method
 is a new :class:`Reach` that is registered here (``@REACH_METHODS.register``)."""
+
+
+_CONVENTIONS = "Hydrolog ADR-0008: routing conventions"
+
+SPECS: Final[tuple[FormulaSpec, ...]] = ()
+"""The routing formulas are declared in :mod:`hydrolog.routing.formulas`."""
+
+TIER_B: Final = (
+    TierBSpec(
+        name="routing_initial_state",
+        function="hydrolog.routing.reach._initial_outflow",
+        definition="the outflow at the first ordinate: the given initial outflow, "
+        "else the first inflow ordinate; every sub-reach, pool or reservoir of the "
+        "element starts at rest with it",
+        convention="a steady state at the start (HEC-HMS initialises a reach by its "
+        "inflow); a given initial outflow is finite and not negative",
+        source=Source(
+            citation=_CONVENTIONS,
+            locator="docs/decisions/0008-routing-conventions.md, Initial condition",
+        ),
+    ),
+    TierBSpec(
+        name="routing_tail",
+        function="hydrolog.routing.reach._settled",
+        definition="the shortest extension of the time axis, the last inflow held, "
+        "after which the outflow is within the tolerance of the final inflow "
+        "(relative to the inflow peak) and the water stored above its steady amount "
+        "is within the tolerance of the inflow volume (or of the excess the element "
+        "started with, when larger); at most ten times the inflow duration and at "
+        "least the minimum of steps",
+        convention="the inflow after its last ordinate is its last value; an outflow "
+        "that has not settled at the cap gives the warning tail_truncated",
+        source=Source(
+            citation=_CONVENTIONS,
+            locator="docs/decisions/0008-routing-conventions.md, Tail",
+        ),
+        constants=(
+            Constant(
+                name="tail_tolerance",
+                value=TAIL_TOLERANCE,
+                unit="-",
+                source=Source(citation=_CONVENTIONS, locator="0.1 % of the peak"),
+            ),
+            Constant(
+                name="min_extension_steps",
+                value=float(MIN_EXTENSION_STEPS),
+                unit="-",
+                source=Source(citation=_CONVENTIONS, locator="at least 100 steps"),
+            ),
+        ),
+    ),
+    TierBSpec(
+        name="routing_volume_balance",
+        function="hydrolog.routing.reach.RoutingResult.balance_error_m3",
+        definition="the inflow volume over the extended axis (the last inflow held) "
+        "minus the outflow volume minus the storage at the end plus the storage at "
+        "the start, each volume by the trapezoid rule",
+        convention="zero to rounding for a recurrence on the original step; the "
+        "sampling error of the trapezoid rule after sub-steps, the quadrature error "
+        "of an exact kernel (cascade) or of an interpolated lag otherwise",
+        source=Source(
+            citation=_CONVENTIONS,
+            locator="docs/decisions/0008-routing-conventions.md, Balance",
+        ),
+    ),
+)
+"""The conventions every routing element shares (CMP-2.2)."""

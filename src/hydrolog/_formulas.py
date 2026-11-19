@@ -63,8 +63,11 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.time.concentration",
     "hydrolog.morphometry.profile",
     "hydrolog.runoff.nash_iuh",
+    "hydrolog.routing.hydrograph",
+    "hydrolog.routing.reach",
     "hydrolog.routing.formulas.muskingum",
     "hydrolog.routing.muskingum",
+    "hydrolog.routing.network",
 )
 """The modules whose ``SPECS`` (and ``TIER_B``) declare Hydrolog's formulas, in the
 order of ``docs/FORMULAS.md``."""

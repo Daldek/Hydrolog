@@ -12,21 +12,29 @@ file loader can report it as a data error and the class as a validation error.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Final
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.nogat_formulas import FormulaSpec, Source, TierBSpec, convert
 from hydrolog.routing._checks import as_array
 
-__all__ = ["STEP_TOLERANCE", "Hydrograph", "TableProblem", "check_table"]
+__all__ = [
+    "SPECS",
+    "STEP_TOLERANCE",
+    "TIER_B",
+    "Hydrograph",
+    "TableProblem",
+    "check_table",
+]
 
 STEP_TOLERANCE = 1e-6
 """Largest deviation of a step from the mean step of a regular table, relative to it."""
 
-_SECONDS_PER_MINUTE = 60.0
+_SECONDS_PER_MINUTE: Final = convert(1.0, "min", "s")
 
 
 @dataclass(frozen=True)
@@ -331,3 +339,44 @@ class Hydrograph(JsonResultMixin):
             )
         ]
         return "\n".join(["time_min,discharge_m3s", *rows]) + "\n"
+
+
+_CONVENTIONS = Source(
+    citation="Hydrolog ADR-0008: routing conventions",
+    locator="docs/decisions/0008-routing-conventions.md, Hydrograph table, Balance "
+    "and Stability",
+)
+
+SPECS: Final[tuple[FormulaSpec, ...]] = ()
+"""The routing formulas are declared in :mod:`hydrolog.routing.formulas`."""
+
+TIER_B: Final = (
+    TierBSpec(
+        name="hydrograph_volume",
+        function="hydrolog.routing.hydrograph.Hydrograph.volume_m3",
+        definition="the volume under the ordinates by the trapezoid rule: the step "
+        "times the sum of the ordinates with the first and the last halved, in m3",
+        convention="the discharge is linear between the ordinates; minutes to seconds "
+        "by the units table",
+        source=_CONVENTIONS,
+    ),
+    TierBSpec(
+        name="hydrograph_refinement",
+        function="hydrolog.routing.hydrograph.Hydrograph.refined",
+        definition="the hydrograph on a step divided into equal sub-steps, the new "
+        "ordinates on the straight lines between the old ones",
+        convention="the old ordinates are kept exactly and the volume is unchanged; "
+        "a scheme run on the sub-steps is read back at the original ordinates",
+        source=_CONVENTIONS,
+    ),
+    TierBSpec(
+        name="hydrograph_extension",
+        function="hydrolog.routing.hydrograph.Hydrograph.extended",
+        definition="the hydrograph with steps added after its last ordinate, each "
+        "holding the last value (or a given one)",
+        convention="the inflow after the record is its last value, as the tail of "
+        "the routing assumes",
+        source=_CONVENTIONS,
+    ),
+)
+"""The conventions of the hydrograph table of the routing (CMP-2.2)."""
