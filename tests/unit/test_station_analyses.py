@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from hydrolog.catalog import run_command
+from hydrolog.catalog import get_command, run_command
 from hydrolog.exceptions import CalculationError, InputDataError, InvalidParameterError
 from hydrolog.operations import stats_low_flow_sequences
 from hydrolog.statistics import (
@@ -275,6 +275,51 @@ class TestLowFlowSequencesWithGaps:
                 },
             )
         assert caught.value.details == {"option": option, "reason": "not_applicable"}
+
+
+@pytest.mark.parametrize(
+    ("command", "options", "option", "index"),
+    [
+        (
+            "stats duration-curve",
+            {"exceedance_percents": [50, 100]},
+            "exceedance_percents",
+            1,
+        ),
+        (
+            "stats low-flow-sequences",
+            {"threshold_method": "exceedance", "exceedance_percent": 100},
+            "exceedance_percent",
+            None,
+        ),
+    ],
+)
+def test_an_exceedance_percentage_of_100_is_refused_by_the_catalog(
+    command, options, option, index
+):
+    """The declared range is the computation's open interval (0, 100): the catalog
+    declared an inclusive maximum of 100, which the commands refuse (research
+    flood-frequency §4.1); it refuses 100 before the command runs."""
+    with pytest.raises(InvalidParameterError) as caught:
+        run_command(
+            command,
+            {
+                "input_file": str(FIXTURES / "station_daily.csv"),
+                "value_column": "Q",
+                "date_column": "date",
+                **options,
+            },
+        )
+    details = caught.value.details
+    assert (details["option"], details["reason"], details["exclusive_maximum"]) == (
+        option,
+        "exclusive_maximum",
+        100,
+    )
+    assert details.get("index") == index
+    schema = get_command(command).option(option).json_schema()
+    bound = schema if index is None else schema["items"]
+    assert (bound["exclusiveMaximum"], "maximum" in bound) == (100, False)
 
 
 def _two_hydrological_years(low: dict[int, float], base: float) -> dict[str, list]:

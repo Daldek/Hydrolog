@@ -504,7 +504,7 @@ COMMANDS: tuple[Command, ...] = (
                 ),
                 default=(1.0, 5.0, 10.0, 30.0, 50.0, 70.0, 90.0, 95.0, 99.0),
                 exclusive_minimum=0,
-                maximum=100,
+                exclusive_maximum=100,
                 unit="%",
             ),
             Option(
@@ -1516,7 +1516,7 @@ COMMANDS: tuple[Command, ...] = (
                     "in (0, 100), 70 gives Q70, 90 gives Q90; default 70."
                 ),
                 exclusive_minimum=0,
-                maximum=100,
+                exclusive_maximum=100,
                 unit="%",
             ),
             Option(
