@@ -545,7 +545,7 @@ from hydrolog.precipitation import BetaHietogram
 tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 
 # Step 2: Determine the storage coefficient R
-r_min = 0.5 * tc  # R/Tc = 0.5 (typical value)
+r_min = 0.5 * tc  # R/Tc = 0.5, assumed: no source publishes a typical R/Tc
 
 # Step 3: Create the Clark IUH
 clark = ClarkIUH(tc_min=tc, r_min=r_min, area_km2=45.0)
