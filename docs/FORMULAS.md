@@ -26,6 +26,7 @@
 | [Time of concentration by the Kerby-Kirpich method (Roussel et al. 2005)](#kerby_kirpich) | `hydrolog.time.concentration.ConcentrationTime.kerby_kirpich` | referenced | 1 | not measured |
 | [Equal-area slope of a longitudinal profile (the line through the outlet with equal areas above and below it)](#equal_area_slope) | `hydrolog.morphometry.profile.equal_area_slope` | oracle only | 1 | not measured |
 | [Nash's n and K of an ungauged watershed by Lutz's method (KZGW 2017)](#lutz) | `hydrolog.runoff.nash_iuh.lutz_parameters` | referenced | 1 | not measured |
+| [Nash's n and K of an urbanized watershed by the regression of Rao, Delleur and Sarma (1972)](#nash_urban_regression) | `hydrolog.runoff.nash_iuh.urban_regression_parameters` | oracle only | 1 | not measured |
 | [SCS (NRCS) dimensionless unit hydrograph of a unit duration](#scs) | `hydrolog.runoff.unit_hydrograph.scs_unit_hydrograph` | referenced | 1 | not measured |
 | [Snyder's synthetic unit hydrograph: lag, peak, time base and widths](#snyder) | `hydrolog.runoff.snyder_uh.snyder_parameters` | referenced | 1 | not measured |
 | [Snyder's unit hydrograph as the gamma curve of 1 mm through its peak](#snyder_shape) | `hydrolog.runoff.snyder_uh.snyder_shape` | oracle only | 1 | not measured |
@@ -1681,6 +1682,92 @@ Plain text: `tp = P1 * (L * Lc / Jg**1.5)**0.26 * exp(-0.016 * U) * exp(0.004 * 
 - established: scipy.stats.gamma (SciPy 1.18.1): the density of shape N and scale K, Nash's IUH, at its mode (N - 1) K (`tests/unit/test_formulas_lutz.py (limit cascade_peak)`)
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="nash_urban_regression"></a>
+### Nash's n and K of an urbanized watershed by the regression of Rao, Delleur and Sarma (1972)
+
+`hydrolog.runoff.nash_iuh.urban_regression_parameters` · family `empirical` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+LAG = 1.28\,A^{0.46}(1+U)^{-1.66}H^{-0.27}D^{0.37},\quad k = 0.56\,A^{0.39}(1+U)^{-0.62}H^{-0.11}D^{0.22},\quad N = \frac{LAG}{k}
+$$
+
+Plain text: `LAG = 1.28 * A**0.46 * (1 + U)**-1.66 * H**-0.27 * D**0.37 [h]; k = 0.56 * A**0.39 * (1 + U)**-0.62 * H**-0.11 * D**0.22 [h]; N = LAG / k`
+
+**Sources**
+
+- KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 6.26-6.28, p. 107 (U the fraction of impervious area, dimensionless); the same in Sikorska et al. 2012 (open) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+- Sikorska, A.E., Scheidegger, A., Banasik, K., Rieckermann, J. (2012). Bayesian uncertainty assessment of flood predictions in ungauged urban basins for conceptual rainfall-runoff models. Hydrology and Earth System Sciences 16, 1221-1236, Table 1, p. 1226: the same equations, U the fraction of the impervious area, Lag and k in h (open) <https://hess.copernicus.org/articles/16/1221/2012/hess-16-1221-2012.pdf>
+- Rao, A.R., Delleur, J.W. and Sarma, B.S.P. (1972). Conceptual hydrologic models for urbanizing basins. Journal of the Hydraulics Division, ASCE 98(HY7), 1205-1220 (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `area_km2` | $A$ | km2 | real | (0.0, inf), test bound high 149000000.0 (the land area of the Earth, about 149 million km2) | [0.0, 52.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), p. 107: the relations for urbanized watersheds of up to 52 km2 | [1.3, 52.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona); Sikorska, A.E., Scheidegger, A., Banasik, K., Rieckermann, J. (2012). Bayesian uncertainty assessment of flood predictions in ungauged urban basins for conceptual rainfall-runoff models. Hydrology and Earth System Sciences 16, 1221-1236; Hydrolog's catalog example of uh nash (urban regression), KZGW p. 107 (up to 52 km2); Sikorska et al. p. 1227 (the Służew Creek, 26.9 km2); src/hydrolog/catalog/groups/uh.py (1.3 km2) |
+| `effective_precip_mm` | $H$ | mm | real | (0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [1.0, 100.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona); Hydrolog's catalog example of uh nash, KZGW Ex. 6.4, p. 109: effective depths of steps of 1.4 to 2.1 mm; Ex. 6.1, p. 93: 15.3 mm in an hour; the catalog's 1.305 mm |
+| `duration_h` | $D$ | h | real | (0.0, inf), test bound high 72.0 (72 h, the longest duration of the PMAXTP tables) | unstated | [0.167, 24.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona); Hydrolog's catalog example of uh nash, KZGW ch. II.3, p. 25: a daily design storm split into hours; the catalog's 10 min (0.167 h) |
+| `urban_fraction` | $U$ | - | real | [0.0, 1.0) | [0.05, 1.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), p. 102 (zlewnia zurbanizowana: more than 5 % impervious) and p. 107 (the relations for urbanized watersheds) | [0.05, 0.32]: Sikorska, A.E., Scheidegger, A., Banasik, K., Rieckermann, J. (2012). Bayesian uncertainty assessment of flood predictions in ungauged urban basins for conceptual rainfall-runoff models. Hydrology and Earth System Sciences 16, 1221-1236; Hydrolog's catalog example, p. 1227: 32 % impervious in the Służew Creek; the catalog's 0.05 |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `lag_coefficient` | $1.28$ | 1.28 | h km^-0.92 mm^0.27 h^-0.37 | KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 6.26-6.28, p. 107; Sikorska et al. (2012), Table 1, p. 1226; the same in Sikorska et al. 2012 |
+| `lag_area_exponent` | $0.46$ | 0.46 | - | KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 6.26-6.28, p. 107; Sikorska et al. (2012), Table 1, p. 1226; the same in Sikorska et al. 2012 |
+| `lag_urban_exponent` | $-1.66$ | -1.66 | - | KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 6.26-6.28, p. 107; Sikorska et al. (2012), Table 1, p. 1226; the same in Sikorska et al. 2012 |
+| `lag_depth_exponent` | $-0.27$ | -0.27 | - | KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 6.26-6.28, p. 107; Sikorska et al. (2012), Table 1, p. 1226; the same in Sikorska et al. 2012 |
+| `lag_duration_exponent` | $0.37$ | 0.37 | - | KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 6.26-6.28, p. 107; Sikorska et al. (2012), Table 1, p. 1226; the same in Sikorska et al. 2012 |
+| `k_coefficient` | $0.56$ | 0.56 | h km^-0.78 mm^0.11 h^-0.22 | KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 6.26-6.28, p. 107; Sikorska et al. (2012), Table 1, p. 1226; the same in Sikorska et al. 2012 |
+| `k_area_exponent` | $0.39$ | 0.39 | - | KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 6.26-6.28, p. 107; Sikorska et al. (2012), Table 1, p. 1226; the same in Sikorska et al. 2012 |
+| `k_urban_exponent` | $-0.62$ | -0.62 | - | KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 6.26-6.28, p. 107; Sikorska et al. (2012), Table 1, p. 1226; the same in Sikorska et al. 2012 |
+| `k_depth_exponent` | $-0.11$ | -0.11 | - | KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 6.26-6.28, p. 107; Sikorska et al. (2012), Table 1, p. 1226; the same in Sikorska et al. 2012 |
+| `k_duration_exponent` | $0.22$ | 0.22 | - | KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 6.26-6.28, p. 107; Sikorska et al. (2012), Table 1, p. 1226; the same in Sikorska et al. 2012 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `lag_time_h` | h | real | [0.0, inf) | 4 ulp of the bound |
+| `n` | - | real | [0.0, inf) | 4 ulp of the bound |
+| `k_min` | min | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- A in km2, H in mm, D in h, U dimensionless; LAG and k in h, K returned in min by the exact 60 min/h: the constants 1.28 and 0.56 hold for these units only (KZGW 2017, p. 107)
+- U is the fraction of impervious area (KZGW 2017, p. 107; Sikorska et al. 2012, Table 1), not the share of built-up land
+- a product of powers of A, H and D: the scalings state it, and the constants carry the units (the property is not dimensional homogeneity)
+- H and D are those of the storm: the parameters change with every storm
+
+**Assumptions**
+
+- urbanized watersheds of up to 52 km2 whose parameters cannot be fitted to measured rainfall and runoff (KZGW 2017, p. 107)
+
+**Validation:** Rao et al. (1972) fitted the relations to storms on urbanizing watersheds near Indianapolis (as KZGW and Sikorska et al. 2012 report them, without error statistics); KZGW (2017, p. 107) recommends them only where the parameters cannot be fitted to measured rainfall and runoff
+
+**Notices:** `outside_applicability`
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: range cases effective_precip_mm-physical_low_* and duration_h-physical_low_*: H^-0.27 grows without bound as H tends to 0 and stays finite at the smallest positive float
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `area_km2` increasing, `effective_precip_mm` decreasing, `duration_h` increasing, `urban_fraction` decreasing
+- scaling `area`: inputs times 2^e (`area_km2` e = 1.0) give outputs times 2^e (`lag_time_h` e = 0.46, `k_min` e = 0.39, `n` e = 0.07)
+- scaling `rainfall`: inputs times 2^e (`effective_precip_mm` e = 1.0, `duration_h` e = 1.0) give outputs times 2^e (`lag_time_h` e = 0.1, `k_min` e = 0.11, `n` e = -0.01)
+- limit `decimal_equations`: LAG, k and N equal eqs. 6.26-6.28 evaluated in decimal arithmetic at 50 digits
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: LAG, k and N of eqs. 6.26-6.28 with the decimal constants, evaluated with the decimal module at 50 digits (`tests/unit/test_formulas_lutz.py (limit decimal_equations of test_urban_limits_and_oracles)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
 <a id="scs"></a>
 ### SCS (NRCS) dimensionless unit hydrograph of a unit duration
