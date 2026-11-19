@@ -31,6 +31,7 @@ MODULES = (
     "hydrolog.morphometry.hypsometry",
     "hydrolog.morphometry.terrain",
     "hydrolog.morphometry.watershed_params",
+    "hydrolog.network.stream_order",
     "hydrolog.operations.meta",
     "hydrolog.precipitation.hietogram",
     "hydrolog.reports.formatters",

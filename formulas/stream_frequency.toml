@@ -1,0 +1,142 @@
+schema = "nogat-formula-card/1"
+name = "stream_frequency"
+title = "Stream frequency: the number of streams over the watershed's area"
+function = "hydrolog.network.stream_order.stream_frequency"
+family = "index"
+formula_version = 1
+status = "oracle only"
+equation = "Fs = sum(N_u) / A [1/km2]"
+latex = "F_s = \\frac{\\sum_u N_u}{A}"
+validation = "none: a ratio of counted and measured quantities"
+conventions = ["Strahler streams of all orders (StreamNetwork.n_streams), not the links between junctions; Hydrograf's stream frequency counts links of the BDOT10k network and says so"]
+assumptions = []
+notices = []
+reference_cases = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+n_streams = 1
+area_km2 = -1
+
+[[properties.scalings]]
+name = "area"
+
+[properties.scalings.inputs]
+area_km2 = 1.0
+
+[properties.scalings.outputs]
+stream_frequency = -1.0
+
+[properties.scalings.tolerance]
+reason = "the area doubled: the quotient halves exactly, unless it underflows"
+abs = 0.0
+
+[[properties.limits]]
+name = "exact_rational"
+text = "Fs is the exact quotient of the count and the area, rounded once"
+
+[[sources]]
+citation = "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34"
+access = "open"
+locator = "eqs. (1.2.18)-(1.2.22): the density of the river network sum(L) / A, the bifurcation ratio N_u / N_(u+1), N_u the number of streams of order u, the ratio of the mean lengths of the streams of consecutive orders and the frequency of streams, the number of streams of all orders over A"
+url = "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content"
+
+[[sources]]
+citation = "Strahler, A.N. (1957). Quantitative analysis of watershed geomorphology. Transactions, American Geophysical Union 38(6): 913-920"
+access = "open"
+locator = "stream orders, the numbers and mean lengths of the streams of each order and Horton's laws (not opened; the definitions as Baścik 2006 gives them)"
+url = "https://doi.org/10.1029/TR038i006p00913"
+
+[[variables]]
+name = "n_streams"
+symbol = "\\sum N_u"
+unit = "-"
+kind = "integer"
+description = "Number of Strahler streams of all orders."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 10000000.0
+test_reason = "ten million streams: a D8 network on 10^8 cells, a 10 m DEM of 10,000 km2, has fewer sources than cells"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 8.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2"
+access = "open"
+locator = "8 streams of orders 1-3"
+
+[[variables]]
+name = "area_km2"
+symbol = "A"
+unit = "km2"
+kind = "real"
+description = "Planimetric area of the watershed."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 149000000.0
+test_reason = "the land area of the Earth, 148.94 million km2 (CIA, The World Factbook, 2025, field Area: land): no watershed is larger"
+
+[variables.typical]
+low = 0.0003
+low_inclusive = true
+high = 250.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)"
+
+[[constraints]]
+name = "within_float64"
+class = "precondition"
+text = "sum(N_u) / A lies within float64"
+
+[constraints.source]
+citation = "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34"
+access = "open"
+locator = "eqs. (1.2.18)-(1.2.22): the density of the river network sum(L) / A, the bifurcation ratio N_u / N_(u+1), N_u the number of streams of order u, the ratio of the mean lengths of the streams of consecutive orders and the frequency of streams, the number of streams of all orders over A"
+url = "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content"
+
+[[outputs]]
+name = "stream_frequency"
+unit = "1/km2"
+kind = "real"
+symbol = "F_s"
+description = "Stream frequency."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "range cases area_km2-physical_low_*: Fs grows as 1/A; a value beyond float64 is refused by the precondition within_float64"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases of every input with nan: a gap is refused"
+
+[[oracles]]
+kind = "exact"
+description = "sum(N_u) / A in exact rational arithmetic"
+test = "tests/unit/test_formulas_network.py (limit exact_rational)"
+conventions = []
