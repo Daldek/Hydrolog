@@ -125,7 +125,7 @@ function typicalNote(id, keys, text, plain) {
     .filter((range) => keys.includes(rangeKey(range)))
     .map((range) => {
       const mark = rangeMark(range);
-      return `${symbolOf(entry, range.parameter)} ${rangeText(range)}${mark ? ` (${mark})` : ""}`;
+      return `${symbolOf(entry, range.parameter, range.method)} ${rangeText(range)}${mark ? ` (${mark})` : ""}`;
     });
   return words.length ? t(text, { ranges: words.join(", ") }) : plain;
 }

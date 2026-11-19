@@ -80,10 +80,6 @@ export const notices = {
     },
     mean_elevation_approximated: "Średnią wysokość zlewni przybliżono z wysokości najmniejszej i największej.",
     channel_length_defaulted: "Długość cieku głównego przyjęto równą długości zlewni.",
-    duration_not_covered: {
-      text: "Czas trwania {duration_min} min nie jest wielokrotnością kroku {timestep_min} min: hietogram ma {steps} kroków ({covered_min} min).",
-      plain: "Opad nie pokrywa całego czasu trwania obliczeń.",
-    },
     stations_without_polygon: {
       text: "Pominięto posterunki bez wieloboku Thiessena: {stations}.",
       plain: "Pominięto posterunki bez wieloboku Thiessena.",
@@ -105,6 +101,10 @@ export const notices = {
       text: "Miesiące z jedną wartością, bez przedziału ufności: {months}.",
       plain: "Niektóre miesiące mają jedną wartość: bez przedziału ufności.",
     },
+    single_year_month: {
+      text: "Miesiące z wartościami tylko jednego roku, bez przedziału ufności średniej (liczonego ze średnich miesiąca w kolejnych latach): {months}.",
+      plain: "Niektóre miesiące mają wartości tylko z jednego roku: bez przedziału ufności.",
+    },
     large_result: {
       text: "Duży wynik: {size_chars} znaków (strona: {page_chars}).",
       plain: "Duży wynik.",
@@ -125,7 +125,7 @@ export const notices = {
       text: "Liczba lat w szeregu: {years}; KZGW (2017) wymaga co najmniej {minimum} lat danych do analizy częstości wezbrań.",
       plain: "Szereg jest krótszy, niż KZGW (2017) wymaga do analizy częstości wezbrań.",
     },
-    ks_test_approximate: "Wartości krytyczne testu Kołmogorowa-Smirnowa są nieważne, gdy parametry szacuje się z tych samych danych; wybieraj rozkład wg A² i AIC.",
+    ks_test_approximate: "Wartości krytyczne testu Kołmogorowa-Smirnowa są nieważne, gdy parametry szacuje się z tych samych danych; wybieraj rozkład wg AIC albo A² z wartością krytyczną jego dopasowania (tylko L-momenty).",
     distribution_left_out: {
       text: "Rozkład {distribution} pominięty: metoda {fit_method} nie daje jego parametrów dla tej próby ({reason}).",
       plain: "Wybrana metoda nie daje parametrów jednego z rozkładów; pominięto go.",
@@ -157,8 +157,8 @@ export const notices = {
       },
     },
     normal_not_computed: {
-      text: "Normalna okresu {first_year}–{last_year} wymaga wartości rocznych w {required} latach, a ma je {years} (WMO-No. 1203): normalna i procenty normalnej są puste.",
-      plain: "Za mało lat z wartościami rocznymi na normalną (WMO-No. 1203).",
+      text: "Normalna miesięczna okresu {first_year}–{last_year} wymaga wartości w {required} latach, a miesiąc z najmniejszą ich liczbą ma {years} (WMO-No. 1203, 4.4.2): ta normalna, złożone z niej normalne roku, półroczy i pór roku (4.3.3) oraz procenty tych normalnych są puste.",
+      plain: "Za mało lat z wartościami miesięcznymi na normalną (WMO-No. 1203).",
     },
     accumulated_totals: {
       text: "{count} wartości kolumny {column} to sumy dni bez pomiaru przed nimi: w sumach miesięcznych zastępują te dni, w statystykach dobowych są brakami.",

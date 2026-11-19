@@ -18,8 +18,11 @@ Sen, P.K. (1968). Estimates of the regression coefficient based on Kendall's tau
 Conover, W.J. (1980). Practical Nonparametric Statistics, 2nd ed. Wiley, New York
     (the intercept median(x) − slope · median(t)).
 Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring.
-    Van Nostrand Reinhold, New York, Eq. 16.3 (the variance of S with ties) and
-    section 16.5 (the confidence interval of the slope).
+    Van Nostrand Reinhold, New York, Eq. 16.3 (the variance of S with ties),
+    sections 16.4.1–16.4.2 (the exact distribution of S for small n, the normal one
+    from n = 10) and section 16.5 (the confidence interval of the slope).
+MacMahon, P.A. (1916). Combinatory Analysis, Vol. 1. Cambridge University Press
+    (the numbers of inversions of the orderings of a multiset).
 """
 
 from __future__ import annotations
@@ -33,6 +36,10 @@ from scipy.stats import norm
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+
+_EXACT_BELOW = 10
+"""Fewest values for the normal approximation of S (Kendall 1975, p. 55, after
+Gilbert 1987, p. 211); below, the p-value is exact and the slope has no interval."""
 
 
 @dataclass
@@ -72,9 +79,15 @@ class MannKendallResult(JsonResultMixin):
         Variance of S under the null hypothesis of no trend, corrected for the
         groups of tied values: [n(n − 1)(2n + 5) − Σ t(t − 1)(2t + 5)] / 18.
     z_score : float
-        Standardised test statistic (approximately N(0,1)).
+        Standardised test statistic, continuity-corrected: (S − sgn S) / √Var(S),
+        approximately N(0,1) from 10 values.
     p_value : float
-        Two-sided p-value for the null hypothesis of no trend.
+        Two-sided p-value for the null hypothesis of no trend: from the exact
+        distribution of S below 10 values, else from the normal distribution of Z.
+    p_value_method : str
+        ``"exact"`` below 10 values (Gilbert, 1987, section 16.4.1: every distinct
+        ordering of the values equally likely under no trend, ties included),
+        ``"normal"`` from 10 values (section 16.4.2).
     trend_detected : bool
         True when p_value < significance_level.
     trend_direction : str
@@ -87,13 +100,16 @@ class MannKendallResult(JsonResultMixin):
         Conover's intercept of the line: its value at time 0.
     sen_slope_lower, sen_slope_upper : float or None
         The 100 (1 − significance_level) % confidence interval of the slope
-        (Gilbert, 1987); ``None`` when the series is too short for it.
+        (Gilbert, 1987); ``None`` below 10 values, where the normal approximation
+        of S it rests on does not apply (Gilbert, 1987, p. 218), or when a limit's
+        rank falls outside the slopes.
     """
 
     s_statistic: float
     var_s: float
     z_score: float
     p_value: float
+    p_value_method: str
     trend_detected: bool
     trend_direction: str
     significance_level: float
@@ -202,9 +218,15 @@ def mann_kendall_test(
     for the groups of tied values (Kendall, 1975; Hirsch et al., 1982; Gilbert,
     1987, Eq. 16.3): Var(S) = [n(n − 1)(2n + 5) − Σ t(t − 1)(2t + 5)] / 18, the sum
     over the groups of t equal values (exact equality of the given values; round
-    them first to tie the values that differ below their precision).  Sen's slope
-    of the series, its intercept and its 100 (1 − alpha) % confidence interval,
-    built on that variance of S, come with it (:func:`sen_slope`).
+    them first to tie the values that differ below their precision).  From 10 values
+    the p-value is 2 P(Z > |z|) of the standard normal distribution (its upper tail,
+    so that a strong trend keeps a p-value above 0); below 10, where the normal
+    approximation does not apply (Kendall, 1975, p. 55; Gilbert, 1987, p. 211), it
+    is P(|S| ≥ |s|) of the exact distribution of S (Gilbert, 1987, section 16.4.1),
+    every distinct ordering of the values equally likely under no trend (with ties,
+    the orderings of the multiset; MacMahon, 1916).  Sen's slope of the series and
+    its intercept come with it, and from 10 values the 100 (1 − alpha) % confidence
+    interval of the slope, built on that variance of S (:func:`sen_slope`).
 
     Parameters
     ----------
@@ -239,6 +261,12 @@ def mann_kendall_test(
     'increasing'
     >>> result.sen_slope
     1.0
+
+    Helsel et al. (2020), Example 10.3: seven values, the exact p-value.
+
+    >>> small = mann_kendall_test(np.array([1.0, 2.0, 3.0, 4.0, 5.0, 16.0, 7.0]))
+    >>> small.p_value_method, round(small.p_value, 6)
+    ('exact', 0.002778)
     """
     series = np.asarray(series, dtype=float)
 
@@ -287,8 +315,13 @@ def mann_kendall_test(
     else:
         z = (s + 1.0) / np.sqrt(var_s)
 
-    # Two-sided p-value
-    p_value: float = float(2.0 * (1.0 - norm.cdf(abs(z))))
+    # Two-sided p-value: exact below _EXACT_BELOW values, else the normal tail
+    if n < _EXACT_BELOW:
+        p_value = _exact_p_value([int(t) for t in counts], int(s))
+        method = "exact"
+    else:
+        p_value = float(2.0 * norm.sf(abs(z)))
+        method = "normal"
 
     trend_detected: bool = p_value < alpha
 
@@ -300,16 +333,63 @@ def mann_kendall_test(
         trend_direction = "decreasing"
 
     estimate = sen_slope(series, steps, var_s=var_s, alpha=alpha)
+    interval = n >= _EXACT_BELOW
     return MannKendallResult(
         s_statistic=s,
         var_s=var_s,
         z_score=z,
         p_value=p_value,
+        p_value_method=method,
         trend_detected=trend_detected,
         trend_direction=trend_direction,
         significance_level=alpha,
         sen_slope=estimate.slope,
         sen_intercept=estimate.intercept,
-        sen_slope_lower=estimate.lower,
-        sen_slope_upper=estimate.upper,
+        sen_slope_lower=estimate.lower if interval else None,
+        sen_slope_upper=estimate.upper if interval else None,
     )
+
+
+def _q_factorial(m: int) -> list[int]:
+    """Coefficients of [m]_q! = Π_{j=1}^{m} (1 + q + … + q^(j−1)), lowest first."""
+    poly = [1]
+    for j in range(2, m + 1):
+        product = [0] * (len(poly) + j - 1)
+        for power, coefficient in enumerate(poly):
+            for shift in range(j):
+                product[power + shift] += coefficient
+        poly = product
+    return poly
+
+
+def _divided(numerator: list[int], divisor: list[int]) -> list[int]:
+    """Exact quotient of two polynomials with integer coefficients, lowest first.
+
+    The divisor has the constant term 1 and divides the numerator exactly.
+    """
+    quotient = [0] * (len(numerator) - len(divisor) + 1)
+    for power in range(len(quotient)):
+        quotient[power] = numerator[power] - sum(
+            divisor[shift] * quotient[power - shift]
+            for shift in range(1, min(power, len(divisor) - 1) + 1)
+        )
+    return quotient
+
+
+def _exact_p_value(groups: list[int], s: int) -> float:
+    """Two-sided P(|S| ≥ |s|) of Kendall's S under no trend, exactly.
+
+    Every distinct ordering of the values (a multiset with groups of ``groups`` equal
+    values) is equally likely; one with k inversions (pairs in descending order) has
+    S = N − 2k, N the number of pairs of unequal values. The numbers of orderings by
+    k are the coefficients of the q-multinomial [n]_q! / Π [t]_q! (MacMahon, 1916);
+    S is symmetric about 0, so P(|S| ≥ |s|) = 2 P(S ≥ |s|) for s ≠ 0.
+    """
+    if s == 0:
+        return 1.0
+    counts = _q_factorial(sum(groups))
+    for size in groups:
+        counts = _divided(counts, _q_factorial(size))
+    pairs = len(counts) - 1  # N: the largest number of inversions
+    tail = sum(counts[: (pairs - abs(s)) // 2 + 1])
+    return 2 * tail / sum(counts)

@@ -59,6 +59,7 @@ __all__ = [
 
 FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.runoff.scs_cn",
+    "hydrolog.runoff.cn_lookup",
     "hydrolog.time.concentration",
     "hydrolog.morphometry.profile",
     "hydrolog.runoff.nash_iuh",

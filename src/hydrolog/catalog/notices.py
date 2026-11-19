@@ -19,8 +19,7 @@ English ``message``:
 
 ``route network`` starts the message of a node's notice with ``"<node id>: "`` and
 gives it ``details.node_id``. A routing model or a library warning has no other
-details there, and the ``duration_not_covered`` of a node is worded by the routing
-module (the rain of a node, not a hyetograph of ``precip hietogram``).
+details there.
 """
 
 from __future__ import annotations
@@ -161,14 +160,6 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         "watershed length",
     ),
     NoticeSpec(
-        "duration_not_covered",
-        "warning",
-        "duration_min = {duration_min:g} is not a multiple of timestep_min = "
-        "{timestep_min:g}: the hyetograph has {steps} steps and covers "
-        "{covered_min:g} min.",
-        ("duration_min", "timestep_min", "steps", "covered_min"),
-    ),
-    NoticeSpec(
         "stations_without_polygon",
         "warning",
         "Gauges without a polygon area were not used: {stations}.",
@@ -203,6 +194,14 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         ("months",),
     ),
     NoticeSpec(
+        "single_year_month",
+        "warning",
+        "Month(s) {months} hold values of a single year: the confidence interval of "
+        "their mean, built on the means of the month in separate years, is undefined "
+        "(null)",
+        ("months",),
+    ),
+    NoticeSpec(
         "homogeneity_rejected",
         "warning",
         "Homogeneity of the series rejected at alpha = {alpha:g} by: {tests}",
@@ -225,9 +224,10 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
     NoticeSpec(
         "normal_not_computed",
         "warning",
-        "The normal of {first_year}-{last_year} needs annual values in {required} of "
-        "its years and {years} have one (WMO-No. 1203): the normal and the "
-        "percentages of it are null",
+        "A monthly normal of {first_year}-{last_year} needs values in {required} of "
+        "its years and the month with the fewest has {years} (WMO-No. 1203, 4.4.2): "
+        "that normal, the annual, half-year and season normals made of it (4.3.3) "
+        "and the percentages of them are null",
         ("years", "required", "first_year", "last_year"),
     ),
     NoticeSpec(

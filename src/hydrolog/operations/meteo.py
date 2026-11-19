@@ -727,6 +727,7 @@ def meteo_spells(
     Runs of days with P below ``threshold_mm`` (``dry``) or at least it (``wet``),
     found by the run logic of ``stats threshold-events`` on the calendar of the
     series; per year the longest spell and the spells of at least 10, 15 and 20 days,
+    a spell counting whole in the year in which it ends (ETCCDI's software, ECA&D),
     and the distribution of durations
     (:func:`hydrolog.statistics.precipitation_spells`, M6). ``spells`` lists the
     spells of at least ``min_duration_days``; the summaries take every spell.
@@ -970,10 +971,10 @@ def meteo_temperature(
 
     One ``index`` per call (:mod:`hydrolog.statistics.meteo_temperature`, M11):
     ``means`` (monthly and annual means of Tmean, Tmax and Tmin, the normal of the
-    reference period and the anomaly of Tmean, the extremes), ``days`` (frost, ice,
-    summer and hot days and tropical nights), ``degree_days`` (growing above
-    ``growing_base_c``, heating by Eurostat's rule) and ``range`` (the mean daily
-    range).
+    reference period and the anomaly of Tmean, the extremes), ``days`` (frost,
+    freeze-thaw, ice, summer and hot days and tropical nights), ``degree_days``
+    (growing above ``growing_base_c``, heating by Eurostat's rule, over the whole
+    year) and ``range`` (the mean daily range).
 
     Parameters
     ----------
@@ -1209,9 +1210,10 @@ def meteo_hydrothermal(
 ) -> OperationOutput:
     """Sielianinov's hydrothermal coefficient (``meteo hydrothermal``).
 
-    k = P / (0.1 Σt) of the months April to September and of the days with a mean
-    temperature above 10 °C of each calendar year, with the classes of Skowera and
-    Puła (2004) (:func:`hydrolog.statistics.hydrothermal_coefficient`, M14).
+    k = P / (0.1 Σt) of the months April to September and of the days of April to
+    September with a mean temperature above 10 °C (Miś, 2026), with the classes of
+    Skowera and Puła (2004) (:func:`hydrolog.statistics.hydrothermal_coefficient`,
+    M14).
 
     Parameters
     ----------

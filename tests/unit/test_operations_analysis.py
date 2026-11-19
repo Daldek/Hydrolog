@@ -2790,7 +2790,7 @@ class TestReportGenerate:
             tc_method="kirpich",
             hietogram_type="beta",
             total_mm=50.0,
-            duration_min=62.0,  # not a multiple of the 5 min step
+            duration_min=60.0,
             timestep_min=5.0,
         )
         output = tmp_path / "raport.md"
@@ -2803,7 +2803,6 @@ class TestReportGenerate:
         ] == [
             ("outside_typical_range", "area_km2", "area_km2"),
             ("outside_typical_range", "slope_m_per_m", "flow_path_slope_m_per_m"),
-            ("duration_not_covered", None, None),
         ]
         document = _json_roundtrip(result)
         assert document["result"]["output_path"] == str(output)

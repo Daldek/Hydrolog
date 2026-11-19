@@ -35,7 +35,7 @@ class HydrographGeneratorResult(JsonResultMixin):
         Total effective precipitation (runoff depth) [mm].
     runoff_coefficient : float
         Runoff coefficient C = Pe_total / P_total [-].
-    cn_used : int
+    cn_used : float
         Curve Number used (adjusted for AMC).
     retention_mm : float
         Maximum retention S [mm].
@@ -53,7 +53,7 @@ class HydrographGeneratorResult(JsonResultMixin):
     total_precip_mm: float
     total_effective_mm: float
     runoff_coefficient: float
-    cn_used: int
+    cn_used: float
     retention_mm: float
     initial_abstraction_mm: float
     unit_hydrograph_result: Any | None = None
@@ -86,7 +86,7 @@ class HydrographGenerator:
     ----------
     area_km2 : float
         Watershed area [km²].
-    cn : int
+    cn : float
         SCS Curve Number (1-100) for AMC-II conditions.
     tc_min : float, optional
         Time of concentration [min]. Required for SCS and Clark models.
@@ -170,7 +170,7 @@ class HydrographGenerator:
     def __init__(
         self,
         area_km2: float,
-        cn: int,
+        cn: float,
         tc_min: float | None = None,
         ia_coefficient: float = 0.2,
         uh_model: str = "scs",
@@ -183,7 +183,7 @@ class HydrographGenerator:
         ----------
         area_km2 : float
             Watershed area [km²]. Must be positive.
-        cn : int
+        cn : float
             SCS Curve Number (1-100).
         tc_min : float, optional
             Time of concentration [min]. Required for SCS and Clark models.
@@ -296,7 +296,7 @@ class HydrographGenerator:
             raise InvalidParameterError(f"Unknown uh_model: {self.uh_model}")
 
     @property
-    def cn(self) -> int:
+    def cn(self) -> float:
         """Curve Number (AMC-II)."""
         return self.scs_cn.cn
 

@@ -29,6 +29,9 @@ export const errors = {
     exclusive_minimum: "Musi być większa od {exclusive_minimum} (podano {value})",
     exclusive_maximum: "Musi być mniejsza od {exclusive_maximum} (podano {value})",
     choice: "Dozwolone wartości: {allowed}",
+    outside_physical_range: "Wartość {value} jest poza zakresem fizycznym {range}",
+    outside_physical_constraint: "Niespełniony warunek fizyczny: {text}",
+    precondition_failed: "Niespełniony warunek stosowalności wzoru: {text}",
     empty: "Nie może być puste",
     invalid_path: "Nieprawidłowa ścieżka pliku",
     unknown_option: "Nieznana opcja tego polecenia",
@@ -59,7 +62,7 @@ export const errors = {
     timeout: "{source} nie odpowiedział na czas: spróbuj ponownie później",
     network: "Brak połączenia z {source}: sprawdź sieć i spróbuj ponownie",
     http_status: "{source} odpowiedział błędem HTTP {status}: spróbuj ponownie później",
-    not_multiple: "Czas trwania musi być wielokrotnością kroku Δt = {timestep} min: Euler II składa się z całych bloków",
+    not_multiple: "Czas trwania musi być wielokrotnością kroku Δt = {timestep} min: hietogram składa się z całych kroków",
     total_mismatch: "Euler II ma sumę równą wysokości krzywej wysokość–czas trwania dla {duration} min: {depth} mm",
   },
   /** The sentences of the errors of Euler II's depth-duration curve, by `details.reason`. */
@@ -117,6 +120,20 @@ export function errorTitleForStatus(status) {
  */
 function shown(value) {
   return typeof value === "number" ? inputText(value) : String(value);
+}
+
+/**
+ * The physical range of a refused value, as `details.range` of the formula
+ * standard gives it (null for an unbounded end).
+ *
+ * @param {{low?: number|null, high?: number|null, low_inclusive?: boolean, high_inclusive?: boolean}|undefined} range
+ * @returns {string} "[1; 100]" or "[0; ∞)"
+ */
+function physicalRange(range) {
+  if (!range || typeof range !== "object") return "–";
+  const low = typeof range.low === "number" ? shown(range.low) : "−∞";
+  const high = typeof range.high === "number" ? shown(range.high) : "∞";
+  return `${range.low_inclusive ? "[" : "("}${low}; ${high}${range.high_inclusive ? "]" : ")"}`;
 }
 
 /**
@@ -184,6 +201,18 @@ export function reasonText(reason, details = {}) {
       break;
     case "choice":
       text = t(r.choice, { allowed: listed(details.allowed) });
+      break;
+    case "outside_physical_range":
+      text =
+        typeof details.constraint === "string"
+          ? t(r.outside_physical_constraint, { text: String(details.text || details.constraint) })
+          : t(r.outside_physical_range, {
+              value: typeof details.value === "number" ? shown(details.value) : String(details.value ?? "–"),
+              range: physicalRange(details.range),
+            });
+      break;
+    case "precondition_failed":
+      text = t(r.precondition_failed, { text: String(details.text || details.constraint || "–") });
       break;
     case "type": {
       const expected = String(details.expected || "");

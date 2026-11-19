@@ -372,9 +372,11 @@ class MonthlyStatistics(JsonResultMixin):
     skewness_values : NDArray[np.float64]
         Fisher-Pearson skewness coefficient per month.
     ci_lower : NDArray[np.float64]
-        Lower bound of confidence interval for the mean.
+        Lower bound of the confidence interval of the long-term mean of the month,
+        from the means of the month in the separate years (see
+        :func:`calculate_monthly_statistics`).
     ci_upper : NDArray[np.float64]
-        Upper bound of confidence interval for the mean.
+        Upper bound of that interval.
     confidence_level : float
         Confidence level used (e.g. 0.95).
     """
@@ -771,10 +773,16 @@ def calculate_monthly_statistics(
 ) -> MonthlyStatistics:
     """Compute monthly statistics with t-Student confidence intervals.
 
-    All values of a calendar month (over all years) form one sample. The
-    confidence interval of the mean is ``mean ± t * s / sqrt(n)`` with the
-    two-sided Student quantile ``t`` for ``n - 1`` degrees of freedom; its lower
-    limit is not allowed below zero (the values are flows or stages).
+    All values of a calendar month (over all years) form one sample of the maximum,
+    mean, median, minimum, standard deviation, coefficient of variation and
+    skewness. The confidence interval of the long-term mean of the month is built
+    on the means of that month in the separate calendar years, one value per year,
+    since the daily values of a month are strongly autocorrelated and not
+    independent: ``mean ± t * s_y / sqrt(k)`` around the mean of all values, with
+    ``s_y`` the standard deviation (``ddof=1``) of the ``k`` yearly means and the
+    two-sided Student quantile ``t`` for ``k - 1`` degrees of freedom (the method of
+    batch means). Its lower limit is not allowed below zero (the values are flows
+    or stages).
 
     Parameters
     ----------
@@ -800,13 +808,14 @@ def calculate_monthly_statistics(
     Notes
     -----
     A month with a single value has no sample standard deviation (``ddof=1``),
-    hence no coefficient of variation, no skewness and no t-based confidence
-    interval (it needs ``n - 1 >= 1`` degrees of freedom): for such a month
-    ``std_values``, ``cv_values``, ``skewness_values``, ``ci_lower`` and
-    ``ci_upper`` are ``NaN`` (no warning is issued), while the maximum, mean,
-    median and minimum are the value itself. Before 0.8.0 the interval of such a
-    month was reported as the zero-width interval ``[mean, mean]``, which claims an
-    exactly known mean, and NumPy warned about the undefined deviation.
+    hence no coefficient of variation and no skewness, and a month observed in a
+    single year has no confidence interval (it needs the means of at least two
+    years): for such a month these entries are ``NaN`` (no warning is issued),
+    while the maximum, mean, median and minimum are computed. Before 0.8.0 the
+    interval of a month with one value was reported as the zero-width interval
+    ``[mean, mean]``. Before 0.9.0 the interval was ``mean ± t * s / sqrt(n)`` over
+    the n daily values, as if they were independent; with the lag-1
+    autocorrelation of daily flows (0.7 to 0.9) it was 3 to 25 times too narrow.
 
     References
     ----------
@@ -818,6 +827,7 @@ def calculate_monthly_statistics(
         )
 
     months = dates.astype("datetime64[M]").astype(int) % 12 + 1
+    years = dates.astype("datetime64[Y]").astype(int)
 
     counts = np.bincount(months, minlength=13)[1:]  # observations of month 1..12
     missing = [month for month in range(1, 13) if counts[month - 1] == 0]
@@ -850,16 +860,19 @@ def calculate_monthly_statistics(
         mean_vals[i] = np.mean(month_vals)
         median_vals[i] = np.median(month_vals)
         min_vals[i] = np.min(month_vals)
-        if n < 2:
-            continue  # deviation, CV, skewness and CI stay NaN (see Notes)
+        if n >= 2:
+            std_vals[i] = np.std(month_vals, ddof=1)
+            cv_vals[i] = std_vals[i] / mean_vals[i] if mean_vals[i] != 0.0 else 0.0
+            skew_vals[i] = float(scipy_skew(month_vals))
 
-        std_vals[i] = np.std(month_vals, ddof=1)
-        cv_vals[i] = std_vals[i] / mean_vals[i] if mean_vals[i] != 0.0 else 0.0
-        skew_vals[i] = float(scipy_skew(month_vals))
-
-        # t-Student confidence interval for the mean
-        t_val = t_dist.ppf(1.0 - alpha / 2.0, df=n - 1)
-        margin = t_val * std_vals[i] / np.sqrt(n)
+        # t-Student interval from the means of the month in the separate years
+        month_years = years[mask]
+        present = np.unique(month_years)
+        if present.size < 2:
+            continue  # the interval stays NaN (see Notes)
+        yearly = np.array([np.mean(month_vals[month_years == y]) for y in present])
+        t_val = t_dist.ppf(1.0 - alpha / 2.0, df=present.size - 1)
+        margin = t_val * np.std(yearly, ddof=1) / np.sqrt(present.size)
         ci_lo[i] = max(0.0, mean_vals[i] - margin)
         ci_hi[i] = mean_vals[i] + margin
 

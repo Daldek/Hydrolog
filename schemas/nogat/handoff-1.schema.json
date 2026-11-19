@@ -172,7 +172,7 @@
       },
       "result": {
         "command": "hydrograph generate",
-        "peak_discharge_m3s": 57.8786,
+        "peak_discharge_m3s": 57.8773,
         "time_to_peak_min": 400.0,
         "total_volume_m3": 1046712.9
       }

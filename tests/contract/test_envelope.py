@@ -29,6 +29,7 @@ ENVELOPE_KEYS = [
     "check",
     "status",
     "result",
+    "formula_versions",
     "notices",
     "inputs",
 ]
@@ -55,6 +56,7 @@ class TestFields:
         assert envelope["check"] is False
         assert envelope["status"] == "ok"
         assert isinstance(envelope["result"], dict)
+        assert envelope["formula_versions"] == {"tr55_cn": 1}
         assert isinstance(envelope["notices"], list)
         assert isinstance(envelope["inputs"], dict)
 

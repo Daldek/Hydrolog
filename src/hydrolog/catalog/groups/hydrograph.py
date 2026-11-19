@@ -505,9 +505,9 @@ COMMANDS: tuple[Command, ...] = (
         typical_ranges=GENERATE_RANGES,
         example_results=(
             {
-                "peak_discharge_m3s": 54.9909,
+                "peak_discharge_m3s": 54.9772,
                 "time_to_peak_min": 95.0,
-                "total_volume_m3": 321295.0,
+                "total_volume_m3": 321296.0,
                 "runoff_coefficient": 0.141794,
                 "uh_model": "scs",
             },
@@ -526,21 +526,21 @@ COMMANDS: tuple[Command, ...] = (
                 "uh_model": "nash",
             },
             {
-                "peak_discharge_m3s": 40.8926,
+                "peak_discharge_m3s": 40.8483,
                 "time_to_peak_min": 120.0,
                 "total_volume_m3": 321163.0,
                 "runoff_coefficient": 0.141794,
                 "uh_model": "clark",
             },
             {
-                "peak_discharge_m3s": 19.2871,
+                "peak_discharge_m3s": 19.2868,
                 "time_to_peak_min": 390.0,
                 "total_volume_m3": 708968.0,
                 "runoff_coefficient": 0.141794,
                 "uh_model": "snyder",
             },
             {
-                "peak_discharge_m3s": 19.6375,
+                "peak_discharge_m3s": 19.6377,
                 "time_to_peak_min": 200.0,
                 "total_volume_m3": 321161.0,
                 "uh_model": "nash",

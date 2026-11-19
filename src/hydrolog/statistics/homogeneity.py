@@ -14,6 +14,9 @@ Mann, H.B., Whitney, D.R. (1947). On a test of whether one of two random
 Smirnov, N.V. (1939). On the estimation of the discrepancy between empirical
     curves of distribution for two independent samples. Bulletin
     Mathématique de l'Université de Moscou, 2(2).
+Schröer, G., Trenkler, D. (1995). Exact and randomization distributions of
+    Kolmogorov-Smirnov tests two or three samples. Computational Statistics & Data
+    Analysis, 20(2), 185–202 (the exact distribution with tied values).
 Pettitt, A.N. (1979). A non-parametric approach to the change-point problem.
     Applied Statistics, 28, 126–135.
 """
@@ -32,6 +35,8 @@ from hydrolog.exceptions import CalculationError, InvalidParameterError
 
 _MIN_VALUES = 3
 """Fewest values the tests take (as the Mann-Kendall test)."""
+_KS_EXACT_PRODUCT = 10_000
+"""Below this m·n the K-S p-value of tied values is exact (as R's ``ks.test``)."""
 
 
 @dataclass
@@ -128,8 +133,9 @@ def homogeneity_tests(
 
     Splits the series in two and compares the parts with the Mann-Whitney U
     test and the two-sample Kolmogorov-Smirnov test (both two-sided, scipy's
-    ``mannwhitneyu`` and ``ks_2samp``), and looks for the most probable change
-    point with Pettitt's test (ADR-0022).
+    ``mannwhitneyu`` and ``ks_2samp``, the latter replaced for tied values, see the
+    notes), and looks for the most probable change point with Pettitt's test
+    (ADR-0022).
 
     Parameters
     ----------
@@ -169,7 +175,12 @@ def homogeneity_tests(
     -----
     Mann-Whitney's p-value is exact when a part has at most 8 values and there
     are no ties, otherwise it comes from the normal approximation with the
-    corrections for ties and continuity. Pettitt's statistic is
+    corrections for ties and continuity. The Kolmogorov-Smirnov p-value is exact:
+    scipy's without tied values, and with them (annual maxima published to three
+    significant digits often tie) the exact P(D ≥ d) over the splits of the pooled
+    values, ties respected, as R's ``ks.test`` (Schröer and Trenkler, 1995;
+    scipy's assumes no ties and is then too large), when m·n < 10 000; beyond, with
+    ties, scipy's conservative value. Pettitt's statistic is
     ``K = max |U_t|`` with ``U_t = Σ_{i≤t} Σ_{j>t} sgn(x_i − x_j)``, computed
     from the ranks ``r_i`` (mid-ranks for ties) as
     ``U_t = 2 Σ_{i≤t} r_i − t(n + 1)``; its p-value
@@ -216,7 +227,7 @@ def homogeneity_tests(
 
     first, second = values[:split], values[split:]
     mann_whitney = mannwhitneyu(first, second, alternative="two-sided")
-    kolmogorov_smirnov = ks_2samp(first, second, alternative="two-sided")
+    ks_statistic, ks_p_value = _kolmogorov_smirnov(first, second)
     k, p_value, change = _pettitt(values)
     return HomogeneityResult(
         n_years=n,
@@ -225,11 +236,7 @@ def homogeneity_tests(
         mann_whitney=_decided(
             float(mann_whitney.statistic), float(mann_whitney.pvalue), alpha
         ),
-        kolmogorov_smirnov=_decided(
-            float(kolmogorov_smirnov.statistic),
-            float(kolmogorov_smirnov.pvalue),
-            alpha,
-        ),
+        kolmogorov_smirnov=_decided(ks_statistic, ks_p_value, alpha),
         pettitt=PettittResult(
             statistic=k,
             p_value=p_value,
@@ -317,6 +324,57 @@ def _pettitt(values: NDArray[np.float64]) -> tuple[float, float, int]:
     k = float(abs(u[best]))
     p_value = min(1.0, 2.0 * math.exp(-6.0 * k * k / (float(n) ** 3 + float(n) ** 2)))
     return k, p_value, best + 1
+
+
+def _kolmogorov_smirnov(
+    first: NDArray[np.float64], second: NDArray[np.float64]
+) -> tuple[float, float]:
+    """Two-sample Kolmogorov-Smirnov D and its two-sided p-value.
+
+    With tied values and m·n < ``_KS_EXACT_PRODUCT`` the p-value is exact for the
+    ties (:func:`_tied_p_value`); otherwise it is scipy's ``ks_2samp``, exact
+    without ties for these sizes.
+    """
+    pooled = np.concatenate([first, second])
+    if (
+        np.unique(pooled).size == pooled.size
+        or first.size * second.size >= _KS_EXACT_PRODUCT
+    ):
+        found = ks_2samp(first, second, alternative="two-sided")
+        return float(found.statistic), float(found.pvalue)
+    return _tied_p_value(first, second)
+
+
+def _tied_p_value(
+    first: NDArray[np.float64], second: NDArray[np.float64]
+) -> tuple[float, float]:
+    """D and the exact two-sided P(D ≥ d) of two samples with tied values.
+
+    Under homogeneity every choice of the m values of the first sample among the
+    m + n pooled ones is equally likely: a lattice path from (0, 0) to (m, n), a step
+    of i per value of the first sample and of j per value of the second, the values
+    in ascending order. D = max |i/m − j/n| is taken only where a group of equal
+    values ends; the paths that keep |i n − j m| below the observed m n D at every
+    such end are counted, in integers, so P(D ≥ d) = 1 − count / C(m + n, m)
+    (Schröer and Trenkler, 1995; R's ``ks.test`` from 4.x).
+    """
+    m, n = first.size, second.size
+    values, counts = np.unique(np.concatenate([first, second]), return_counts=True)
+    ends = {int(end) for end in np.cumsum(counts)}
+    in_first = np.searchsorted(np.sort(first), values, side="right")
+    in_second = np.searchsorted(np.sort(second), values, side="right")
+    distance = int(np.max(np.abs(in_first * n - in_second * m)))
+    paths = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(m + 1):
+        for j in range(n + 1):
+            if i == 0 and j == 0:
+                paths[0][0] = 1
+                continue
+            if i + j in ends and abs(i * n - j * m) >= distance:
+                continue  # the path reaches the observed distance here
+            paths[i][j] = (paths[i - 1][j] if i else 0) + (paths[i][j - 1] if j else 0)
+    total = math.comb(m + n, m)
+    return distance / (m * n), (total - paths[m][n]) / total
 
 
 def _decided(statistic: float, p_value: float, alpha: float) -> TwoSampleTestResult:

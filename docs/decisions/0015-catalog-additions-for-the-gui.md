@@ -6,6 +6,8 @@
   notices come from one table
 - Amended by [ADR-0025](0025-the-structure-alone-in-the-schematic.md) (2026-11-10): `route schematic` has the
   option `structure_only`, which lays out the structure of a draft alone
+- Amended by [ADR-0046](0046-design-hyetographs-of-whole-steps-and-exact-blocks.md) (2026-11-18): the notice
+  `duration_not_covered` is removed from `NOTICES` and from the routing notices.
 - Amends: [ADR-0001](0001-catalog-english-and-operation-ids.md) (the derivation of `check` and `families`),
   [ADR-0002](0002-result-envelope-and-domain-documents.md) (notices gain `details`),
   [ADR-0006](0006-mcp-server-conformance.md) (a catalog command that is not an MCP tool),

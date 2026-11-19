@@ -43,7 +43,7 @@ export const rainInfo = {
       },
       {
         symbol: "<math><mi>n</mi></math>",
-        text: "liczba kroków: w hietogramie ⌊D/Δt⌋, w serii liczba wartości",
+        text: "liczba kroków: w hietogramie D/Δt (D musi być wielokrotnością Δt), w serii liczba wartości",
         unit: "–",
       },
     ],
@@ -51,7 +51,8 @@ export const rainInfo = {
       "<p>Hydrogramowi przypisuje się p opadu, choć opad o danym p nie zawsze wywołuje wezbranie o tym " +
       "samym p. Własna seria daje hydrogram jednego zdarzenia, bez prawdopodobieństwa.</p>",
     guide: "metoda-rain-source",
-    sources: "IMGW-PIB 2022 (PMAXTP, red. B. Ozga-Zieliński); DVWK 1984 (za KZGW 2017); KZGW 2017; USGS 2018",
+    sources:
+      "IMGW-PIB 2022 (PMAXTP, red. B. Ozga-Zieliński, s. 23); DVWK 1984 (za KZGW 2017); KZGW 2017; USGS 2018",
   },
 
   "rain-block": {
@@ -61,8 +62,8 @@ export const rainInfo = {
       "opadu. Nie ma parametrów kształtu.</p>",
     formula:
       "<math display='block'><msub><mi>P</mi><mi>i</mi></msub><mo>=</mo><mfrac><mi>P</mi><mi>n</mi>" +
-      "</mfrac><mspace width='1.5em'></mspace><mi>n</mi><mo>=</mo><mrow><mo>⌊</mo><mfrac><mi>D</mi>" +
-      "<mi>Δt</mi></mfrac><mo>⌋</mo></mrow></math>",
+      "</mfrac><mspace width='1.5em'></mspace><mi>n</mi><mo>=</mo><mfrac><mi>D</mi>" +
+      "<mi>Δt</mi></mfrac></math>",
     vars: [
       {
         symbol: "<math><msub><mi>P</mi><mi>i</mi></msub></math>",
@@ -70,7 +71,7 @@ export const rainInfo = {
         unit: "mm",
       },
       { symbol: "<math><mi>P</mi></math>", text: "suma opadu", unit: "mm" },
-      { symbol: "<math><mi>n</mi></math>", text: "liczba kroków", unit: "–" },
+      { symbol: "<math><mi>n</mi></math>", text: "liczba kroków; D musi być wielokrotnością Δt", unit: "–" },
       {
         symbol: "<math><mi>D</mi></math>",
         text: "czas trwania opadu",
@@ -87,78 +88,82 @@ export const rainInfo = {
   "rain-triangular": {
     title: "Hietogram trójkątny",
     intro:
-      "<p>Hietogram trójkątny: wysokości opadu w krokach rosną liniowo do maksimum w położeniu p czasu " +
-      "trwania, potem liniowo maleją.</p>",
+      "<p>Hietogram trójkątny Yena i Chowa: natężenie rośnie liniowo od zera na początku opadu do " +
+      "maksimum 2P/D w chwili r·D, potem liniowo maleje do zera na końcu. Każdy krok dostaje opad, który " +
+      "spada w jego przedziale (całkę trójkąta), więc suma kroków to dokładnie P.</p>",
     formula:
-      "<math display='block'><msub><mi>w</mi><mi>j</mi></msub><mo>=</mo><mfrac><mi>j</mi>" +
-      "<msub><mi>j</mi><mi>p</mi></msub></mfrac><mspace width='0.6em'></mspace><mtext>dla</mtext>" +
-      "<mspace width='0.4em'></mspace><mi>j</mi><mo>≤</mo><msub><mi>j</mi><mi>p</mi></msub></math>" +
-      "<math display='block'><msub><mi>w</mi><mi>j</mi></msub><mo>=</mo><mfrac><mrow><mi>n</mi><mo>−</mo>" +
-      "<mi>j</mi><mo>+</mo><mn>1</mn></mrow><mrow><mi>n</mi><mo>−</mo><msub><mi>j</mi><mi>p</mi></msub>" +
-      "<mo>+</mo><mn>1</mn></mrow></mfrac><mspace width='0.6em'></mspace><mtext>dla</mtext>" +
-      "<mspace width='0.4em'></mspace><mi>j</mi><mo>&gt;</mo><msub><mi>j</mi><mi>p</mi></msub></math>" +
-      "<math display='block'><msub><mi>j</mi><mi>p</mi></msub><mo>=</mo><mi>max</mi><mrow><mo>(</mo>" +
-      "<mn>2</mn><mo>,</mo><mrow><mo>⌊</mo><mi>n</mi><mo>·</mo><mi>p</mi><mo>⌋</mo></mrow><mo>+</mo>" +
-      "<mn>1</mn><mo>)</mo></mrow><mspace width='1.2em'></mspace><msub><mi>P</mi><mi>j</mi></msub>" +
-      "<mo>=</mo><mi>P</mi><mo>·</mo><mfrac><msub><mi>w</mi><mi>j</mi></msub><mrow><mo>∑</mo>" +
-      "<msub><mi>w</mi><mi>k</mi></msub></mrow></mfrac></math>",
+      "<math display='block'><mi>F</mi><mo>(</mo><mi>u</mi><mo>)</mo><mo>=</mo><mfrac><msup><mi>u</mi>" +
+      "<mn>2</mn></msup><mi>r</mi></mfrac><mspace width='0.6em'></mspace><mtext>dla</mtext>" +
+      "<mspace width='0.4em'></mspace><mi>u</mi><mo>≤</mo><mi>r</mi></math>" +
+      "<math display='block'><mi>F</mi><mo>(</mo><mi>u</mi><mo>)</mo><mo>=</mo><mn>1</mn><mo>−</mo>" +
+      "<mfrac><msup><mrow><mo>(</mo><mn>1</mn><mo>−</mo><mi>u</mi><mo>)</mo></mrow><mn>2</mn></msup>" +
+      "<mrow><mn>1</mn><mo>−</mo><mi>r</mi></mrow></mfrac><mspace width='0.6em'></mspace><mtext>dla</mtext>" +
+      "<mspace width='0.4em'></mspace><mi>u</mi><mo>&gt;</mo><mi>r</mi></math>" +
+      "<math display='block'><msub><mi>P</mi><mi>j</mi></msub><mo>=</mo><mi>P</mi><mo>·</mo><mrow>" +
+      "<mo>[</mo><mi>F</mi><mo>(</mo><mfrac><mi>j</mi><mi>n</mi></mfrac><mo>)</mo><mo>−</mo><mi>F</mi>" +
+      "<mo>(</mo><mfrac><mrow><mi>j</mi><mo>−</mo><mn>1</mn></mrow><mi>n</mi></mfrac><mo>)</mo><mo>]</mo>" +
+      "</mrow><mspace width='1.2em'></mspace><mi>n</mi><mo>=</mo><mfrac><mi>D</mi><mi>Δt</mi></mfrac></math>",
     vars: [
       {
         symbol: "<math><msub><mi>P</mi><mi>j</mi></msub></math>",
         text: "wysokość opadu w j-tym kroku",
         unit: "mm",
       },
-      { symbol: "<math><msub><mi>w</mi><mi>j</mi></msub></math>", text: "waga kroku", unit: "–" },
+      {
+        symbol: "<math><mi>F</mi><mo>(</mo><mi>u</mi><mo>)</mo></math>",
+        text: "część sumy, która spadła do chwili u·D (pole trójkąta od początku opadu)",
+        unit: "–",
+      },
+      { symbol: "<math><mi>u</mi></math>", text: "czas względny t/D, 0–1", unit: "–" },
       {
         symbol: "<math><mi>j</mi></math>",
-        text: "numer kroku, 1…n, gdzie n = ⌊D/Δt⌋",
+        text: "numer kroku, 1…n; D musi być wielokrotnością Δt",
         unit: "–",
       },
       {
-        symbol: "<math><msub><mi>j</mi><mi>p</mi></msub></math>",
-        text: "krok maksimum; przy n = 1 cały opad przypada na jeden krok",
-        unit: "–",
-      },
-      {
-        symbol: "<math><mi>p</mi></math>",
-        text: "względne położenie maksimum: 0 &lt; p &lt; 1 (bez końców); domyślnie 0,5",
+        symbol: "<math><mi>r</mi></math>",
+        text: "względne położenie maksimum (współczynnik r Yena i Chowa): 0 &lt; r &lt; 1 (bez końców); domyślnie 0,5",
         unit: "–",
       },
       { symbol: "<math><mi>P</mi></math>", text: "suma opadu", unit: "mm" },
     ],
     note:
-      "<p>Przy p = 0,5 i parzystym n maksimum wypada w kroku tuż po połowie czasu trwania (np. w 7. " +
-      "z 12). Polska metodyka (za DVWK 1984) zaleca deszcz z maksimum w środku czasu trwania.</p>",
-    sources: "KZGW 2017; DVWK 1984 (za KZGW 2017)",
+      "<p>Przy r = 0,5 i parzystym n dwa środkowe kroki są równe. Chow i in. (1988, tab. 14.3.2) podają " +
+      "r od 0,29 do 0,48 dla miast USA, Indii i Kanady. Polska metodyka (za DVWK 1984) zaleca deszcz z " +
+      "maksimum w środku czasu trwania.</p>",
+    sources: "Yen i Chow 1980 (za Chow i in. 1988, rozdz. 14.3, s. 462–465); DVWK 1984 (za KZGW 2017)",
   },
 
   "rain-beta": {
     title: "Hietogram beta",
     intro:
-      "<p>Hietogram beta: wysokości opadu w krokach są proporcjonalne do gęstości rozkładu beta o parametrach " +
-      "kształtu α i β, liczonej w środkach kroków. Para α, β ustala położenie i ostrość maksimum.</p>",
+      "<p>Hietogram beta: natężenie w czasie względnym ma kształt gęstości rozkładu beta o parametrach " +
+      "kształtu α i β, a każdy krok dostaje opad, który spada w jego przedziale (różnicę dystrybuanty), " +
+      "więc suma kroków to dokładnie P. Para α, β ustala położenie i ostrość maksimum.</p>",
     formula:
-      "<math display='block'><msub><mi>w</mi><mi>i</mi></msub><mo>=</mo><msubsup><mi>t</mi><mi>i</mi>" +
-      "<mrow><mi>α</mi><mo>−</mo><mn>1</mn></mrow></msubsup><mo>·</mo><msup><mrow><mo>(</mo><mn>1</mn>" +
-      "<mo>−</mo><msub><mi>t</mi><mi>i</mi></msub><mo>)</mo></mrow><mrow><mi>β</mi><mo>−</mo><mn>1</mn>" +
-      "</mrow></msup><mspace width='1.2em'></mspace><msub><mi>t</mi><mi>i</mi></msub><mo>=</mo><mfrac>" +
-      "<mrow><mi>i</mi><mo>−</mo><mn>0,5</mn></mrow><mi>n</mi></mfrac></math>" +
-      "<math display='block'><msub><mi>P</mi><mi>i</mi></msub><mo>=</mo><mi>P</mi><mo>·</mo><mfrac>" +
-      "<msub><mi>w</mi><mi>i</mi></msub><mrow><mo>∑</mo><msub><mi>w</mi><mi>k</mi></msub></mrow></mfrac>" +
+      "<math display='block'><msub><mi>P</mi><mi>i</mi></msub><mo>=</mo><mi>P</mi><mo>·</mo><mrow>" +
+      "<mo>[</mo><msub><mi>I</mi><mrow><mi>i</mi><mo>/</mo><mi>n</mi></mrow></msub><mo>(</mo><mi>α</mi>" +
+      "<mo>,</mo><mi>β</mi><mo>)</mo><mo>−</mo><msub><mi>I</mi><mrow><mo>(</mo><mi>i</mi><mo>−</mo>" +
+      "<mn>1</mn><mo>)</mo><mo>/</mo><mi>n</mi></mrow></msub><mo>(</mo><mi>α</mi><mo>,</mo><mi>β</mi>" +
+      "<mo>)</mo><mo>]</mo></mrow><mspace width='1.2em'></mspace><mi>n</mi><mo>=</mo><mfrac><mi>D</mi>" +
+      "<mi>Δt</mi></mfrac></math>" +
+      "<math display='block'><msub><mi>I</mi><mi>u</mi></msub><mo>(</mo><mi>α</mi><mo>,</mo><mi>β</mi>" +
+      "<mo>)</mo><mo>=</mo><mfrac><mn>1</mn><mrow><mi>B</mi><mo>(</mo><mi>α</mi><mo>,</mo><mi>β</mi>" +
+      "<mo>)</mo></mrow></mfrac><msubsup><mo>∫</mo><mn>0</mn><mi>u</mi></msubsup><msup><mi>x</mi><mrow>" +
+      "<mi>α</mi><mo>−</mo><mn>1</mn></mrow></msup><msup><mrow><mo>(</mo><mn>1</mn><mo>−</mo><mi>x</mi>" +
+      "<mo>)</mo></mrow><mrow><mi>β</mi><mo>−</mo><mn>1</mn></mrow></msup><mi>d</mi><mi>x</mi>" +
       "<mspace width='1.2em'></mspace><msub><mi>t</mi><mi>max</mi></msub><mo>=</mo><mfrac><mrow>" +
       "<mi>α</mi><mo>−</mo><mn>1</mn></mrow><mrow><mi>α</mi><mo>+</mo><mi>β</mi><mo>−</mo><mn>2</mn>" +
-      "</mrow></mfrac><mspace width='0.6em'></mspace><mtext>dla</mtext><mspace width='0.4em'></mspace>" +
-      "<mi>α</mi><mo>,</mo><mi>β</mi><mo>&gt;</mo><mn>1</mn></math>",
+      "</mrow></mfrac></math>",
     vars: [
       {
         symbol: "<math><msub><mi>P</mi><mi>i</mi></msub></math>",
-        text: "wysokość opadu w i-tym kroku",
+        text: "wysokość opadu w i-tym kroku; i = 1…n, D musi być wielokrotnością Δt",
         unit: "mm",
       },
-      { symbol: "<math><msub><mi>w</mi><mi>i</mi></msub></math>", text: "waga kroku", unit: "–" },
       {
-        symbol: "<math><msub><mi>t</mi><mi>i</mi></msub></math>",
-        text: "środek i-tego kroku w czasie względnym (0–1); i = 1…n, n = ⌊D/Δt⌋",
+        symbol: "<math><msub><mi>I</mi><mi>u</mi></msub><mo>(</mo><mi>α</mi><mo>,</mo><mi>β</mi><mo>)</mo></math>",
+        text: "dystrybuanta rozkładu beta w czasie względnym u = t/D: część sumy, która spadła do chwili u·D",
         unit: "–",
       },
       {
@@ -174,17 +179,18 @@ export const rainInfo = {
       {
         symbol: "<math><msub><mi>t</mi><mi>max</mi></msub></math>",
         text:
-          "położenie maksimum jako ułamek czasu trwania; przy α ≤ 1 &lt; β pierwszy krok, przy β ≤ 1 &lt; α " +
-          "ostatni",
+          "położenie maksimum gęstości jako ułamek czasu trwania, dla α, β &gt; 1; przy α ≤ 1 &lt; β " +
+          "maksimum jest na początku, przy β ≤ 1 &lt; α na końcu",
         unit: "–",
       },
       { symbol: "<math><mi>P</mi></math>", text: "suma opadu", unit: "mm" },
     ],
     note:
-      "<p>Para (2; 5) daje maksimum wcześnie, w 0,2 czasu trwania (opad konwekcyjny), (2; 2) w środku, " +
-      "(5; 2) późno. Wczesne maksimum pada, zanim straty są pokryte, więc kulminacja jest zwykle niższa i " +
-      "wcześniejsza.</p>",
-    sources: "Chow i in. 1988; Wachulec i in. 2016",
+      "<p>Para (2; 5) daje maksimum wcześnie, w 0,2 czasu trwania, (2; 2) w środku, (5; 2) późno. " +
+      "KZGW 2017 (rys. 2.7) pokazuje pary (1; 10), (2; 10), (6; 6) i (10; 2) i dobiera α, β tak, by szczyt " +
+      "wezbrania był przepływem tego samego p. Wczesne maksimum pada, zanim straty są pokryte, więc " +
+      "kulminacja jest zwykle niższa i wcześniejsza.</p>",
+    sources: "KZGW 2017 (rozdz. II.3, wzory 2.20–2.22, s. 25; za Węglarczyk 1993)",
   },
 
   "rain-euler_ii": {

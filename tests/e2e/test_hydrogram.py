@@ -139,19 +139,20 @@ two runs the page made before."""
 # runs (its #hg-data, 6 tc methods x AMC I-III x 4 models), by (model, tc method, AMC),
 # as Hydrolog computes them: tc from the inputs each method's source defines (Kirpich
 # and NRCS from the longest flow path) with the sources' own constants in their units,
-# Snyder's peak since its unit hydrograph peaks at qpR, Nash by Lutz from L of the
-# longest flow path and J the equal-area slope of its profile (ADR-0053; the mockup's
-# tc and Snyder's 29,14 came before those changes).
+# Snyder's peak since its unit hydrograph peaks at qpR and its L from the longest flow
+# path to the divide, Nash by Lutz from L of the longest flow path and J the equal-area
+# slope of its profile (ADR-0053; the mockup's tc and Snyder's 29,14 came before those
+# changes).
 MOCKUP = {
     ("scs", "kirpich", "II"): ("57,90", "6:40", "1 046 738"),
     ("scs", "nrcs", "II"): ("41,66", "9:00", "1 046 960"),
-    ("scs", "giandotti", "II"): ("45,57", "8:20", "1 046 934"),
-    ("scs", "kerby_kirpich", "II"): ("55,95", "6:50", "1 046 759"),
+    ("scs", "giandotti", "II"): ("45,56", "8:20", "1 046 934"),
+    ("scs", "kerby_kirpich", "II"): ("55,94", "6:50", "1 046 759"),
     ("scs", "kirpich", "III"): ("111,13", "6:00", "2 112 838"),
     ("scs", "kirpich", "I"): ("12,19", "7:50", "193 991"),
     ("clark", "kirpich", "II"): ("52,76", "7:10", "1 046 551"),
     ("nash", None, "II"): ("34,42", "9:40", "1 046 543"),
-    ("snyder", None, "II"): ("27,46", "11:00", "1 046 551"),
+    ("snyder", None, "II"): ("26,98", "11:00", "1 046 551"),
 }
 # Scroll containers that must not scroll sideways: the page and an open sheet.
 SIDEWAYS = """() => [document.documentElement,
@@ -491,7 +492,7 @@ def test_the_worked_example_shows_the_result_of_the_mockup(tab: Tab) -> None:
     expect(peak.locator("td").last).to_have_text("57,90")
     rows = page.locator(f"{CENTER} .dtable tbody tr")
     expect(rows).to_have_count(len(result["times_min"]))
-    expect(rows.nth(1).locator("td").nth(1)).to_have_text("0,30")
+    expect(rows.nth(1).locator("td").nth(1)).to_have_text("0,29")
 
     # Kalkulatory reads the whole watershed from the store
     stored = page.evaluate(
@@ -594,8 +595,9 @@ def test_the_tc_method_amc_and_model_reproduce_the_mockups_runs(tab: Tab) -> Non
 
     choose(page, "hg-uh-label", "Snyder")
     sent = check("snyder", None, "II")
+    # L is the longest flow path to the divide (15,88 km), not the channel (14,78 km)
     assert (sent["snyder_length_km"], sent["snyder_centroid_length_km"]) == (
-        14.78,
+        15.88,
         6.76,
     )
     choose(page, "hg-uh-label", "SCS")
@@ -797,8 +799,8 @@ def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
         "„Długość zlewni”, „Wysokość min.”, „Wysokość maks.”."
     )
 
-    # Every model runs without them: Clark, Nash with n and K, Snyder with its own L
-    # (the watershed has no channel to take it from) and Lc
+    # Every model runs without them: Clark, Nash with n and K, Snyder with the
+    # watershed's longest flow path as L (to the divide, not the channel) and its own Lc
     with run_of(page, uh_model="clark") as answered:
         choose(page, "hg-uh-label", "Clark")
     shows_peak(page, answered.value.request.post_data_json)
@@ -809,15 +811,12 @@ def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
         field(page, "nash_k_min").fill("82")
     shows_peak(page, answered.value.request.post_data_json)
     choose(page, "hg-uh-label", "Snyder")
-    expect(message(page, "channel_length_km")).to_have_text(
-        "Podaj wartość: potrzebna dla modelu Snydera · required"
-    )
+    expect(message(page, "flow_path_length_km")).to_have_count(0)
     expect(message(page, "Lc_km")).to_have_text(
         "Podaj wartość: potrzebna dla modelu Snydera · required"
     )
     expect(field(page, "snyder_length_km")).to_have_count(0)
     expect(field(page, "snyder_centroid_length_km")).to_have_count(0)
-    field(page, "channel_length_km").fill("14,78")
     with run_of(page, uh_model="snyder", snyder_centroid_length_km=6.76) as answered:
         field(page, "Lc_km").fill("6,76")
     shows_peak(page, answered.value.request.post_data_json)
@@ -828,10 +827,7 @@ def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
         "flow_path_length_km",
         "flow_path_slope_m_per_m",
     }
-    assert all(
-        set(sent["watershed"]) <= allowed | {"channel_length_km", "Lc_km"}
-        for sent in runs.generate
-    )
+    assert all(set(sent["watershed"]) <= allowed | {"Lc_km"} for sent in runs.generate)
 
     # Step 1 complete: the hand-off is offered
     for name in ["perimeter_km", "length_km", "elevation_min_m", "elevation_max_m"]:
@@ -1148,11 +1144,11 @@ def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
         "area_km2": "snyder",
         "cn": "losses",
         **pmaxtp,
-        "channel_length_km": "snyder",
+        "flow_path_length_km": "snyder",
         "Lc_km": "snyder",
     }
     # Snyder's own L and Lc of an earlier visit fill the watershed's empty fields only
-    assert got["migrated"]["watershed"] == {"channel_length_km": "12", "Lc_km": "6"}
+    assert got["migrated"]["watershed"] == {"flow_path_length_km": "12", "Lc_km": "6"}
     assert "snyder_length_km" not in got["migrated"]
     assert "snyder_centroid_length_km" not in got["migrated"]
     rain = [
@@ -1308,7 +1304,7 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     page = open_hydrogram(tab)
     # A tc method's field missing: marked at once, nothing runs
     field(page, "tc_method").select_option("faa")
-    shows(page, "72,23", "4:30", "1 046 077")
+    shows(page, "72,22", "4:30", "1 046 077")
     runs = Runs(page)
     field(page, "runoff_coeff").fill("")
     expect(message(page, "runoff_coeff")).to_have_text(
@@ -1321,7 +1317,7 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     page.wait_for_timeout(600)
     assert runs.generate == []
     field(page, "runoff_coeff").fill("0,25")
-    shows(page, "72,23", "4:30", "1 046 077")
+    shows(page, "72,22", "4:30", "1 046 077")
     field(page, "tc_method").select_option("kirpich")
     shows(page, "57,90", "6:40", "1 046 738")
 
@@ -1370,19 +1366,24 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     field(page, "tc_method").select_option("kirpich")
     shows(page, "57,90", "6:40", "1 046 738")
 
-    # A library error without an option stands above the steps, in English marked (EN)
+    # The hyetograph's refusals name their option, so they stand on its field in Polish:
+    # a duration shorter than the step, then one that is not a whole number of steps
     choose(page, "hg-rain-source-label", "Hietogram")
     field(page, "duration_min").fill("5")
-    above = page.locator(f"{LEFT} [data-form-error]")
-    expect(above).to_contain_text("Nieprawidłowe dane wejściowe")
-    expect(above).to_contain_text("cannot exceed duration_min (5.0) (EN)")
+    expect(message(page, "timestep_min")).to_contain_text("· maximum")
+    expect(page.locator(f"{LEFT} [data-form-error]")).to_have_count(0)
     expect(page.locator(BADGE)).to_have_text("Błąd danych")
     expect(page.locator(f"{LEFT} .calc-state")).to_have_text(
         "Błąd danych: wynik dla poprzednich danych"
     )
+    field(page, "duration_min").fill("725")
+    expect(message(page, "duration_min")).to_have_text(
+        "Czas trwania musi być wielokrotnością kroku Δt = 10 min: hietogram składa"
+        " się z całych kroków · not_multiple"
+    )
     expect(kpi(page, "q")).to_have_text(re.compile(r"^57,90"))
     field(page, "duration_min").fill("720")
-    expect(above).to_have_count(0)
+    expect(message(page, "duration_min")).to_have_count(0)
     shows(page, "57,90", "6:40", "1 046 738")
 
 
@@ -1663,12 +1664,13 @@ def test_the_explanations_check_hydrologs_ranges_against_the_watershed(
     title = popover.locator("#info-pop-title")
     rows = popover.locator(".range-list li")
     notes = page.locator(f'{RIGHT} [data-notes="gui"] li')
-    # The example's confirmations: SCS-CN, SCS and the time step against the unit
-    # hydrograph's time to peak (0,25 · 117,28 min); none for Kirpich, which Hydrolog's
-    # notices put outside its data
+    # The example's confirmations: SCS-CN (the runoff equation's CN and the AMC
+    # conversion's), SCS and the time step against the unit hydrograph's time to peak
+    # (0,25 · 117,28 min); none for Kirpich, which Hydrolog's notices put outside its
+    # data
     expect(notes).to_have_count(3)
     expect(notes.nth(0)).to_contain_text(
-        "SCS-CN: CN (AMC I i III) = 65 w zakresie stosowania."
+        "SCS-CN: CN = 65, CN (AMC I i III) = 65 w zakresie stosowania."
     )
     expect(notes.nth(1)).to_contain_text(
         "SCS: A = 37,22\u00a0km² w zakresie stosowania."
@@ -1935,7 +1937,7 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
     assert {
         key: got["snyder"][key] for key in got["snyder"] if key.startswith("snyder")
     } == {
-        "snyder_length_km": 14.78,
+        "snyder_length_km": 15.88,
         "snyder_centroid_length_km": 6.76,
         "snyder_ct": 1.4,
     }

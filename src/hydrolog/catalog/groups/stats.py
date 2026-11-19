@@ -937,16 +937,17 @@ COMMANDS: tuple[Command, ...] = (
             "Filtr cyfrowy Lyne'a i Hollicka (3 przejścia, odbicie 30 dni na końcach; "
             "Nathan i McMahon 1990, Ladson i in. 2013) na każdym ciągłym odcinku co "
             "najmniej 60 dni przepływów dobowych: wskaźnik BFI = ΣQb/ΣQ okresu i lat z "
-            "300 dniami, stała recesji k (mediana Q(t+1)/Q(t) spadków od 5 dni; "
-            "Tallaksen 1995) i dobowy przepływ podziemny jednego roku."
+            "300 dniami, stała recesji k przepływu całkowitego (mediana Q(t+1)/Q(t) "
+            "spadków od 5 dni, z odpływem po szczycie; nie krzywa recesji WMO) i "
+            "dobowy przepływ podziemny jednego roku."
         ),
         description=(
             "Lyne and Hollick's digital filter (3 passes, 30 days reflected at each "
             "end; Nathan and McMahon 1990, Ladson et al. 2013) on each gapless span "
             "of 60 or more days of daily discharge: the baseflow index BFI = ΣQb/ΣQ "
             "of the period and of each year with 300 days, the recession constant k "
-            "(median Q(t+1)/Q(t) of falls of 5 days or more; Tallaksen 1995) and the "
-            "daily baseflow of one year."
+            "of the total flow (median Q(t+1)/Q(t) on 5+ day falls, quickflow "
+            "included; not WMO's recession curve) and the daily baseflow of a year."
         ),
         result_schema="hydrolog-stats-baseflow/1",
         cardinality="bounded",
@@ -1096,25 +1097,23 @@ COMMANDS: tuple[Command, ...] = (
         description_pl=(
             "Dla miesięcy 1–12: maksimum, średnia, mediana, minimum, odchylenie "
             "standardowe, współczynnik zmienności, skośność i przedział ufności "
-            "średniej. Do tabel reżimu miesięcznego; wartości dobowe daje `stats "
-            "daily`. Wymaga dat i wartości we wszystkich 12 miesiącach."
+            "średniej wieloletniej ze średnich miesiąca w kolejnych latach (wartości "
+            "dobowe nie są niezależne). Do tabel reżimu miesięcznego; wartości dobowe "
+            "daje `stats daily`. Wymaga dat i wartości we wszystkich 12 miesiącach."
         ),
         description=(
             "For months 1–12: maximum, mean, median, minimum, standard deviation, "
             "variation coefficient, skewness and the confidence interval of the "
-            "mean. Use for monthly regime tables; for daily values use `stats "
-            "daily`. Needs dates and values in all 12 months."
+            "long-term mean from the yearly means of the month. Use for monthly regime "
+            "tables; for daily values use `stats daily`."
         ),
         result_schema="hydrolog-stats-monthly/1",
         cardinality="bounded",
         rules=(
+            "Give values for all 12 months, else calculation_error.",
             (
-                "Give values for all 12 months, otherwise a calculation_error is "
-                "returned."
-            ),
-            (
-                "Check `notices` for `single_value_month`: such a month has null spread"
-                " values."
+                "Check `notices` for `single_value_month` and `single_year_month` "
+                "(null spread or interval)."
             ),
             "Results are in the unit of the series.",
         ),
@@ -1124,8 +1123,8 @@ COMMANDS: tuple[Command, ...] = (
                 "calculation_error."
             ),
             (
-                "Sprawdź `notices` (`single_value_month`): taki miesiąc ma `null` w "
-                "miarach rozrzutu."
+                "Sprawdź `notices` (`single_value_month`, `single_year_month`): taki "
+                "miesiąc ma `null` w miarach rozrzutu albo w przedziale ufności."
             ),
             "Wyniki są w jednostce szeregu.",
         ),
@@ -1140,7 +1139,7 @@ COMMANDS: tuple[Command, ...] = (
             {
                 "months": [1.0, 2.0, 3.0],
                 "mean_values": [6.09946, 6.86659, 7.22269],
-                "ci_lower": [5.98154, 6.71963, 7.10644],
+                "ci_lower": [5.18291, 6.29446, 6.92101],
                 "confidence_level": 0.9,
             },
         ),
@@ -1206,8 +1205,8 @@ COMMANDS: tuple[Command, ...] = (
                 "years."
             ),
             (
-                "Rank distributions by `aic`; `ks_valid=false` means the KS p-value is "
-                "indicative."
+                "Rank by `aic`; the KS p-value is indicative; `ad_critical_values` "
+                "only for L-moments."
             ),
         ),
         rules_pl=(
@@ -1217,8 +1216,8 @@ COMMANDS: tuple[Command, ...] = (
             ),
             ("Sprawdź `notices`: `incomplete_years` i próby krótsze niż 30 lat."),
             (
-                "Porządkuj rozkłady wg `aic`; `ks_valid=false` oznacza orientacyjne "
-                "p-value KS."
+                "Porządkuj rozkłady wg `aic`; p-value KS jest orientacyjne; "
+                "`ad_critical_values` tylko dla L-momentów."
             ),
         ),
         errors=(
@@ -1598,18 +1597,19 @@ COMMANDS: tuple[Command, ...] = (
             "slope"
         ),
         description_pl=(
-            "Nieparametryczny test Manna–Kendalla (S, Z, dwustronne p-value, kierunek "
-            "trendu) z nachyleniem Sena, wyrazem wolnym Conovera i przedziałem ufności "
-            "nachylenia 1 − alpha wg Gilberta. Do trendów wartości rocznych i oceny "
-            "stacjonarności przed `stats flood-frequency`. NaN jest pomijane. "
-            "Wariancja S z poprawką na powtórzenia wartości (Kendall 1975)."
+            "Nieparametryczny test Manna–Kendalla (S, Z, dwustronne p-value: dokładne "
+            "poniżej 10 wartości, z rozkładu normalnego od 10; kierunek trendu) z "
+            "nachyleniem Sena, wyrazem wolnym Conovera i przedziałem ufności "
+            "nachylenia 1 − alpha wg Gilberta (od 10 wartości). Do trendów wartości "
+            "rocznych i oceny stacjonarności przed `stats flood-frequency`. NaN jest "
+            "pomijane. Wariancja S z poprawką na powtórzenia wartości (Kendall 1975)."
         ),
         description=(
-            "Non-parametric Mann–Kendall test (S, Z, two-sided p-value, trend "
-            "direction) with Sen's slope, Conover's intercept and Gilbert's 1 − alpha "
-            "confidence interval of the slope. Use for trends of annual values and to "
-            "check stationarity before `stats flood-frequency`. NaN is skipped. "
-            "Var(S) is corrected for tied values (Kendall 1975)."
+            "Non-parametric Mann–Kendall test (S, Z, two-sided p-value, exact below "
+            "10 values; trend direction) with Sen's slope, Conover's intercept and "
+            "Gilbert's 1 − alpha slope interval (from 10 values). Use for trends of "
+            "annual values and to check stationarity before `stats flood-frequency`. "
+            "NaN is skipped. Var(S) is corrected for ties (Kendall 1975)."
         ),
         result_schema="hydrolog-stats-mann-kendall/1",
         rules=(

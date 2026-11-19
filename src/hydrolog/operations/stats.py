@@ -201,9 +201,10 @@ class FloodFrequencyResult(JsonResultMixin):
     distributions : list of FrequencyAnalysisResult
         Fitted distributions: parameters, quantiles for the return periods with the
         probability density at each [1/(m³/s)], goodness of fit (K-S,
-        Anderson-Darling, AIC) and the ``fit_method`` that gave them. One per
-        distribution requested (all four for ``distribution="all"``), each by each
-        of the four methods for ``fit_method="all"``; sorted by AIC (best first).
+        Anderson-Darling with the critical values of the fit from a parametric
+        bootstrap for the L-moments, AIC) and the ``fit_method`` that gave them. One
+        per distribution requested (all four for ``distribution="all"``), each by
+        each of the four methods for ``fit_method="all"``; sorted by AIC (best first).
     empirical : EmpiricalFrequency
         Empirical frequency of the sample (Weibull plotting positions; values sorted
         descending, exceedance probabilities and return periods of exceedance).
@@ -840,8 +841,9 @@ def stats_monthly(
     """Monthly statistics with a confidence interval (``stats monthly``).
 
     Per calendar month (1-12) gives the maximum, mean, median, minimum, standard
-    deviation (``ddof=1``), coefficient of variation, skewness and the t-Student
-    confidence interval of the mean over all values of that month
+    deviation (``ddof=1``), coefficient of variation, skewness of all values of that
+    month and the t-Student confidence interval of its long-term mean, built on the
+    means of the month in the separate years
     (:func:`hydrolog.statistics.calculate_monthly_statistics`). The series must hold
     values in every calendar month.
 
@@ -867,9 +869,10 @@ def stats_monthly(
     -------
     OperationOutput
         ``result`` is a :class:`~hydrolog.statistics.MonthlyStatistics`; the notices
-        report removed missing values and months with a single value (they have no
+        report removed missing values, months with a single value (they have no
         standard deviation, coefficient of variation, skewness or confidence
-        interval: ``None`` in JSON), and numerical warnings.
+        interval: ``None`` in JSON), months with more values but all of one year
+        (no confidence interval), and numerical warnings.
 
     Raises
     ------
@@ -912,6 +915,14 @@ def stats_monthly(
     single = [month for month in range(1, 13) if counts[month - 1] == 1]
     if single:
         notices.append(notice("single_value_month", months=single))
+    years = dates_array.astype("datetime64[Y]").astype(int)
+    one_year = [
+        month
+        for month in range(1, 13)
+        if counts[month - 1] > 1 and np.unique(years[months == month]).size == 1
+    ]
+    if one_year:
+        notices.append(notice("single_year_month", months=one_year))
     return OperationOutput(result, [*notices, *numeric])
 
 
@@ -2264,7 +2275,8 @@ def stats_baseflow(
     each gapless span of at least 60 days of the daily discharge (Nathan and McMahon,
     1990), in the standard of Ladson et al. (2013): the baseflow index of the period
     and of each year with at least 300 days with a baseflow, the recession constant
-    (Tallaksen, 1995) and the daily baseflow of one year
+    of the total flow (the median daily ratio on falls of 5 days or more, quickflow
+    included) and the daily baseflow of one year
     (:func:`hydrolog.statistics.baseflow_separation`).
 
     Parameters
@@ -2397,9 +2409,11 @@ def stats_mann_kendall(
     Non-parametric test for a monotonic trend in a series ordered in time (Mann,
     1945; Kendall, 1975): the S statistic, its variance corrected for tied values
     (Kendall, 1975; Hirsch, Slack and Smith, 1982; Gilbert, 1987, Eq. 16.3), the
-    continuity-corrected Z score and the two-sided p-value, with Sen's (1968) slope,
-    Conover's (1980) intercept and the 100 (1 - alpha) % confidence interval of the
-    slope (Gilbert, 1987) built on that variance
+    continuity-corrected Z score and the two-sided p-value (exact below 10 values,
+    Gilbert, 1987, section 16.4.1; else from the normal distribution), with Sen's
+    (1968) slope, Conover's (1980) intercept and, from 10 values, the
+    100 (1 - alpha) % confidence interval of the slope (Gilbert, 1987) built on that
+    variance
     (:func:`hydrolog.statistics.mann_kendall_test`). The slope is per year with the
     years of the values, otherwise per step of the series (a missing value keeps its
     step).

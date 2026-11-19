@@ -20,7 +20,8 @@ Observatory fits them on its baseline 1991-2020 (EDO, 2025). The k-month sums of
 period stay within its own years.
 
 The relative precipitation is the sum in % of its normal, the mean of the reference
-period. A year is classed by Kaczorowska (1962): below 50 % extremely dry, 50-74 very
+period for a month and the sum of the twelve monthly normals for a year (WMO-No. 1203,
+4.3.3). A year is classed by Kaczorowska (1962): below 50 % extremely dry, 50-74 very
 dry, 75-89 dry, 90-110 normal, 111-125 wet, 126-150 very wet, above 150 extremely wet
 (the percentage rounded to a whole number). Kaczorowska gave no classes of months; a
 month is classed by the limits used for months in Polish practice: below 25 %
@@ -68,7 +69,8 @@ from hydrolog.statistics._climate import (
     WMO_NORMAL_SHARE,
     classify,
     finite,
-    normal,
+    monthly_normals,
+    multimonth_normal,
     precipitation_periods,
     rolling_sum,
     round_sums,
@@ -296,10 +298,11 @@ class SpiPeriod(JsonResultMixin):
     Attributes
     ----------
     normal_mm : float or None
-        Annual normal [mm]: the mean annual sum of the reference period when at least
-        80 % of its years have one (WMO-No. 1203, 4.4.2).
+        Annual normal [mm]: the sum of the twelve monthly normals, ``None`` when one
+        is missing (WMO-No. 1203, 4.3.3).
     normal_years : int
-        Years of the reference period with an annual sum.
+        The fewest years of the reference period with a sum among the twelve months;
+        every monthly normal needs 80 % of its years (WMO-No. 1203, 4.4.2).
     months_normal_mm : list of float or None
         Normals of the calendar months, January first [mm].
     scales : list of SpiScale
@@ -448,13 +451,10 @@ def standardized_precipitation_index(
     have = np.flatnonzero(month_with_value)
     first, last = int(have[0]), int(have[-1])
     span = periods.period.n_years
-    normals = {
-        int(month): normal(base_table[:, slot], span)[0]
-        for slot, month in enumerate(grid.months)
-    }
+    month_normals, normal_years = monthly_normals(base_table, span)
+    normals = dict(zip(grid.months, month_normals, strict=True))
     annual = round_sums(table.sum(axis=1))
-    base_annual = annual if same else round_sums(base_table.sum(axis=1))
-    normal_mm, normal_years = normal(base_annual, span)
+    normal_mm = multimonth_normal(month_normals)
     spi_table = np.full((len(scales), flat.size), np.nan)
     scale_fits: list[SpiScale] = []
     for number, scale in enumerate(scales):

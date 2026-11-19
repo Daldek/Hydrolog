@@ -189,8 +189,11 @@ start, the rest after it. So the m blocks that end with the peak hold the depth 
 first m blocks, for m beyond the peak), and the storm holds the depth of its duration, its
 `total_mm`: a `--total-mm` given must equal it to 0.005 mm (see COMPUTATION_PATHS 3.15).
 Parameters of another type are rejected (`--alpha` and `--beta` belong to `beta`,
-`--peak-position` to `triangular`, the curve to `euler_ii`). A duration that is not a multiple of
-the step adds a notice about the uncovered tail (Euler II refuses it). Depths and intensities are
+`--peak-position` to `triangular`, the curve to `euler_ii`). The duration must be a whole number of
+steps for every type (`validation_error`, `details.reason` `not_multiple`): the storm lasts its
+duration and holds its total. The triangular and Beta types give each step the depth of their shape
+in it, the integral of the triangle or the difference of the Beta distribution function (see
+COMPUTATION_PATHS 3.16). Depths and intensities are
 `result.depths_mm` and `result.intensities_mm_per_h`. `precip areal` computes areal precipitation
 from gauges (arithmetic mean, Thiessen, IDW, isohyets).
 
@@ -272,7 +275,7 @@ hydrolog hydrograph generate --watershed-file tests/fixtures/watershed_example.j
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 47.08254299965717, "time_to_peak_min": 110.0, "total_volume_m3": 321262.25104058074, "runoff_coefficient": 0.14179362345466365, "cn": 72.0, "tc_method": "kirpich", "uh_model": "scs"}}
+{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 47.085556895452896, "time_to_peak_min": 110.0, "total_volume_m3": 321262.2510405811, "runoff_coefficient": 0.14179362345466384, "cn": 72.0, "tc_method": "kirpich", "uh_model": "scs"}}
 ```
 
 ```python
@@ -310,7 +313,7 @@ hydrolog hydrograph generate --watershed-file tests/fixtures/kamiennik.json --uh
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 32.16835273524074, "time_to_peak_min": 580.0, "uh_model": "nash", "nash_estimation": "lutz", "uh_parameters": {"n": 3.5874242939910337, "k_min": 104.30248837604633}}}
+{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 32.16743953158132, "time_to_peak_min": 580.0, "uh_model": "nash", "nash_estimation": "lutz", "uh_parameters": {"n": 3.5874242939910337, "k_min": 104.30248837604633}}}
 ```
 
 ### Flood routing
@@ -1042,9 +1045,14 @@ The normals of `meteo precipitation` (`--index sums`, `heavy`, `seasonality`), `
 `--reference-last-year` choose another reference, such as the standard normal 1991-2020: the
 years of the period keep their own values, and only the baselines come from the reference (the
 normals with the percentages of normal and the anomalies, the percentiles of `heavy`, the gamma
-fits of the SPI). `meteo spells` lists every spell; `--min-duration-days` lists only the longer
-ones (the yearly and period summaries still count every spell), which keeps the result of a long
-record small.
+fits of the SPI). The normal of a year, half-year or season is the sum of the monthly normals
+(their mean for Tmean; WMO-No. 1203, 4.3.3). `meteo spells` counts a spell over the start of a
+year whole in the year it ends (as ETCCDI's software and ECA&D) and lists every spell;
+`--min-duration-days` lists only the longer ones (the yearly and period summaries still count
+every spell), which keeps the result of a long record small. `meteo temperature --index days`
+gives both FD (`frost_days`, Tmin < 0 °C) and IMGW-PIB's „dni przymrozkowe”
+(`freeze_thaw_days`, Tmin < 0 °C < Tmax), and `meteo hydrothermal` takes its season from the
+days of April-September above 10 °C.
 The export's attribution columns (`attribution_source`, `attribution_processed`) are not data:
 Hydrolog carries their lines into the envelope's `attribution` and `terms_notice` (ADR-0028); show
 them when you publish results. Values given inline take theirs with `--attribution '[...]'`.
@@ -1066,7 +1074,7 @@ import hydrolog
 envelope = hydrolog.run_command(
     "meteo precipitation", index="sums", input_file="tests/fixtures/meteo_daily.csv"
 )
-print(envelope.to_dict()["result"]["period"]["normal_mm"])   # 683.35
+print(envelope.to_dict()["result"]["period"]["normal_mm"])   # 703.285
 ```
 
 The quantiles of the annual maxima are `stats flood-frequency` on the values of `--index maxima`.
@@ -1137,7 +1145,7 @@ hydrolog report generate --output report.md --watershed-file tests/fixtures/wate
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-report-generate/1", "peak_discharge_m3s": 47.08254299965717, "files": [{"path": "...", "status": "written"}]}}
+{"result": {"schema": "hydrolog-report-generate/1", "peak_discharge_m3s": 47.085556895452896, "files": [{"path": "...", "status": "written"}]}}
 ```
 
 ## 3. Writing files

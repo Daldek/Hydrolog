@@ -128,7 +128,7 @@ class HydrologyReportGenerator:
         watershed_name: str = "Zlewnia",
         output_path: str | Path | None = None,
         area_km2: float | None = None,
-        cn_ii: int | None = None,
+        cn_ii: float | None = None,
         amc: str = "II",
         tc_min: float | None = None,
         tc_method: str | None = None,
@@ -160,7 +160,7 @@ class HydrologyReportGenerator:
             Path to save the report. If None, only returns content.
         area_km2 : float, optional
             Watershed area [km²]. If None, inferred from result.
-        cn_ii : int, optional
+        cn_ii : float, optional
             Original CN for AMC-II. If None, uses result.cn_used.
         amc : str, optional
             AMC condition used ("I", "II", "III"), by default "II".
@@ -374,7 +374,7 @@ class HydrologyReportGenerator:
     def _build_watershed_section(
         self,
         area_km2: float,
-        cn: int | None = None,
+        cn: float | None = None,
         **kwargs: Any,
     ) -> str:
         """Build watershed parameters section."""
@@ -402,7 +402,7 @@ class HydrologyReportGenerator:
         self,
         result: HydrographGeneratorResult,
         hietogram: HietogramResult,
-        cn_ii: int,
+        cn_ii: float,
         amc: str,
         ia_coefficient: float,
     ) -> str:
@@ -506,7 +506,7 @@ class HydrologyReportGenerator:
         self,
         tc_min: float,
         method: str,
-        cn: int,
+        cn: float,
         area_km2: float,
         watershed_params: dict[str, Any] | None,
         tc_params: dict[str, Any] | None,

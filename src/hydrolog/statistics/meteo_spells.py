@@ -5,10 +5,16 @@ A *dry* day has precipitation below a threshold, a *wet* day at least the thresh
 consecutive dry (wet) days found by the run logic of ``stats threshold-events``
 (:func:`hydrolog.statistics.threshold_runs`; the threshold level method, Tallaksen and
 van Lanen, 2004) on the calendar of the series: a day without a value is neither dry
-nor wet and ends a spell, which is then *open* (it may have been longer). A spell
-counts in the year in which it starts; the yearly summaries take the years whose
-every day has a value, and the distribution of durations the spells of those years
-that are not open.
+nor wet and ends a spell, which is then *open* (it may have been longer).
+
+A spell that crosses the start of a year is not cut there: it counts, whole, in the
+year in which it ends, the convention of the ETCCDI's software (fclimdex, and
+climdex.pcic with its default ``spells.can.span.years = TRUE``) and of ECA&D (ATBD
+version 11, p. 20: "a spell can continue into the next year and is counted against
+the year in which the spell ends"). A year that lies wholly inside a spell ending
+later has no longest spell (``None``, as in climdex.pcic). The yearly summaries take
+the years whose every day has a value, and the distribution of durations the spells
+of those years that are not open.
 
 ``min_duration_days`` shortens the list of spells only: the yearly and the period
 summaries take every spell whatever its duration, since CDD and CWD of the ETCCDI
@@ -23,6 +29,10 @@ Zhang, X. et al. (2011): Indices for monitoring changes in extremes based on dai
 Klein Tank, A. M. G., Zwiers, F. W. & Zhang, X. (2009): Guidelines on Analysis of
     extremes in a changing climate in support of informed decisions for adaptation.
     WMO-TD No. 1500 (WCDMP-No. 72), WMO, Geneva.
+ECA&D (2021): European Climate Assessment & Dataset, Algorithm Theoretical Basis
+    Document (ATBD), version 11. KNMI, De Bilt, section 5.1, p. 20.
+Bronaugh, D. (2020): climdex.pcic 1.1-11, the ETCCDI indices in R (Pacific Climate
+    Impacts Consortium), ``spell.length.max`` and ``climdex.cdd``.
 Tallaksen, L. M. & van Lanen, H. A. J. (Eds., 2004): Hydrological Drought. Elsevier,
     ch. 5.
 """
@@ -90,7 +100,7 @@ class PrecipitationSpell(JsonResultMixin):
     duration_days : int
         Its days.
     year : int
-        The year of its first day.
+        The year in which it counts: the year of its last day.
     open_start, open_end : bool
         The day before the first (after the last) has no value: the spell may have
         begun earlier (lasted longer).
@@ -106,7 +116,7 @@ class PrecipitationSpell(JsonResultMixin):
 
 @dataclass
 class SpellYear(JsonResultMixin):
-    """The spells that start in one year.
+    """The spells that end in one year.
 
     Attributes
     ----------
@@ -115,9 +125,10 @@ class SpellYear(JsonResultMixin):
     complete : bool
         Every day of the year has a value; the counts need it.
     n_spells : int or None
-        Spells that start in the year.
+        Spells that end in the year.
     max_duration_days : int or None
-        The longest of them [days] (0 without one).
+        The longest of them [days] (0 without one; ``None`` when the year lies wholly
+        inside a spell that ends later).
     max_start_date, max_end_date : str or None
         Its first and last day (the first longest).
     spells_10_days, spells_15_days, spells_20_days : int or None
@@ -306,7 +317,7 @@ def precipitation_spells(
             start_date=str(grid.dates[start]),
             end_date=str(grid.dates[end]),
             duration_days=end - start + 1,
-            year=int(grid.year[start]),
+            year=int(grid.year[end]),
             open_start=start == 0 or not bool(present_days[start - 1]),
             open_end=end == last or not bool(present_days[end + 1]),
         )
@@ -321,6 +332,12 @@ def precipitation_spells(
         grid, np.isfinite(grid.place(days, np.asarray(precipitation_mm, float)))
     )
     complete = complete_years(grid, present_days)
+    inside = (
+        np.minimum.reduceat(
+            (condition & present_days).astype(np.int64), grid.year_starts()
+        )
+        > 0
+    )
     rows: list[SpellYear] = []
     complete_labels: list[int] = []
     for row in np.flatnonzero(present).tolist():
@@ -335,11 +352,11 @@ def precipitation_spells(
         mine_durations = durations[mine]
         if mine.size:
             longest = spells[int(mine[int(np.argmax(mine_durations))])]
-            max_days = longest.duration_days
+            max_days: int | None = longest.duration_days
             max_start: str | None = longest.start_date
             max_end: str | None = longest.end_date
         else:
-            max_days, max_start, max_end = 0, None, None
+            max_days, max_start, max_end = (None if inside[row] else 0), None, None
         counts = [int((mine_durations >= limit).sum()) for limit in SPELL_COUNT_DAYS]
         rows.append(
             SpellYear(

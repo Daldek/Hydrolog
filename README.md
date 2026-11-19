@@ -101,7 +101,7 @@ hydrolog hydrograph generate --area-km2 45.3 --cn 72 --tc-min 86 --hietogram-typ
   "command": "hydrograph generate",
   "result": {
     "schema": "hydrolog-hydrograph-generate/1",
-    "peak_discharge_m3s": 30.326278160165238,
+    "peak_discharge_m3s": 30.31385082875513,
     "time_to_peak_min": 80.0,
     "total_volume_m3": 135467.47576859492,
     "times_min": [0.0, 5.0, 10.0, "..."],
@@ -211,7 +211,7 @@ hydrolog gui serve --no-browser --port 8071
 | | Events and days above or below a threshold | `stats threshold-events` | `hydrolog_stats_threshold_events` | `stats_threshold_events` |
 | Hydrometry | Rating curve Q = a(H - H0)^b, also of dated pairs by range of years and period | `hydrometrics rating-curve` | `hydrolog_hydrometrics_rating_curve` | `hydrometrics_rating_curve` |
 | | Water level zones NTW, STW, WTW (Rybczyński) | `hydrometrics water-level-zones` | `hydrolog_hydrometrics_water_level_zones` | `hydrometrics_water_level_zones` |
-| Meteorological statistics | Sielianinov's hydrothermal coefficient of the months April to September and of the warm season | `meteo hydrothermal` | `hydrolog_meteo_hydrothermal` | `meteo_hydrothermal` |
+| Meteorological statistics | Sielianinov's hydrothermal coefficient of the months April to September and of their days above 10 °C | `meteo hydrothermal` | `hydrolog_meteo_hydrothermal` | `meteo_hydrothermal` |
 | | Precipitation statistics: sums and normals, maxima, days, intensity, heavy precipitation, regime | `meteo precipitation` | `hydrolog_meteo_precipitation` | `meteo_precipitation` |
 | | Snow cover of each winter: days, largest depth, first and last day, fresh snow | `meteo snow` | `hydrolog_meteo_snow` | `meteo_snow` |
 | | Dry or wet spells of daily precipitation | `meteo spells` | `hydrolog_meteo_spells` | `meteo_spells` |

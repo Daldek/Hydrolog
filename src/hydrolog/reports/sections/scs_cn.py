@@ -18,8 +18,8 @@ from hydrolog.reports.templates import (
 
 def generate_scs_cn_section(
     total_precip_mm: float,
-    cn_ii: int,
-    cn_adjusted: int,
+    cn_ii: float,
+    cn_adjusted: float,
     amc: str,
     retention_mm: float,
     initial_abstraction_mm: float,
@@ -39,9 +39,9 @@ def generate_scs_cn_section(
     ----------
     total_precip_mm : float
         Total precipitation [mm].
-    cn_ii : int
+    cn_ii : float
         Curve Number for AMC-II conditions.
-    cn_adjusted : int
+    cn_adjusted : float
         Adjusted CN for actual AMC.
     amc : str
         Antecedent Moisture Condition ("I", "II", or "III").

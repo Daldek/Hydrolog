@@ -97,9 +97,8 @@ class FormulaRenderer:
 
     Examples
     --------
-    >>> FormulaRenderer.scs_retention(cn=72)
-    '$$S = \\frac{25400}{CN} - 254 = \\frac{25400}{72} - 254 = 98.89 \\text{ '
-    'mm}$$'
+    >>> print(FormulaRenderer.scs_retention(cn=72))
+    $$S = \frac{25400}{CN} - 254 = \frac{25400}{72} - 254 = 98.78 \text{ mm}$$
     """
 
     # =========================================================================
@@ -107,13 +106,13 @@ class FormulaRenderer:
     # =========================================================================
 
     @staticmethod
-    def scs_retention(cn: int) -> str:
+    def scs_retention(cn: float) -> str:
         """
         Render maximum retention formula: S = 25400/CN - 254.
 
         Parameters
         ----------
-        cn : int
+        cn : float
             Curve Number (1-100).
 
         Returns
@@ -194,15 +193,15 @@ class FormulaRenderer:
         )
 
     @staticmethod
-    def scs_amc_adjustment(cn_ii: int, cn_adjusted: int, amc: str) -> str:
+    def scs_amc_adjustment(cn_ii: float, cn_adjusted: float, amc: str) -> str:
         """
         Render AMC adjustment formula.
 
         Parameters
         ----------
-        cn_ii : int
+        cn_ii : float
             Original CN for AMC-II.
-        cn_adjusted : int
+        cn_adjusted : float
             Adjusted CN for target AMC.
         amc : str
             Target AMC condition ("I" or "III").

@@ -189,7 +189,7 @@ export const hydrogram = {
     choose: "wybierz",
     pmaxtpNote:
       "Podaj punkt zlewni (np. jej ujście) w stopniach dziesiętnych WGS84, p i czas trwania z tablic atlasu: wysokość opadu pobierze Hydrolog z atlasu PMAXTP IMGW-PIB (`precip pmaxtp`, przez Obserwatora). Nie wpisuje się jej; pobrana zostaje zapamiętana z danymi.",
-    methods: { POT: "POT (zalecana)", AMP: "AMP" },
+    methods: { POT: "POT", AMP: "AMP" },
     depthSource: "PMAXTP IMGW-PIB, metoda {method}",
     depthPending: "po podaniu punktu, p i czasu",
     depthFetching: "pobieranie z IMGW-PIB…",
@@ -201,7 +201,7 @@ export const hydrogram = {
       "Wysokości opadu w kolejnych krokach `timestep_min` [mm]: wklej je z arkusza albo wczytaj kolumnę pliku CSV.",
     shape: "Rozkład w czasie",
     shapes: { block: "Blokowy", triangular: "Trójkątny", beta: "Beta", euler_ii: "Euler II" },
-    betaNote: "Para (2; 5) daje wczesne maksimum (opad konwekcyjny), (2; 2) symetryczne, (5; 2) późne.",
+    betaNote: "Para (2; 5) daje wczesne maksimum (0,2 czasu trwania), (2; 2) symetryczne, (5; 2) późne.",
     blockNote: "Stała intensywność w całym czasie trwania.",
     euler: {
       pmaxtp:
@@ -249,7 +249,7 @@ export const hydrogram = {
     clarkNote: "Clark; wymaga tc oraz `clark_r_min` lub `clark_r_tc_ratio` (typowo {ranges}).",
     clarkNotePlain: "Clark; wymaga tc oraz `clark_r_min` lub `clark_r_tc_ratio`.",
     snyderNote:
-      "Snyder ma własny wzór na opóźnienie; nie podawaj mu tc. L to długość cieku głównego zlewni (krok 1), Lc to długość do środka ciężkości (powyżej).",
+      "Snyder ma własny wzór na opóźnienie; nie podawaj mu tc. L to długość najdłuższej drogi spływu, od działu wodnego do przekroju zamykającego (krok 1), nie długość cieku do jego źródła; Lc to długość do środka ciężkości (powyżej).",
     chipTc: "tc = {value} min",
     chipR: "R = {value} min",
     chipN: "n = {value}",
@@ -348,7 +348,7 @@ export const hydrogram = {
       r: "Stała retencji",
       ct: "Współczynnik czasowy",
       cp: "Współczynnik szczytowy",
-      snyderL: "Długość cieku",
+      snyderL: "Długość do działu wodnego",
       snyderLc: "Do środka ciężkości",
     },
     paramSyms: {

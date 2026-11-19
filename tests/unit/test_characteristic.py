@@ -260,3 +260,37 @@ class TestMonthlyStatistics:
         assert np.isnan(result.std_values[11])  # December: 2020 only
         assert np.isnan(result.ci_lower[11]) and np.isnan(result.ci_upper[11])
         assert result.mean_values[11] == 100.0
+
+    def test_the_interval_is_built_on_the_yearly_means_of_the_month(self):
+        """Five years, each month constant within a year (fully autocorrelated days):
+        the yearly means 10, 12, 14, 16, 18 give s_y = sqrt(10) and k = 5, so the
+        half-width is t(0.975, 4) * sqrt(10) / sqrt(5) = 2.776445 * sqrt(2). The daily
+        values taken as independent gave t * s / sqrt(~150), about 12 times narrower.
+        """
+        from hydrolog.statistics.characteristic import calculate_monthly_statistics
+
+        dates = np.arange(
+            np.datetime64("2015-01-01"),
+            np.datetime64("2020-01-01"),
+            dtype="datetime64[D]",
+        )
+        years = dates.astype("datetime64[Y]").astype(int) + 1970
+        values = 10.0 + 2.0 * (years - 2015)
+        result = calculate_monthly_statistics(values, dates)
+        half = 2.7764451051977987 * np.sqrt(2.0)
+        # around the mean of all days (February of 2016 has 29 of them)
+        np.testing.assert_allclose(result.ci_upper - result.mean_values, half)
+        np.testing.assert_allclose(result.mean_values - result.ci_lower, half)
+        assert result.mean_values[0] == pytest.approx(14.0)
+
+    def test_a_month_of_one_year_has_no_interval(self):
+        from hydrolog.statistics.characteristic import calculate_monthly_statistics
+
+        dates = np.arange(
+            np.datetime64("2020-01-01"),
+            np.datetime64("2021-01-01"),
+            dtype="datetime64[D]",
+        )
+        result = calculate_monthly_statistics(np.linspace(1.0, 9.0, dates.size), dates)
+        assert np.all(np.isfinite(result.std_values))
+        assert np.all(np.isnan(result.ci_lower)) and np.all(np.isnan(result.ci_upper))
