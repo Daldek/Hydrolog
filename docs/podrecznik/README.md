@@ -15,7 +15,8 @@ Kod Hydrologa pozostaje na licencji MIT.
   zmiennych i jednostek, zakres stosowalności, typowe zastosowania i błędy, a kończy przykładem.
 - Wzory, stałe i zakresy w ramkach oznaczonych jako generowane pochodzą wprost ze specyfikacji
   formuł w kodzie Hydrologa (standard Nogat CMP); nie są przepisywane ręcznie, więc zawsze
-  odpowiadają temu, co program liczy.
+  odpowiadają temu, co program liczy. Jak czytać ramkę, wyjaśnia dodatek D
+  ([D.7](D-weryfikacja.md#d7-jak-czytać-ramkę-wygenerowaną-ze-specyfikacji)).
 - Przykład przewodni: zlewnia Kamiennika po przekrój w Świerzawie (dorzecze Kaczawy),
   37,22 km². Prowadzi przez cały łańcuch obliczeń: od charakterystyk zlewni do hydrogramu
   projektowego.
@@ -55,6 +56,31 @@ Kod Hydrologa pozostaje na licencji MIT.
 
 Dodatki: A. Oznaczenia i jednostki · B. Słowniczek polsko-angielski · C. Bibliografia ·
 D. Jak Hydrolog sprawdza poprawność wzorów · E. Polecenia Hydrologa a rozdziały podręcznika.
+
+## Dla autorów
+
+Rozdział nie przepisuje równań, stałych ani zakresów wzorów: wstawia ramkę generowaną ze
+specyfikacji, czyli parę znaczników, każdy w osobnym wierszu, poza blokiem kodu, z pustym
+wnętrzem:
+
+```markdown
+<!-- spec:kirpich -->
+<!-- /spec:kirpich -->
+```
+
+- `spec:NAZWA`: wzór grupy A (`formulas/<nazwa>.toml`) albo wzór grupy B z tabeli „Tier B”
+  katalogu `docs/FORMULAS.md`;
+- `spec-table:NAZWA`: tablice opublikowane specyfikacji wiersz po wierszu (na przykład
+  `tr55_cn`, `texture_hsg`, `usda_texture`, `scs`);
+- `generated:units`, `generated:symbols`, `generated:formulas`, `generated:commands`:
+  wykazy dodatków A, D i E.
+
+Polecenie `uv run scripts/generate_handbook.py` wypełnia ramki, a z `--check` tylko sprawdza,
+czy są aktualne; nieznana nazwa zatrzymuje generator. Polskie teksty specyfikacji są w pliku
+[`_specs_pl.toml`](_specs_pl.toml), a wzór, który nie ma w nim wpisu, dostaje go poleceniem
+`uv run scripts/generate_handbook.py --template NAZWA` (wzór wpisu do przetłumaczenia).
+Wzór bez specyfikacji opisuje się słowami ze źródłem, a w miejscu przyszłej ramki zostawia
+wiersz `<!-- TODO spec: krótki opis -->`.
 
 ## Stan
 
