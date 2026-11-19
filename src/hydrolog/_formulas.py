@@ -70,6 +70,9 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.routing.formulas.cascade",
     "hydrolog.routing.cascade",
     "hydrolog.routing.formulas.lag",
+    "hydrolog.routing.formulas.manning",
+    "hydrolog.routing.formulas.cunge",
+    "hydrolog.routing.cunge",
     "hydrolog.routing.network",
 )
 """The modules whose ``SPECS`` (and ``TIER_B``) declare Hydrolog's formulas, in the
@@ -83,6 +86,16 @@ DELEGATED: Final[tuple[Delegated, ...]] = (
         smoke_case="the root N of f(N) = (N-1)^N e^-(N-1) / Gamma(N) = f(2.55) on "
         "[1.1, 20] with xtol 1e-6 is 2.55 within 1e-6 (spec lutz)",
         test="tests/unit/test_formulas_lutz.py::"
+        "test_the_delegated_root_finder_finds_a_known_root",
+    ),
+    Delegated(
+        name="manning_normal_depth",
+        library="scipy.optimize.brentq",
+        versions="scipy>=1.10 (1.18.1 locked)",
+        smoke_case="the root ln y = 0 of ln K(e^u) - ln K(1) for Manning's conveyance "
+        "A R^(2/3) of a rectangle 2 m wide on [-1, 1] with xtol 1e-15 is 0 within "
+        "1e-14 (spec manning_normal_flow)",
+        test="tests/unit/test_formulas_muskingum_cunge.py::"
         "test_the_delegated_root_finder_finds_a_known_root",
     ),
 )

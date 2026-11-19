@@ -9,5 +9,9 @@ sub-reaches, the sub-steps, the time axis, ADR-0008) and compute through them.
   through equal sub-reaches;
 * :mod:`~hydrolog.routing.formulas.cascade` -- ``linear_reservoir_cascade``, the exact
   response of a cascade of linear reservoirs to an inflow linear between ordinates;
-* :mod:`~hydrolog.routing.formulas.lag` -- ``lag``, the translation of a hydrograph.
+* :mod:`~hydrolog.routing.formulas.lag` -- ``lag``, the translation of a hydrograph;
+* :mod:`~hydrolog.routing.formulas.manning` -- ``manning_normal_flow``, the normal flow
+  of a prismatic channel and its kinematic celerity;
+* :mod:`~hydrolog.routing.formulas.cunge` -- ``muskingum_cunge``, Muskingum-Cunge with
+  constant coefficients on equal distance steps.
 """

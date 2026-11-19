@@ -21,6 +21,8 @@
 | [Muskingum routing through N equal sub-reaches (McCarthy's storage, trapezoid continuity)](#muskingum) | `hydrolog.routing.formulas.muskingum.muskingum_route` | referenced | 1 | not measured |
 | [Cascade of n equal linear reservoirs, exact for an inflow linear between the ordinates (Nash)](#linear_reservoir_cascade) | `hydrolog.routing.formulas.cascade.cascade_route` | oracle only | 1 | not measured |
 | [Lag routing: the inflow translated by a fixed time, linear between the ordinates](#lag) | `hydrolog.routing.formulas.lag.lag_route` | oracle only | 1 | not measured |
+| [Normal flow of a trapezoidal, rectangular or triangular channel by Manning's equation, with the kinematic celerity dQ/dA](#manning_normal_flow) | `hydrolog.routing.formulas.manning.normal_flow` | referenced | 1 | not measured |
+| [Muskingum-Cunge routing with constant coefficients on N equal distance steps (Cunge's K and X)](#muskingum_cunge) | `hydrolog.routing.formulas.cunge.muskingum_cunge_route` | referenced | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
 ### Potential maximum retention S of the SCS curve number
@@ -1242,6 +1244,222 @@ None.
 
 **Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
+<a id="manning_normal_flow"></a>
+### Normal flow of a trapezoidal, rectangular or triangular channel by Manning's equation, with the kinematic celerity dQ/dA
+
+`hydrolog.routing.formulas.manning.normal_flow` · family `empirical` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+Q = \frac{1}{n} A R^{2/3} S^{1/2},\quad A = (b + z y) y,\ P = b + 2 y \sqrt{1 + z^2},\ R = \frac{A}{P};\quad T = b + 2 z y,\ V = \frac{Q}{A},\ c = \frac{dQ}{dA} = V \left(\frac{5}{3} - \frac{2}{3} \frac{A P'}{T P}\right)
+$$
+
+Plain text: `Q = A R^(2/3) S^(1/2) / n, A = (b + z y) y, P = b + 2 y (1 + z^2)^(1/2), R = A / P; T = b + 2 z y; V = Q / A; c = dQ/dA = V (5/3 - 2/3 A P' / (T P)), P' = 2 (1 + z^2)^(1/2); the normal depth y is the root of the first equation`
+
+**Sources**
+
+- Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339, Introduction, eqs. 1 and 2 (the first page of the text): V = 1.486/n R^(2/3) Se^(1/2) and the conveyance K = 1.486/n A R^(2/3), in feet (open) <https://pubs.usgs.gov/wsp/2339/report.pdf>
+- US Army Corps of Engineers, Hydrologic Engineering Center. Water Surface Profile Calculations with HEC-RAS (training lesson 1.6, PROSPECT course), slides 'Cross Section Subdivision for Conveyance Calculations' (Q = 1.486/n A R^(2/3) Sf^(1/2), in feet) and 'Computational Procedure: Tolerances and trials' (water surface calculation tolerance 0.01 ft by default) (open) <https://www.hec.usace.army.mil/confluence/prospect/files/124452884/124453107/1/1669663021202/1.6+L+-+Water+Surface+Profile+Calculations.pdf>
+- US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum-Cunge Model, eq. 4, the flood wave celerity c = dQ/dA; Required Parameters: the reach's Manning's n and a rectangle, trapezoid or triangle by its bottom width and side slope (open) <https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-cunge-model>
+- USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), eqs. 17-24 and 17-25, c = dQ/dA = m Q / A, and 17-29 and 17-30a, the weighted m of a rating table; Table 17-16 and example 17-4, pp. 17-36 to 17-43 (open) <https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf>
+- Manning, R. (1891). On the flow of water in open channels and pipes, Transactions of the Institution of Civil Engineers of Ireland 20, 161-207 (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `discharge_m3s` | $Q$ | m3/s | real | (0.0, inf), test bound high 1000000.0 (a million m3/s exceeds the discharge of every river, the Amazon's included) | unstated | [1.0, 300.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), reference discharges of 0.95 to 300.05 m3/s in the tests of the reach (tests/unit/test_routing_cunge.py), 12 m3/s in tests/fixtures/network_flood.json; NEH 630 examples 17-4 and 17-5, 684.18 and 3,385.4 ft3/s (19.4 and 95.9 m3/s) |
+| `slope_m_per_m` | $S$ | m/m | real | (0.0, inf), test bound high 0.2 (ten times the steepest reach of the project's data, 0.02 in Hydrograf's network tests/fixtures/handoff_hydrograf_network.json) | unstated | [0.0002, 0.02]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 0.0002 to 0.002778 in the tests of the reach (tests/unit/test_routing_cunge.py), 0.00208 to 0.009859 on the reaches of Hydrograf's Nysa Szalona network from the DEM (tests/fixtures/handoff_hydrograf_network_nysa_szalona.json), 0.02 in tests/fixtures/handoff_hydrograf_network.json; 0.00091 in NEH 630 examples 17-4 and 17-5 |
+| `bottom_width_m` | $b$ | m | real | [0.0, inf), test bound high 50000.0 (ten times the widest section of the tests, the 5,000 m rectangle of tests/unit/test_routing_sections.py) | unstated | [0.0, 30.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 0 (a triangle) to 30 m in the tests of the section (tests/unit/test_routing_sections.py), 5 to 15 m in the tests of the reach, 8 m in tests/fixtures/network_flood.json; NEH 630 example 17-4, 15 ft (4.57 m) |
+| `side_slope_m_per_m` | $z$ | m/m | real | [0.0, inf), test bound high 20.0 (ten times the gentlest banks of the tests, NEH's 2:1) | unstated | [0.0, 2.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 0 (a rectangle) to 2 (2:1 banks) in the tests of the section and of the reach, 2 in tests/fixtures/network_flood.json and NEH 630 example 17-4 |
+| `manning_n` | $n$ | s/m^(1/3) | real | (0.0, inf), test bound high 1.0 (ten times the roughest channel of the tests, n = 0.1 in tests/unit/test_routing_sections.py) | unstated | [0.03, 0.05]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 0.03 to 0.05 in the tests of the section and of the reach, 0.035 in docs/USAGE.md and tests/fixtures/network_flood.json; NEH 630 example 17-4, 0.04 |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `has_width` | physical | b + z > 0: a section with a bottom or banks; neither holds no water | US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum-Cunge Model, eq. 4, the flood wave celerity c = dQ/dA; Required Parameters: the reach's Manning's n and a rectangle, trapezoid or triangle by its bottom width and side slope |
+| `representable_flow` | precondition | 2.2e-308 <= y, A, T, V, c < inf: float64 holds the normal flow to sixteen digits; a section so narrow, flat or rough, or a discharge so large or small, that one of them overflows or falls among the subnormal floats has none | IEEE 754-2019, binary64: normal numbers of magnitude about 2.2e-308 to 1.8e308, with 53 significant bits; below them the subnormal numbers keep fewer, the depth, the area, the top width, the velocity and the celerity of a flow must be normal numbers to hold their sixteen digits |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `radius_exponent` | $2/3$ | 2/3 | - | Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339, Introduction, eqs. 1 and 2 (the first page of the text): V = 1.486/n R^(2/3) Se^(1/2) and the conveyance K = 1.486/n A R^(2/3), in feet |
+| `slope_exponent` | $1/2$ | 1/2 | - | Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339, Introduction, eqs. 1 and 2 (the first page of the text): V = 1.486/n R^(2/3) Se^(1/2) and the conveyance K = 1.486/n A R^(2/3), in feet |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `depth_m` | m | real | (0.0, inf) | 4 ulp of the bound |
+| `area_m2` | m2 | real | (0.0, inf) | 4 ulp of the bound |
+| `top_width_m` | m | real | (0.0, inf) | 4 ulp of the bound |
+| `velocity_m_per_s` | m/s | real | (0.0, inf) | 4 ulp of the bound |
+| `celerity_m_per_s` | m/s | real | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- SI units: Q in m3/s, lengths in m, n in s/m^(1/3); the US customary form multiplies by 1.486, the cube root of the feet in a metre (1.4859) rounded, as HEC-RAS does (USGS WSP 2339 eq. 1)
+- the bed slope is the friction slope: the flow is uniform
+- the celerity is the local kinematic celerity dQ/dA at the depth (HEC-HMS eq. 4; NEH eq. 17-25 with m = d ln Q / d ln A); NEH's example 17-4 takes a discharge-weighted m of the rating from zero to Q (eqs. 17-29, 17-30a), 2 % above the local one (case mc_neh17_example17_4_from_section)
+- one roughness for the whole wetted perimeter; a trapezoid with both banks at z:1, a rectangle at z = 0 and a triangle at b = 0; no floodplain
+- the normal depth is found by Brent's method in ln y (scipy.optimize.brentq, delegated, CMP-1.2) in a bracket from the slope of ln K in ln y, between 1 and 10/3, to four units of 1e-16 of max(1, |ln y|)
+
+**Assumptions**
+
+- steady uniform flow: the depth is the normal depth of the discharge
+- a prismatic channel whose n does not change with the depth
+- the flow stays within the section, which has no top
+
+**Validation:** none: the sources give Manning's equation as the practice of uniform open channel flow and report no agreement of their own with observations; n is chosen from tables or calibrated (USGS WSP 2339)
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: ln b and ln z of a triangle (b = 0) and of a rectangle (z = 0) are minus infinity, which logaddexp takes: range cases bottom_width_m-physical_low and side_slope_m_per_m-physical_low give finite flows; ln Q and S^(1/2) at their open lower ends: range cases discharge_m3s-physical_low_inside and slope_m_per_m-physical_low_inside, a finite flow or the precondition representable_flow
+- `exp_overflow`: y = e^u beyond the largest float: the violated point of representable_flow and test_a_depth_beyond_a_float_is_refused; the range cases at the test bounds give finite flows
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `discharge_m3s` increasing, `slope_m_per_m` decreasing, `manning_n` increasing
+- scaling `length`: inputs times 2^e (`discharge_m3s` e = 9.0, `bottom_width_m` e = 3.0, `manning_n` e = -1.0) give outputs times 2^e (`depth_m` e = 3.0, `area_m2` e = 6.0, `top_width_m` e = 3.0, `velocity_m_per_s` e = 3.0, `celerity_m_per_s` e = 3.0)
+- scaling `time`: inputs times 2^e (`discharge_m3s` e = -1.0, `manning_n` e = 1.0) give outputs times 2^e (`velocity_m_per_s` e = -1.0, `celerity_m_per_s` e = -1.0)
+- scaling `slope`: inputs times 2^e (`discharge_m3s` e = 1.0, `slope_m_per_m` e = 2.0) give outputs times 2^e (`velocity_m_per_s` e = 1.0, `celerity_m_per_s` e = 1.0)
+- limit `rectangle_by_hand`: b = 2 m, z = 0, n = 0.03, S = 0.001 and Q = 2 (1/2)^(2/3) 0.001^(1/2) / 0.03: A = 2, P = 4, R = 1/2, so y = 1 m
+- limit `triangle_closed_form`: a triangle (b = 0) has the closed form y = (Q n P'^(2/3) / (S^(1/2) z^(5/3)))^(3/8) and c = 4/3 V
+- limit `kinematic_celerity_bounds`: V <= c <= 5/3 V: the celerity of a trapezoid lies between that of a deep narrow rectangle and that of a wide one
+- limit `decimal_oracle`: the depth and dQ/dA equal Manning's equation written as S^(1/2) / n (A^5 / P^2)^(1/3), solved by bisection and differenced at 50 digits
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/muskingum-cunge-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the closed form of a triangle, y = (Q n P'^(2/3) / (S^(1/2) z^(5/3)))^(3/8), and its c = 4/3 V (`tests/unit/test_formulas_muskingum_cunge.py (limit triangle_closed_form)`)
+- algorithm: Manning's equation written as S^(1/2) / n (A^5 / P^2)^(1/3) in decimal arithmetic at 50 digits, its depth by bisection and dQ/dA by a central difference (`tests/unit/test_formulas_muskingum_cunge.py (limit decimal_oracle)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="muskingum_cunge"></a>
+### Muskingum-Cunge routing with constant coefficients on N equal distance steps (Cunge's K and X)
+
+`hydrolog.routing.formulas.cunge.muskingum_cunge_route` · family `scheme` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+D = \frac{Q}{T S_0 c},\ \Delta x = \frac{L}{N},\ K = \frac{\Delta x}{c},\ X = \frac{1}{2}\left(1 - \frac{D}{\Delta x}\right);\quad O_t = c_0 I_t + c_1 I_{t-1} + c_2 O_{t-1};\quad C_g = \frac{c \Delta t}{\Delta x},\ D_g = \frac{D}{\Delta x} = 1 - 2X
+$$
+
+Plain text: `D = Q / (T S0 c), dx = L / N, K = dx / c, X = (1 - D / dx) / 2; in each of N distance steps in series O[t] = c0 I[t] + c1 I[t-1] + c2 O[t-1] with the Muskingum weights of K, X and dt; Cg = c dt / dx, Dg = D / dx = 1 - 2X and NEH's accuracy limit exp(2.3 Cg)`
+
+**Sources**
+
+- USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), eqs. 17-20 to 17-22 (X, the distance step, K) and 17-31 to 17-36 (Cg, Dg and the accuracy limit, eq. 17-36 on p. 17-33); examples 17-4 and 17-5, pp. 17-36 to 17-51 (open) <https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf>
+- US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum-Cunge Model, eqs. 3 to 5 (the convective diffusion equation, c = dQ/dA, mu = Q / (2 B S0)), 6 to 10 (the weights) and 12 and 13 (K = dx / c, X = (1 - Q / (B S0 c dx)) / 2) (open) <https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-cunge-model>
+- US Army Corps of Engineers (1994). Engineering and Design: Flood-Runoff Analysis, EM 1110-2-1417, chapter 9, eq. 9-22 and the reference flow, p. 9-21 (open) <https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-1417.pdf>
+- Cunge, J.A. (1969). On the subject of a flood propagation computation method (Muskingum method), Journal of Hydraulic Research 7(2), 205-230 (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `inflow_m3s` | $I_t$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic) | unstated | [0.0, 100.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s |
+| `timestep_min` | $\Delta t$ | min | real | (0.0, inf), test bound high 1440.0 (a day, the step of a series of daily discharges (IMGW-PIB)) | unstated | [5.0, 720.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), steps of 5 min (Hydrograf's networks, tests/fixtures/handoff_hydrograf_network*.json) to 12 h (the Iowa example and NEH 630 ch. 17 example 17-2, 0.5 d) |
+| `length_km` | $L$ | km | real | (0.0, inf), test bound high 234.0 (ten times the longest reach of the project's data, 23.36 km on Hydrograf's Nysa Szalona network) | unstated | [0.1, 23.4]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 0.1 to 20 km in the tests of the reach (tests/unit/test_routing_cunge.py), 1.3 to 23.4 km on Hydrograf's Nysa Szalona network besides a 7 m connector (tests/fixtures/handoff_hydrograf_network_nysa_szalona.json); NEH 630 examples 17-4 and 17-5, 2,600 ft (0.79 km) |
+| `slope_m_per_m` | $S_0$ | m/m | real | (0.0, inf), test bound high 0.2 (ten times the steepest reach of the project's data, 0.02 in Hydrograf's network tests/fixtures/handoff_hydrograf_network.json) | unstated | [0.0002, 0.02]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 0.0002 to 0.002778 in the tests of the reach (tests/unit/test_routing_cunge.py), 0.00208 to 0.009859 on the reaches of Hydrograf's Nysa Szalona network from the DEM (tests/fixtures/handoff_hydrograf_network_nysa_szalona.json), 0.02 in tests/fixtures/handoff_hydrograf_network.json; 0.00091 in NEH 630 examples 17-4 and 17-5 |
+| `celerity_m_per_s` | $c$ | m/s | real | (0.0, inf), test bound high 50.0 (ten times the fastest wave of the tests, 5 m/s) | unstated | [0.2, 5.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 0.2 to 5 m/s in the tests of the reach (tests/unit/test_routing_cunge.py); NEH 630 examples 17-4 and 17-5, 4.297 and 1.779 ft/s (1.31 and 0.54 m/s) |
+| `top_width_m` | $T$ | m | real | (0.0, inf), test bound high 2250.0 (ten times the widest water surface of the tests and examples, 738.3 ft (225 m) in NEH 630 example 17-5) | unstated | [10.0, 225.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 10 to 200 m in the tests of the reach and of the networks (tests/unit/test_routing_cunge.py, tests/unit/test_operations_route_network.py); NEH 630 examples 17-4 and 17-5, 44.6 and 738.3 ft (13.6 and 225 m) |
+| `reference_discharge_m3s` | $Q$ | m3/s | real | (0.0, inf), test bound high 1000000.0 (a million m3/s exceeds the discharge of every river, the Amazon's included) | unstated | [1.0, 300.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), reference discharges of 0.95 to 300.05 m3/s in the tests of the reach (tests/unit/test_routing_cunge.py), 12 m3/s in tests/fixtures/network_flood.json; NEH 630 examples 17-4 and 17-5, 684.18 and 3,385.4 ft3/s (19.4 and 95.9 m3/s) |
+| `subreaches` | $N$ | - | integer | [1.0, inf), test bound high 1000.0 (the test bound of the length, 234 km, in steps of 234 m, half of what the wave of NEH 630 example 17-4 (4.297 ft/s) travels in its step of 0.1 h) | unstated | [1.0, 4.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 1 to 4 distance steps in the tests of the reach (tests/unit/test_routing_cunge.py); 1 and 2 in NEH 630 examples 17-4 and 17-5 |
+| `initial_outflow_m3s` | $O_0$ | m3/s | real | [0.0, inf), test bound high 1000000.0 (a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic) | unstated | [0.0, 100.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `nonnegative_weights` | precondition | \|c dt - D\| <= L / N <= c dt + D with D = Q / (T S0 c), each end to 1e-9 of itself: every weight is non-negative, so a non-negative inflow gives a non-negative outflow | the signs of the numerators of the weights (Hydrolog ADR-0008); Ponce's form \|C - D\| <= 1 <= C + D, c_current >= 0 iff dx <= c dt + D, c_previous >= 0 iff dx >= D - c dt, c_outflow >= 0 iff dx >= c dt - D |
+| `finite_grid` | precondition | L / c, c dt / dx, D / dx and N K (1 + 2\|X\|) max(I, O0) are finite: float64 holds the grid and the water it can hold; a wave so slow, a step so short or a flood so large that one overflows has none | IEEE 754-2019, binary64: finite numbers of magnitude about 4.9e-324 to 1.8e308, the grid's scalars and the water it holds must be among them; exp(700), about 1.0e304, is one |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `accuracy_factor` | $2.3$ | 2.3 | - | USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), eqs. 17-20 to 17-22 (X, the distance step, K) and 17-31 to 17-36 (Cg, Dg and the accuracy limit, eq. 17-36 on p. 17-33); examples 17-4 and 17-5, pp. 17-36 to 17-51 |
+| `limit_exponent_cap` |  | 700.0 | - | IEEE 754-2019, binary64: finite numbers of magnitude about 4.9e-324 to 1.8e308, the grid's scalars and the water it holds must be among them; exp(700), about 1.0e304, is one |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `outflow_m3s` | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic) | 4 ulp of the bound |
+| `k_min` | min | real | (0.0, inf) | 4 ulp of the bound |
+| `x` | - | real | (-inf, 0.5] | 4 ulp of the bound |
+| `c_current` | - | real | [0.0, 1.0] | 4 ulp of the bound |
+| `c_previous` | - | real | [0.0, 1.0] | 4 ulp of the bound |
+| `c_outflow` | - | real | [0.0, 1.0] | 4 ulp of the bound |
+| `dx_m` | m | real | (0.0, inf) | 4 ulp of the bound |
+| `courant_number` | - | real | (0.0, inf) | 4 ulp of the bound |
+| `grid_reynolds_number` | - | real | (0.0, inf) | 4 ulp of the bound |
+| `grid_reynolds_limit` | - | real | [1.0, inf) | 4 ulp of the bound |
+| `storage_start_m3` | m3 | real | (-inf, inf) | 4 ulp of the bound |
+| `storage_end_m3` | m3 | real | (-inf, inf) | 4 ulp of the bound |
+| `storage_steady_m3` | m3 | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- SI units: discharge in m3/s, time in min, the reach in km, the distance step and the diffusion length in m, the celerity in m/s, storage in m3
+- the weights are named by what they multiply: c_current I[t], c_previous I[t-1], c_outflow O[t-1]; NEH 630 and HEC-HMS call them C2, C1 and C3
+- one reference discharge, celerity and top width for every distance and time step, so the coefficients are constant: NRCS's WinTR-20 takes the peak at the upstream end of each distance step (NEH 630 example 17-5) and HEC-HMS recomputes the coefficients at every time and distance step (a variable-coefficient method, Ponce 1986): case mc_neh17_example17_5_reach
+- X may be negative (NEH 630 example 17-4, X = -0.254); a grid with a negative weight, which NEH accepts (example 17-5, C1 = -0.187), is refused by the precondition nonnegative_weights (Hydrolog ADR-0008)
+- within the window's slack a weight that rounding puts below zero is set to zero and the others are divided by their sum (hydrolog.routing._kernels.nonnegative_coefficients)
+- Dg is computed as D / dx (NEH eq. 17-34), equal to 1 - 2X (eq. 17-35) to rounding; the accuracy limit exp(2.3 Cg) is capped at exp(700), above every Dg <= 1 + Cg of the window
+- no lateral inflow: the term C4 q dx of HEC-HMS eq. 7 is zero
+- only the given grid is routed: MuskingumCungeReach takes the inflow peak as the reference unless one is given, chooses N and the sub-steps of a step by NEH 630's rules inside the window, interpolates the inflow linearly between them and falls back to linear reservoirs where no grid exists (Tier B, ADR-0008, ADR-0026)
+
+**Assumptions**
+
+- the diffusion wave: the inertia terms of the momentum equation are neglected, and the convective diffusion equation is linearised at the reference discharge with c and mu = Q / (2 T S0) constant (HEC-HMS eqs. 1 to 5)
+- a prismatic reach of one slope; no backwater
+
+**Validation:** none: the sources compare the scheme with unsteady flow models, not with observations (NEH 630 examples 17-4 and 17-5 against HEC-RAS: peaks within 0.2 and 2.5 %); NRCS fitted its accuracy limit to 140 test routings (NEH 630 appendix 17B)
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `difference_denominator`: the window's top L / |c dt - D| divides by a difference: when the wave travels exactly its diffusion length in a step it has no top (test_a_wave_as_long_as_its_diffusion_length_has_no_top); the weights' 1 + Cg + Dg never vanishes
+- `stability_bound`: the window |c dt - D| <= dx <= c dt + D: constraint nonnegative_weights with its satisfied, boundary and violated points, and test_a_border_of_the_window_rounds_to_zero_weights
+- `gap_propagation`: type cases inflow_m3s-nan_element and inflow_m3s-inf_element: a gap is refused, the recurrence would carry it to every later ordinate
+- `many_small_terms`: test_a_long_steady_inflow_stays_steady: 200,000 ordinates of a constant inflow stay constant to 1e-14
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `inflow_m3s` increasing, `initial_outflow_m3s` increasing
+- scaling `discharge`: inputs times 2^e (`inflow_m3s` e = 1.0, `initial_outflow_m3s` e = 1.0) give outputs times 2^e (`outflow_m3s` e = 1.0, `storage_start_m3` e = 1.0, `storage_end_m3` e = 1.0, `storage_steady_m3` e = 1.0)
+- scaling `time`: inputs times 2^e (`inflow_m3s` e = -1.0, `timestep_min` e = 1.0, `celerity_m_per_s` e = -1.0, `reference_discharge_m3s` e = -1.0, `initial_outflow_m3s` e = -1.0) give outputs times 2^e (`outflow_m3s` e = -1.0, `k_min` e = 1.0)
+- scaling `length`: inputs times 2^e (`inflow_m3s` e = 3.0, `length_km` e = 1.0, `celerity_m_per_s` e = 1.0, `top_width_m` e = 1.0, `reference_discharge_m3s` e = 3.0, `initial_outflow_m3s` e = 3.0) give outputs times 2^e (`outflow_m3s` e = 3.0, `dx_m` e = 1.0, `storage_start_m3` e = 3.0, `storage_end_m3` e = 3.0, `storage_steady_m3` e = 3.0)
+- scaling `discharge_per_width`: inputs times 2^e (`top_width_m` e = 1.0, `reference_discharge_m3s` e = 1.0) give outputs times 2^e (none)
+- limit `steady_state`: an inflow equal to the initial outflow passes unchanged: the weights sum to 1
+- limit `exact_recurrence`: the grid and every outflow equal Ponce's form of the weights, (C + D - 1, 1 + C - D, 1 - C + D) / (1 + C + D), and the recurrence in exact rational arithmetic
+- limit `moments`: the impulse response has the moments of the diffusion wave, the mean L / c and the variance 2 mu L / c^3 = D L / c^2, whatever dt and N
+- limit `bounded_by_its_inputs`: every outflow lies between the least and the largest of the inflow and the initial outflow
+- limit `inside_the_accuracy_limit`: on every grid the window accepts Dg <= exp(2.3 Cg), to the window's slack: |Cg - Dg| <= 1 gives Dg <= 1 + Cg <= exp(2.3 Cg)
+- conservation `volume`: the trapezoid continuity holds in every distance step: inflow volume - outflow volume = storage at the end - storage at the start
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/muskingum-cunge-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: Ponce's form of the weights, (C + D - 1, 1 + C - D, 1 - C + D) / (1 + C + D), and the recurrence of the distance steps in exact rational arithmetic (fractions) (`tests/unit/test_formulas_muskingum_cunge.py (limit exact_recurrence)`)
+- exact: the moments of the impulse response against those of the diffusion wave of HEC-HMS eq. 3, mean L / c and variance 2 mu L / c^3 with mu = Q / (2 T S0), which Cunge's K and X reproduce exactly (`tests/unit/test_formulas_muskingum_cunge.py (limit moments)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
 ## Tier B
 
 | Formula | Function | Definition | Constants | Convention | Source |
@@ -1255,6 +1473,9 @@ None.
 | `routing_volume_balance` | `hydrolog.routing.reach.RoutingResult.balance_error_m3` | the inflow volume over the extended axis (the last inflow held) minus the outflow volume minus the storage at the end plus the storage at the start, each volume by the trapezoid rule | – | zero to rounding for a recurrence on the original step; the sampling error of the trapezoid rule after sub-steps, the quadrature error of an exact kernel (cascade) or of an interpolated lag otherwise | Hydrolog ADR-0008: routing conventions, docs/decisions/0008-routing-conventions.md, Balance |
 | `muskingum_subreaches` | `hydrolog.routing.muskingum.subreach_window` | the whole numbers N of equal sub-reaches whose weights are non-negative on a step dt, ceil(2KX/dt) <= N <= floor(2K(1 - X)/dt), each end to 1e-9 of itself; MuskingumReach routes with N = K/dt rounded (a half up, at least 1), which lies in the window whenever a whole number does, and divides a step without a window into the fewest of 2 to 100 equal sub-steps that have one, the inflow linear between the ordinates | – | the travel time of a sub-reach is about one time step (HEC-HMS); a number of sub-reaches the caller gives is never changed: outside the window it is refused (unstable_timestep, ADR-0008) | US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum Model, the number of subreaches: the travel time through a subreach approximately equal to the simulation time step |
 | `cascade_time_scale` | `hydrolog.routing.cascade.CascadeReach` | the storage constant of one reservoir from the length L and the flood-wave celerity c of the reach, K = L / (n c): the travel time L / c is the mean delay n K of the cascade; L in km and c in m/s through the units table (1 km = 1000 m, 1 min = 60 s) | – | K is given directly or follows from L and c, never both (details.reason one_of); Kalinin and Milyukov take n as L over the characteristic length Q / (T S0 c) | Ponce, V.M. (online). Linear reservoirs and numerical diffusion, San Diego State University, the Kalinin-Milyukov method: n = L / L_c reservoirs of K = L_c / c in series |
+| `muskingum_cunge_rise` | `hydrolog.routing.cunge.rise_steps` | the steps from the ordinate before the first one above 5 % of the inflow peak to the first peak of at least half of it; a rise of 1 to 9 steps divides each step of a grid into ceil(10 / rise) equal sub-steps (at most 100), the inflow linear between the ordinates (notice timestep_refined) | – | NEH 630 re-interpolates the hydrograph to exactly 10 intervals on the rise; Hydrolog divides into whole sub-steps, 10 intervals or more, and keeps the original ordinates; the reservoirs of a reach without a grid are exact at any step and are not refined | USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), Muskingum-Cunge method, step 1: at least 10 time intervals from the point of 5 percent of the peak on the rise to the peak, p. 17-32 |
+| `muskingum_cunge_grid` | `hydrolog.routing.cunge.MuskingumCungeReach._grid` | the reference discharge is the inflow peak unless one is given; the NRCS distance step dx_c = (c dt + D) / 2 with D = Q / (T S0 c) gives ceil(L / dx_c) steps, changed to the nearest number inside the window of non-negative weights \|c dt - D\| <= L / N <= c dt + D, each end to 1e-9 of itself (hydrolog.routing.formulas.cunge.distance_step_window); a step without a whole number in the window is divided into the fewest of 2 to 100 equal sub-steps that have one, the inflow linear between the ordinates (notices subreaches_adjusted, substeps_added); the notice accuracy_limit reports an NRCS grid whose Dg = D / dx exceeds exp(2.3 Cg) | – | one reference for every distance step, where WinTR-20 takes the peak at the upstream end of each; a grid with a negative weight, which NEH accepts (example 17-5), is replaced (ADR-0008); a grid that needs more than a million ordinates is refused (unstable_timestep) | USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), steps 2 to 4 of the Muskingum-Cunge method and eqs. 17-21 and 17-36, pp. 17-32 to 17-33 |
+| `muskingum_cunge_fallback` | `hydrolog.routing.cunge._reservoirs` | a reach without a grid within 100 sub-steps is routed as n = L / D linear reservoirs (rounded a half up, at least 1) of K = L / (n c) through the cascade of CascadeReach (notice diffusion_dominated) | – | the n reservoirs, of mean n K and variance n K^2, keep the mean travel time L / c of the diffusion wave and, as nearly as a whole n can, its variance D L / c^2 = 2 mu L / c^3 with mu = Q / (2 T S0) (HEC-HMS TRM, Muskingum-Cunge model, eq. 5) | Hydrolog ADR-0026: a reach without a Muskingum-Cunge grid, linear reservoirs with a warning, not a refusal, Decision, points 1 and 2 (docs/decisions/0026-a-reach-without-a-muskingum-cunge-grid.md) |
 | `junction_sum` | `hydrolog.routing.network._sum` | the hydrograph of a junction: the sum of its inflows ordinate by ordinate on the longest of their axes, a shorter one held at its last value | – | one time step and one start for every source of a network, no resampling; holding a truncated outflow (tail_truncated) at a value above zero adds volume downstream, which the upstream warning names | Hydrolog's computation paths, section 3.9.7, and ADR-0008, docs/COMPUTATION_PATHS.md, Time axes: a junction holds a shorter hydrograph at its last value; one step, nothing resampled |
 
 ## Delegated computations (CMP-1.2)
@@ -1262,3 +1483,4 @@ None.
 | Computation | Library | Versions | Smoke case | Test |
 |---|---|---|---|---|
 | nash_shape_root | scipy.optimize.brentq | scipy>=1.10 (1.18.1 locked) | the root N of f(N) = (N-1)^N e^-(N-1) / Gamma(N) = f(2.55) on [1.1, 20] with xtol 1e-6 is 2.55 within 1e-6 (spec lutz) | `tests/unit/test_formulas_lutz.py::test_the_delegated_root_finder_finds_a_known_root` |
+| manning_normal_depth | scipy.optimize.brentq | scipy>=1.10 (1.18.1 locked) | the root ln y = 0 of ln K(e^u) - ln K(1) for Manning's conveyance A R^(2/3) of a rectangle 2 m wide on [-1, 1] with xtol 1e-15 is 0 within 1e-14 (spec manning_normal_flow) | `tests/unit/test_formulas_muskingum_cunge.py::test_the_delegated_root_finder_finds_a_known_root` |
