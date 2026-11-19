@@ -461,8 +461,11 @@ kroku $\Delta t$ powstaje z krzywej S.
 <!-- /spec:clark -->
 
 Środek ciężkości krzywej czas–powierzchnia zlewni eliptycznej leży w połowie czasu koncentracji,
-więc czas opóźnienia hydrogramu Clarka wynosi $t_c/2 + R$. Większe $R$ spłaszcza i wydłuża
-hydrogram, większe $t_c$ przesuwa kulminację.
+więc czas opóźnienia hydrogramu Clarka (od środka ciężkości opadu do środka ciężkości odpływu) jest
+sumą połowy $t_c$ i stałej $R$; polecenie `uh clark` podaje go jako `lag_time_min`. Większe $R$
+spłaszcza i wydłuża hydrogram, większe $t_c$ przesuwa kulminację.
+
+<!-- TODO spec: czas opóźnienia hydrogramu Clarka (połowa tc plus R, środek ciężkości krzywej czas–powierzchnia HEC-HMS i zbiornika liniowego); ClarkIUH.lag_time_min, wynik lag_time_min polecenia uh clark -->
 
 **Krok obliczeń.** Zbiornik liniowy liczony wzorem trapezów ma wagę poprzedniego odpływu, która
 staje się ujemna, gdy krok przekracza $2R$; rzędne zaczęłyby wtedy oscylować. Hydrolog odrzuca taki
@@ -530,11 +533,11 @@ danymi, z których wyprowadzono ten wzór (rozdz. 4); Clark z $R/t_c$ = 2 — uw
 
 **Interpretacja.** Kulminacje różnią się dwukrotnie: od 24–25 m³/s (Snyder, Clark z dużym $R$) do
 52–54 m³/s (SCS). Rozstrzyga czas opóźnienia, który każdy model wyznacza inaczej: w modelu SCS
-125 min ze wzoru na czas koncentracji, w modelu Clarka $t_c/2 + R$ (od 209 do 522 min zależnie od
-$R$), u Snydera 366 min, a w metodzie Lutza 374 min, oba z regionalnych regresji geometrii zlewni
-(Appalachy, południowo-zachodnie Niemcy). Dla zlewni niekontrolowanej żaden z tych wyników nie jest
-„prawdziwy”; wybór modelu i jego parametrów to najważniejsza decyzja projektanta. Dobrą praktyką
-jest:
+125 min ze wzoru na czas koncentracji, w modelu Clarka połowa $t_c$ plus $R$ (od 209 do 522 min
+zależnie od $R$), u Snydera 366 min, a w metodzie Lutza 374 min, oba z regionalnych regresji
+geometrii zlewni (Appalachy, południowo-zachodnie Niemcy). Dla zlewni niekontrolowanej żaden z
+tych wyników nie jest „prawdziwy”; wybór modelu i jego parametrów to najważniejsza decyzja
+projektanta. Dobrą praktyką jest:
 
 - porównać kilka modeli, jak w tabeli, i uzasadnić wybór założeniami modelu (np. metoda Lutza dla
   zlewni quasi-naturalnej z przewagą lasu, jaką jest Kamiennik);
@@ -544,9 +547,9 @@ jest:
 - podawać w raporcie model, jego parametry, metodę czasu koncentracji i krok obliczeń.
 
 **Czas trwania opadu.** Najwyższą kulminację daje opad o **czasie trwania krytycznym**, który
-znajduje się, licząc hydrogramy dla kilku czasów trwania tego samego prawdopodobieństwa (rozdz. 2
-pokazuje taki przegląd dla modelu SCS, także dla opadów krótszych niż 3 h). Wysokości opadu PMAXTP
-dla $p$ = 1 % i polecenia z odpowiednimi `--total-mm` i `--duration-min` dają:
+znajduje się, licząc hydrogramy dla kilku czasów trwania tego samego prawdopodobieństwa (rozdz. 2,
+p. 2.5, pokazuje taki przegląd dla modelu SCS, także dla opadów krótszych niż 3 h). Wysokości opadu
+PMAXTP dla $p$ = 1 % i polecenia z odpowiednimi `--total-mm` i `--duration-min` dają:
 
 | Czas trwania opadu [min] | Opad [mm] | Opad efektywny [mm] | SCS: kulminacja [m³/s] (czas [min]) | Nash–Lutz: kulminacja [m³/s] (czas [min]) |
 |---|---|---|---|---|
@@ -560,9 +563,9 @@ Dla modelu SCS opad 12-godzinny daje największą kulminację spośród sprawdzo
 jest praktycznie krytyczny; dla metody Lutza kulminacja rośnie jeszcze przy 24 h. Czas krytyczny zależy
 więc od modelu, a przy metodzie SCS-CN także od strat: przy CN = 65 straty początkowe wynoszą
 27,35 mm, więc krótki, intensywny opad daje mało odpływu, a dłuższy, choć mniej intensywny, coraz
-więcej. Reguła DVWK przytaczana przez KZGW (2017, s. 105), według której czas krytyczny leży między
-$t_c$ a $2t_c$, wskazywałaby tu 3,5–7 h; nie uwzględnia ona strat początkowych, dlatego
-przy dużych stratach trzeba sprawdzić także dłuższe opady.
+więcej. Reguła DVWK przytaczana przez KZGW (2017, s. 105; rozdz. 4, p. 4.1), według której czas
+krytyczny leży między $t_c$ a $2t_c$, wskazywałaby tu 3,5–7 h; nie uwzględnia ona strat
+początkowych, dlatego przy dużych stratach trzeba sprawdzić także dłuższe opady.
 
 **Prawdopodobieństwo wyniku.** Obliczenie przyjmuje, że wezbranie wywołane opadem o
 prawdopodobieństwie przewyższenia 1 % ma to samo prawdopodobieństwo. To założenie metody, a nie
