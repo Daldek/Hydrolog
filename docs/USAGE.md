@@ -940,7 +940,8 @@ quantiles need at least 30 years).
   index; `stats seasonality`: the mean date and the concentration of the annual maxima
   (`--statistic min`: minima) of the complete years or of IMGW-PIB's `--half-year-file`;
   `stats harmonics`: the mean, amplitudes and days of maximum of the annual cycle (water or air
-  temperature, flow) over the period and per year; `stats baseflow`: the Lyne-Hollick baseflow,
+  temperature, flow) over the period and per year, from days with a value that leave no gap of
+  365.25/(2·harmonics) days (a summer alone is refused); `stats baseflow`: the Lyne-Hollick baseflow,
   the baseflow index of the period and of each year and the recession constant. The water
   temperature days at or above 15, 20, 25 °C and below 1 °C are `stats threshold-events` on the
   `T` column.
