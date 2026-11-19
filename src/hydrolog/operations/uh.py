@@ -71,7 +71,10 @@ class UhResult(JsonResultMixin):
     time_to_peak_min : float
         Time to peak [min].
     peak_discharge_m3s_per_mm : float
-        Peak ordinate [m3/s per mm of effective precipitation].
+        Peak [m3/s per mm of effective precipitation]: the largest ordinate (Nash,
+        Clark, Snyder) or, for SCS, the formula's qp of the duration D (spec
+        ``scs``), a little above the largest ordinate when tp falls between two
+        step times and well above it when the step was computed on sub-steps.
     time_base_min : float or None
         Time base [min] for the models that define one (SCS, Snyder), else ``None``.
     parameters : dict of str to float
@@ -108,29 +111,29 @@ class UhResult(JsonResultMixin):
 def uh_scs(
     *, area_km2: float, tc_min: float, timestep_min: float = 5.0
 ) -> OperationOutput:
-    """SCS (NRCS) unit hydrograph (``uh scs``).
+    """SCS (NRCS) unit hydrograph (``uh scs``, spec ``scs``).
 
     Parameters
     ----------
     area_km2 : float
-        Catchment area [km2], > 0.
+        Catchment area [km2].
     tc_min : float
-        Time of concentration [min], > 0.
+        Time of concentration [min].
     timestep_min : float, optional
-        Time step and unit rainfall duration D [min], > 0, by default 5.
+        Time step and unit rainfall duration D [min], by default 5.
 
     Returns
     -------
     OperationOutput
-        :class:`UhResult` (``tlag = 0.6 tc``, ``tp = D / 2 + tlag``,
-        ``qp = 0.208 A / tp``, ``tb = 5 tp`` and the ordinates) with an
-        ``outside_typical_range`` notice for an area larger than the watersheds the
-        unit hydrograph is applied to without dividing them.
+        :class:`UhResult` (the lag, tp, qp and tb of the formula and the ordinates;
+        ``docs/FORMULAS.md``) with an ``outside_typical_range`` notice for an area
+        larger than the subareas of NEH 630, and ``uh_substeps`` when the step was
+        computed on sub-steps.
 
     Raises
     ------
     InvalidParameterError
-        If a parameter is not positive.
+        If the spec refuses an input (``details.reason``).
     """
     with capture_warnings() as notices:
         shape = SCSUnitHydrograph(area_km2=area_km2, tc_min=tc_min).generate(
@@ -346,15 +349,21 @@ def uh_clark(
     Raises
     ------
     InvalidParameterError
-        If both or neither of ``r_min`` and ``r_tc_ratio`` is given, or a value is
-        not positive.
+        If both or neither of ``r_min`` and ``r_tc_ratio`` is given, or the spec
+        ``clark`` refuses a value (``details.reason``; a step longer than 2 R is
+        ``precondition_failed`` on ``timestep_min``).
     """
     chosen = select_group(
         {"r_min": r_min, "r_tc_ratio": r_tc_ratio},
         {"r_min": ("r_min",), "r_tc_ratio": ("r_tc_ratio",)},
     )
-    # R/tc is checked by ClarkIUH: its field is the option that gave R
-    with capture_warnings() as notices, option_names({"r_tc_ratio": chosen}):
+    # the spec checks R, R/tc warns: both are named by the option that gave R
+    names = {
+        "r_min": chosen,
+        "r_tc_ratio": chosen,
+        "duration_min": "rainfall_duration_min",
+    }
+    with capture_warnings() as notices, option_names(names):
         if chosen == "r_min":
             assert r_min is not None
             reservoir = ClarkIUH(tc_min=tc_min, r_min=r_min)
@@ -434,10 +443,11 @@ def uh_snyder(
     Raises
     ------
     InvalidParameterError
-        If a parameter is not positive, or no unit hydrograph of 1 mm has the peak
-        of ``cp`` (``details.option`` ``cp``).
+        If the specs ``snyder`` and ``snyder_shape`` refuse a value
+        (``details.reason``), or no unit hydrograph of 1 mm has the peak of ``cp``
+        (``precondition_failed``, ``details.option`` ``cp``).
     """
-    names = {"L_km": "length_km", "Lc_km": "centroid_length_km"}
+    names = {"duration_min": "rainfall_duration_min", "peak_discharge_m3s": "cp"}
     with capture_warnings() as notices, option_names(names):
         model = SnyderUH(
             area_km2=area_km2,

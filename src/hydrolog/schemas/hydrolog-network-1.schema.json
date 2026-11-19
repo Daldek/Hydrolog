@@ -946,7 +946,7 @@
             "clark_r_tc_ratio": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Clark: ratio R/tc (> 0, typically 0.2-1.5), R = ratio · tc; alternative to `clark_r_min`."
+              "description": "Clark: ratio R/tc (> 0, typically 0.2-1.5, to be verified), R = ratio · tc; alternative to `clark_r_min`."
             },
             "snyder_length_km": {
               "type": "number",

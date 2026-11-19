@@ -1735,12 +1735,12 @@ class TestUnitHydrographs:
             assert caught.value.details["reason"] == "one_of"
 
     def test_clark_refuses_a_step_above_twice_the_storage_constant(self):
-        """A step longer than 2 R is a validation error naming ``timestep_min``."""
+        """A step longer than 2 R fails the precondition step_stable on its option."""
         with pytest.raises(InvalidParameterError) as caught:
             ops.uh_clark(area_km2=45.3, tc_min=120.0, r_min=2.0, timestep_min=5.0)
         assert caught.value.details["option"] == "timestep_min"
-        assert caught.value.details["reason"] == "unstable_timestep"
-        assert caught.value.details["maximum"] == 4.0
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "step_stable"
 
         result, _ = unwrap(
             ops.uh_clark(area_km2=45.3, tc_min=120.0, r_min=2.0, timestep_min=4.0)
@@ -1754,10 +1754,10 @@ class TestUnitHydrographs:
     def test_clark_r_tc_outside_its_range_is_noticed_on_the_given_option(
         self, given, field
     ):
-        """R/tc outside 0.2-1.5 names the option that gave R."""
+        """R/tc outside 0.2-1.5, a range to be verified, names the option of R."""
         _, notices = unwrap(ops.uh_clark(area_km2=45.3, tc_min=120.0, **given))
         (notice,) = notices
-        assert notice.code == "outside_typical_range"
+        assert notice.code == "outside_unverified_range"
         assert notice.details["parameter"] == "r_tc_ratio"
         assert notice.details["field"] == field
 
@@ -2430,7 +2430,7 @@ class TestHydrographGenerate:
             ),
             # The area of the watershed against the 24 watersheds of the NRCS lag
             ({"watershed": WATERSHED, "tc_method": "nrcs"}, "area_km2", "area_km2"),
-            # The SCS unit hydrograph of more than 52 km2
+            # The SCS unit hydrograph of more than 20 mi2 (51.8 km2)
             ({"tc_min": 90.0, "area_km2": 60.0}, "area_km2", "area_km2"),
         ],
     )
@@ -2833,11 +2833,12 @@ class TestTypicalRangesOfTheModels:
     @pytest.mark.parametrize(
         "method, option, value, minimum, maximum",
         [
-            # Sorrell (2010): the NRCS unit hydrograph up to about 20 mi2
-            ("scs", "area_km2", 52.1, 0.0, 52.0),
-            # Snyder (1938): 10-10 000 mi2 of the Appalachian Highlands
-            ("snyder", "area_km2", 25.9, 26.0, 26000.0),
-            ("snyder", "area_km2", 26000.1, 26.0, 26000.0),
+            # NEH 630 ch. 16, p. 16-4: subareas of at most 20 mi2 (51.8 km2)
+            ("scs", "area_km2", 51.9, 0.0, 51.8),
+            # Snyder (1938): 30-30 000 km2 (10-10 000 mi2) of the Appalachian
+            # Highlands (Chow et al. 1988 after Rajagopalan's notes, p. 76)
+            ("snyder", "area_km2", 29.9, 30.0, 30000.0),
+            ("snyder", "area_km2", 30000.1, 30.0, 30000.0),
             # KZGW (2017), annex 2, eq. 6.5 and 6.7
             ("snyder", "ct", 1.349, 1.35, 1.65),
             ("snyder", "ct", 1.651, 1.35, 1.65),
@@ -2850,7 +2851,7 @@ class TestTypicalRangesOfTheModels:
             ("nash", "k_min", 200.01, 10.0, 200.0),
             # KZGW (2017), annex 2, p. 97: the Lutz method up to 236 km2
             ("lutz", "area_km2", 236.1, 0.0, 236.0),
-            # HEC-HMS Technical Reference Manual: R/tc 0.2-1.5
+            # Hydrolog's R/tc 0.2-1.5, no published source (outside_unverified_range)
             ("clark", "r_tc_ratio", 0.199, 0.2, 1.5),
             ("clark", "r_tc_ratio", 1.501, 0.2, 1.5),
             # Hawkins et al. (1985): the AMC formulas for CN 55-95
@@ -2875,9 +2876,9 @@ class TestTypicalRangesOfTheModels:
     @pytest.mark.parametrize(
         "method, option, value",
         [
-            ("scs", "area_km2", 52.0),
-            ("snyder", "area_km2", 26.0),
-            ("snyder", "area_km2", 26000.0),
+            ("scs", "area_km2", 51.8),
+            ("snyder", "area_km2", 30.0),
+            ("snyder", "area_km2", 30000.0),
             ("snyder", "ct", 1.35),
             ("snyder", "ct", 1.65),
             ("snyder", "cp", 0.4),

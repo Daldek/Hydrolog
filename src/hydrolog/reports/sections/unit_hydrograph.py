@@ -661,16 +661,18 @@ def _generate_snyder_section(
 ) -> list[str]:
     """Generate Snyder UH-specific content.
 
-    Reads the following keys from model_params (all optional; the defaults
-    are those of Snyder's method, except L_km and Lc_km: when they are not
-    given they are not shown and tL is shown as a value):
+    Reads the following keys from model_params, the outputs of the spec ``snyder``
+    (:func:`hydrolog.runoff.snyder_uh.snyder_parameters`) at the standard duration
+    and at the duration used; L_km and Lc_km are optional: when they are not given
+    they are not shown and tL is shown as a value:
     - L_km              : main stream length [km]
     - Lc_km             : length to centroid [km]
     - ct                : time coefficient Ct
     - cp                : peak coefficient Cp
     - lag_time_min      : basin lag time tL [min]
-    - standard_duration_min : standard duration tD [min]  (computed if absent)
-    - time_base_min     : time base tb [min]              (computed if absent)
+    - standard_duration_min : standard duration tD [min]
+    - time_base_min     : time base tb of the standard duration [min]
+    - w50_h, w75_h      : widths W50 and W75 of the standard duration [h]
     - duration_min      : actual rainfall duration used [min]
     - adjusted_lag_time_min : adjusted lag tLR [min]      (non-standard case)
     - adjusted_tp_min   : adjusted time to peak tpR [min] (non-standard case)
@@ -680,26 +682,13 @@ def _generate_snyder_section(
 
     L_km: float | None = model_params.get("L_km")
     Lc_km: float | None = model_params.get("Lc_km")
-    ct: float = model_params.get("ct", 1.5)
-    cp: float = model_params.get("cp", 0.6)
-    tL_min: float = model_params.get("lag_time_min", 60.0)
-
-    # Standard duration tD = tL / 5.5
-    tD_min: float = model_params.get("standard_duration_min", tL_min / 5.5)
-
-    # Time base tb = 0.556 * A / qp  (hours -> minutes)
-    tb_min: float = model_params.get(
-        "time_base_min",
-        (0.556 * area_km2 / peak_discharge_m3s) * 60.0,
-    )
-
-    # Hydrograph widths at 50 % and 75 % of peak (metric constants)
-    # W50 = 0.1783 / (qp/A)^1.08  [h],  W75 = 0.1019 / (qp/A)^1.08  [h]
-    # where qp/A is in m³/s/km²/mm; constants derived from imperial W50=770,
-    # W75=440 (cfs/mi²/inch) via conv = 25.4 / (0.028317 * 2.58999).
-    qp_per_area = peak_discharge_m3s / area_km2
-    w50_h: float = model_params.get("w50_h", 0.1783 / (qp_per_area**1.08))
-    w75_h: float = model_params.get("w75_h", 0.1019 / (qp_per_area**1.08))
+    ct: float = model_params["ct"]
+    cp: float = model_params["cp"]
+    tL_min: float = model_params["lag_time_min"]
+    tD_min: float = model_params["standard_duration_min"]
+    tb_min: float = model_params["time_base_min"]
+    w50_h: float = model_params["w50_h"]
+    w75_h: float = model_params["w75_h"]
 
     # Non-standard duration parameters (present only when Δt ≠ tD)
     duration_min: float | None = model_params.get("duration_min")

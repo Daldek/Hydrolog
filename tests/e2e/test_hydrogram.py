@@ -1332,12 +1332,13 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     field(page, "elevation_max_m").fill("475,1")
     shows(page, "57,90", "6:40", "1 046 738")
 
-    # An error of the server on its field: Clark's step above 2R
+    # An error of the server on its field: Clark's step above 2R, the precondition
+    # step_stable of the spec clark named by its option
     choose(page, "hg-uh-label", "Clark")
     choose(page, "hg-clark-label", "R [min]")
     field(page, "clark_r_min").fill("4")
     expect(message(page, "timestep_min")).to_have_text(
-        re.compile(r" · unstable_timestep$")
+        re.compile(r" · precondition_failed$")
     )
     expect(page.locator(BADGE)).to_have_text("Błąd danych")
     expect(page.locator('[data-stale="error"]').first).to_have_text(
@@ -1635,12 +1636,13 @@ def test_the_explanations_show_exactly_the_ranges_hydrolog_serves(tab: Tab) -> N
         found for found in shown["uh-nash"]["ranges"] if found["method"] == "lutz"
     ]
 
-    # One row per range, with its source in Polish; the four unit hydrograph models
-    # serve one range of the time step, listed once
+    # One row per range, with its source in Polish; the time step has two ranges, each
+    # listed once: NEH 630's of the SCS unit hydrograph and the rule of thumb of Nash,
+    # Clark and Snyder, to be verified (ADR-0058)
     rows = {info: len(entry["rows"]) for info, entry in shown.items()}
     assert rows == {
         **{info: len(entry["ranges"]) for info, entry in shown.items()},
-        "rain-timestep": 1,
+        "rain-timestep": 2,
     }
     for info, entry in shown.items():
         sources = {
@@ -1656,7 +1658,8 @@ def test_the_explanations_show_exactly_the_ranges_hydrolog_serves(tab: Tab) -> N
     }
     assert "A: od 0,005 do 0,45 km²" in words["kirpich.area_km2"]
     assert "A: od 170 do 70\u00a0000 km²" in words["giandotti.area_km2"]
-    assert "Δt: najwyżej 0,25·tp (" in words["scs.timestep_min"]
+    # two ranges of the time step: each names its method
+    assert "Δt (scs): najwyżej 0,25·tp (" in words["scs.timestep_min"]
     assert "Długość szeregu N: co najmniej 30 lat" in words["flood_frequency.years"]
     assert "X: najwyżej 0,5" in words["muskingum.x"]
 
@@ -1686,14 +1689,20 @@ def test_the_explanations_check_hydrologs_ranges_against_the_watershed(
     assert set(notes.evaluate_all("items => items.map((item) => item.className)")) == {
         "ok"
     }
-    # The note of the time step opens its explanation: the range of the four models once
+    # The note of the time step opens its explanation: NEH 630's range of the SCS unit
+    # hydrograph, checked, and the rule of thumb of the other models (ADR-0058)
     notes.nth(2).get_by_role("button", name="objaśnienie").click()
     expect(title).to_have_text("Krok czasowy Δt")
-    expect(rows).to_have_count(1)
-    expect(rows).to_have_attribute("data-range", "scs.timestep_min")
-    expect(rows).to_have_attribute("data-field", "timestep_min")
-    expect(rows).to_have_class("ok")
-    expect(rows).to_contain_text("Δt = 10 min: najwyżej 0,25·tp = 29,32 min (")
+    expect(rows).to_have_count(2)
+    expect(rows.nth(0)).to_have_attribute("data-range", "scs.timestep_min")
+    expect(rows.nth(0)).to_have_attribute("data-field", "timestep_min")
+    expect(rows.nth(0)).to_have_class("ok")
+    expect(rows.nth(0)).to_contain_text(
+        "Δt (scs) = 10 min: najwyżej 0,25·tp = 29,32 min ("
+    )
+    expect(rows.nth(1)).to_have_attribute(
+        "data-range", re.compile(r"^(nash|clark|snyder)\.timestep_min$")
+    )
     page.keyboard.press("Escape")
     expect(popover).to_be_hidden()
 
