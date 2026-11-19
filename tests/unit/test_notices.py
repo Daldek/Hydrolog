@@ -195,6 +195,14 @@ class TestLibraryWarnings:
             kind.keys,
         )
         assert not spec.own_text
+        assert spec.warning is kind
+
+    @pytest.mark.parametrize("kind", LIBRARY_WARNINGS, ids=lambda k: k.__name__)
+    def test_the_registry_words_a_notice_as_its_class(self, kind):
+        """Plan D16: the message of a notice is its code's registry entry applied to
+        its details, the same text a caught warning carries."""
+        warning = kind(**SAMPLES[kind])
+        assert NOTICES[kind.code()].message(SAMPLES[kind]) == str(warning)
 
     @pytest.mark.parametrize("kind", LIBRARY_WARNINGS, ids=lambda k: k.__name__)
     def test_a_warning_is_a_user_warning_with_its_details_and_message(self, kind):
@@ -520,6 +528,10 @@ class TestFormulaNotices:
         assert [str(w.message) for w in caught] == [
             "m: n=6 is below its typical minimum 12. Results may be unreliable.",
             "m: n=9.5 is above its typical maximum 8.0. Results may be unreliable.",
+        ]
+        spec = NOTICES["outside_typical_range"]
+        assert [spec.message(w.message.details) for w in caught] == [
+            str(w.message) for w in caught
         ]
         with warnings.catch_warnings():
             warnings.simplefilter("error")

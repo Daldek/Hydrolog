@@ -123,8 +123,10 @@ class HydrologWarning(UserWarning):
     The base of one subclass per code. A subclass sets the class attributes
     ``template`` and ``keys`` (and ``level`` when it is not ``"warning"``); an instance
     is made from exactly the details named by ``keys``, as keyword arguments, and its
-    message is the template filled with them (:func:`render`). An instance pickles
-    and copies.
+    message is :meth:`message_of` them: the template filled with them (:func:`render`),
+    or a wording of the subclass's own for a form the template cannot word (a range
+    with one end of :class:`OutsideTypicalRange`). The registry of notices words a
+    notice of the code by the same method. An instance pickles and copies.
 
     An instance is also made from its message alone, as ``warnings.warn(text, kind)``
     and ``warnings.warn_explicit(text, kind, ...)`` make it: code that records
@@ -197,11 +199,23 @@ class HydrologWarning(UserWarning):
                 f"got {', '.join(details) or '(none)'}"
             )
         self.details = {key: details[key] for key in kind.keys}
-        super().__init__(kind._text(self.details))
+        super().__init__(kind.message_of(self.details))
 
     @classmethod
-    def _text(cls, details: Mapping[str, Any]) -> str:
-        """Return the message of the details: the template filled with them."""
+    def message_of(cls, details: Mapping[str, Any]) -> str:
+        """Return the message of a warning of the class with these details.
+
+        Parameters
+        ----------
+        details : Mapping
+            The values of the keys of the class.
+
+        Returns
+        -------
+        str
+            The template filled with them (:func:`render`), unless a subclass words a
+            form of its own.
+        """
         return render(cls.template, details)
 
     @classmethod
@@ -267,8 +281,12 @@ class OutsideTypicalRange(HydrologWarning):
     )
 
     @classmethod
-    def _text(cls, details: Mapping[str, Any]) -> str:
-        """Return the message: of a range with both ends, or of its one end."""
+    def message_of(cls, details: Mapping[str, Any]) -> str:
+        """Return the message: of a range with both ends, or of its one end.
+
+        A range with one end (the other ``None``) says the end it has, and a violated
+        condition of a formula adds its text and source.
+        """
         if details["minimum"] is not None and details["maximum"] is not None:
             return render(cls.template, details)
         text = render(cls._above if details["minimum"] is None else cls._below, details)
