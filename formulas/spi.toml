@@ -1,0 +1,222 @@
+schema = "nogat-formula-card/1"
+name = "spi"
+title = "Standardized precipitation index of precipitation sums"
+function = "hydrolog.statistics.meteo_spi.spi_values"
+family = "index"
+formula_version = 1
+status = "referenced"
+equation = "H(x) = q + (1 - q) G(x; alpha, beta) for x > 0, H(0) = q, G the gamma distribution function; SPI = Phi^-1(H(x)) held within -3.09 and 3.09"
+latex = "H(x) = q + (1 - q)\\,P\\!\\left(\\alpha, \\frac{x}{\\beta}\\right),\\quad H(0) = q,\\quad \\mathrm{SPI} = \\max\\!\\left(-3.09, \\min\\!\\left(3.09, \\Phi^{-1}(H(x))\\right)\\right)"
+validation = "none: the SPI is a transformation of the fitted distribution"
+conventions = ["classic zero handling, H(0) = q (Edwards and McKee 1997; climate_indices zero_handling 'classic'); the centre of the zero mass, Phi^-1(q / 2), is not used", "held within -3.09 and 3.09, the quantiles of 0.001 and 0.999, as climate_indices; WMO-No. 1090 and xclim set no limit", "the upper tail from 1 - H = (1 - q) Q(alpha, x / beta), Q the regularized upper incomplete gamma function, where H > 0.5", "the SPI is not classed (WMO-No. 1090 table 1 gives classes from -2 to 2)"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/meteo-indices-cases.json"]
+constraints = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+sums_mm = 1
+alpha = -1
+beta_mm = -1
+zero_probability = 1
+
+[[properties.scalings]]
+name = "sums_and_scale_in_another_unit"
+
+[properties.scalings.inputs]
+sums_mm = 1.0
+beta_mm = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "x / beta is the same number when both are doubled"
+abs = 0.0
+
+[[properties.limits]]
+name = "zero_sum"
+text = "a zero sum has H = q (the classic zero handling)"
+
+[[properties.limits]]
+name = "held_within_limits"
+text = "H = 0 and H = 1 give -3.09 and 3.09"
+
+[[properties.limits]]
+name = "series_oracle"
+text = "the SPI equals the normal quantile of H from the power series of the incomplete gamma function in decimal arithmetic"
+
+[[sources]]
+citation = "WMO (2012). Standardized Precipitation Index User Guide. WMO-No. 1090, Geneva"
+access = "open"
+locator = "chapter 2 and section 6.1: the gamma distribution of the sums of each calendar month transformed to the standard normal (McKee et al. 1993)"
+url = "https://library.wmo.int/idurl/4/39629"
+
+[[sources]]
+citation = "Naresh Kumar, M., Murthy, C. S., Sesha Sai, M. V. R. and Roy, P. S. (2009). On the use of Standardized Precipitation Index (SPI) for drought intensity assessment. Meteorological Applications 16(3), 381-389; open preprint arXiv:1509.04808"
+access = "open"
+locator = "appendix, eq. A9 (H(x) = q + (1 - q) G(x), after Edwards and McKee 1997) and eqs. A10-A12 (the normal quantile)"
+url = "https://arxiv.org/pdf/1509.04808"
+
+[[sources]]
+citation = "climate_indices 3.2.0 (J. Adams), Python package of climate indices"
+access = "open"
+locator = "indices.spi: Thom's estimates, zero_handling 'classic' (H(0) = q), the SPI held within the valid range of a fitted index, -3.09 to 3.09"
+url = "https://pypi.org/project/climate-indices/3.2.0/"
+
+[[variables]]
+name = "sums_mm"
+symbol = "x"
+unit = "mm"
+kind = "real_array"
+description = "Precipitation sums of the calendar month and scale of the distribution; NaN stays NaN."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 105880.0
+test_reason = "four times the world's greatest 12-month rainfall, 26,470 mm at Cherrapunji, 1 August 1860 - 31 July 1861 (WMO Archive of Weather and Climate Extremes): a sum of the longest scale, 48 months"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 872.3
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the k-month sums of the default scales 1, 3, 6 and 12: 0.4 to 872.3 mm (a month without precipitation gives 0)"
+
+[[variables]]
+name = "alpha"
+symbol = "\\alpha"
+unit = "-"
+kind = "real"
+description = "Shape of the gamma distribution (spi_gamma_fit)."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 10000.0
+test_reason = "a shape of 1e4 is a coefficient of variation of 1 % of the sums, beyond the 213.6 of 48-month sums at Warszawa-Okęcie"
+
+[variables.typical]
+low = 1.7
+low_inclusive = true
+high = 42.6
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the fits of the default scales 1, 3, 6 and 12: shapes 1.72 to 42.60"
+
+[[variables]]
+name = "beta_mm"
+symbol = "\\beta"
+unit = "mm"
+kind = "real"
+description = "Scale of the gamma distribution (spi_gamma_fit)."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 105880.0
+test_reason = "four times the world's greatest 12-month rainfall, 26,470 mm at Cherrapunji, 1 August 1860 - 31 July 1861 (WMO Archive of Weather and Climate Extremes): a sum of the longest scale, 48 months"
+
+[variables.typical]
+low = 5.8
+low_inclusive = true
+high = 31.7
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the fits of the default scales 1, 3, 6 and 12: scales 5.81 to 31.71 mm"
+
+[[variables]]
+name = "zero_probability"
+symbol = "q"
+unit = "-"
+kind = "real"
+description = "Probability of a zero sum (spi_gamma_fit)."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = false
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 0.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "no month without precipitation in 1991-2020: q = 0 in every fit of the default scales"
+
+[[constants]]
+name = "spi_limit"
+value = 3.09
+unit = "-"
+symbol = "3.09"
+
+[constants.source]
+citation = "climate_indices 3.2.0 (J. Adams), Python package of climate indices"
+access = "open"
+locator = "indices.spi: Thom's estimates, zero_handling 'classic' (H(0) = q), the SPI held within the valid range of a fitted index, -3.09 to 3.09"
+url = "https://pypi.org/project/climate-indices/3.2.0/"
+
+[[outputs]]
+name = "spi"
+unit = "-"
+kind = "real_array"
+symbol = "\\mathrm{SPI}"
+description = "The SPI of each sum."
+gaps_allowed = true
+gaps_from = "sums_mm"
+
+[outputs.physical]
+low = -3.09
+low_inclusive = true
+high = 3.09
+high_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "limit held_within_limits: Phi^-1(0) and Phi^-1(1) are infinite and held at the limits; at a subnormal shape scipy's gammainc gives 0 and its gammaincc may go negative: both are held in [0, 1] and the tail is chosen by gammaincc (the pinned examples of test_spi_properties)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case sums_mm-nan_element: a missing sum gives a missing SPI and no other"
+
+[[oracles]]
+kind = "algorithm"
+description = "P(alpha, x / beta) by its power series in 40-digit decimals (decimal) and the normal quantile of statistics.NormalDist (AS241)"
+test = "tests/unit/test_formulas_meteo_spi.py (limit series_oracle)"
+conventions = []
+
+[[oracles]]
+kind = "frozen"
+description = "climate_indices 3.2.0 indices.spi on the monthly sums of Warszawa-Okęcie 1991-2020, scales 1, 3, 6 and 12"
+test = "tests/oracles/spi_climate_indices_warszawa.csv, compared by tests/unit/test_formulas_meteo_spi.py"
+conventions = ["both: Thom's estimates, q = m / n, H(0) = q, the SPI within -3.09 and 3.09, calibration 1991-2020 = the analysed years"]

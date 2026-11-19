@@ -6,6 +6,7 @@
 - Builds on: plan `docs/plans/2026-11-13-station-analyses.md` (decision D12 with D1, D2 and D13, step S4), Nogat's plan `2026-11-12-station-data-and-analyses` (step H3: M1 to M14; decisions D8, D12), approved by the author on 2026-11-13; ADR-0029 (the reference period), ADR-0031 (`stats harmonics` and Sen's slope, which serve M12 and M13), ADR-0028 (the providers' lines), ADR-0022
 - Amended by [ADR-0033](0033-review-of-the-station-analyses.md) (2026-11-13): one name per concept, variant options, the reference period of normals and the list of spells (its points 1, 2, 4 and 6)
 - Amended by [ADR-0044](0044-normals-spells-frost-days-and-the-hydrothermal-season.md) (2026-11-18): multi-month normals from the monthly normals, a spell in the year it ends, the freeze-thaw days beside FD, the hydrothermal season of April to September (its points 3, 4, 6 and 8)
+- Amended by [ADR-0059](0059-the-meteorological-indices-by-specs.md) (2026-11-19): the indices declared by specs beside the series, Kaczorowska's classes of the percentage rounded to a whole percent, a half up (its point 5)
 
 ## Context
 

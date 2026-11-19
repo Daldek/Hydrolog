@@ -1,0 +1,2712 @@
+[
+ {
+  "formula": "spi_gamma_fit",
+  "case_id": "kumar2009-anantapur-july-fit",
+  "source": {
+   "citation": "Naresh Kumar, M., Murthy, C. S., Sesha Sai, M. V. R. and Roy, P. S. (2009). On the use of Standardized Precipitation Index (SPI) for drought intensity assessment. Meteorological Applications 16(3), 381-389; open preprint arXiv:1509.04808",
+   "url": "https://arxiv.org/pdf/1509.04808",
+   "access": "open",
+   "locator": "appendix, eqs. A4-A8, and the statistics above the table of July rainfall, Anantapur 1969-2007: shape 1.90981, scale 32.4544 (the paper calls the shape beta and the scale alpha)"
+  },
+  "inputs": {
+   "sums_mm": [
+    27.999874,
+    30.000079,
+    29.000121,
+    14.000597,
+    26.999005,
+    49.99885,
+    124.002286,
+    39.001496,
+    68.999551,
+    76.999583,
+    46.997763,
+    34.001342,
+    77.999312,
+    57.997505,
+    29.000121,
+    137.002613,
+    75.000891,
+    26.999005,
+    10.000149,
+    158.000785,
+    280.002911,
+    42.001276,
+    18.999259,
+    54.998175,
+    41.001145,
+    45.001688,
+    112.000126,
+    56.002705,
+    10.000149,
+    112.000126,
+    38.000526,
+    54.998175,
+    20.999529,
+    21.187259,
+    40.698857,
+    107.996628,
+    144.995107,
+    20.999529,
+    55.401131
+   ]
+  },
+  "expected": {
+   "alpha": 1.90981,
+   "beta_mm": 32.4544,
+   "zero_probability": 0.0
+  },
+  "printed_precision": {
+   "alpha": 1e-05,
+   "beta_mm": 0.0001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "the 39 July sums are the exponentials of the printed 4-decimal logarithms (its rainfall column is rounded to whole mm), each within 5e-5 of itself; over 20,000 seeded perturbations of the logarithms within their rounding the fit spreads over 1.90972-1.90989 and 32.4526-32.4563 mm (the audit of 2026-11-18)",
+    "effect": {
+     "alpha": 8.6e-05,
+     "beta_mm": 0.0019
+    }
+   }
+  ],
+  "conventions": [
+   "Thom's approximation: A = ln(mean) - mean(ln x) printed as U = 0.2846",
+   "no zero sums: q = 0"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "McSweeney, C. F. (2007). Daily rainfall variability at point and areal scales: evaluating simulations of present and future climate. PhD thesis, University of East Anglia, Norwich",
+   "locator": "chapter 4, p. 93, eqs. 4-3 and 4-4 (the same estimator)",
+   "url": "https://crudata.uea.ac.uk/cru/pubs/thesis/2007-mcsweeney/4.Gamma.pdf",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "spi",
+  "case_id": "kumar2009-anantapur-july-table-iii",
+  "source": {
+   "citation": "Naresh Kumar, M., Murthy, C. S., Sesha Sai, M. V. R. and Roy, P. S. (2009). On the use of Standardized Precipitation Index (SPI) for drought intensity assessment. Meteorological Applications 16(3), 381-389; open preprint arXiv:1509.04808",
+   "url": "https://arxiv.org/pdf/1509.04808",
+   "access": "open",
+   "locator": "Table III, July (SPI to 3 decimals) of 1997, 1972, 1991, 1984, 2005, 1988 and 1989, under the fit shape 1.90981, scale 32.4544 mm"
+  },
+  "inputs": {
+   "sums_mm": [
+    10.0001,
+    14.0006,
+    18.9993,
+    137.0026,
+    144.9951,
+    158.0008,
+    280.0029
+   ],
+   "alpha": 1.90981,
+   "beta_mm": 32.4544,
+   "zero_probability": 0.0
+  },
+  "expected": {
+   "spi": [
+    -1.676,
+    -1.389,
+    -1.107,
+    1.489,
+    1.592,
+    1.753,
+    2.977
+   ]
+  },
+  "printed_precision": {
+   "alpha": 1e-05,
+   "beta_mm": 0.0001,
+   "spi": 0.001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "the paper's normal quantile is the rational approximation of Abramowitz and Stegun 26.2.23 (its eqs. A10-A12), within 4.5e-4",
+    "effect": {
+     "spi": 0.00045
+    }
+   },
+   {
+    "step": "the sums are the exponentials of the printed 4-decimal logarithms, relative 5e-5: at most 1e-4 of SPI (the audit's 20,000 seeded perturbations)",
+    "effect": {
+     "spi": 0.0001
+    }
+   }
+  ],
+  "conventions": [
+   "H(x) = q + (1 - q) G(x) with q = 0",
+   "no SPI reaches 3.09"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "spi",
+  "case_id": "edwards-mckee-zero-sum",
+  "source": {
+   "citation": "Naresh Kumar, M., Murthy, C. S., Sesha Sai, M. V. R. and Roy, P. S. (2009). On the use of Standardized Precipitation Index (SPI) for drought intensity assessment. Meteorological Applications 16(3), 381-389; open preprint arXiv:1509.04808",
+   "url": "https://arxiv.org/pdf/1509.04808",
+   "access": "open",
+   "locator": "appendix, eq. A9: H(x) = q + (1 - q) G(x), so a zero sum has H = q (after Edwards and McKee 1997); q = 0.3 gives the normal quantile -0.5244"
+  },
+  "inputs": {
+   "sums_mm": [
+    0.0
+   ],
+   "alpha": 2.0,
+   "beta_mm": 30.0,
+   "zero_probability": 0.3
+  },
+  "expected": {
+   "spi": [
+    -0.5244
+   ]
+  },
+  "printed_precision": {
+   "spi": 0.0001
+  },
+  "conventions": [
+   "the classic zero handling of climate_indices 3.2.0 (H(0) = q)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "climate_indices 3.2.0 (J. Adams), Python package of climate indices",
+   "locator": "indices.spi with zero_handling 'classic': SPI(0) = Phi^-1(q)",
+   "url": "https://pypi.org/project/climate-indices/3.2.0/",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "rocznik-2022-poznan",
+  "source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 9, p. 22: Poznań 2022, 414.6 mm, 77 % of the normal 538.9 mm; text p. 24: a dry year"
+  },
+  "inputs": {
+   "percent_of_normal": 77
+  },
+  "expected": {
+   "precipitation_class": "dry"
+  },
+  "printed_precision": {
+   "percent_of_normal": 1
+  },
+  "conventions": [
+   "Kaczorowska's classes of the year, „suchy” dry, „wilgotny” wet"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "rocznik-2022-wlodawa",
+  "source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 9, p. 22: Włodawa 2022, 649.1 mm, 115 % of the normal 562.4 mm; text p. 24: a wet year"
+  },
+  "inputs": {
+   "percent_of_normal": 115
+  },
+  "expected": {
+   "precipitation_class": "wet"
+  },
+  "printed_precision": {
+   "percent_of_normal": 1
+  },
+  "conventions": [
+   "Kaczorowska's classes of the year, „suchy” dry, „wilgotny” wet"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-49.49",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 49.49
+  },
+  "expected": {
+   "precipitation_class": "extremely_dry"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-49.5",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 49.5
+  },
+  "expected": {
+   "precipitation_class": "very_dry"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-74.49",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 74.49
+  },
+  "expected": {
+   "precipitation_class": "very_dry"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-74.5",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 74.5
+  },
+  "expected": {
+   "precipitation_class": "dry"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-89.49",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 89.49
+  },
+  "expected": {
+   "precipitation_class": "dry"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-89.5",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 89.5
+  },
+  "expected": {
+   "precipitation_class": "normal"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-110.49",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 110.49
+  },
+  "expected": {
+   "precipitation_class": "normal"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-110.5",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 110.5
+  },
+  "expected": {
+   "precipitation_class": "wet"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-125.49",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 125.49
+  },
+  "expected": {
+   "precipitation_class": "wet"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-125.5",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 125.5
+  },
+  "expected": {
+   "precipitation_class": "very_wet"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-150.49",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 150.49
+  },
+  "expected": {
+   "precipitation_class": "very_wet"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-boundary-150.5",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 150.5
+  },
+  "expected": {
+   "precipitation_class": "extremely_wet"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+   "url": "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+   "access": "open",
+   "locator": "Tab. 5, p. 14: the same classes („normalny” for „przeciętny”)"
+  }
+ },
+ {
+  "formula": "kaczorowska_class",
+  "case_id": "kaczorowska-89.6-whole-number-reading",
+  "source": {
+   "citation": "Kaczorowska, Z. (1962). Opady w Polsce w przekroju wieloletnim. Prace Geograficzne IG PAN 33",
+   "locator": "p. 72: classes of whole percents of the normal (no rounding rule stated)",
+   "url": "https://rcin.org.pl/Content/16869/PDF/WA51_22011_r1962_nr33_Prace-Geogr.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 89.6
+  },
+  "expected": {
+   "precipitation_class": "normal"
+  },
+  "conventions": [
+   "a percentage counts in the class of its whole-number rounding, a half rounded up (Hydrolog's convention, ADR-0059: the source gives ranges of whole percents)",
+   "Łabędzki and Bąk (2004, Acta Agrophysica 3(1), Tab. 2) read decimal bounds, 75.0-89.9 dry, and class 89.6 % dry"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-24.999",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 24.999
+  },
+  "expected": {
+   "precipitation_class": "extremely_dry"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-25",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 25.0
+  },
+  "expected": {
+   "precipitation_class": "very_dry"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-49.999",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 49.999
+  },
+  "expected": {
+   "precipitation_class": "very_dry"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-50",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 50.0
+  },
+  "expected": {
+   "precipitation_class": "dry"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-74.999",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 74.999
+  },
+  "expected": {
+   "precipitation_class": "dry"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-75",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 75.0
+  },
+  "expected": {
+   "precipitation_class": "normal"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-125",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 125.0
+  },
+  "expected": {
+   "precipitation_class": "normal"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-125.001",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 125.001
+  },
+  "expected": {
+   "precipitation_class": "wet"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-150",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 150.0
+  },
+  "expected": {
+   "precipitation_class": "wet"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-150.001",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 150.001
+  },
+  "expected": {
+   "precipitation_class": "very_wet"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-200",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 200.0
+  },
+  "expected": {
+   "precipitation_class": "very_wet"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "month_precipitation_class",
+  "case_id": "month-class-boundary-200.001",
+  "source": {
+   "citation": "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119",
+   "locator": "Table 1, p. 109 (source line: Tomaszewska 1994): <25, [25;50), [50;75), [75;125], (125;150], (150;200], >200",
+   "url": "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "percent_of_normal": 200.001
+  },
+  "expected": {
+   "precipitation_class": "extremely_wet"
+  },
+  "conventions": [
+   "the interval closures of Table 1 as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "degree_days",
+  "case_id": "eurostat-hdd-examples",
+  "source": {
+   "citation": "Eurostat (2024). Energy statistics - cooling and heating degree days (nrg_chdd), reference metadata, updated 25 October 2024",
+   "url": "https://ec.europa.eu/eurostat/cache/metadata/en/nrg_chdd_esms.htm",
+   "access": "open",
+   "locator": "section 3.4: a daily mean of 12 °C gives an HDD of 6 (18 - 12), one of 16 °C gives 0"
+  },
+  "inputs": {
+   "tmean_c": [
+    12.0,
+    16.0
+   ],
+   "growing_base_c": 5.0,
+   "heating_base_c": 18.0,
+   "heating_limit_c": 15.0
+  },
+  "expected": {
+   "heating_degree_days": [
+    6.0,
+    0.0
+   ]
+  },
+  "conventions": [
+   "HDD = 18 - Tm when Tm <= 15 °C, else 0"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Dopke, J. (2010). Obliczanie liczby stopniodni grzania według metody Eurostat",
+   "locator": "eq. 2: HDD = 18 - Tm for Tm <= 15 °C",
+   "url": "https://www.cire.pl/pliki/2/Dopke273blstometoeurostat1963129496.pdf",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "degree_days",
+  "case_id": "eurostat-hdd-at-the-threshold",
+  "source": {
+   "citation": "Eurostat (2024). Energy statistics - cooling and heating degree days (nrg_chdd), reference metadata, updated 25 October 2024",
+   "url": "https://ec.europa.eu/eurostat/cache/metadata/en/nrg_chdd_esms.htm",
+   "access": "open",
+   "locator": "section 3.4: 'If Tm <= 15 °C Then [HDD = sum (18 °C - Tim)]': a mean of 15 °C heats, 3 °C·d"
+  },
+  "inputs": {
+   "tmean_c": [
+    15.0,
+    15.1
+   ],
+   "growing_base_c": 5.0,
+   "heating_base_c": 18.0,
+   "heating_limit_c": 15.0
+  },
+  "expected": {
+   "heating_degree_days": [
+    3.0,
+    0.0
+   ]
+  },
+  "conventions": [
+   "the threshold is inclusive"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Dopke, J. (2010). Obliczanie liczby stopniodni grzania według metody Eurostat",
+   "locator": "eq. 2: HDD = 18 - Tm for Tm <= 15 °C",
+   "url": "https://www.cire.pl/pliki/2/Dopke273blstometoeurostat1963129496.pdf",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "threshold_days",
+  "case_id": "etccdi-fd-boundary",
+  "source": {
+   "citation": "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices",
+   "url": "https://etccdi.pacificclimate.org/list_27_indices.shtml",
+   "access": "open",
+   "locator": "FD: the count of days when TN < 0 °C"
+  },
+  "inputs": {
+   "tmax_c": [
+    5.0,
+    5.0
+   ],
+   "tmin_c": [
+    0.0,
+    -0.1
+   ],
+   "frost_tmin_c": 0.0,
+   "ice_tmax_c": 0.0,
+   "summer_tmax_c": 25.0,
+   "hot_tmax_c": 30.0,
+   "tropical_tmin_c": 20.0
+  },
+  "expected": {
+   "frost": [
+    0.0,
+    1.0
+   ]
+  },
+  "conventions": [
+   "strict signs: a day exactly at a threshold does not count (IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "threshold_days",
+  "case_id": "etccdi-id-boundary",
+  "source": {
+   "citation": "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices",
+   "url": "https://etccdi.pacificclimate.org/list_27_indices.shtml",
+   "access": "open",
+   "locator": "ID: the count of days when TX < 0 °C"
+  },
+  "inputs": {
+   "tmax_c": [
+    0.0,
+    -0.1
+   ],
+   "tmin_c": [
+    -5.0,
+    -5.0
+   ],
+   "frost_tmin_c": 0.0,
+   "ice_tmax_c": 0.0,
+   "summer_tmax_c": 25.0,
+   "hot_tmax_c": 30.0,
+   "tropical_tmin_c": 20.0
+  },
+  "expected": {
+   "ice": [
+    0.0,
+    1.0
+   ]
+  },
+  "conventions": [
+   "strict signs: a day exactly at a threshold does not count (IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "threshold_days",
+  "case_id": "etccdi-su-boundary",
+  "source": {
+   "citation": "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices",
+   "url": "https://etccdi.pacificclimate.org/list_27_indices.shtml",
+   "access": "open",
+   "locator": "SU: the count of days when TX > 25 °C"
+  },
+  "inputs": {
+   "tmax_c": [
+    25.0,
+    25.1
+   ],
+   "tmin_c": [
+    10.0,
+    10.0
+   ],
+   "frost_tmin_c": 0.0,
+   "ice_tmax_c": 0.0,
+   "summer_tmax_c": 25.0,
+   "hot_tmax_c": 30.0,
+   "tropical_tmin_c": 20.0
+  },
+  "expected": {
+   "summer": [
+    0.0,
+    1.0
+   ]
+  },
+  "conventions": [
+   "strict signs: a day exactly at a threshold does not count (IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "threshold_days",
+  "case_id": "etccdi-tr-boundary",
+  "source": {
+   "citation": "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices",
+   "url": "https://etccdi.pacificclimate.org/list_27_indices.shtml",
+   "access": "open",
+   "locator": "TR: the count of days when TN > 20 °C"
+  },
+  "inputs": {
+   "tmax_c": [
+    28.0,
+    28.0
+   ],
+   "tmin_c": [
+    20.0,
+    20.1
+   ],
+   "frost_tmin_c": 0.0,
+   "ice_tmax_c": 0.0,
+   "summer_tmax_c": 25.0,
+   "hot_tmax_c": 30.0,
+   "tropical_tmin_c": 20.0
+  },
+  "expected": {
+   "tropical": [
+    0.0,
+    1.0
+   ]
+  },
+  "conventions": [
+   "strict signs: a day exactly at a threshold does not count (IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "threshold_days",
+  "case_id": "hot-day-boundary",
+  "source": {
+   "citation": "Kossowska-Cezak, U. (2014). Zmiany wieloletnie liczby termicznych dni charakterystycznych w Warszawie (1951-2010). Prace Geograficzne 136, 9-30",
+   "access": "open",
+   "locator": "p. 14, after the Słownik meteorologiczny (2003): a hot day („upalny”) has tmax > 30 °C"
+  },
+  "inputs": {
+   "tmax_c": [
+    30.0,
+    30.1
+   ],
+   "tmin_c": [
+    15.0,
+    15.0
+   ],
+   "frost_tmin_c": 0.0,
+   "ice_tmax_c": 0.0,
+   "summer_tmax_c": 25.0,
+   "hot_tmax_c": 30.0,
+   "tropical_tmin_c": 20.0
+  },
+  "expected": {
+   "hot": [
+    0.0,
+    1.0
+   ]
+  },
+  "conventions": [
+   "strict signs: a day exactly at a threshold does not count (IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "threshold_days",
+  "case_id": "freeze-thaw-day",
+  "source": {
+   "citation": "Kossowska-Cezak, U. (2014). Zmiany wieloletnie liczby termicznych dni charakterystycznych w Warszawie (1951-2010). Prace Geograficzne 136, 9-30",
+   "access": "open",
+   "locator": "p. 14, after the Słownik meteorologiczny (2003): a freeze-thaw day („przymrozkowy”) has tmin < 0 °C and tmax > 0 °C"
+  },
+  "inputs": {
+   "tmax_c": [
+    0.1,
+    0.0,
+    3.0
+   ],
+   "tmin_c": [
+    -0.1,
+    -0.1,
+    0.0
+   ],
+   "frost_tmin_c": 0.0,
+   "ice_tmax_c": 0.0,
+   "summer_tmax_c": 25.0,
+   "hot_tmax_c": 30.0,
+   "tropical_tmin_c": 20.0
+  },
+  "expected": {
+   "freeze_thaw": [
+    1.0,
+    0.0,
+    0.0
+   ]
+  },
+  "conventions": [
+   "strict signs: a day exactly at a threshold does not count (IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB: Normy klimatyczne 1991-2020",
+   "locator": "product PRZYMROZKI, „Liczba dni przymrozkowych (TMAX>0 & TMIN<0)”",
+   "url": "https://klimat.imgw.pl",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "wet_day_percentile",
+  "case_id": "type8-analytic-1-to-100-p95",
+  "source": {
+   "citation": "Hyndman, R. J. and Fan, Y. (1996). Sample quantiles in statistical packages. The American Statistician 50(4), 361-365",
+   "access": "author-provided",
+   "locator": "definition 8, h = (n + 1/3) p + 1/3: on the wet days 1, 2, ..., 100 mm h = 95.65 for p = 0.95 and 99.6633 for p = 0.99, so Q = x(95) + 0.65 and x(99) + 0.6633"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    11.0,
+    12.0,
+    13.0,
+    14.0,
+    15.0,
+    16.0,
+    17.0,
+    18.0,
+    19.0,
+    20.0,
+    21.0,
+    22.0,
+    23.0,
+    24.0,
+    25.0,
+    26.0,
+    27.0,
+    28.0,
+    29.0,
+    30.0,
+    31.0,
+    32.0,
+    33.0,
+    34.0,
+    35.0,
+    36.0,
+    37.0,
+    38.0,
+    39.0,
+    40.0,
+    41.0,
+    42.0,
+    43.0,
+    44.0,
+    45.0,
+    46.0,
+    47.0,
+    48.0,
+    49.0,
+    50.0,
+    51.0,
+    52.0,
+    53.0,
+    54.0,
+    55.0,
+    56.0,
+    57.0,
+    58.0,
+    59.0,
+    60.0,
+    61.0,
+    62.0,
+    63.0,
+    64.0,
+    65.0,
+    66.0,
+    67.0,
+    68.0,
+    69.0,
+    70.0,
+    71.0,
+    72.0,
+    73.0,
+    74.0,
+    75.0,
+    76.0,
+    77.0,
+    78.0,
+    79.0,
+    80.0,
+    81.0,
+    82.0,
+    83.0,
+    84.0,
+    85.0,
+    86.0,
+    87.0,
+    88.0,
+    89.0,
+    90.0,
+    91.0,
+    92.0,
+    93.0,
+    94.0,
+    95.0,
+    96.0,
+    97.0,
+    98.0,
+    99.0,
+    100.0
+   ],
+   "wet_day_mm": 1.0,
+   "percentile": 95.0
+  },
+  "expected": {
+   "percentile_mm": 95.65
+  },
+  "tolerance": {
+   "abs": 1e-12,
+   "reason": "the exact value is a decimal with a recurring third; float interpolation rounds it"
+  },
+  "conventions": [
+   "quantile type 8 (median-unbiased) of the wet days, P >= 1 mm"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "NumPy 2 documentation, numpy.percentile",
+   "locator": "method 'median_unbiased': definition 8 of Hyndman and Fan (1996)",
+   "url": "https://numpy.org/doc/stable/reference/generated/numpy.percentile.html",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "wet_day_percentile",
+  "case_id": "type8-analytic-1-to-100-p99",
+  "source": {
+   "citation": "Hyndman, R. J. and Fan, Y. (1996). Sample quantiles in statistical packages. The American Statistician 50(4), 361-365",
+   "access": "author-provided",
+   "locator": "definition 8, h = (n + 1/3) p + 1/3: on the wet days 1, 2, ..., 100 mm h = 95.65 for p = 0.95 and 99.6633 for p = 0.99, so Q = x(95) + 0.65 and x(99) + 0.6633"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    11.0,
+    12.0,
+    13.0,
+    14.0,
+    15.0,
+    16.0,
+    17.0,
+    18.0,
+    19.0,
+    20.0,
+    21.0,
+    22.0,
+    23.0,
+    24.0,
+    25.0,
+    26.0,
+    27.0,
+    28.0,
+    29.0,
+    30.0,
+    31.0,
+    32.0,
+    33.0,
+    34.0,
+    35.0,
+    36.0,
+    37.0,
+    38.0,
+    39.0,
+    40.0,
+    41.0,
+    42.0,
+    43.0,
+    44.0,
+    45.0,
+    46.0,
+    47.0,
+    48.0,
+    49.0,
+    50.0,
+    51.0,
+    52.0,
+    53.0,
+    54.0,
+    55.0,
+    56.0,
+    57.0,
+    58.0,
+    59.0,
+    60.0,
+    61.0,
+    62.0,
+    63.0,
+    64.0,
+    65.0,
+    66.0,
+    67.0,
+    68.0,
+    69.0,
+    70.0,
+    71.0,
+    72.0,
+    73.0,
+    74.0,
+    75.0,
+    76.0,
+    77.0,
+    78.0,
+    79.0,
+    80.0,
+    81.0,
+    82.0,
+    83.0,
+    84.0,
+    85.0,
+    86.0,
+    87.0,
+    88.0,
+    89.0,
+    90.0,
+    91.0,
+    92.0,
+    93.0,
+    94.0,
+    95.0,
+    96.0,
+    97.0,
+    98.0,
+    99.0,
+    100.0
+   ],
+   "wet_day_mm": 1.0,
+   "percentile": 99.0
+  },
+  "expected": {
+   "percentile_mm": 99.66333333333333
+  },
+  "tolerance": {
+   "abs": 1e-12,
+   "reason": "the exact value is a decimal with a recurring third; float interpolation rounds it"
+  },
+  "conventions": [
+   "quantile type 8 (median-unbiased) of the wet days, P >= 1 mm"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "NumPy 2 documentation, numpy.percentile",
+   "locator": "method 'median_unbiased': definition 8 of Hyndman and Fan (1996)",
+   "url": "https://numpy.org/doc/stable/reference/generated/numpy.percentile.html",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "heavy_precipitation_share",
+  "case_id": "type8-analytic-1-to-100-r95p",
+  "source": {
+   "citation": "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices",
+   "url": "https://etccdi.pacificclimate.org/list_27_indices.shtml",
+   "access": "open",
+   "locator": "R95pTOT: the total of the days with RR > RRwn95; on the wet days 1, 2, ..., 100 mm with RRwn95 = 95.65 mm: 96 + 97 + 98 + 99 + 100 = 490 mm on 5 days, of PRCPTOT 5050 mm"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    11.0,
+    12.0,
+    13.0,
+    14.0,
+    15.0,
+    16.0,
+    17.0,
+    18.0,
+    19.0,
+    20.0,
+    21.0,
+    22.0,
+    23.0,
+    24.0,
+    25.0,
+    26.0,
+    27.0,
+    28.0,
+    29.0,
+    30.0,
+    31.0,
+    32.0,
+    33.0,
+    34.0,
+    35.0,
+    36.0,
+    37.0,
+    38.0,
+    39.0,
+    40.0,
+    41.0,
+    42.0,
+    43.0,
+    44.0,
+    45.0,
+    46.0,
+    47.0,
+    48.0,
+    49.0,
+    50.0,
+    51.0,
+    52.0,
+    53.0,
+    54.0,
+    55.0,
+    56.0,
+    57.0,
+    58.0,
+    59.0,
+    60.0,
+    61.0,
+    62.0,
+    63.0,
+    64.0,
+    65.0,
+    66.0,
+    67.0,
+    68.0,
+    69.0,
+    70.0,
+    71.0,
+    72.0,
+    73.0,
+    74.0,
+    75.0,
+    76.0,
+    77.0,
+    78.0,
+    79.0,
+    80.0,
+    81.0,
+    82.0,
+    83.0,
+    84.0,
+    85.0,
+    86.0,
+    87.0,
+    88.0,
+    89.0,
+    90.0,
+    91.0,
+    92.0,
+    93.0,
+    94.0,
+    95.0,
+    96.0,
+    97.0,
+    98.0,
+    99.0,
+    100.0
+   ],
+   "wet_day_mm": 1.0,
+   "threshold_mm": 95.65
+  },
+  "expected": {
+   "heavy_mm": 490.0,
+   "heavy_days": 5,
+   "wet_day_total_mm": 5050.0,
+   "share_percent": 9.702970297029703
+  },
+  "tolerance": {
+   "abs": 1e-12,
+   "reason": "a ratio of exact sums rounded once"
+  },
+  "conventions": [
+   "R95p a sum in mm, its share 100 R95p / PRCPTOT (ClimPACT's R95pTOT)",
+   "a day counts above the threshold when P > Pt"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "ClimPACT2, the indices of the Expert Team on Sector-specific Climate Indices (ET-SCI)",
+   "locator": "climate.indices.csv: R95pTOT = 100 R95p / PRCPTOT",
+   "url": "https://github.com/ARCCSS-extremes/climpact",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "heavy_precipitation_share",
+  "case_id": "type8-analytic-1-to-100-r99p",
+  "source": {
+   "citation": "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices",
+   "url": "https://etccdi.pacificclimate.org/list_27_indices.shtml",
+   "access": "open",
+   "locator": "R99pTOT: the total of the days with RR > RRwn99; on the wet days 1, 2, ..., 100 mm with RRwn99 = 99.6633 mm: 100 mm on 1 day"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    11.0,
+    12.0,
+    13.0,
+    14.0,
+    15.0,
+    16.0,
+    17.0,
+    18.0,
+    19.0,
+    20.0,
+    21.0,
+    22.0,
+    23.0,
+    24.0,
+    25.0,
+    26.0,
+    27.0,
+    28.0,
+    29.0,
+    30.0,
+    31.0,
+    32.0,
+    33.0,
+    34.0,
+    35.0,
+    36.0,
+    37.0,
+    38.0,
+    39.0,
+    40.0,
+    41.0,
+    42.0,
+    43.0,
+    44.0,
+    45.0,
+    46.0,
+    47.0,
+    48.0,
+    49.0,
+    50.0,
+    51.0,
+    52.0,
+    53.0,
+    54.0,
+    55.0,
+    56.0,
+    57.0,
+    58.0,
+    59.0,
+    60.0,
+    61.0,
+    62.0,
+    63.0,
+    64.0,
+    65.0,
+    66.0,
+    67.0,
+    68.0,
+    69.0,
+    70.0,
+    71.0,
+    72.0,
+    73.0,
+    74.0,
+    75.0,
+    76.0,
+    77.0,
+    78.0,
+    79.0,
+    80.0,
+    81.0,
+    82.0,
+    83.0,
+    84.0,
+    85.0,
+    86.0,
+    87.0,
+    88.0,
+    89.0,
+    90.0,
+    91.0,
+    92.0,
+    93.0,
+    94.0,
+    95.0,
+    96.0,
+    97.0,
+    98.0,
+    99.0,
+    100.0
+   ],
+   "wet_day_mm": 1.0,
+   "threshold_mm": 99.66333333333333
+  },
+  "expected": {
+   "heavy_mm": 100.0,
+   "heavy_days": 1,
+   "share_percent": 1.9801980198019802
+  },
+  "tolerance": {
+   "abs": 1e-12,
+   "reason": "a ratio of exact sums rounded once"
+  },
+  "conventions": [
+   "R99p a sum in mm, its share 100 R99p / PRCPTOT"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "ClimPACT2, the indices of the Expert Team on Sector-specific Climate Indices (ET-SCI)",
+   "locator": "climate.indices.csv: R95pTOT = 100 R95p / PRCPTOT",
+   "url": "https://github.com/ARCCSS-extremes/climpact",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "precipitation_concentration_index",
+  "case_id": "de-luis-equal-months",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260: PCI is 8.3 when the precipitation is the same in every month"
+  },
+  "inputs": {
+   "monthly_mm": [
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0
+   ]
+  },
+  "expected": {
+   "pci": 8.3
+  },
+  "printed_precision": {
+   "pci": 0.1
+  },
+  "conventions": [
+   "twelve monthly totals"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "precipitation_concentration_index",
+  "case_id": "de-luis-one-month",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260: PCI is 100 when all the precipitation falls in one month"
+  },
+  "inputs": {
+   "monthly_mm": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    50.0
+   ]
+  },
+  "expected": {
+   "pci": 100.0
+  },
+  "conventions": [
+   "twelve monthly totals"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "seasonality_index",
+  "case_id": "sumner-equal-months",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "eq. 1, p. 225: SI = 0 when every month has the same total"
+  },
+  "inputs": {
+   "monthly_mm": [
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0,
+    10.0
+   ]
+  },
+  "expected": {
+   "si": 0.0
+  },
+  "conventions": [
+   "twelve monthly totals"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "seasonality_index",
+  "case_id": "sumner-one-month",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "eq. 1, p. 225: SI = 1.83 when one month has all the precipitation"
+  },
+  "inputs": {
+   "monthly_mm": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    50.0
+   ]
+  },
+  "expected": {
+   "si": 1.83
+  },
+  "printed_precision": {
+   "si": 0.01
+  },
+  "conventions": [
+   "twelve monthly totals"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-9.9",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 9.9
+  },
+  "expected": {
+   "index_class": "uniform"
+  },
+  "conventions": [
+   "below 10"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-10",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 10.0
+  },
+  "expected": {
+   "index_class": "uniform"
+  },
+  "conventions": [
+   "the source's classes are of whole numbers; the gaps between them go to the class above (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-10.5",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 10.5
+  },
+  "expected": {
+   "index_class": "moderate"
+  },
+  "conventions": [
+   "the source's classes are of whole numbers; the gaps between them go to the class above (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-11",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 11.0
+  },
+  "expected": {
+   "index_class": "moderate"
+  },
+  "conventions": [
+   "11-15"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-15",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 15.0
+  },
+  "expected": {
+   "index_class": "moderate"
+  },
+  "conventions": [
+   "11-15"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-15.5",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 15.5
+  },
+  "expected": {
+   "index_class": "irregular"
+  },
+  "conventions": [
+   "the source's classes are of whole numbers; the gaps between them go to the class above (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-16",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 16.0
+  },
+  "expected": {
+   "index_class": "irregular"
+  },
+  "conventions": [
+   "16-20"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-20",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 20.0
+  },
+  "expected": {
+   "index_class": "irregular"
+  },
+  "conventions": [
+   "16-20"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pci_class",
+  "case_id": "pci-class-20.5",
+  "source": {
+   "citation": "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265",
+   "url": "https://nhess.copernicus.org/articles/11/1259/2011/",
+   "access": "open",
+   "locator": "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate, 16-20 irregular, above 20 strongly irregular"
+  },
+  "inputs": {
+   "pci": 20.5
+  },
+  "expected": {
+   "index_class": "strongly_irregular"
+  },
+  "conventions": [
+   "above 20"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.19",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.19
+  },
+  "expected": {
+   "index_class": "very_equable"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.195",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.195
+  },
+  "expected": {
+   "index_class": "very_equable"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.2",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.2
+  },
+  "expected": {
+   "index_class": "equable_wetter_season"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.39",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.39
+  },
+  "expected": {
+   "index_class": "equable_wetter_season"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.4",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.4
+  },
+  "expected": {
+   "index_class": "rather_seasonal"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.59",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.59
+  },
+  "expected": {
+   "index_class": "rather_seasonal"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.6",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.6
+  },
+  "expected": {
+   "index_class": "seasonal"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.79",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.79
+  },
+  "expected": {
+   "index_class": "seasonal"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.8",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.8
+  },
+  "expected": {
+   "index_class": "markedly_seasonal"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-0.99",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 0.99
+  },
+  "expected": {
+   "index_class": "markedly_seasonal"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-1",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 1.0
+  },
+  "expected": {
+   "index_class": "most_in_three_months"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-1.19",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 1.19
+  },
+  "expected": {
+   "index_class": "most_in_three_months"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "si_class",
+  "case_id": "si-class-1.2",
+  "source": {
+   "citation": "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247",
+   "access": "open",
+   "locator": "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19, 0.20-0.39, 0.40-0.59, 0.60-0.79, 0.80-0.99, 1.00-1.19, >= 1.20"
+  },
+  "inputs": {
+   "si": 1.2
+  },
+  "expected": {
+   "index_class": "extreme"
+  },
+  "conventions": [
+   "the table's classes are of two decimals; each class runs up to the next limit (Hydrolog's convention, ADR-0059)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)",
+   "locator": "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its classes",
+   "url": "https://cran.r-project.org/package=hydroTSM",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "sielianinov_coefficient",
+  "case_id": "kulik-sosnowica-2003",
+  "source": {
+   "citation": "Kulik, M., Baryła, R., Czarnecki, Z. and Bochniak, A. (2016). Warunki hydrotermiczne w centralnej części rejonu kanału Wieprz-Krzna w 50-leciu (1966-2015). Agronomy Science 71(3), 1-12",
+   "locator": "Table 1, pp. 5-6: Sosnowica 2003, April-September, mean temperature 16.3 °C, precipitation 200.1 mm, k 0.67",
+   "url": "https://doi.org/10.24326/as.2016.3.1",
+   "access": "open"
+  },
+  "inputs": {
+   "precipitation_mm": 200.1,
+   "temperature_sum_c_days": 2982.9
+  },
+  "expected": {
+   "coefficient": 0.67
+  },
+  "printed_precision": {
+   "coefficient": 0.01,
+   "precipitation_mm": 0.1,
+   "temperature_sum_c_days": 18.3
+  },
+  "conventions": [
+   "sum t: the mean temperature of April-September times its 183 days"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_coefficient",
+  "case_id": "trawczynski-jadwisin-2018-IV",
+  "source": {
+   "citation": "Trawczyński, C. (2021). Agronomy Science 76(4), 7-18, doi:10.24326/as.2021.4.1",
+   "url": "https://czasopisma.up.lublin.pl/as/article/download/4447/2963/14644",
+   "access": "open",
+   "locator": "Tab. 2, p. 9: Jadwisin 2018, month IV: P 21.7 mm, T 13.2 °C, K 0.54"
+  },
+  "inputs": {
+   "precipitation_mm": 21.7,
+   "temperature_sum_c_days": 396.0
+  },
+  "expected": {
+   "coefficient": 0.54
+  },
+  "printed_precision": {
+   "coefficient": 0.01,
+   "precipitation_mm": 0.1,
+   "temperature_sum_c_days": 3.0
+  },
+  "tolerance": {
+   "abs": 0.005,
+   "reason": "the table truncates K to two decimals (0.548 printed 0.54, 0.940 printed 0.93): half a unit more than rounding"
+  },
+  "conventions": [
+   "sum t: the monthly mean times its 30 days"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_coefficient",
+  "case_id": "trawczynski-jadwisin-2018-V",
+  "source": {
+   "citation": "Trawczyński, C. (2021). Agronomy Science 76(4), 7-18, doi:10.24326/as.2021.4.1",
+   "url": "https://czasopisma.up.lublin.pl/as/article/download/4447/2963/14644",
+   "access": "open",
+   "locator": "Tab. 2, p. 9: Jadwisin 2018, month V: P 43.4 mm, T 17.6 °C, K 0.79"
+  },
+  "inputs": {
+   "precipitation_mm": 43.4,
+   "temperature_sum_c_days": 545.6
+  },
+  "expected": {
+   "coefficient": 0.79
+  },
+  "printed_precision": {
+   "coefficient": 0.01,
+   "precipitation_mm": 0.1,
+   "temperature_sum_c_days": 3.1
+  },
+  "tolerance": {
+   "abs": 0.005,
+   "reason": "the table truncates K to two decimals (0.548 printed 0.54, 0.940 printed 0.93): half a unit more than rounding"
+  },
+  "conventions": [
+   "sum t: the monthly mean times its 31 days"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_coefficient",
+  "case_id": "trawczynski-jadwisin-2018-VI",
+  "source": {
+   "citation": "Trawczyński, C. (2021). Agronomy Science 76(4), 7-18, doi:10.24326/as.2021.4.1",
+   "url": "https://czasopisma.up.lublin.pl/as/article/download/4447/2963/14644",
+   "access": "open",
+   "locator": "Tab. 2, p. 9: Jadwisin 2018, month VI: P 41.0 mm, T 19.1 °C, K 0.71"
+  },
+  "inputs": {
+   "precipitation_mm": 41.0,
+   "temperature_sum_c_days": 573.0
+  },
+  "expected": {
+   "coefficient": 0.71
+  },
+  "printed_precision": {
+   "coefficient": 0.01,
+   "precipitation_mm": 0.1,
+   "temperature_sum_c_days": 3.0
+  },
+  "tolerance": {
+   "abs": 0.005,
+   "reason": "the table truncates K to two decimals (0.548 printed 0.54, 0.940 printed 0.93): half a unit more than rounding"
+  },
+  "conventions": [
+   "sum t: the monthly mean times its 30 days"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_coefficient",
+  "case_id": "trawczynski-jadwisin-2018-VII",
+  "source": {
+   "citation": "Trawczyński, C. (2021). Agronomy Science 76(4), 7-18, doi:10.24326/as.2021.4.1",
+   "url": "https://czasopisma.up.lublin.pl/as/article/download/4447/2963/14644",
+   "access": "open",
+   "locator": "Tab. 2, p. 9: Jadwisin 2018, month VII: P 75.2 mm, T 21.2 °C, K 1.14"
+  },
+  "inputs": {
+   "precipitation_mm": 75.2,
+   "temperature_sum_c_days": 657.1999999999999
+  },
+  "expected": {
+   "coefficient": 1.14
+  },
+  "printed_precision": {
+   "coefficient": 0.01,
+   "precipitation_mm": 0.1,
+   "temperature_sum_c_days": 3.1
+  },
+  "tolerance": {
+   "abs": 0.005,
+   "reason": "the table truncates K to two decimals (0.548 printed 0.54, 0.940 printed 0.93): half a unit more than rounding"
+  },
+  "conventions": [
+   "sum t: the monthly mean times its 31 days"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_coefficient",
+  "case_id": "trawczynski-jadwisin-2018-VIII",
+  "source": {
+   "citation": "Trawczyński, C. (2021). Agronomy Science 76(4), 7-18, doi:10.24326/as.2021.4.1",
+   "url": "https://czasopisma.up.lublin.pl/as/article/download/4447/2963/14644",
+   "access": "open",
+   "locator": "Tab. 2, p. 9: Jadwisin 2018, month VIII: P 60.6 mm, T 20.8 °C, K 0.93"
+  },
+  "inputs": {
+   "precipitation_mm": 60.6,
+   "temperature_sum_c_days": 644.8000000000001
+  },
+  "expected": {
+   "coefficient": 0.93
+  },
+  "printed_precision": {
+   "coefficient": 0.01,
+   "precipitation_mm": 0.1,
+   "temperature_sum_c_days": 3.1
+  },
+  "tolerance": {
+   "abs": 0.005,
+   "reason": "the table truncates K to two decimals (0.548 printed 0.54, 0.940 printed 0.93): half a unit more than rounding"
+  },
+  "conventions": [
+   "sum t: the monthly mean times its 31 days"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_coefficient",
+  "case_id": "trawczynski-jadwisin-2018-IX",
+  "source": {
+   "citation": "Trawczyński, C. (2021). Agronomy Science 76(4), 7-18, doi:10.24326/as.2021.4.1",
+   "url": "https://czasopisma.up.lublin.pl/as/article/download/4447/2963/14644",
+   "access": "open",
+   "locator": "Tab. 2, p. 9: Jadwisin 2018, month IX: P 30.9 mm, T 15.8 °C, K 0.65"
+  },
+  "inputs": {
+   "precipitation_mm": 30.9,
+   "temperature_sum_c_days": 474.0
+  },
+  "expected": {
+   "coefficient": 0.65
+  },
+  "printed_precision": {
+   "coefficient": 0.01,
+   "precipitation_mm": 0.1,
+   "temperature_sum_c_days": 3.0
+  },
+  "tolerance": {
+   "abs": 0.005,
+   "reason": "the table truncates K to two decimals (0.548 printed 0.54, 0.940 printed 0.93): half a unit more than rounding"
+  },
+  "conventions": [
+   "sum t: the monthly mean times its 30 days"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_class",
+  "case_id": "skowera-pula-boundary-0.4",
+  "source": {
+   "citation": "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177",
+   "locator": "p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, ..., 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet",
+   "url": "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "coefficient": 0.4
+  },
+  "expected": {
+   "sielianinov_class": "extremely_dry"
+  },
+  "conventions": [
+   "each limit belongs to the class below it, as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_class",
+  "case_id": "skowera-pula-boundary-0.4000001",
+  "source": {
+   "citation": "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177",
+   "locator": "p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, ..., 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet",
+   "url": "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "coefficient": 0.4000001
+  },
+  "expected": {
+   "sielianinov_class": "very_dry"
+  },
+  "conventions": [
+   "each limit belongs to the class below it, as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_class",
+  "case_id": "skowera-pula-boundary-0.7",
+  "source": {
+   "citation": "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177",
+   "locator": "p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, ..., 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet",
+   "url": "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "coefficient": 0.7
+  },
+  "expected": {
+   "sielianinov_class": "very_dry"
+  },
+  "conventions": [
+   "each limit belongs to the class below it, as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_class",
+  "case_id": "skowera-pula-boundary-0.7000001",
+  "source": {
+   "citation": "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177",
+   "locator": "p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, ..., 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet",
+   "url": "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "coefficient": 0.7000001
+  },
+  "expected": {
+   "sielianinov_class": "dry"
+  },
+  "conventions": [
+   "each limit belongs to the class below it, as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_class",
+  "case_id": "skowera-pula-boundary-1.0",
+  "source": {
+   "citation": "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177",
+   "locator": "p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, ..., 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet",
+   "url": "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "coefficient": 1.0
+  },
+  "expected": {
+   "sielianinov_class": "dry"
+  },
+  "conventions": [
+   "each limit belongs to the class below it, as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_class",
+  "case_id": "skowera-pula-boundary-1.3",
+  "source": {
+   "citation": "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177",
+   "locator": "p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, ..., 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet",
+   "url": "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "coefficient": 1.3
+  },
+  "expected": {
+   "sielianinov_class": "fairly_dry"
+  },
+  "conventions": [
+   "each limit belongs to the class below it, as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_class",
+  "case_id": "skowera-pula-boundary-1.6",
+  "source": {
+   "citation": "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177",
+   "locator": "p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, ..., 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet",
+   "url": "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "coefficient": 1.6
+  },
+  "expected": {
+   "sielianinov_class": "optimal"
+  },
+  "conventions": [
+   "each limit belongs to the class below it, as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_class",
+  "case_id": "skowera-pula-boundary-2.0",
+  "source": {
+   "citation": "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177",
+   "locator": "p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, ..., 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet",
+   "url": "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "coefficient": 2.0
+  },
+  "expected": {
+   "sielianinov_class": "fairly_wet"
+  },
+  "conventions": [
+   "each limit belongs to the class below it, as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_class",
+  "case_id": "skowera-pula-boundary-2.5",
+  "source": {
+   "citation": "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177",
+   "locator": "p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, ..., 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet",
+   "url": "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "coefficient": 2.5
+  },
+  "expected": {
+   "sielianinov_class": "wet"
+  },
+  "conventions": [
+   "each limit belongs to the class below it, as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_class",
+  "case_id": "skowera-pula-boundary-3.0",
+  "source": {
+   "citation": "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177",
+   "locator": "p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, ..., 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet",
+   "url": "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "coefficient": 3.0
+  },
+  "expected": {
+   "sielianinov_class": "very_wet"
+  },
+  "conventions": [
+   "each limit belongs to the class below it, as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "sielianinov_class",
+  "case_id": "skowera-pula-boundary-3.0000001",
+  "source": {
+   "citation": "Skowera, B. and Puła, J. (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971-2000. Acta Agrophysica 3(1), 171-177",
+   "locator": "p. 172: k <= 0.4 extremely dry, 0.4 < k <= 0.7 very dry, ..., 2.5 < k <= 3.0 very wet, k > 3.0 extremely wet",
+   "url": "http://www.acta-agrophysica.org/pdf-108195-38985?filename=38985.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "coefficient": 3.0000001
+  },
+  "expected": {
+   "sielianinov_class": "extremely_wet"
+  },
+  "conventions": [
+   "each limit belongs to the class below it, as printed"
+  ],
+  "status": "single_source"
+ }
+]

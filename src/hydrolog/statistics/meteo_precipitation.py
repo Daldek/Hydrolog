@@ -40,6 +40,16 @@ those of the wet days of a base period (Klein Tank et al., 2009; Zhang et al., 2
 1961-1990; WMO-No. 1203, 5.2.2: a period longer than 30 years suits percentiles),
 and the regime is that of the normals.
 
+The formulas of a span of days or of twelve months are declared by specs (Nogat's
+computation standard, ADR-0050 and ADR-0059): :data:`SDII` (``sdii``),
+:data:`WET_DAY_PERCENTILE` (``wet_day_percentile``), :data:`HEAVY_SHARE`
+(``heavy_precipitation_share``), :data:`PCI` (``precipitation_concentration_index``),
+:data:`PCI_CLASS` (``pci_class``) and :data:`SI_CLASS` (``si_class``), with the
+seasonality index of :mod:`hydrolog.statistics.regime` (``seasonality_index``). The
+series functions compute through them; the sums, normals, maxima, counts of days and
+the regime around them are the module's :data:`TIER_B`, and ``docs/FORMULAS.md``
+shows both.
+
 References
 ----------
 WMO (2017): WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203.
@@ -57,31 +67,66 @@ Walsh, R. P. D. & Lawler, D. M. (1981): Rainfall seasonality: description, spati
     patterns and change through time. Weather 36(7), 201-208.
 Hyndman, R. J. & Fan, Y. (1996): Sample quantiles in statistical packages. The
     American Statistician 50(4), 361-365 (quantile type 8).
+
+Examples
+--------
+>>> found = wet_day_intensity([0.0, 1.0, 2.5, np.nan, 13.1], 1.0)
+>>> found.wet_days, round(found.wet_day_total_mm, 6), round(found.sdii_mm, 4)
+(3, 16.6, 5.5333)
+>>> round(wet_day_percentile(np.arange(1.0, 101.0), 1.0, 95.0), 4)
+95.65
+>>> share = heavy_precipitation_share(np.arange(1.0, 101.0), 1.0, 95.65)
+>>> share.heavy_mm, share.heavy_days, round(share.share_percent, 5)
+(490.0, 5, 9.70297)
+>>> precipitation_concentration_index([0.0] * 11 + [50.0]), pci_class(10.0)
+(100.0, 'uniform')
+>>> si_class(0.2)
+'equable_wetter_season'
 """
 
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from fractions import Fraction
+from typing import Final, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._formulas import checked_inputs, checked_outputs
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import CalculationError, InvalidParameterError
+from hydrolog.nogat_formulas import (
+    Conservation,
+    Constant,
+    Constraint,
+    FormulaSpec,
+    Limit,
+    Oracle,
+    Output,
+    Properties,
+    Range,
+    Scaling,
+    Source,
+    Symmetry,
+    TierBSpec,
+    Tolerance,
+    Values,
+    Variable,
+    assert_within,
+)
 from hydrolog.statistics._climate import (
     DailyGrid,
     DailyPrecipitation,
     block_extreme,
-    classify,
     complete_years,
     finite,
     mean_of,
     month_quality,
     monthly_counts,
     monthly_normals,
-    monthly_totals,
     multimonth_normal,
     normal,
     precipitation_periods,
@@ -97,10 +142,14 @@ __all__ = [
     "DEFAULT_PERCENTILES",
     "DEFAULT_THRESHOLDS_MM",
     "DEFAULT_WET_DAY_MM",
+    "HEAVY_SHARE",
     "HeavyPrecipitation",
     "HeavyPrecipitationPeriod",
+    "HeavyPrecipitationShare",
     "HeavyPrecipitationYear",
     "MIN_WET_DAYS",
+    "PCI",
+    "PCI_CLASS",
     "PCI_CLASSES",
     "PrecipitationDays",
     "PrecipitationDaysMonth",
@@ -126,8 +175,15 @@ __all__ = [
     "PrecipitationSumPeriod",
     "PrecipitationSumYear",
     "PrecipitationSums",
+    "SDII",
+    "SI_CLASS",
     "SI_CLASSES",
+    "SPECS",
+    "TIER_B",
+    "WET_DAY_PERCENTILE",
+    "WetDayIntensity",
     "heavy_precipitation",
+    "heavy_precipitation_share",
     "precipitation_concentration_index",
     "precipitation_days",
     "precipitation_intensity",
@@ -136,6 +192,8 @@ __all__ = [
     "precipitation_sums",
     "pci_class",
     "si_class",
+    "wet_day_intensity",
+    "wet_day_percentile",
     "PRECIPITATION_INDICES",
 ]
 
@@ -168,9 +226,8 @@ PCI_CLASSES: tuple[str, ...] = (
     "irregular",
     "strongly_irregular",
 )
-"""Classes of the precipitation concentration index (Oliver, 1980): up to 10, 15, 20
-and above 20."""
-_PCI_LIMITS = (10.0, 15.0, 20.0)
+"""Classes of the precipitation concentration index (Oliver, 1980; spec
+``pci_class``)."""
 SI_CLASSES: tuple[str, ...] = (
     "very_equable",
     "equable_wetter_season",
@@ -180,9 +237,1194 @@ SI_CLASSES: tuple[str, ...] = (
     "most_in_three_months",
     "extreme",
 )
-"""Classes of the seasonality index (Walsh and Lawler, 1981): below 0.20, 0.40, 0.60,
-0.80, 1.00, 1.20, and from 1.20."""
-_SI_LIMITS = (0.2, 0.4, 0.6, 0.8, 1.0, 1.2)
+"""Classes of the seasonality index (Walsh and Lawler, 1981; spec ``si_class``)."""
+
+
+# --- the formulas of a span of days and of twelve months (specs) ----------------------
+
+_ETCCDI_URL = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+_ETCCDI = (
+    "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. "
+    "Expert Team on Climate Change Detection and Indices"
+)
+_ETCCDI_WET = Source(
+    citation=_ETCCDI,
+    locator="SDII: the precipitation of the wet days (RR >= 1 mm) of a period over "
+    "their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: "
+    "the annual total of the days with RR > RRwn95, the 95th percentile of the "
+    "precipitation of the wet days of the base period 1961-1990",
+    url=_ETCCDI_URL,
+)
+_CLIMPACT = Source(
+    citation="ClimPACT2, the indices of the Expert Team on Sector-specific Climate "
+    "Indices (ET-SCI)",
+    locator="climate.indices.csv: R95p, the annual sum of the precipitation of the "
+    "days above the 95th percentile of the wet days; R95pTOT = 100 R95p / PRCPTOT",
+    url="https://github.com/ARCCSS-extremes/climpact",
+)
+_HYNDMAN_FAN = Source(
+    citation="Hyndman, R. J. and Fan, Y. (1996). Sample quantiles in statistical "
+    "packages. The American Statistician 50(4), 361-365",
+    locator="definition 8: Q(p) = x(k) + (h - k) (x(k + 1) - x(k)), h = (n + 1/3) p + "
+    "1/3 and k its whole part, x(k) the k-th smallest of n values",
+    access="author-provided",
+)
+_NUMPY_PERCENTILE = Source(
+    citation="NumPy 2 documentation, numpy.percentile",
+    locator="method 'median_unbiased': definition 8 of Hyndman and Fan (1996), "
+    "virtual index n p + 1/3 + p / 3 - 1 counted from 0",
+    url="https://numpy.org/doc/stable/reference/generated/numpy.percentile.html",
+)
+_CLIMDEX = Source(
+    citation="Bronaugh, D. (2020). climdex.pcic 1.1-11: PCIC implementation of "
+    "Climdex routines, R package",
+    locator="R/climdex.r: the percentiles of the wet days (not NA, at least 1 mm) of "
+    "the base period by quantile type 8",
+    url="https://cran.r-project.org/src/contrib/Archive/climdex.pcic/",
+)
+_DE_LUIS = (
+    "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). "
+    "Precipitation concentration changes in Spain 1946-2005. Natural Hazards and "
+    "Earth System Sciences 11, 1259-1265"
+)
+_DE_LUIS_URL = "https://nhess.copernicus.org/articles/11/1259/2011/"
+_OLIVER = Source(
+    citation="Oliver, J. E. (1980). Monthly precipitation distribution: a "
+    "comparative index. Professional Geographer 32(3), 300-309",
+    locator="the index and its classes; not opened here: as de Luis et al. (2011) "
+    "print them",
+    access="author-provided",
+)
+_SUMNER = (
+    "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in "
+    "eastern and southern coastal Spain. International Journal of Climatology 21, "
+    "219-247"
+)
+_HYDROTSM = Source(
+    citation="Zambrano-Bigiarini, M. hydroTSM: time series management and analysis "
+    "for hydrological modelling, R package (CRAN)",
+    locator="si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, "
+    "and its seven classes",
+    url="https://cran.r-project.org/package=hydroTSM",
+)
+_DAILY_RECORD = (
+    "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January "
+    "1966 (WMO Archive of Weather and Climate Extremes)"
+)
+_MONTH_RECORD = (
+    "a month holds less than the world's greatest 12-month rainfall, 26,470 mm at "
+    "Cherrapunji, 1 August 1860 - 31 July 1861 (WMO Archive of Weather and Climate "
+    "Extremes)"
+)
+_WARSZAWA = (
+    "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the "
+    "daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+)
+_PRECIPITATION = Variable(
+    name="precipitation_mm",
+    symbol="P_i",
+    unit="mm",
+    kind="real_array",
+    description="Daily precipitation of the days of a period; NaN on a missing day, "
+    "which is left out.",
+    physical=Range(low=0.0, test_high=1825.0, test_reason=_DAILY_RECORD),
+    applicability="unstated",
+    typical=Range(
+        low=0.0,
+        high=75.8,
+        source=Source(
+            citation=_WARSZAWA, locator="the daily precipitation: 0 to 75.8 mm"
+        ),
+    ),
+    gaps_allowed=True,
+)
+_WET_DAY = Variable(
+    name="wet_day_mm",
+    symbol="P_w",
+    unit="mm",
+    description="The least precipitation of a wet day.",
+    physical=Range(
+        low=0.0, low_inclusive=False, test_high=1825.0, test_reason=_DAILY_RECORD
+    ),
+    applicability="unstated",
+    typical=Range(low=1.0, high=1.0, source=_ETCCDI_WET),
+)
+_WHOLE = Tolerance(abs=0.0, reason="whole numbers of days")
+
+
+def _wet(x: Values) -> NDArray[np.float64]:
+    """Return the precipitation of the wet days, P >= P_w; a missing day is none."""
+    values = x.array("precipitation_mm")
+    with np.errstate(invalid="ignore"):
+        wet: NDArray[np.float64] = values[values >= x.real("wet_day_mm")]
+    return wet
+
+
+def _a_wet_day(source: Source, **base: object) -> Constraint:
+    return Constraint(
+        name="a_wet_day",
+        cls="precondition",
+        check=lambda x: _wet(x).size > 0,
+        text="at least one day has P >= P_w",
+        source=source,
+        satisfied={"precipitation_mm": [0.0, 1.0], "wet_day_mm": 1.0, **base},
+        violated={"precipitation_mm": [0.0, 0.9], "wet_day_mm": 1.0, **base},
+    )
+
+
+def _exact_wet(values: Sequence[float], wet_day: float) -> list[Fraction]:
+    """Return the wet days as exact fractions, the oracles' own selection."""
+    return [Fraction(v) for v in values if not math.isnan(v) and v >= wet_day]
+
+
+def _seeded_days(seed: int) -> list[float]:
+    """Return a year of daily precipitation in tenths of a mm, with gaps."""
+    rng = np.random.default_rng(seed)
+    days = np.round(rng.gamma(0.5, 6.0, size=365), 1)
+    days[rng.random(365) < 0.03] = math.nan
+    return [float(day) for day in days]
+
+
+def _sdii(x: Values) -> dict[str, object]:
+    wet = _wet(x)
+    total = float(np.sum(wet))
+    return {
+        "sdii_mm": total / wet.size,
+        "wet_days": int(wet.size),
+        "wet_day_total_mm": total,
+    }
+
+
+def _sdii_oracle(run: Callable[..., Values]) -> None:
+    samples = (
+        ([0.0, 1.0, 2.5, math.nan, 0.4, 13.1, 1.0], 1.0),
+        (_seeded_days(1), 1.0),
+        (_seeded_days(2), 0.1),
+    )
+    for values, wet_day in samples:
+        out = run(precipitation_mm=values, wet_day_mm=wet_day)
+        wet = _exact_wet(values, wet_day)
+        assert out.integer("wet_days") == len(wet), "the wet days are counted wrong"
+        assert_within(
+            [out.real("wet_day_total_mm"), out.real("sdii_mm")],
+            [float(sum(wet)), float(sum(wet) / len(wet))],
+            rel=1e-14,
+            reason="exact fractions against a pairwise sum of up to 365 terms, each "
+            "addition rounding 1.1e-16 of a partial sum",
+        )
+
+
+SDII: Final = FormulaSpec(
+    name="sdii",
+    title="Simple daily intensity index: the mean precipitation of a wet day",
+    function="hydrolog.statistics.meteo_precipitation.wet_day_intensity",
+    family="index",
+    equation=(
+        "W = the number of days with P >= Pw; PRCPTOT = the sum of their P; SDII = "
+        "PRCPTOT / W"
+    ),
+    latex=(
+        r"W = \#\{i : P_i \ge P_w\},\quad \mathrm{PRCPTOT} = \sum_{P_i \ge P_w} P_i,"
+        r"\quad \mathrm{SDII} = \frac{\mathrm{PRCPTOT}}{W}"
+    ),
+    variables=(_PRECIPITATION, _WET_DAY),
+    outputs=(
+        Output(
+            name="sdii_mm",
+            unit="mm",
+            symbol=r"\mathrm{SDII}",
+            description="The mean precipitation of a wet day.",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+        Output(
+            name="wet_days",
+            unit="d",
+            kind="integer",
+            symbol="W",
+            description="The wet days.",
+            physical=Range(low=1.0),
+        ),
+        Output(
+            name="wet_day_total_mm",
+            unit="mm",
+            symbol=r"\mathrm{PRCPTOT}",
+            description="The precipitation of the wet days.",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+    ),
+    sources=(_ETCCDI_WET,),
+    constraints=(_a_wet_day(_ETCCDI_WET),),
+    properties=Properties(
+        units="homogeneous",
+        scalings=(
+            Scaling(
+                name="precipitation_in_another_unit",
+                inputs={"precipitation_mm": 1.0, "wet_day_mm": 1.0},
+                outputs={"sdii_mm": 1.0, "wet_day_total_mm": 1.0},
+                tolerance=Tolerance(
+                    abs=2e-323,
+                    reason="doubling every value is exact in binary but for a "
+                    "quotient in the subnormal range, rounded to a multiple of 5e-324",
+                ),
+            ),
+        ),
+        conservation=(
+            Conservation(
+                name="intensity_times_days_is_the_total",
+                text="SDII W = PRCPTOT",
+                residual=lambda x, out: (
+                    out.real("sdii_mm") * out.integer("wet_days")
+                    - out.real("wet_day_total_mm")
+                ),
+                tolerance=Tolerance(
+                    abs=1e-10,
+                    reason="one division and one multiplication of a total below "
+                    "1e5 mm, each rounding 1.1e-16 of it",
+                ),
+            ),
+        ),
+        limits=(
+            Limit(
+                name="exact_oracle",
+                text="W, PRCPTOT and SDII equal their values in exact fractions",
+                check=_sdii_oracle,
+            ),
+            Limit(
+                name="a_day_at_the_threshold_is_wet",
+                text="P = Pw counts as a wet day",
+                inputs={"precipitation_mm": [1.0, 0.9, 3.0], "wet_day_mm": 1.0},
+                expected={"sdii_mm": 2.0, "wet_day_total_mm": 4.0},
+                tolerance=Tolerance(abs=0.0, reason="sums of whole numbers"),
+                source=_ETCCDI_WET,
+            ),
+        ),
+    ),
+    validation="none: an index of the daily precipitation",
+    formula_version=1,
+    status="oracle only",
+    conventions=(
+        "a wet day has P >= Pw (RR >= 1 mm of the ETCCDI); a missing day (NaN) is "
+        "left out",
+        "the series function takes the days of a complete month or year, or of a "
+        "calendar month's complete months pooled, and rounds PRCPTOT to 1e-6 mm; a "
+        "span without a wet day has no SDII (climdex.pcic gives 0)",
+    ),
+    traps={
+        "gap_propagation": "type case precipitation_mm-nan_element: a missing day is "
+        "left out, never NaN in the outputs",
+        "many_small_terms": "limit exact_oracle: PRCPTOT of 365 days against exact "
+        "fractions to 1e-14",
+    },
+    oracles=(
+        Oracle(
+            kind="exact",
+            description="W, PRCPTOT and SDII in exact fractions (fractions.Fraction) "
+            "of hand-made and seeded series with gaps",
+            test="tests/unit/test_formulas_meteo_precipitation.py (limit exact_oracle)",
+        ),
+    ),
+)
+
+
+class WetDayIntensity(NamedTuple):
+    """The wet days of a period (spec ``sdii``).
+
+    Attributes
+    ----------
+    sdii_mm : float
+        The mean precipitation of a wet day [mm].
+    wet_days : int
+        The wet days.
+    wet_day_total_mm : float
+        Their precipitation [mm].
+    """
+
+    sdii_mm: float
+    wet_days: int
+    wet_day_total_mm: float
+
+
+def wet_day_intensity(
+    precipitation_mm: NDArray[np.float64] | Sequence[float], wet_day_mm: float
+) -> WetDayIntensity:
+    """Return the mean precipitation of a wet day of a period, spec sdii.
+
+    Parameters
+    ----------
+    precipitation_mm : array_like of float
+        Daily precipitation [mm]; ``NaN`` on a missing day, which is left out.
+    wet_day_mm : float
+        The least precipitation of a wet day [mm].
+
+    Returns
+    -------
+    WetDayIntensity
+        The index, the wet days and their precipitation.
+
+    Raises
+    ------
+    InvalidParameterError
+        If an input is refused by the spec, a period without a wet day among them
+        (``precondition_failed``).
+    """
+    x = checked_inputs(SDII, precipitation_mm=precipitation_mm, wet_day_mm=wet_day_mm)
+    out = checked_outputs(SDII, _sdii(x), inputs=x)
+    return WetDayIntensity(
+        out.real("sdii_mm"), out.integer("wet_days"), out.real("wet_day_total_mm")
+    )
+
+
+_PERCENTILE = Variable(
+    name="percentile",
+    symbol="p",
+    unit="%",
+    description="The percentile.",
+    physical=Range(low=0.0, high=100.0, low_inclusive=False, high_inclusive=False),
+    applicability="unstated",
+    typical=Range(low=95.0, high=99.0, source=_ETCCDI_WET),
+)
+
+
+def _type8(values: Sequence[float], wet_day: float, percent: float) -> float:
+    """Return definition 8 of Hyndman and Fan in exact fractions: the oracle."""
+    ranked = sorted(_exact_wet(values, wet_day))
+    size = len(ranked)
+    h = (size + Fraction(1, 3)) * Fraction(percent) / 100 + Fraction(1, 3)
+    if h <= 1:
+        return float(ranked[0])
+    if h >= size:
+        return float(ranked[-1])
+    k = math.floor(h)
+    return float(ranked[k - 1] + (h - k) * (ranked[k] - ranked[k - 1]))
+
+
+def _percentile_oracle(run: Callable[..., Values]) -> None:
+    samples = (
+        ([float(day) for day in range(1, 101)], 1.0),
+        ([2.0, 0.5, math.nan, 7.5, 1.0, 1.0, 30.2], 1.0),
+        (_seeded_days(3), 1.0),
+    )
+    for values, wet_day in samples:
+        for percent in (0.5, 25.0, 50.0, 95.0, 99.0, 99.9):
+            out = run(precipitation_mm=values, wet_day_mm=wet_day, percentile=percent)
+            assert_within(
+                out.real("percentile_mm"),
+                _type8(values, wet_day, percent),
+                rel=1e-14,
+                reason="exact fractions against NumPy's interpolation, a few "
+                "roundings of 1.1e-16",
+            )
+
+
+WET_DAY_PERCENTILE: Final = FormulaSpec(
+    name="wet_day_percentile",
+    title="Percentile of the precipitation of the wet days (quantile type 8)",
+    function="hydrolog.statistics.meteo_precipitation.wet_day_percentile",
+    family="statistic",
+    equation=(
+        "x(1) <= ... <= x(n) the precipitation of the days with P >= Pw; h = (n + 1/3) "
+        "p / 100 + 1/3, k its whole part; Q = x(1) for h <= 1, x(n) for h >= n, else "
+        "x(k) + (h - k) (x(k + 1) - x(k))"
+    ),
+    latex=(
+        r"h = \left(n + \tfrac{1}{3}\right)\frac{p}{100} + \tfrac{1}{3},\quad Q = "
+        r"x_{(k)} + (h - k)\left(x_{(k+1)} - x_{(k)}\right),\quad k = \lfloor h "
+        r"\rfloor"
+    ),
+    variables=(_PRECIPITATION, _WET_DAY, _PERCENTILE),
+    outputs=(
+        Output(
+            name="percentile_mm",
+            unit="mm",
+            symbol="Q",
+            description="The percentile of the precipitation of the wet days.",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+    ),
+    sources=(_HYNDMAN_FAN, _NUMPY_PERCENTILE, _CLIMDEX, _ETCCDI_WET),
+    constraints=(_a_wet_day(_HYNDMAN_FAN),),
+    properties=Properties(
+        units="homogeneous",
+        monotonic={"percentile": 1},
+        scalings=(
+            Scaling(
+                name="precipitation_in_another_unit",
+                inputs={"precipitation_mm": 1.0, "wet_day_mm": 1.0},
+                outputs={"percentile_mm": 1.0},
+                tolerance=Tolerance(
+                    abs=2e-323,
+                    reason="doubling every value is exact in binary but for an "
+                    "interpolation in the subnormal range, rounded to a multiple of "
+                    "5e-324",
+                ),
+            ),
+        ),
+        limits=(
+            Limit(
+                name="exact_oracle",
+                text="Q equals definition 8 of Hyndman and Fan in exact fractions",
+                check=_percentile_oracle,
+            ),
+        ),
+    ),
+    validation="none: a sample quantile",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "quantile type 8 of Hyndman and Fan (1996), median-unbiased, as climdex.pcic "
+        "1.1-11 (quantile type 8) and NumPy's method median_unbiased",
+        "the wet days (P >= Pw) of the period given; a missing day (NaN) is left out",
+        "the series function gives the wet days of the reference period and needs "
+        "at least 100 of them (too_few_wet_days, Hydrolog's minimum, ADR-0032)",
+    ),
+    traps={
+        "gap_propagation": "type case precipitation_mm-nan_element: a missing day is "
+        "left out",
+        "singular_at_bound": "the percentile is in (0, 100): h is clipped to [1, n] "
+        "by definition 8, limit exact_oracle at 0.5 and 99.9",
+    },
+    reference_cases=("tests/fixtures/formulas/meteo-indices-cases.json",),
+    oracles=(
+        Oracle(
+            kind="exact",
+            description="definition 8 of Hyndman and Fan in exact fractions "
+            "(fractions.Fraction), written from the paper's equation",
+            test="tests/unit/test_formulas_meteo_precipitation.py (limit exact_oracle)",
+        ),
+    ),
+)
+
+
+def wet_day_percentile(
+    precipitation_mm: NDArray[np.float64] | Sequence[float],
+    wet_day_mm: float,
+    percentile: float,
+) -> float:
+    """Return a percentile of the wet days' precipitation, spec wet_day_percentile.
+
+    Parameters
+    ----------
+    precipitation_mm : array_like of float
+        Daily precipitation [mm]; ``NaN`` on a missing day, which is left out.
+    wet_day_mm : float
+        The least precipitation of a wet day [mm].
+    percentile : float
+        The percentile [%].
+
+    Returns
+    -------
+    float
+        The percentile [mm].
+
+    Raises
+    ------
+    InvalidParameterError
+        If an input is refused by the spec, a period without a wet day among them
+        (``precondition_failed``).
+    """
+    x = checked_inputs(
+        WET_DAY_PERCENTILE,
+        precipitation_mm=precipitation_mm,
+        wet_day_mm=wet_day_mm,
+        percentile=percentile,
+    )
+    value = float(
+        np.percentile(_wet(x), x.real("percentile"), method="median_unbiased")
+    )
+    return checked_outputs(WET_DAY_PERCENTILE, {"percentile_mm": value}).real(
+        "percentile_mm"
+    )
+
+
+def _heavy(x: Values) -> dict[str, object]:
+    values = x.array("precipitation_mm")
+    with np.errstate(invalid="ignore"):
+        heavy = values[values > x.real("threshold_mm")]
+    amount = float(np.sum(heavy))
+    total = float(np.sum(_wet(x)))
+    return {
+        "heavy_mm": amount,
+        "heavy_days": int(heavy.size),
+        "wet_day_total_mm": total,
+        "share_percent": 100.0 * amount / total,
+    }
+
+
+def _heavy_oracle(run: Callable[..., Values]) -> None:
+    samples = (
+        ([float(day) for day in range(1, 101)], 1.0, 95.65),
+        (_seeded_days(4), 1.0, 16.8),
+        (_seeded_days(5), 0.1, 29.4),
+    )
+    for values, wet_day, threshold in samples:
+        out = run(precipitation_mm=values, wet_day_mm=wet_day, threshold_mm=threshold)
+        heavy = [v for v in _exact_wet(values, wet_day) if v > Fraction(threshold)]
+        total = sum(_exact_wet(values, wet_day))
+        assert out.integer("heavy_days") == len(heavy), "the heavy days differ"
+        assert_within(
+            [out.real("heavy_mm"), out.real("share_percent")],
+            [float(sum(heavy)), float(100 * sum(heavy) / total)],
+            rel=1e-14,
+            reason="exact fractions against pairwise sums of up to 365 terms",
+        )
+
+
+HEAVY_SHARE: Final = FormulaSpec(
+    name="heavy_precipitation_share",
+    title="Precipitation of the days above a threshold and its share of the wet days'",
+    function="hydrolog.statistics.meteo_precipitation.heavy_precipitation_share",
+    family="index",
+    equation=(
+        "R = the sum of P over the days with P > Pt (R95p for the 95th percentile of "
+        "the wet days), D their number, PRCPTOT the sum of P over the days with P >= "
+        "Pw; share = 100 R / PRCPTOT (R95pTOT); Pt >= Pw"
+    ),
+    latex=(
+        r"R = \sum_{P_i > P_t} P_i,\quad \mathrm{PRCPTOT} = \sum_{P_i \ge P_w} P_i,"
+        r"\quad s = \frac{100\,R}{\mathrm{PRCPTOT}},\quad P_t \ge P_w"
+    ),
+    variables=(
+        _PRECIPITATION,
+        _WET_DAY,
+        Variable(
+            name="threshold_mm",
+            symbol="P_t",
+            unit="mm",
+            description="The threshold, a percentile of the wet days of a reference "
+            "period.",
+            physical=Range(
+                low=0.0,
+                low_inclusive=False,
+                test_high=1825.0,
+                test_reason=_DAILY_RECORD,
+            ),
+            applicability="unstated",
+            typical=Range(
+                low=16.8,
+                high=29.43,
+                source=Source(
+                    citation=_WARSZAWA,
+                    locator="the 95th and 99th percentiles of the wet days of "
+                    "1991-2020: 16.8 and 29.43 mm",
+                ),
+            ),
+        ),
+    ),
+    outputs=(
+        Output(
+            name="heavy_mm",
+            unit="mm",
+            symbol="R",
+            description="The precipitation of the days above the threshold (R95p).",
+            physical=Range(low=0.0),
+        ),
+        Output(
+            name="heavy_days",
+            unit="d",
+            kind="integer",
+            symbol="D",
+            description="The days above the threshold.",
+            physical=Range(low=0.0),
+        ),
+        Output(
+            name="wet_day_total_mm",
+            unit="mm",
+            symbol=r"\mathrm{PRCPTOT}",
+            description="The precipitation of the wet days.",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+        Output(
+            name="share_percent",
+            unit="%",
+            symbol="s",
+            description="R in % of PRCPTOT (R95pTOT of ClimPACT).",
+            physical=Range(low=0.0, high=100.0),
+            boundary_tolerance=1e-9,
+        ),
+    ),
+    sources=(_ETCCDI_WET, _CLIMPACT),
+    constraints=(
+        _a_wet_day(_ETCCDI_WET, threshold_mm=20.0),
+        Constraint(
+            name="threshold_of_a_wet_day",
+            cls="precondition",
+            check=lambda x: x.real("threshold_mm") >= x.real("wet_day_mm"),
+            text="Pt >= Pw: a day above the threshold is a wet day",
+            source=_ETCCDI_WET,
+            satisfied={"wet_day_mm": 1.0, "threshold_mm": 16.8},
+            violated={"wet_day_mm": 1.0, "threshold_mm": 0.9},
+            boundary={"wet_day_mm": 1.0, "threshold_mm": 1.0},
+        ),
+    ),
+    properties=Properties(
+        units="homogeneous",
+        monotonic={"precipitation_mm": 1, "threshold_mm": -1},
+        scalings=(
+            Scaling(
+                name="precipitation_in_another_unit",
+                inputs={
+                    "precipitation_mm": 1.0,
+                    "wet_day_mm": 1.0,
+                    "threshold_mm": 1.0,
+                },
+                outputs={"heavy_mm": 1.0, "wet_day_total_mm": 1.0},
+                tolerance=Tolerance(
+                    abs=0.0, reason="doubling every value is exact in binary"
+                ),
+            ),
+        ),
+        limits=(
+            Limit(
+                name="exact_oracle",
+                text="R, D and the share equal their values in exact fractions",
+                check=_heavy_oracle,
+            ),
+        ),
+    ),
+    validation="none: an index of the daily precipitation",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "a day counts above the threshold when P > Pt (strictly), a wet day when P "
+        ">= Pw; a missing day (NaN) is left out",
+        "R is R95p of ClimPACT and of the ETCCDI's list (a sum in mm), the share "
+        "R95pTOT of ClimPACT (100 R / PRCPTOT); ECA&D's R95pTOT divides by the "
+        "precipitation of every day",
+        "the series function takes the days of a complete year, the threshold of "
+        "wet_day_percentile, and rounds R and PRCPTOT to 1e-6 mm; a year without a "
+        "wet day has no share",
+    ),
+    traps={
+        "difference_denominator": "precondition a_wet_day: PRCPTOT > 0, the sum of "
+        "values of at least Pw > 0",
+        "gap_propagation": "type case precipitation_mm-nan_element: a missing day is "
+        "left out",
+        "many_small_terms": "limit exact_oracle: the sums of 365 days against exact "
+        "fractions to 1e-14",
+    },
+    reference_cases=("tests/fixtures/formulas/meteo-indices-cases.json",),
+    oracles=(
+        Oracle(
+            kind="exact",
+            description="R, D and the share in exact fractions (fractions.Fraction) "
+            "of the wet days 1 to 100 mm and of seeded series with gaps",
+            test="tests/unit/test_formulas_meteo_precipitation.py (limit exact_oracle)",
+        ),
+    ),
+)
+
+
+class HeavyPrecipitationShare(NamedTuple):
+    """The days above a threshold (spec ``heavy_precipitation_share``).
+
+    Attributes
+    ----------
+    heavy_mm : float
+        Their precipitation [mm] (R95p for the 95th percentile).
+    heavy_days : int
+        Their number.
+    wet_day_total_mm : float
+        The precipitation of the wet days [mm] (PRCPTOT).
+    share_percent : float
+        ``heavy_mm`` in % of ``wet_day_total_mm`` (R95pTOT).
+    """
+
+    heavy_mm: float
+    heavy_days: int
+    wet_day_total_mm: float
+    share_percent: float
+
+
+def heavy_precipitation_share(
+    precipitation_mm: NDArray[np.float64] | Sequence[float],
+    wet_day_mm: float,
+    threshold_mm: float,
+) -> HeavyPrecipitationShare:
+    """Sum the days above a threshold, spec heavy_precipitation_share.
+
+    Parameters
+    ----------
+    precipitation_mm : array_like of float
+        Daily precipitation [mm]; ``NaN`` on a missing day, which is left out.
+    wet_day_mm : float
+        The least precipitation of a wet day [mm].
+    threshold_mm : float
+        The threshold [mm], not below ``wet_day_mm``.
+
+    Returns
+    -------
+    HeavyPrecipitationShare
+        The precipitation and the days above the threshold and their share.
+
+    Raises
+    ------
+    InvalidParameterError
+        If an input is refused by the spec, a period without a wet day among them
+        (``precondition_failed``).
+    """
+    x = checked_inputs(
+        HEAVY_SHARE,
+        precipitation_mm=precipitation_mm,
+        wet_day_mm=wet_day_mm,
+        threshold_mm=threshold_mm,
+    )
+    out = checked_outputs(HEAVY_SHARE, _heavy(x), inputs=x)
+    return HeavyPrecipitationShare(
+        out.real("heavy_mm"),
+        out.integer("heavy_days"),
+        out.real("wet_day_total_mm"),
+        out.real("share_percent"),
+    )
+
+
+def _months_variable(symbol: str) -> Variable:
+    return Variable(
+        name="monthly_mm",
+        symbol=symbol,
+        unit="mm",
+        kind="real_array",
+        description="The twelve monthly totals of a year or the twelve monthly "
+        "normals, in any order.",
+        physical=Range(low=0.0, test_high=26_470.0, test_reason=_MONTH_RECORD),
+        applicability="unstated",
+        typical=Range(
+            low=0.4,
+            high=295.0,
+            source=Source(
+                citation=_WARSZAWA,
+                locator="the monthly sums of 1991-2020: 0.4 to 295.0 mm",
+            ),
+        ),
+        min_length=12,
+        max_length=12,
+    )
+
+
+def _a_positive_total(source: Source) -> Constraint:
+    return Constraint(
+        name="a_positive_total",
+        cls="precondition",
+        check=lambda x: float(np.sum(x.array("monthly_mm"))) > 0.0,
+        text="the total of the twelve months is positive",
+        source=source,
+        satisfied={"monthly_mm": [0.0] * 11 + [0.1]},
+        violated={"monthly_mm": [0.0] * 12},
+    )
+
+
+def _shares(x: Values) -> NDArray[np.float64]:
+    """Return each month's share of the total: the indices need no squares of sums."""
+    monthly = x.array("monthly_mm")
+    shares: NDArray[np.float64] = monthly / float(np.sum(monthly))
+    return shares
+
+
+def _exact_pci(monthly: Sequence[float]) -> float:
+    values = [Fraction(v) for v in monthly]
+    total = sum(values)
+    return float(100 * sum(v * v for v in values) / (total * total))
+
+
+def _months_oracle(
+    output: str, exact: Callable[[Sequence[float]], float]
+) -> Callable[[Callable[..., Values]], None]:
+    def check(run: Callable[..., Values]) -> None:
+        rng = np.random.default_rng(20261119)
+        samples = [
+            [31.0, 29.8, 29.0, 35.1, 55.5, 63.9, 82.2, 60.6, 50.4, 40.2, 36.0, 36.1],
+            [0.0] * 6 + [1e-300] + [0.0] * 5,
+            *(np.round(rng.gamma(1.5, 30.0, size=12), 1).tolist() for _ in range(20)),
+        ]
+        for monthly in samples:
+            assert_within(
+                run(monthly_mm=monthly).real(output),
+                exact(monthly),
+                rel=1e-14,
+                reason="exact fractions against a sum of twelve shares, each "
+                "rounding 1.1e-16",
+            )
+
+    return check
+
+
+def _permuted(x: Values) -> dict[str, object]:
+    return {"monthly_mm": x.array("monthly_mm")[::-1].copy()}
+
+
+PCI: Final = FormulaSpec(
+    name="precipitation_concentration_index",
+    title="Oliver's precipitation concentration index of twelve monthly totals",
+    function="hydrolog.statistics.meteo_precipitation.precipitation_concentration_index",
+    family="index",
+    equation="PCI = 100 sum(p_i^2) / (sum p_i)^2 over the twelve monthly totals p_i",
+    latex=r"\mathrm{PCI} = 100\,\frac{\sum_{i=1}^{12} p_i^2}{\left(\sum_{i=1}^{12} "
+    r"p_i\right)^2}",
+    variables=(_months_variable("p_i"),),
+    outputs=(
+        Output(
+            name="pci",
+            unit="-",
+            symbol=r"\mathrm{PCI}",
+            description="The index: 100/12 for equal months, 100 for one wet month.",
+            physical=Range(low=100 / 12, high=100.0),
+            boundary_tolerance=1e-12,
+        ),
+    ),
+    sources=(
+        Source(
+            citation=_DE_LUIS,
+            locator="eq. 1, p. 1260: PCI = 100 sum p_i^2 / (sum p_i)^2 of the twelve "
+            "monthly totals; 8.3 for equal months, 100 for all in one month",
+            url=_DE_LUIS_URL,
+        ),
+        _OLIVER,
+    ),
+    constraints=(_a_positive_total(_OLIVER),),
+    properties=Properties(
+        units="homogeneous",
+        scalings=(
+            Scaling(
+                name="totals_in_another_unit",
+                inputs={"monthly_mm": 1.0},
+                outputs={},
+                tolerance=Tolerance(
+                    abs=0.0, reason="doubling every total leaves each share exact"
+                ),
+            ),
+        ),
+        symmetries=(
+            Symmetry(
+                name="months_in_another_order",
+                text="the months in reverse order give the same index",
+                inputs=_permuted,
+                outputs=lambda out: {"pci": out.real("pci")},
+                tolerance=Tolerance(
+                    abs=1e-12, reason="twelve shares summed in another order"
+                ),
+            ),
+        ),
+        limits=(
+            Limit(
+                name="exact_oracle",
+                text="PCI equals 100 sum p^2 / (sum p)^2 in exact fractions",
+                check=_months_oracle("pci", _exact_pci),
+            ),
+            Limit(
+                name="equal_months",
+                text="twelve equal months give 100/12",
+                inputs={"monthly_mm": [10.0] * 12},
+                expected={"pci": 100 / 12},
+                tolerance=Tolerance(abs=1e-13, reason="twelve shares of 1/12"),
+            ),
+        ),
+    ),
+    validation="none: an index of the monthly totals",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "computed from the shares p_i / sum p, which equals the equation without "
+        "squaring a sum (no overflow or underflow of the squares)",
+        "the series function gives the twelve normals of the reference period or the "
+        "twelve monthly sums of a year with all of them; a total of 0 has no index",
+    ),
+    traps={
+        "difference_denominator": "precondition a_positive_total: the total divides",
+        "singular_at_bound": "limit exact_oracle: a single month of 1e-300 mm, whose "
+        "square underflows, gives 100",
+    },
+    reference_cases=("tests/fixtures/formulas/meteo-indices-cases.json",),
+    oracles=(
+        Oracle(
+            kind="exact",
+            description="the equation in exact fractions (fractions.Fraction) of the "
+            "normals of Warszawa and of seeded monthly totals",
+            test="tests/unit/test_formulas_meteo_precipitation.py (limit exact_oracle)",
+        ),
+    ),
+)
+
+
+def precipitation_concentration_index(
+    monthly_mm: NDArray[np.float64] | Sequence[float],
+) -> float:
+    """Return Oliver's index of monthly totals, spec precipitation_concentration_index.
+
+    Parameters
+    ----------
+    monthly_mm : array_like of float
+        The twelve monthly totals [mm].
+
+    Returns
+    -------
+    float
+        The index.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the totals are refused by the spec, a total of zero among them
+        (``precondition_failed``).
+    """
+    x = checked_inputs(PCI, monthly_mm=monthly_mm)
+    value = 100.0 * float(np.sum(_shares(x) ** 2))
+    return checked_outputs(PCI, {"pci": value}).real("pci")
+
+
+def _class_constant(name: str, value: float, source: Source) -> Constant:
+    return Constant(
+        name=name, value=value, unit="-", symbol=f"{value:g}", source=source
+    )
+
+
+def _ordered_classes(
+    variable: str, names: Sequence[str], low: float, top: float, steps: int
+) -> Callable[[Callable[..., Values]], None]:
+    def check(run: Callable[..., Values]) -> None:
+        points = np.linspace(low, top, steps + 1).tolist()
+        ranks = [
+            names.index(run(**{variable: point}).choice("index_class"))
+            for point in points
+        ]
+        assert ranks == sorted(ranks), "a larger index gave a class below"
+
+    return check
+
+
+_PCI_FROM = ("uniform_to", "moderate_to", "irregular_to")
+
+
+def _pci_class(x: Values) -> str:
+    value = x.real("pci")
+    for limit, name in zip(_PCI_FROM, PCI_CLASSES, strict=False):
+        if value <= PCI_CLASS.constant(limit):
+            return name
+    return PCI_CLASSES[-1]
+
+
+_PCI_LIMITS_SOURCE = Source(
+    citation=_DE_LUIS,
+    locator="p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate "
+    "concentration, 16-20 irregular, above 20 strong irregularity",
+    url=_DE_LUIS_URL,
+)
+
+PCI_CLASS: Final = FormulaSpec(
+    name="pci_class",
+    title="Oliver's class of a precipitation concentration index",
+    function="hydrolog.statistics.meteo_precipitation.pci_class",
+    family="classification",
+    equation="PCI <= 10 uniform, (10, 15] moderate, (15, 20] irregular, above 20 "
+    "strongly irregular",
+    latex=r"\mathrm{PCI} \le 10,\ (10, 15],\ (15, 20],\ > 20",
+    variables=(
+        Variable(
+            name="pci",
+            symbol=r"\mathrm{PCI}",
+            unit="-",
+            description="A precipitation concentration index.",
+            physical=Range(low=100 / 12, high=100.0),
+            applicability="unstated",
+            typical=Range(
+                low=9.4,
+                high=27.3,
+                source=Source(
+                    citation=_WARSZAWA,
+                    locator="the yearly PCI of 1991-2020: 9.4 to 27.3",
+                ),
+            ),
+        ),
+    ),
+    outputs=(
+        Output(
+            name="index_class",
+            unit="-",
+            kind="choice",
+            description="The class, the most uniform first.",
+            choices=PCI_CLASSES,
+        ),
+    ),
+    sources=(_PCI_LIMITS_SOURCE, _OLIVER),
+    constants=tuple(
+        _class_constant(name, value, _PCI_LIMITS_SOURCE)
+        for name, value in zip(_PCI_FROM, (10.0, 15.0, 20.0), strict=True)
+    ),
+    properties=Properties(
+        units="unit_specific",
+        limits=(
+            Limit(
+                name="ordered_classes",
+                text="a larger index never gives a more uniform class",
+                check=_ordered_classes("pci", PCI_CLASSES, 100 / 12, 100.0, 400),
+            ),
+        ),
+    ),
+    validation="none: a classification",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "the source's classes are of whole numbers (below 10, 11-15, 16-20, above "
+        "20); the gaps between them go to the class above: 10 is uniform, 10.5 "
+        "moderate, 15 moderate and 15.5 irregular",
+    ),
+    traps={
+        "class_limit": "reference cases pci-class-*: each limit and just beyond it",
+        "gap_propagation": "type case pci-nan: NaN is refused; a year without an "
+        "index has no class",
+    },
+    reference_cases=("tests/fixtures/formulas/meteo-indices-cases.json",),
+)
+
+
+def pci_class(pci: float) -> str:
+    """Return Oliver's class of a precipitation concentration index, spec pci_class.
+
+    Parameters
+    ----------
+    pci : float
+        The index.
+
+    Returns
+    -------
+    str
+        The class (:data:`PCI_CLASSES`).
+
+    Raises
+    ------
+    InvalidParameterError
+        If the index is refused by the spec.
+    """
+    x = checked_inputs(PCI_CLASS, pci=pci)
+    return checked_outputs(PCI_CLASS, {"index_class": _pci_class(x)}).choice(
+        "index_class"
+    )
+
+
+_SI_BELOW = (
+    "very_equable_below",
+    "equable_wetter_season_below",
+    "rather_seasonal_below",
+    "seasonal_below",
+    "markedly_seasonal_below",
+    "most_in_three_months_below",
+)
+_SI_LIMITS_SOURCE = Source(
+    citation=_SUMNER,
+    locator="Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, "
+    "0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal "
+    "with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with "
+    "a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme",
+)
+
+
+def _si_class(x: Values) -> str:
+    value = x.real("si")
+    for limit, name in zip(_SI_BELOW, SI_CLASSES, strict=False):
+        if value < SI_CLASS.constant(limit):
+            return name
+    return SI_CLASSES[-1]
+
+
+SI_CLASS: Final = FormulaSpec(
+    name="si_class",
+    title="Walsh and Lawler's class of a seasonality index",
+    function="hydrolog.statistics.meteo_precipitation.si_class",
+    family="classification",
+    equation="SI < 0.2 very equable, [0.2, 0.4) equable with a wetter season, [0.4, "
+    "0.6) rather seasonal, [0.6, 0.8) seasonal, [0.8, 1.0) markedly seasonal, [1.0, "
+    "1.2) most in three months, from 1.2 extreme",
+    latex=r"\mathrm{SI} < 0.2,\ [0.2, 0.4),\ [0.4, 0.6),\ [0.6, 0.8),\ [0.8, 1.0),\ "
+    r"[1.0, 1.2),\ \ge 1.2",
+    variables=(
+        Variable(
+            name="si",
+            symbol=r"\mathrm{SI}",
+            unit="-",
+            description="A seasonality index.",
+            physical=Range(low=0.0, high=11 / 6),
+            applicability="unstated",
+            typical=Range(
+                low=0.31,
+                high=0.85,
+                source=Source(
+                    citation=_WARSZAWA,
+                    locator="the yearly SI of 1991-2020: 0.31 to 0.85",
+                ),
+            ),
+        ),
+    ),
+    outputs=(
+        Output(
+            name="index_class",
+            unit="-",
+            kind="choice",
+            description="The class, the most equable first.",
+            choices=SI_CLASSES,
+        ),
+    ),
+    sources=(_SI_LIMITS_SOURCE, _HYDROTSM),
+    constants=tuple(
+        _class_constant(name, value, _SI_LIMITS_SOURCE)
+        for name, value in zip(_SI_BELOW, (0.2, 0.4, 0.6, 0.8, 1.0, 1.2), strict=True)
+    ),
+    properties=Properties(
+        units="unit_specific",
+        limits=(
+            Limit(
+                name="ordered_classes",
+                text="a larger index never gives a more equable class",
+                check=_ordered_classes("si", SI_CLASSES, 0.0, 11 / 6, 440),
+            ),
+        ),
+    ),
+    validation="none: a classification",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "the table's classes are of two decimals (<= 0.19, 0.20-0.39 ... >= 1.20); "
+        "each class runs up to the next limit: 0.199 is very equable, 0.2 equable "
+        "with a wetter season, 1.2 extreme",
+    ),
+    traps={
+        "class_limit": "reference cases si-class-*: each limit and just below it",
+        "gap_propagation": "type case si-nan: NaN is refused; a year without an index "
+        "has no class",
+    },
+    reference_cases=("tests/fixtures/formulas/meteo-indices-cases.json",),
+)
+
+
+def si_class(si: float) -> str:
+    """Return Walsh and Lawler's class of a seasonality index, spec si_class.
+
+    Parameters
+    ----------
+    si : float
+        The index.
+
+    Returns
+    -------
+    str
+        The class (:data:`SI_CLASSES`).
+
+    Raises
+    ------
+    InvalidParameterError
+        If the index is refused by the spec.
+    """
+    x = checked_inputs(SI_CLASS, si=si)
+    return checked_outputs(SI_CLASS, {"index_class": _si_class(x)}).choice(
+        "index_class"
+    )
+
+
+def _unless_refused[T](compute: Callable[[], T]) -> T | None:
+    """Return ``compute()``, ``None`` when its spec refuses a precondition."""
+    try:
+        return compute()
+    except InvalidParameterError as refused:
+        if refused.details.get("reason") == "precondition_failed":
+            return None
+        raise
 
 
 # --- the series on its years ----------------------------------------------------------
@@ -1200,16 +2442,19 @@ class PrecipitationIntensity(JsonResultMixin):
     period: PrecipitationIntensityPeriod
 
 
-def _wet_day(wet_day_mm: float) -> float:
-    if not (math.isfinite(wet_day_mm) and wet_day_mm > 0):
-        raise InvalidParameterError(
-            f"wet_day_mm must be a positive number, got {wet_day_mm!r}"
-        )
-    return float(wet_day_mm)
+def _intensity_of(
+    values: NDArray[np.float64], wet_day_mm: float
+) -> tuple[int, float, float | None]:
+    """Return W, PRCPTOT rounded and SDII of known days; W = 0 has no SDII."""
+    found = _unless_refused(lambda: wet_day_intensity(values, wet_day_mm))
+    if found is None:
+        return 0, 0.0, None
+    return found.wet_days, round_sum(found.wet_day_total_mm), found.sdii_mm
 
 
-def _whole(value: float) -> int | None:
-    return int(round(value)) if math.isfinite(value) else None
+def _stops(starts: NDArray[np.intp], size: int) -> NDArray[np.intp]:
+    """Return where each span of a grid that starts at ``starts`` stops."""
+    return np.append(starts[1:], size)
 
 
 def precipitation_intensity(
@@ -1248,71 +2493,73 @@ def precipitation_intensity(
     InvalidParameterError
         If the arrays are invalid or ``wet_day_mm`` is not positive.
     """
-    threshold = _wet_day(wet_day_mm)
     data = _daily(precipitation_mm, dates, accumulated, year_type)
     grid = data.grid
-    known = np.isfinite(data.daily)
-    with np.errstate(invalid="ignore"):
-        wet = known & (data.daily >= threshold)
-    month_totals = round_sums(
-        monthly_totals(grid, np.where(wet, data.daily, np.where(known, 0.0, np.nan)))
-    )
-    month_days = monthly_totals(grid, np.where(known, wet.astype(np.float64), np.nan))
-    year_totals = round_sums(month_totals.sum(axis=1))
-    year_days = month_days.sum(axis=1)
-    with np.errstate(invalid="ignore", divide="ignore"):
-        year_sdii = np.where(year_days > 0, year_totals / year_days, np.nan)
-        month_sdii = np.where(month_days > 0, month_totals / month_days, np.nan)
+    daily = data.daily
+    known = np.isfinite(daily)
+    full_month = month_quality(grid, known).complete
+    full_year = complete_years(grid, known)
+    month_start = grid.month_starts()
+    month_stop = _stops(month_start, daily.size)
+    year_start = grid.year_starts()
+    year_stop = _stops(year_start, daily.size)
     annual = round_sums(data.monthly().sum(axis=1))
     months = grid.months
+
+    def month_of(row: int, slot: int) -> PrecipitationIntensityMonth:
+        flat = row * 12 + slot
+        if not full_month[row, slot]:
+            return PrecipitationIntensityMonth(months[slot], None, None, None)
+        span = daily[month_start[flat] : month_stop[flat]]
+        return PrecipitationIntensityMonth(
+            months[slot], *_intensity_of(span, wet_day_mm)
+        )
+
     rows: list[PrecipitationIntensityYear] = []
+    year_sdii: list[float] = []
     for row in np.flatnonzero(data.present).tolist():
+        found = _intensity_of(daily[year_start[row] : year_stop[row]], wet_day_mm)
+        wet_days, total, sdii = found if full_year[row] else (None, None, None)
+        if sdii is not None:
+            year_sdii.append(sdii)
         rows.append(
             PrecipitationIntensityYear(
                 year=grid.first_year + row,
                 total_mm=finite(annual[row]),
-                wet_days=_whole(year_days[row]),
-                wet_day_total_mm=finite(year_totals[row]),
-                sdii_mm=finite(year_sdii[row]),
-                months=[
-                    PrecipitationIntensityMonth(
-                        month,
-                        _whole(month_days[row, slot]),
-                        finite(month_totals[row, slot]),
-                        finite(month_sdii[row, slot]),
-                    )
-                    for slot, month in enumerate(months)
-                ],
+                wet_days=wet_days,
+                wet_day_total_mm=total,
+                sdii_mm=sdii,
+                months=[month_of(row, slot) for slot in range(12)],
             )
         )
     pooled: list[PrecipitationIntensityMonth] = []
     for slot, month in enumerate(months):
-        both = np.isfinite(month_totals[:, slot]) & np.isfinite(month_days[:, slot])
-        days = float(month_days[both, slot].sum())
-        total = round_sum(float(month_totals[both, slot].sum()))
+        spans = [
+            daily[month_start[flat] : month_stop[flat]]
+            for flat in range(slot, 12 * grid.n_years, 12)
+            if full_month[flat // 12, slot]
+        ]
         pooled.append(
             PrecipitationIntensityMonth(
-                month,
-                int(round(days)) if both.any() else None,
-                total if both.any() else None,
-                total / days if days > 0 else None,
+                month, *_intensity_of(np.concatenate(spans), wet_day_mm)
             )
+            if spans
+            else PrecipitationIntensityMonth(month, None, None, None)
         )
     have_total = np.isfinite(annual)
-    have_sdii = np.isfinite(year_sdii)
     return PrecipitationIntensity(
         index="intensity",
         year_type=year_type,
         first_year=grid.first_year,
         last_year=grid.last_year,
         period_years=int(data.present.sum()),
-        wet_day_mm=threshold,
+        wet_day_mm=float(wet_day_mm),
         years=rows,
         period=PrecipitationIntensityPeriod(
             mean_total_mm=mean_of(annual),
             n_years=int(have_total.sum()),
-            mean_sdii_mm=mean_of(year_sdii),
-            sdii_years=int(have_sdii.sum()),
+            mean_sdii_mm=float(np.mean(year_sdii)) if year_sdii else None,
+            sdii_years=len(year_sdii),
             months=pooled,
         ),
     )
@@ -1474,9 +2721,8 @@ def heavy_precipitation(
         If a period has no value (``details.reason`` ``no_values_in_period``) or the
         reference period has fewer than 100 wet days (``too_few_wet_days``).
     """
-    threshold = _wet_day(wet_day_mm)
-    levels = [float(item) for item in percentiles]
-    if not levels or not all(math.isfinite(item) and 0 < item < 100 for item in levels):
+    levels = list(percentiles)
+    if not levels:
         raise InvalidParameterError(
             f"percentiles must be numbers in (0, 100), got {percentiles!r}"
         )
@@ -1493,34 +2739,37 @@ def heavy_precipitation(
     data = periods.data
     grid = data.grid
     base = periods.reference.daily
+
+    def threshold_of(level: float) -> float | None:
+        return _unless_refused(lambda: wet_day_percentile(base, wet_day_mm, level))
+
+    found = [threshold_of(level) for level in levels]
     with np.errstate(invalid="ignore"):
-        sample = base[np.isfinite(base) & (base >= threshold)]
-    if sample.size < MIN_WET_DAYS:
+        wet_days = int(np.count_nonzero(base >= float(wet_day_mm)))
+    if wet_days < MIN_WET_DAYS:
         raise CalculationError(
             f"The percentiles need at least {MIN_WET_DAYS} wet days (P >= "
-            f"{threshold:g} mm) in the reference period {periods.period.first_year}-"
-            f"{periods.period.last_year}, got {sample.size}",
+            f"{float(wet_day_mm):g} mm) in the reference period "
+            f"{periods.period.first_year}-{periods.period.last_year}, got {wet_days}",
             details={
                 "reason": "too_few_wet_days",
-                "count": int(sample.size),
+                "count": wet_days,
                 "minimum": MIN_WET_DAYS,
             },
             hint="Choose a longer reference period (by default the analysed years).",
         )
-    limits = np.percentile(sample, levels, method="median_unbiased")
+    limits = [limit for limit in found if limit is not None]
+
+    def share_of(
+        values: NDArray[np.float64], limit: float
+    ) -> HeavyPrecipitationShare | None:
+        return _unless_refused(
+            lambda: heavy_precipitation_share(values, wet_day_mm, limit)
+        )
+
     complete = complete_years(grid, np.isfinite(data.daily))
-    filled = np.nan_to_num(data.daily)
     starts = grid.year_starts()
-    totals = round_sums(
-        np.add.reduceat(np.where(filled >= threshold, filled, 0.0), starts)
-    )
-    sums = [
-        round_sums(np.add.reduceat(np.where(filled > limit, filled, 0.0), starts))
-        for limit in limits
-    ]
-    days = [
-        np.add.reduceat((filled > limit).astype(np.int64), starts) for limit in limits
-    ]
+    stops = _stops(starts, data.daily.size)
     rows: list[HeavyPrecipitationYear] = []
     shares: list[list[float]] = [[] for _ in levels]
     for row in np.flatnonzero(data.present).tolist():
@@ -1536,21 +2785,25 @@ def heavy_precipitation(
                 )
             )
             continue
-        total = float(totals[row])
-        year_shares: list[float | None] = []
-        for number, values in enumerate(sums):
-            share = 100.0 * float(values[row]) / total if total > 0 else None
-            year_shares.append(share)
+        values = data.daily[starts[row] : stops[row]]
+        heavy = [share_of(values, limit) for limit in limits]
+        year_shares = [None if item is None else item.share_percent for item in heavy]
+        for number, share in enumerate(year_shares):
             if share is not None:
                 shares[number].append(share)
+        first = heavy[0]
         rows.append(
             HeavyPrecipitationYear(
                 year=grid.first_year + row,
                 complete=True,
-                wet_day_total_mm=total,
-                sums_mm=[float(values[row]) for values in sums],
+                wet_day_total_mm=0.0
+                if first is None
+                else round_sum(first.wet_day_total_mm),
+                sums_mm=[
+                    0.0 if item is None else round_sum(item.heavy_mm) for item in heavy
+                ],
                 shares_percent=year_shares,
-                days=[int(values[row]) for values in days],
+                days=[0 if item is None else item.heavy_days for item in heavy],
             )
         )
     return HeavyPrecipitation(
@@ -1562,12 +2815,12 @@ def heavy_precipitation(
         reference_first_year=periods.period.first_year,
         reference_last_year=periods.period.last_year,
         reference_period_years=periods.reference_period_years,
-        wet_day_mm=threshold,
-        percentiles=levels,
+        wet_day_mm=float(wet_day_mm),
+        percentiles=[float(level) for level in levels],
         years=rows,
         period=HeavyPrecipitationPeriod(
-            wet_days=int(sample.size),
-            thresholds_mm=[float(limit) for limit in limits],
+            wet_days=wet_days,
+            thresholds_mm=limits,
             n_years=int((data.present & complete).sum()),
             mean_shares_percent=[
                 float(np.mean(values)) if values else None for values in shares
@@ -1579,45 +2832,22 @@ def heavy_precipitation(
 # --- M9: regime and seasonality -------------------------------------------------------
 
 
-def precipitation_concentration_index(monthly_mm: Sequence[float]) -> float | None:
-    """Oliver's (1980) precipitation concentration index of twelve monthly sums.
-
-    PCI = 100 Σp² / (Σp)²: 8.3 for twelve equal months, 100 for one wet month.
-
-    Parameters
-    ----------
-    monthly_mm : sequence of float
-        The twelve monthly sums [mm].
-
-    Returns
-    -------
-    float or None
-        The index; ``None`` when a sum is missing or the total is not positive.
-    """
-    values = np.asarray(monthly_mm, dtype=np.float64)
-    total = float(values.sum())
-    if not math.isfinite(total) or total <= 0:
-        return None
-    return 100.0 * float(np.sum(values**2)) / total**2
+def _pci_of(monthly: NDArray[np.float64] | Sequence[float]) -> float | None:
+    """Return the PCI of twelve monthly sums, ``None`` for a total of 0."""
+    return _unless_refused(lambda: precipitation_concentration_index(monthly))
 
 
-def _seasonality_index(monthly_mm: Sequence[float]) -> float | None:
-    """Return :func:`~hydrolog.statistics.seasonality_index` of twelve monthly sums.
+def _si_of(monthly: NDArray[np.float64] | Sequence[float]) -> float | None:
+    """Return the SI of twelve monthly sums, ``None`` for a total of 0."""
+    return _unless_refused(lambda: seasonality_index(monthly))
 
-    Parameters
-    ----------
-    monthly_mm : sequence of float
-        The twelve monthly sums [mm].
 
-    Returns
-    -------
-    float or None
-        The index; ``None`` when a sum is missing or the total is not positive.
-    """
-    total = float(np.sum(np.asarray(monthly_mm, dtype=np.float64)))
-    if not math.isfinite(total) or total <= 0:
-        return None
-    return seasonality_index(monthly_mm)
+def _pci_class_of(value: float | None) -> str | None:
+    return None if value is None else pci_class(value)
+
+
+def _si_class_of(value: float | None) -> str | None:
+    return None if value is None else si_class(value)
 
 
 @dataclass
@@ -1734,16 +2964,6 @@ class PrecipitationSeasonality(JsonResultMixin):
     period: PrecipitationSeasonalityPeriod
 
 
-def pci_class(value: float | None) -> str | None:
-    """Class of a precipitation concentration index (Oliver, 1980)."""
-    return classify(value, _PCI_LIMITS, PCI_CLASSES)
-
-
-def si_class(value: float | None) -> str | None:
-    """Class of a seasonality index (Walsh and Lawler, 1981)."""
-    return classify(value, _SI_LIMITS, SI_CLASSES, inclusive=False)
-
-
 def precipitation_seasonality(
     precipitation_mm: NDArray[np.float64] | Sequence[float],
     dates: NDArray[np.datetime64] | Sequence[object],
@@ -1818,8 +3038,8 @@ def precipitation_seasonality(
             )
             for month, value in zip(months, values, strict=True)
         ]
-        pci = precipitation_concentration_index(values)
-        si = _seasonality_index(values)
+        pci = _pci_of(values)
+        si = _si_of(values)
     else:
         regime = [
             PrecipitationRegimeMonth(month, value, None, None)
@@ -1832,8 +3052,8 @@ def precipitation_seasonality(
     for row in np.flatnonzero(data.present).tolist():
         year_values = table[row]
         complete = bool(np.isfinite(year_values).all())
-        value_pci = precipitation_concentration_index(year_values) if complete else None
-        value_si = _seasonality_index(year_values) if complete else None
+        value_pci = _pci_of(year_values) if complete else None
+        value_si = _si_of(year_values) if complete else None
         if value_pci is not None:
             year_pci.append(value_pci)
         if value_si is not None:
@@ -1842,9 +3062,9 @@ def precipitation_seasonality(
             PrecipitationSeasonalityYear(
                 grid.first_year + row,
                 value_pci,
-                pci_class(value_pci),
+                _pci_class_of(value_pci),
                 value_si,
-                si_class(value_si),
+                _si_class_of(value_si),
             )
         )
     mean_pci = float(np.mean(year_pci)) if year_pci else None
@@ -1862,13 +3082,141 @@ def precipitation_seasonality(
         period=PrecipitationSeasonalityPeriod(
             months=regime,
             pci=pci,
-            pci_class=pci_class(pci),
+            pci_class=_pci_class_of(pci),
             si=si,
-            si_class=si_class(si),
+            si_class=_si_class_of(si),
             mean_pci=mean_pci,
-            mean_pci_class=pci_class(mean_pci),
+            mean_pci_class=_pci_class_of(mean_pci),
             mean_si=mean_si,
-            mean_si_class=si_class(mean_si),
+            mean_si_class=_si_class_of(mean_si),
             n_years=len(year_pci),
         ),
     )
+
+
+SPECS: Final = (SDII, WET_DAY_PERCENTILE, HEAVY_SHARE, PCI, PCI_CLASS, SI_CLASS)
+"""The Tier A formulas of the module."""
+
+_WMO_1203 = (
+    "WMO (2017). WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203, "
+    "Geneva"
+)
+_WMO_1203_URL = "https://library.wmo.int/idurl/4/55797"
+
+TIER_B: Final = (
+    TierBSpec(
+        name="precipitation_sums",
+        function="hydrolog.statistics.meteo_precipitation.precipitation_sums",
+        definition="the sum of the daily precipitation of a month, needing every day "
+        "or accumulated totals that cover the missing days; of a half-year (XI-IV, "
+        "V-X), a season (DJF with the December before, MAM, JJA, SON) and a year, the "
+        "sum of its months, needing each; a sum in % of its normal, 100 P / N",
+        convention="every sum of daily precipitation rounded to 1e-6 mm (round_sums); "
+        "no percentage without a normal or with a normal of 0",
+        source=Source(
+            citation=_WMO_1203,
+            locator="section 4.3.1 (c) and 4.4.1 (c), pp. 5-8: a sum needs complete "
+            "data or accumulated observations covering the missing days",
+            url=_WMO_1203_URL,
+        ),
+    ),
+    TierBSpec(
+        name="precipitation_normals",
+        function="hydrolog.statistics.meteo_precipitation.precipitation_sums",
+        definition="the normal of a calendar month: the mean of its sums in the years "
+        "of the reference period that have one, when they are at least 80 % of its "
+        "years; of a half-year, a season or the year: the sum of the normals of its "
+        "months",
+        convention="the reference period is by default the analysed years; its years "
+        "without data count among its years",
+        source=Source(
+            citation=_WMO_1203,
+            locator="section 4.4.2, pp. 8-9: values in at least 80 % of the years; "
+            "section 4.3.3, p. 6: the normal of several months from the monthly "
+            "normals",
+            url=_WMO_1203_URL,
+        ),
+        constants=(
+            Constant(
+                name="normal_share",
+                value=Fraction(4, 5),
+                unit="-",
+                symbol="80 %",
+                source=Source(
+                    citation=_WMO_1203, locator="section 4.4.2", url=_WMO_1203_URL
+                ),
+            ),
+        ),
+    ),
+    TierBSpec(
+        name="precipitation_maxima",
+        function="hydrolog.statistics.meteo_precipitation.precipitation_maxima",
+        definition="Rx1day and the largest n-day sums (Rx5day for 5): the n-day sum of "
+        "a day is the sum of the n days ending on it, credited to the year of its last "
+        "day and missing unless all n are known; a month's maximum takes the days it "
+        "has, a year's needs every day of the year",
+        convention="the first of equal maxima, with its dates; climdex.pcic 1.1-11 "
+        "credits a 5-day window to its middle day and takes a missing day as 0",
+        source=Source(
+            citation=_ETCCDI,
+            locator="Rx1day, the largest daily precipitation of a period; Rx5day, the "
+            "largest precipitation of 5 consecutive days (the interval ending on a "
+            "day)",
+            url=_ETCCDI_URL,
+        ),
+    ),
+    TierBSpec(
+        name="precipitation_days",
+        function="hydrolog.statistics.meteo_precipitation.precipitation_days",
+        definition="the days with P at or above each threshold (R10mm and R20mm for 10 "
+        "and 20 mm); a month's count scaled to its days when fewer than 11 days, and "
+        "fewer than 5 in a row, are missing; a year's the sum of its twelve months",
+        convention="P >= threshold; with gaps a month's count is not a whole number "
+        "(climdex.pcic counts the days it has)",
+        source=Source(
+            citation=_ETCCDI,
+            locator="R10mm and R20mm: the annual count of days with RR >= 10 mm and "
+            ">= 20 mm",
+            url=_ETCCDI_URL,
+        ),
+    ),
+    TierBSpec(
+        name="precipitation_intensity",
+        function="hydrolog.statistics.meteo_precipitation.precipitation_intensity",
+        definition="sdii of each month and year with every day, and of each calendar "
+        "month over those months of the period together; the mean annual sum and the "
+        "mean SDII of the years with one",
+        convention="an accumulated total is a missing day for sdii and counts in the "
+        "annual sum; PRCPTOT rounded to 1e-6 mm; a month or year without a wet day "
+        "has W = 0 and no SDII",
+        source=_ETCCDI_WET,
+    ),
+    TierBSpec(
+        name="heavy_precipitation_thresholds",
+        function="hydrolog.statistics.meteo_precipitation.heavy_precipitation",
+        definition="the thresholds: wet_day_percentile of the wet days of the "
+        "reference period at each percentile, from at least 100 wet days; each year "
+        "with every day: heavy_precipitation_share at each threshold, and the mean "
+        "share of those years",
+        convention="the reference period is by default the analysed years (the "
+        "ETCCDI's base is 1961-1990); the minimum of 100 wet days is Hydrolog's "
+        "(ADR-0032), no source gives one",
+        source=_CLIMDEX,
+    ),
+    TierBSpec(
+        name="precipitation_regime",
+        function="hydrolog.statistics.meteo_precipitation.precipitation_seasonality",
+        definition="each monthly normal of the reference period in % of their sum and "
+        "over their mean; precipitation_concentration_index and seasonality_index, "
+        "with their classes, of the twelve normals and of each year with its twelve "
+        "monthly sums, and the means of the yearly indices",
+        convention="the indices of the normals and the means of the yearly indices "
+        "differ and both are given (Sumner et al. 2001); a total of 0 has no index",
+        source=Source(
+            citation=_SUMNER,
+            locator="p. 225: the SI of the mean monthly "
+            "totals and the mean of the yearly SI",
+        ),
+    ),
+)
+"""The Tier B formulas of the module (CMP-2.2)."""

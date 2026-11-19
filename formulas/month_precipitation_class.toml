@@ -1,0 +1,149 @@
+schema = "nogat-formula-card/1"
+name = "month_precipitation_class"
+title = "Class of a month's precipitation in % of its normal"
+function = "hydrolog.statistics.meteo_spi.month_precipitation_class"
+family = "classification"
+formula_version = 1
+status = "referenced"
+equation = "P/N below 25 extremely dry, [25, 50) very dry, [50, 75) dry, [75, 125] normal, (125, 150] wet, (150, 200] very wet, above 200 extremely wet"
+latex = "\\frac{100\\,P}{N} < 25,\\ [25, 50),\\ [50, 75),\\ [75, 125],\\ (125, 150],\\ (150, 200],\\ > 200"
+validation = "none: a classification"
+conventions = ["the interval closures of Table 1 as printed: the lower three classes closed below, the upper ones closed above", "Kaczorowska (1962) classes years and seasons only; IMGW-PIB's monitoring labels this monthly table after her, which the source line of Gąsiorek and Musiał (2011) does not"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/meteo-indices-cases.json"]
+constraints = []
+oracles = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.limits]]
+name = "ordered_classes"
+text = "a larger percentage never gives a drier class"
+
+[[sources]]
+citation = "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119 (after Tomaszewska 1994)"
+access = "open"
+locator = "Table 1, p. 109: the classes of the relative precipitation index of a month (source line: Tomaszewska 1994); eq. 1, p. 109 (RPI = 100 P / N)"
+url = "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf"
+
+[[variables]]
+name = "percent_of_normal"
+symbol = "P/N"
+unit = "%"
+kind = "real"
+description = "Precipitation in % of its normal."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 3589.0
+test_reason = "ten times the largest percentage of the project's data (358.9 % at Warszawa-Okęcie)"
+
+[variables.typical]
+low = 1.1
+low_inclusive = true
+high = 358.9
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the monthly sums of 1991-2020 in % of their normals: 1.1 to 358.9 %"
+
+[[constants]]
+name = "extremely_dry_below"
+value = 25.0
+unit = "%"
+symbol = "25"
+
+[constants.source]
+citation = "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119 (after Tomaszewska 1994)"
+access = "open"
+locator = "Table 1, p. 109: the open upper limit of the class extremely_dry"
+url = "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf"
+
+[[constants]]
+name = "very_dry_below"
+value = 50.0
+unit = "%"
+symbol = "50"
+
+[constants.source]
+citation = "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119 (after Tomaszewska 1994)"
+access = "open"
+locator = "Table 1, p. 109: the open upper limit of the class very_dry"
+url = "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf"
+
+[[constants]]
+name = "dry_below"
+value = 75.0
+unit = "%"
+symbol = "75"
+
+[constants.source]
+citation = "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119 (after Tomaszewska 1994)"
+access = "open"
+locator = "Table 1, p. 109: the open upper limit of the class dry"
+url = "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf"
+
+[[constants]]
+name = "normal_to"
+value = 125.0
+unit = "%"
+symbol = "125"
+
+[constants.source]
+citation = "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119 (after Tomaszewska 1994)"
+access = "open"
+locator = "Table 1, p. 109: the upper limit of the class normal"
+url = "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf"
+
+[[constants]]
+name = "wet_to"
+value = 150.0
+unit = "%"
+symbol = "150"
+
+[constants.source]
+citation = "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119 (after Tomaszewska 1994)"
+access = "open"
+locator = "Table 1, p. 109: the upper limit of the class wet"
+url = "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf"
+
+[[constants]]
+name = "very_wet_to"
+value = 200.0
+unit = "%"
+symbol = "200"
+
+[constants.source]
+citation = "Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119 (after Tomaszewska 1994)"
+access = "open"
+locator = "Table 1, p. 109: the upper limit of the class very_wet"
+url = "https://www.itp.edu.pl/old/wydawnictwo/woda/zeszyt_36_2011/artykuly/Gasiorek%20Musial.pdf"
+
+[[outputs]]
+name = "precipitation_class"
+unit = "-"
+kind = "choice"
+description = "The class, driest first."
+choices = ["extremely_dry", "very_dry", "dry", "normal", "wet", "very_wet", "extremely_wet"]
+
+[[traps]]
+name = "class_limit"
+description = "A value exactly at a limit of a published class or table."
+test = "reference cases month-class-boundary-*: each limit and just beyond it"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case percent_of_normal-nan: NaN is refused; a month without a percentage has no class"

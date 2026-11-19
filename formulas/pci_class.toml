@@ -1,0 +1,118 @@
+schema = "nogat-formula-card/1"
+name = "pci_class"
+title = "Oliver's class of a precipitation concentration index"
+function = "hydrolog.statistics.meteo_precipitation.pci_class"
+family = "classification"
+formula_version = 1
+status = "referenced"
+equation = "PCI <= 10 uniform, (10, 15] moderate, (15, 20] irregular, above 20 strongly irregular"
+latex = "\\mathrm{PCI} \\le 10,\\ (10, 15],\\ (15, 20],\\ > 20"
+validation = "none: a classification"
+conventions = ["the source's classes are of whole numbers (below 10, 11-15, 16-20, above 20); the gaps between them go to the class above: 10 is uniform, 10.5 moderate, 15 moderate and 15.5 irregular"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/meteo-indices-cases.json"]
+constraints = []
+oracles = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.limits]]
+name = "ordered_classes"
+text = "a larger index never gives a more uniform class"
+
+[[sources]]
+citation = "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265"
+access = "open"
+locator = "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate concentration, 16-20 irregular, above 20 strong irregularity"
+url = "https://nhess.copernicus.org/articles/11/1259/2011/"
+
+[[sources]]
+citation = "Oliver, J. E. (1980). Monthly precipitation distribution: a comparative index. Professional Geographer 32(3), 300-309"
+access = "author-provided"
+locator = "the index and its classes; not opened here: as de Luis et al. (2011) print them"
+
+[[variables]]
+name = "pci"
+symbol = "\\mathrm{PCI}"
+unit = "-"
+kind = "real"
+description = "A precipitation concentration index."
+applicability = "unstated"
+
+[variables.physical]
+low = 8.333333333333334
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.typical]
+low = 9.4
+low_inclusive = true
+high = 27.3
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the yearly PCI of 1991-2020: 9.4 to 27.3"
+
+[[constants]]
+name = "uniform_to"
+value = 10.0
+unit = "-"
+symbol = "10"
+
+[constants.source]
+citation = "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265"
+access = "open"
+locator = "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate concentration, 16-20 irregular, above 20 strong irregularity"
+url = "https://nhess.copernicus.org/articles/11/1259/2011/"
+
+[[constants]]
+name = "moderate_to"
+value = 15.0
+unit = "-"
+symbol = "15"
+
+[constants.source]
+citation = "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265"
+access = "open"
+locator = "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate concentration, 16-20 irregular, above 20 strong irregularity"
+url = "https://nhess.copernicus.org/articles/11/1259/2011/"
+
+[[constants]]
+name = "irregular_to"
+value = 20.0
+unit = "-"
+symbol = "20"
+
+[constants.source]
+citation = "de Luis, M., González-Hidalgo, J. C., Brunetti, M. and Longares, L. A. (2011). Precipitation concentration changes in Spain 1946-2005. Natural Hazards and Earth System Sciences 11, 1259-1265"
+access = "open"
+locator = "p. 1260, Oliver's classes: below 10 uniform, 11-15 moderate concentration, 16-20 irregular, above 20 strong irregularity"
+url = "https://nhess.copernicus.org/articles/11/1259/2011/"
+
+[[outputs]]
+name = "index_class"
+unit = "-"
+kind = "choice"
+description = "The class, the most uniform first."
+choices = ["uniform", "moderate", "irregular", "strongly_irregular"]
+
+[[traps]]
+name = "class_limit"
+description = "A value exactly at a limit of a published class or table."
+test = "reference cases pci-class-*: each limit and just beyond it"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case pci-nan: NaN is refused; a year without an index has no class"

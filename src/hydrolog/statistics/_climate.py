@@ -40,6 +40,10 @@ data summed in binary carry errors that depend on the order of the additions, an
 sums equal in decimal must be equal numbers (a tie of the Mann-Kendall test, the
 first of equal windows).
 
+These rules are Tier B of Nogat's computation standard (ADR-0059): the module has no
+formula of its own (``SPECS`` is empty) and declares them in :data:`TIER_B`, which
+``docs/FORMULAS.md`` shows.
+
 References
 ----------
 WMO (2017): WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203,
@@ -50,12 +54,14 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from typing import Literal, NamedTuple
+from fractions import Fraction
+from typing import Final, Literal, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog.exceptions import CalculationError, InvalidParameterError
+from hydrolog.nogat_formulas import Constant, FormulaSpec, Source, TierBSpec
 
 YearType = Literal["calendar", "hydrological"]
 YEAR_TYPES: tuple[str, ...] = ("calendar", "hydrological")
@@ -988,8 +994,20 @@ def precipitation_record(
     )
     if flags.size != values.size:
         raise InvalidParameterError("accumulated must have one flag per value")
-    if bool((values[np.isfinite(values)] < 0).any()):
-        raise InvalidParameterError("precipitation must not be negative")
+    negative = np.flatnonzero(values < 0)
+    if negative.size:
+        at = int(negative[0])
+        raise InvalidParameterError(
+            f"precipitation must not be negative; precipitation_mm[{at}] = "
+            f"{values[at]:g} mm is outside its physical range [0, inf)",
+            details={
+                "reason": "outside_physical_range",
+                "option": "precipitation_mm",
+                "variable": "precipitation_mm",
+                "value": float(values[at]),
+                "index": [at],
+            },
+        )
     return PrecipitationRecord(days, values, flags, year_type)
 
 
@@ -1055,3 +1073,134 @@ def precipitation_periods(
     )
     reference = data if period.is_period_of(data.grid) else record.on_grid(period.keep)
     return PrecipitationPeriods(data, reference, period)
+
+
+SPECS: Final[tuple[FormulaSpec, ...]] = ()
+"""The Tier A formulas of the module: none, its rules are Tier B."""
+
+_WMO_1203 = (
+    "WMO (2017). WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203, "
+    "Geneva"
+)
+_WMO_1203_URL = "https://library.wmo.int/idurl/4/55797"
+
+
+def _wmo(locator: str) -> Source:
+    return Source(citation=_WMO_1203, locator=locator, url=_WMO_1203_URL)
+
+
+_MISSING = _wmo(
+    "section 4.4.1 (a) and footnote 4, p. 7: a mean is not calculated when 11 or more "
+    "days are missing or 5 or more consecutive days"
+)
+
+TIER_B: Final = (
+    TierBSpec(
+        name="wmo_monthly_mean",
+        function="hydrolog.statistics._climate.monthly_means",
+        definition="the mean of the daily values of a month with fewer than 11 missing "
+        "days and fewer than 5 missing in a row, and at least one value",
+        convention="a day of the grid without a date counts as missing",
+        source=_MISSING,
+        constants=(
+            Constant(
+                name="missing_days", value=11.0, unit="d", symbol="11", source=_MISSING
+            ),
+            Constant(
+                name="missing_run", value=5.0, unit="d", symbol="5", source=_MISSING
+            ),
+        ),
+    ),
+    TierBSpec(
+        name="wmo_monthly_count",
+        function="hydrolog.statistics._climate.monthly_counts",
+        definition="the days of an event in a month whose mean could be calculated, "
+        "scaled to the days of the month: the events over the days with a value times "
+        "the days of the month",
+        convention="the scaling of every such month (WMO-No. 1203 gives the ratio for "
+        "normals); a count is then not a whole number",
+        source=_wmo("sections 4.3.1 (d) and 4.4.1 (d), pp. 5-8"),
+    ),
+    TierBSpec(
+        name="wmo_monthly_sum",
+        function="hydrolog.statistics._climate.monthly_totals",
+        definition="the sum of the daily values of a month with every day",
+        convention="no sum of a month with a missing day",
+        source=_wmo("sections 4.3.1 (c) and 4.4.1 (c), pp. 5-8"),
+    ),
+    TierBSpec(
+        name="accumulated_totals",
+        function="hydrolog.statistics._climate.monthly_precipitation",
+        definition="a total flagged as accumulated stands for the missing days just "
+        "before it when, with its own day, they are fewer than 5; a month's sum takes "
+        "such totals when fewer than 11 of its days are covered by them",
+        convention="a block over the start of a month is judged on its whole length; "
+        "the total counts in the month of its own day",
+        source=_wmo(
+            "section 4.4.1 (c), pp. 7-8: accumulated observations that cover the full "
+            "period of missing data, not 11 or more days nor 5 or more in a row"
+        ),
+    ),
+    TierBSpec(
+        name="wmo_normal",
+        function="hydrolog.statistics._climate.normal",
+        definition="the normal of a calendar month: the mean of its values in the "
+        "years of the reference period with one, when they are at least 80 % of its "
+        "years",
+        convention="every year of the reference period counts, those without data too; "
+        "no consecutive-years criterion",
+        source=_wmo("section 4.4.2, pp. 8-9"),
+        constants=(
+            Constant(
+                name="normal_share",
+                value=Fraction(4, 5),
+                unit="-",
+                symbol="80 %",
+                source=_wmo("section 4.4.2, pp. 8-9: 24 or more of 30 years"),
+            ),
+        ),
+    ),
+    TierBSpec(
+        name="multimonth_normal",
+        function="hydrolog.statistics._climate.multimonth_normal",
+        definition="the normal of a year, half-year or season: the sum of the normals "
+        "of its months for a sum or a count, their mean for a mean",
+        convention="from the monthly normals, not from the annual values (WMO-No. "
+        "1203, 4.3.3: identical without missing months)",
+        source=_wmo("section 4.3.3, p. 6"),
+    ),
+    TierBSpec(
+        name="block_extreme",
+        function="hydrolog.statistics._climate.block_extreme",
+        definition="the extreme of a month from the days that have a value, with the "
+        "first date it occurs",
+        convention="an annual extreme of a statistic that needs every day is taken by "
+        "its series function from complete years only",
+        source=_wmo("section 4.4.1 (b), p. 7: extremes regardless of missing data"),
+    ),
+    TierBSpec(
+        name="rounded_sums",
+        function="hydrolog.statistics._climate.round_sums",
+        definition="every sum of daily precipitation rounded to 1e-6 mm",
+        convention="0.1-mm data summed in binary depend on the order of the additions; "
+        "rounded, sums equal in decimal are equal numbers (ties of the Mann-Kendall "
+        "test, the first of equal windows); at most 5e-7 mm per sum",
+        source=Source(
+            citation="Hydrolog ADR-0032 (2026-11-13): meteorological statistics of a "
+            "station, the group meteo",
+            locator="the sums of daily precipitation",
+            url="https://github.com/Daldek/Hydrolog/blob/develop/docs/decisions/"
+            "0032-meteorological-statistics-of-a-station-the-group-meteo.md",
+        ),
+    ),
+    TierBSpec(
+        name="years_of_a_series",
+        function="hydrolog.statistics._climate.year_of",
+        definition="the calendar year (January - December), the Polish hydrological "
+        "year (November - October) named after the year it ends, or the snow season "
+        "(August - July) named after the year it ends",
+        convention="a year is laid on the grid whole, its days without a value missing",
+        source=_wmo("chapter 2: normals of calendar months"),
+    ),
+)
+"""The Tier B formulas of the module (CMP-2.2)."""

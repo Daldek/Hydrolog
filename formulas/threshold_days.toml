@@ -1,0 +1,349 @@
+schema = "nogat-formula-card/1"
+name = "threshold_days"
+title = "Frost, freeze-thaw, ice, summer and hot days and tropical nights of a day"
+function = "hydrolog.statistics.meteo_temperature.threshold_days"
+family = "classification"
+formula_version = 1
+status = "referenced"
+equation = "frost: Tmin < Tf; freeze-thaw: Tmin < Tf and Tmax > Ti; ice: Tmax < Ti; summer: Tmax > Ts; hot: Tmax > Th; tropical night: Tmin > Tt; 1 when it holds, else 0 (the ETCCDI: Tf = Ti = 0, Ts = 25, Tt = 20 °C; Th = 30 °C)"
+latex = "\\mathrm{FD} = [T_{n} < T_f],\\ \\mathrm{FT} = [T_{n} < T_f][T_{x} > T_i],\\ \\mathrm{ID} = [T_{x} < T_i],\\ \\mathrm{SU} = [T_{x} > T_s],\\ \\mathrm{HD} = [T_{x} > T_h],\\ \\mathrm{TR} = [T_{n} > T_t]"
+validation = "none: a classification of a day"
+conventions = ["strict signs as the ETCCDI: a day exactly at a threshold is none of these days; IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C", "the freeze-thaw day is the „dzień przymrozkowy” of the Słownik meteorologiczny and of IMGW-PIB's normals (PRZYMROZKI); the frost day is FD", "a flag is missing (NaN) where a temperature it needs is; the series function gives an all-missing series for one it lacks"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/meteo-indices-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+symmetries = []
+
+[properties.monotonic]
+tmin_c = -1
+frost_tmin_c = 1
+
+[[properties.limits]]
+name = "counting_oracle"
+text = "every flag equals the comparison made day by day in a loop, at the ETCCDI's thresholds and beside them, with gaps"
+
+[[properties.conservation]]
+name = "a_freeze_thaw_day_is_a_frost_day"
+text = "no freeze-thaw day without a frost day"
+
+[properties.conservation.tolerance]
+reason = "counts of 0 and 1"
+abs = 0.0
+
+[[sources]]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "FD: days with TN < 0 °C; SU: TX > 25 °C; ID: TX < 0 °C; TR: TN > 20 °C; DTR: the monthly mean of TX - TN"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[sources]]
+citation = "Kossowska-Cezak, U. (2014). Zmiany wieloletnie liczby termicznych dni charakterystycznych w Warszawie (1951-2010). Prace Geograficzne 136, 9-30"
+access = "open"
+locator = "p. 14, after the Słownik meteorologiczny (2003): a hot day („upalny”) has tmax > 30 °C, a freeze-thaw day („przymrozkowy”) tmin < 0 °C and tmax > 0 °C"
+
+[[sources]]
+citation = "IMGW-PIB: Normy klimatyczne 1991-2020"
+access = "open"
+locator = "product PRZYMROZKI, „Liczba dni przymrozkowych (TMAX>0 & TMIN<0)”"
+url = "https://klimat.imgw.pl"
+
+[[variables]]
+name = "tmax_c"
+symbol = "T_x"
+unit = "°C"
+kind = "real_array"
+description = "Daily maximum air temperature; NaN on a missing day."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = -273.15
+low_inclusive = true
+test_high = 56.7
+test_reason = "the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = -16.7
+low_inclusive = true
+high = 37.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the daily maximum temperature: -16.7 to 37.0 °C"
+
+[[variables]]
+name = "tmin_c"
+symbol = "T_n"
+unit = "°C"
+kind = "real_array"
+description = "Daily minimum air temperature of the same days; NaN on a missing day."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = -273.15
+low_inclusive = true
+test_high = 56.7
+test_reason = "the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = -27.1
+low_inclusive = true
+high = 22.8
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the daily minimum temperature: -27.1 to 22.8 °C"
+
+[[variables]]
+name = "frost_tmin_c"
+symbol = "T_f"
+unit = "°C"
+kind = "real"
+description = "A frost day has Tmin below this."
+applicability = "unstated"
+
+[variables.physical]
+low = -273.15
+low_inclusive = true
+test_high = 56.7
+test_reason = "the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 0.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "FD: days with TN < 0 °C; SU: TX > 25 °C; ID: TX < 0 °C; TR: TN > 20 °C; DTR: the monthly mean of TX - TN"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[variables]]
+name = "ice_tmax_c"
+symbol = "T_i"
+unit = "°C"
+kind = "real"
+description = "An ice day has Tmax below this, a freeze-thaw day above it."
+applicability = "unstated"
+
+[variables.physical]
+low = -273.15
+low_inclusive = true
+test_high = 56.7
+test_reason = "the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 0.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "FD: days with TN < 0 °C; SU: TX > 25 °C; ID: TX < 0 °C; TR: TN > 20 °C; DTR: the monthly mean of TX - TN"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[variables]]
+name = "summer_tmax_c"
+symbol = "T_s"
+unit = "°C"
+kind = "real"
+description = "A summer day has Tmax above this."
+applicability = "unstated"
+
+[variables.physical]
+low = -273.15
+low_inclusive = true
+test_high = 56.7
+test_reason = "the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 25.0
+low_inclusive = true
+high = 25.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "FD: days with TN < 0 °C; SU: TX > 25 °C; ID: TX < 0 °C; TR: TN > 20 °C; DTR: the monthly mean of TX - TN"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[variables]]
+name = "hot_tmax_c"
+symbol = "T_h"
+unit = "°C"
+kind = "real"
+description = "A hot day has Tmax above this."
+applicability = "unstated"
+
+[variables.physical]
+low = -273.15
+low_inclusive = true
+test_high = 56.7
+test_reason = "the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 30.0
+low_inclusive = true
+high = 30.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Kossowska-Cezak, U. (2014). Zmiany wieloletnie liczby termicznych dni charakterystycznych w Warszawie (1951-2010). Prace Geograficzne 136, 9-30"
+access = "open"
+locator = "p. 14, after the Słownik meteorologiczny (2003): a hot day („upalny”) has tmax > 30 °C, a freeze-thaw day („przymrozkowy”) tmin < 0 °C and tmax > 0 °C"
+
+[[variables]]
+name = "tropical_tmin_c"
+symbol = "T_t"
+unit = "°C"
+kind = "real"
+description = "A tropical night has Tmin above this."
+applicability = "unstated"
+
+[variables.physical]
+low = -273.15
+low_inclusive = true
+test_high = 56.7
+test_reason = "the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 20.0
+low_inclusive = true
+high = 20.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "FD: days with TN < 0 °C; SU: TX > 25 °C; ID: TX < 0 °C; TR: TN > 20 °C; DTR: the monthly mean of TX - TN"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[constraints]]
+name = "the_same_days"
+class = "precondition"
+text = "tmax_c and tmin_c hold the same days, one value of each a day"
+
+[constraints.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "FD: days with TN < 0 °C; SU: TX > 25 °C; ID: TX < 0 °C; TR: TN > 20 °C; DTR: the monthly mean of TX - TN"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[outputs]]
+name = "frost"
+unit = "-"
+kind = "real_array"
+description = "1 on a frost day."
+gaps_allowed = true
+gaps_from = "tmin_c"
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "freeze_thaw"
+unit = "-"
+kind = "real_array"
+description = "1 on a freeze-thaw day; NaN without both."
+gaps_allowed = true
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "ice"
+unit = "-"
+kind = "real_array"
+description = "1 on an ice day."
+gaps_allowed = true
+gaps_from = "tmax_c"
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "summer"
+unit = "-"
+kind = "real_array"
+description = "1 on a summer day."
+gaps_allowed = true
+gaps_from = "tmax_c"
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "hot"
+unit = "-"
+kind = "real_array"
+description = "1 on a hot day."
+gaps_allowed = true
+gaps_from = "tmax_c"
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "tropical"
+unit = "-"
+kind = "real_array"
+description = "1 on a tropical night."
+gaps_allowed = true
+gaps_from = "tmin_c"
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[traps]]
+name = "class_limit"
+description = "A value exactly at a limit of a published class or table."
+test = "reference cases etccdi-*-boundary: each threshold and 0.1 °C beyond it"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases tmax_c-nan_element and tmin_c-nan_element: a missing temperature leaves only its own flags missing"
+
+[[oracles]]
+kind = "algorithm"
+description = "the flags compared day by day in a Python loop on a seeded series with gaps and on the thresholds themselves"
+test = "tests/unit/test_formulas_meteo_temperature.py (limit counting_oracle)"
+conventions = []

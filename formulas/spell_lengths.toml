@@ -1,0 +1,159 @@
+schema = "nogat-formula-card/1"
+name = "spell_lengths"
+title = "The length of the dry or wet spell ending on each day"
+function = "hydrolog.statistics.meteo_spells.spell_lengths"
+family = "index"
+formula_version = 1
+status = "oracle only"
+equation = "a day is dry when P < P0 and wet when P >= P0, a missing day neither; L(t) = the number of consecutive days of the kind ending on day t when day t is of the kind and day t + 1 is not, else 0"
+latex = "L_t = \\begin{cases} t - s + 1 & d_s = \\dots = d_t = 1,\\ d_{s-1} = d_{t+1} = 0 \\\\ 0 & \\text{otherwise} \\end{cases},\\quad d_t = [P_t < P_0]\\ (\\text{dry}),\\ [P_t \\ge P_0]\\ (\\text{wet})"
+validation = "none: a count of days"
+conventions = ["a dry day has P < P0 and a wet day P >= P0 (RR < 1 mm and RR >= 1 mm of the ETCCDI): a day at the threshold is wet", "a missing day (NaN) is neither dry nor wet: it ends a spell and has L = 0; the series function marks such a spell open", "the length of a spell stands on its last day, so that the series function credits each spell whole to the year of its end (Tier B spell_year)"]
+assumptions = []
+notices = []
+reference_cases = []
+constraints = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "precipitation_in_another_unit"
+
+[properties.scalings.inputs]
+precipitation_mm = 1.0
+threshold_mm = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "doubling a float is exact and keeps every comparison with the doubled threshold"
+abs = 0.0
+
+[[properties.limits]]
+name = "counting_oracle"
+text = "L equals the spells counted day by day in a loop, on hand-made and seeded series with gaps, both kinds and three thresholds"
+
+[[properties.limits]]
+name = "one_spell_of_every_day"
+text = "a series of dry days is one spell, its length on its last day"
+
+[[properties.limits]]
+name = "a_day_at_the_threshold_is_wet"
+text = "P = P0 is a wet day, P just below it a dry one"
+
+[properties.limits.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "CDD: the largest number of consecutive days with RR < 1 mm; CWD: the largest number of consecutive days with RR >= 1 mm (RR the daily precipitation)"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[properties.conservation]]
+name = "every_day_of_the_kind_once"
+text = "the spells hold each day of the kind once: the sum of L is the number of dry (wet) days"
+
+[properties.conservation.tolerance]
+reason = "sums of whole numbers below 2**53 are exact"
+abs = 0.0
+
+[[sources]]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "CDD: the largest number of consecutive days with RR < 1 mm; CWD: the largest number of consecutive days with RR >= 1 mm (RR the daily precipitation)"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[sources]]
+citation = "ECA&D (2021). European Climate Assessment & Dataset, Algorithm Theoretical Basis Document (ATBD), version 11. KNMI, De Bilt"
+access = "open"
+locator = "section 5.1, p. 20: a spell can continue into the next year and is counted against the year in which the spell ends"
+url = "https://knmi-ecad-assets-prd.s3.amazonaws.com/documents/atbd.pdf"
+
+[[variables]]
+name = "precipitation_mm"
+symbol = "P_t"
+unit = "mm"
+kind = "real_array"
+description = "Daily precipitation of consecutive days; NaN on a missing day."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 75.8
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the daily precipitation: 0 to 75.8 mm"
+
+[[variables]]
+name = "threshold_mm"
+symbol = "P_0"
+unit = "mm"
+kind = "real"
+description = "The least precipitation of a wet day."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "CDD: the largest number of consecutive days with RR < 1 mm; CWD: the largest number of consecutive days with RR >= 1 mm (RR the daily precipitation)"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[variables]]
+name = "kind"
+symbol = "\\text{kind}"
+unit = "-"
+kind = "choice"
+description = "Dry spells (below the threshold) or wet spells (at or above it)."
+choices = ["dry", "wet"]
+
+[[outputs]]
+name = "spell_days"
+unit = "d"
+kind = "real_array"
+symbol = "L_t"
+description = "The days of the spell ending on each day, 0 on any other day."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case precipitation_mm-nan_element and limit counting_oracle: a missing day ends a spell and has 0, never NaN"
+
+[[oracles]]
+kind = "algorithm"
+description = "the spells counted day by day in a Python loop (math.isnan and a running count), not by the edges of runs"
+test = "tests/unit/test_formulas_meteo_spells.py (limit counting_oracle)"
+conventions = []

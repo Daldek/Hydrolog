@@ -14,17 +14,7 @@ import pytest
 
 from hydrolog.catalog import get_command, run_command, validate_command
 from hydrolog.exceptions import CalculationError, InputDataError, InvalidParameterError
-from hydrolog.statistics import (
-    fit_gamma,
-    month_precipitation_class,
-    pci_class,
-    precipitation_concentration_index,
-    precipitation_spells,
-    precipitation_sums,
-    si_class,
-    sielianinov_class,
-    year_precipitation_class,
-)
+from hydrolog.statistics import precipitation_spells, precipitation_sums
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "meteo_daily.csv"
 
@@ -200,14 +190,6 @@ class TestPrecipitationIndices:
             100 * above / sum(wet)
         )
 
-    def test_pci_of_equal_months_and_of_one_month_and_the_classes(self):
-        assert precipitation_concentration_index([10.0] * 12) == pytest.approx(100 / 12)
-        assert precipitation_concentration_index([0.0] * 11 + [50.0]) == 100.0
-        assert pci_class(10.0) == "uniform"
-        assert pci_class(10.5) == "moderate"
-        assert si_class(0.19) == "very_equable"
-        assert si_class(1.2) == "extreme"
-
 
 class TestSpells:
     """The run logic of ``stats threshold-events`` on dry and wet days."""
@@ -223,35 +205,6 @@ class TestSpells:
         ]
         wet = precipitation_spells(values, _days("2001-01-01", 9), kind="wet")
         assert [s.duration_days for s in wet.spells] == [1, 1]
-
-
-class TestSpiAndClasses:
-    """Thom's fit, the SPI and the classes of relative precipitation."""
-
-    def test_thom_estimates_of_a_sample(self):
-        sample = np.array([0.0, 10.0, 20.0, 40.0, 30.0])
-        alpha, beta, q = fit_gamma(sample)
-        positive = sample[sample > 0]
-        a = math.log(positive.mean()) - np.log(positive).mean()
-        assert alpha == pytest.approx((1 + math.sqrt(1 + 4 * a / 3)) / (4 * a))
-        assert beta == pytest.approx(positive.mean() / alpha)
-        assert q == pytest.approx(0.2)
-
-    def test_classes_of_years_and_months(self):
-        # Kaczorowska (1962), whole percent: 89 dry, 90 normal, 151 extremely wet
-        assert year_precipitation_class(89.4) == "dry"
-        assert year_precipitation_class(89.6) == "normal"
-        assert year_precipitation_class(151.0) == "extremely_wet"
-        # months (Gąsiorek and Musiał, 2011, Table 1): 24.9 extremely dry, 125 normal
-        assert month_precipitation_class(24.9) == "extremely_dry"
-        assert month_precipitation_class(125.0) == "normal"
-        assert month_precipitation_class(200.5) == "extremely_wet"
-
-    def test_sielianinov_classes_of_skowera_and_pula(self):
-        assert sielianinov_class(0.4) == "extremely_dry"
-        assert sielianinov_class(0.41) == "very_dry"
-        assert sielianinov_class(1.6) == "optimal"
-        assert sielianinov_class(3.01) == "extremely_wet"
 
 
 class TestTemperatureSnowHydrothermal:

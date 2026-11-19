@@ -11,7 +11,9 @@ month from October to May has enough days; the largest depth with its day, the f
 and the last day with snow cover and the sum of the depths of fresh snow take
 whatever days the winter has. The median first and last day count each date as a
 day of the season on a calendar without 29 February (29 February counts as
-28 February), so that a date is the same day in every winter.
+28 February), so that a date is the same day in every winter. These conventions are
+Tier B of Nogat's computation standard (ADR-0059), declared in :data:`TIER_B`
+(``SPECS`` is empty) and shown in ``docs/FORMULAS.md``.
 
 References
 ----------
@@ -23,12 +25,14 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Final
 
 import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.nogat_formulas import Constant, FormulaSpec, Source, TierBSpec
 from hydrolog.statistics._climate import (
     SNOW_SEASON,
     as_days,
@@ -45,10 +49,12 @@ from hydrolog.statistics._climate import (
 __all__ = [
     "SNOW_COVER_CM",
     "SNOW_SEASON_MONTHS",
+    "SPECS",
     "SnowCover",
     "SnowMonth",
     "SnowPeriod",
     "SnowYear",
+    "TIER_B",
     "snow_cover",
 ]
 
@@ -342,3 +348,85 @@ def snow_cover(
             ],
         ),
     )
+
+
+SPECS: Final[tuple[FormulaSpec, ...]] = ()
+"""The Tier A formulas of the module: none, its conventions are Tier B."""
+
+_ROCZNIK = Source(
+    citation="IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+    locator="p. 5: snow cover, a layer of at least 1 cm covering more than half of the "
+    "terrain around the station, measured at 06 UTC",
+    url="https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/"
+    "Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+)
+_ECAD_SNOW = Source(
+    citation="ECA&D (2021). European Climate Assessment & Dataset, Algorithm "
+    "Theoretical Basis Document (ATBD), version 11. KNMI, De Bilt",
+    locator="section 5.3.9: SD1, snow days (SD >= 1 cm)",
+    url="https://knmi-ecad-assets-prd.s3.amazonaws.com/documents/atbd.pdf",
+)
+_URBAN = Source(
+    citation="Urban, G. (2015). Przegląd Geograficzny 87(3)",
+    locator="pp. 498-499: the snow season from 1 August to 31 July, after Falarz",
+    access="author-provided",
+)
+_WMO_EXTREMES = Source(
+    citation="WMO (2017). WMO Guidelines on the Calculation of Climate Normals. "
+    "WMO-No. 1203, Geneva",
+    locator="section 4.4.1 (b) and (d), pp. 7-8: extremes from whatever days, counts "
+    "of months whose mean could be calculated",
+    url="https://library.wmo.int/idurl/4/55797",
+)
+
+TIER_B: Final = (
+    TierBSpec(
+        name="snow_cover_day",
+        function="hydrolog.statistics.meteo_snow.snow_cover",
+        definition="a day with snow cover has a depth of at least 1 cm; the days of a "
+        "month are scaled to its days when fewer than 11 days, and fewer than 5 in a "
+        "row, are missing; a winter's days are the sum of its months",
+        convention="at least 1 cm, as IMGW-PIB's yearbooks and ECA&D's SD1; IMGW-PIB's "
+        "normals count > 0 cm (SNIEG_0, the same with whole centimetres) and > 1 cm "
+        "(SNIEG_1)",
+        source=_ROCZNIK,
+        constants=(
+            Constant(
+                name="snow_cover_cm",
+                value=SNOW_COVER_CM,
+                unit="cm",
+                symbol="1 cm",
+                source=_ECAD_SNOW,
+            ),
+        ),
+    ),
+    TierBSpec(
+        name="snow_season",
+        function="hydrolog.statistics.meteo_snow.snow_cover",
+        definition="a winter is the snow season 1 August - 31 July named after the "
+        "year it ends; it is complete when every month October to May has enough days",
+        convention="the whole cold season together: snow of late October starts its "
+        "winter (Polish studies also use X-V, XI-III or XII-II)",
+        source=_URBAN,
+    ),
+    TierBSpec(
+        name="snow_season_extremes",
+        function="hydrolog.statistics.meteo_snow.snow_cover",
+        definition="the largest depth with its day, the first and the last day with "
+        "snow cover and the sum of the depths of fresh snow of a winter, from whatever "
+        "days it has",
+        convention="the first of equal largest depths",
+        source=_WMO_EXTREMES,
+    ),
+    TierBSpec(
+        name="snow_season_medians",
+        function="hydrolog.statistics.meteo_snow.snow_cover",
+        definition="the median first and last day with snow cover of the complete "
+        "winters: each date a day of the season on a calendar without 29 February, "
+        "the median of those days turned back into a date",
+        convention="29 February counts as 28 February, so a date is the same day in "
+        "every winter; a median between two days is rounded half to even",
+        source=_URBAN,
+    ),
+)
+"""The Tier B formulas of the module (CMP-2.2)."""

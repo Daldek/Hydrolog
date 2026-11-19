@@ -1,23 +1,14 @@
 """Published reference cases of the ``meteo`` group on a real station series.
 
-``tests/fixtures/warszawa_okecie_1991_2020.csv.gz``: the daily Tmax, Tmin, Tmean and P
-of the IMGW-PIB synop station Warszawa-Okęcie (352200375) in 1991-2020, every day with
-a value, from the files ``s_d_375_*`` of danepubliczne.imgw.pl. Źródłem pochodzenia
-danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy;
-dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego
-zostały przetworzone (a CSV of four columns).
-
-The published values are IMGW-PIB's climate normals 1991-2020 of the station WARSZAWA
-12375 (klimat.imgw.pl, „Normy klimatyczne 1991-2020”, read 2026-11-18), printed to
-0.1; the others are independent recounts of the same rows named in each test (the
-audit of the formulas of 2026-11-18, research ``meteo-indices``).
+The daily series of Warszawa-Okęcie 1991-2020 (``tests/unit/_warszawa.py``, with
+IMGW-PIB's attribution). The published values are IMGW-PIB's climate normals 1991-2020
+of the station WARSZAWA 12375 (klimat.imgw.pl, „Normy klimatyczne 1991-2020”, read
+2026-11-18), printed to 0.1; the others are independent recounts of the same rows named
+in each test (the audit of the formulas of 2026-11-18, research ``meteo-indices``).
+A test of a whole series is written by hand: the generator of the computation standard
+takes the inputs of one formula, not 10,958 days through the calendar (CMP-6.5).
 """
 
-import csv
-import gzip
-from pathlib import Path
-
-import numpy as np
 import pytest
 
 from hydrolog.statistics import (
@@ -28,22 +19,8 @@ from hydrolog.statistics import (
     temperature_means,
 )
 
-FIXTURE = (
-    Path(__file__).resolve().parents[1]
-    / "fixtures"
-    / "warszawa_okecie_1991_2020.csv.gz"
-)
-with gzip.open(FIXTURE, "rt", encoding="utf-8") as _stream:
-    _ROWS = list(csv.DictReader(_stream))
-DATES = np.array([row["date"] for row in _ROWS], dtype="datetime64[D]")
+from ._warszawa import DATES, TMAX, TMEAN, TMIN, P
 
-
-def _column(name: str) -> np.ndarray:
-    return np.array([float(row[name]) for row in _ROWS])
-
-
-TMAX, TMIN = _column("Tmax [degC]"), _column("Tmin [degC]")
-TMEAN, P = _column("Tmean [degC]"), _column("P [mm]")
 PRINTED = 0.05 + 1e-9  # half the printed unit of 0.1
 
 
