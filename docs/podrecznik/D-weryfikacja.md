@@ -67,9 +67,9 @@ we wzorze znajdzie się błąd, zapisane wyniki, których dotyczy, da się odnal
 
 Każda zmienna wejściowa ma w specyfikacji trzy zakresy (CMP-1.3 do CMP-1.5):
 
-- **zakres fizyczny**: wartości, które mogą istnieć (powierzchnia zlewni dodatnia, CN nie
-  większe od stu). Koniec nieograniczony ma granicę testową z uzasadnieniem, na przykład
-  największy zanotowany na świecie opad dobowy;
+- **zakres fizyczny**: wartości, które mogą istnieć (powierzchnia zlewni nie może być ujemna,
+  a udział nie może przekroczyć całości). Koniec nieograniczony ma granicę testową z
+  uzasadnieniem, na przykład największy zanotowany na świecie opad dobowy;
 - **zakres stosowalności**: wartości, dla których wzór wyprowadzono lub sprawdzono, ze źródłem,
   które go podaje; gdy źródło żadnego nie podaje, specyfikacja mówi to wprost („nie podano w
   źródłach”);
@@ -206,8 +206,9 @@ Standard dzieli błędy wzorów na dwie klasy (CMP-9.1):
 Błąd poważny jest poprawiany od razu i wydawany poza planem wydań; wpis w dzienniku zmian
 (`docs/CHANGELOG.md`) podaje wzór, jego wersje przed poprawką i po niej, zakres danych, których
 dotyczy, wielkość błędu i sposób odnalezienia oraz przeliczenia zapisanych wyników (CMP-9.2).
-Wzory Hydrologa przeszły w listopadzie 2026 r. przegląd literatury, rodzina po rodzinie;
-znalezione błędy poprawiono, a ich listę podaje dziennik zmian.
+Wzory Hydrologa przechodzą w listopadzie 2026 r. przegląd literatury, rodzina po rodzinie;
+poprawione błędy wymienia dziennik zmian, a uzasadnienia rozstrzygnięć — decyzje projektowe
+(`docs/decisions/`).
 
 Dlatego ramki w tym podręczniku są generowane, a nie przepisywane: rozdział, który podaje
 jednostkę lub zakres inny niż kod, byłby błędem poważnym.
