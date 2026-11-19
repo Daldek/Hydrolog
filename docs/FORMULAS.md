@@ -18,6 +18,7 @@
 | [Time of concentration by the Kerby-Kirpich method (Roussel et al. 2005)](#kerby_kirpich) | `hydrolog.time.concentration.ConcentrationTime.kerby_kirpich` | referenced | 1 | not measured |
 | [Equal-area slope of a longitudinal profile (the line through the outlet with equal areas above and below it)](#equal_area_slope) | `hydrolog.morphometry.profile.equal_area_slope` | oracle only | 1 | not measured |
 | [Nash's n and K of an ungauged watershed by Lutz's method (KZGW 2017)](#lutz) | `hydrolog.runoff.nash_iuh.lutz_parameters` | referenced | 1 | not measured |
+| [Muskingum routing through N equal sub-reaches (McCarthy's storage, trapezoid continuity)](#muskingum) | `hydrolog.routing.formulas.muskingum.muskingum_route` | referenced | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
 ### Potential maximum retention S of the SCS curve number
@@ -965,11 +966,108 @@ Plain text: `tp = P1 * (L * Lc / Jg**1.5)**0.26 * exp(-0.016 * U) * exp(0.004 * 
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
+<a id="muskingum"></a>
+### Muskingum routing through N equal sub-reaches (McCarthy's storage, trapezoid continuity)
+
+`hydrolog.routing.formulas.muskingum.muskingum_route` · family `scheme` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+O_t = c_0 I_t + c_1 I_{t-1} + c_2 O_{t-1},\quad c_0 = \frac{\Delta t - 2kX}{D},\ c_1 = \frac{\Delta t + 2kX}{D},\ c_2 = \frac{2k(1-X) - \Delta t}{D},\ D = 2k(1-X) + \Delta t,\ k = \frac{K}{N}
+$$
+
+Plain text: `in each of N sub-reaches of k = K / N in series: O[t] = c0 I[t] + c1 I[t-1] + c2 O[t-1], c0 = (dt - 2 k X) / D, c1 = (dt + 2 k X) / D, c2 = (2 k (1 - X) - dt) / D, D = 2 k (1 - X) + dt; O[0] = O0 in every sub-reach; storage S = k sum_j [X I_j + (1 - X) O_j] [m3]`
+
+**Sources**
+
+- US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum Model, equations of the storage and of the weights; X from 0 to 0.5; sub-reaches whose travel time is about the time step (open) <https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-model>
+- US Army Corps of Engineers (1994). Engineering and Design: Flood-Runoff Analysis, EM 1110-2-1417, chapter 9, eqs. 9-15 to 9-19, pp. 9-12 to 9-15 (open) <https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-1417.pdf>
+- USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), eqs. 17-6 to 17-11 and the Muskingum method, pp. 17-14 to 17-18 (open) <https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf>
+- McCarthy, G.T. (1938). The unit hydrograph and flood routing, Conference of the North Atlantic Division, US Army Corps of Engineers, New London, Conn. (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `inflow_m3s` | $I_t$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic) | unstated | [0.0, 100.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s |
+| `timestep_min` | $\Delta t$ | min | real | (0.0, inf), test bound high 1440.0 (a day, the step of a series of daily discharges (IMGW-PIB)) | unstated | [5.0, 720.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), steps of 5 min (Hydrograf's networks, tests/fixtures/handoff_hydrograf_network*.json) to 12 h (the Iowa example and NEH 630 ch. 17 example 17-2, 0.5 d) |
+| `k_min` | $K$ | min | real | (0.0, inf), test bound high 12000.0 (ten times the longest K of Hydrolog's routing tests, the Iowa example's 20 h (1,200 min)) | unstated | [10.0, 1200.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), K of 10 to 60 min in the tests of the reach, 2.3 h (NPTEL) and 20 h (Iowa) in the published examples |
+| `x` | $X$ | - | real | [0.0, 0.5]: US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum Model, equations of the storage and of the weights; X from 0 to 0.5; sub-reaches whose travel time is about the time step | [0.0, 0.5]: US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum Model, equations of the storage and of the weights; X from 0 to 0.5; sub-reaches whose travel time is about the time step | [0.1, 0.3]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), X of 0.2 in most tests of the reach, 0.15 (NPTEL) and 0.25 (Iowa) in the published examples; 0.1 to 0.3 for natural streams after Fread (1993), as Balaz, Danacova and Szolgay (2010, Slovak Journal of Civil Engineering 18(3)) cite it |
+| `subreaches` | $N$ | - | integer | [1.0, inf), test bound high 1000.0 (K / dt of the test bound of K (12,000 min) on a step of 12 min, the rule of thumb of the sub-reaches) | unstated | [1.0, 10.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 1 to 3 sub-reaches in the tests of the reach and in the published examples; K / dt rounded up to 10 in the network tests |
+| `initial_outflow_m3s` | $O_0$ | m3/s | real | [0.0, inf), test bound high 1000000.0 (a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic) | unstated | [0.0, 100.0]: Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `nonnegative_weights` | precondition | 2 K X / N <= dt <= 2 K (1 - X) / N, each end to 1e-9 of itself: every weight is non-negative, so a non-negative inflow gives a non-negative outflow | the signs of the numerators of the weights (Hydrolog ADR-0008); Ponce's form \|C - D\| <= 1 <= C + D, c_current >= 0 iff dt >= 2KX/N, c_previous >= 0 iff dt >= -2KX/N, c_outflow >= 0 iff dt <= 2K(1 - X)/N |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `outflow_m3s` | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic) | 4 ulp of the bound |
+| `c_current` | - | real | [0.0, 1.0] | 4 ulp of the bound |
+| `c_previous` | - | real | [0.0, 1.0] | 4 ulp of the bound |
+| `c_outflow` | - | real | [0.0, 1.0] | 4 ulp of the bound |
+| `storage_start_m3` | m3 | real | [0.0, inf) | 4 ulp of the bound |
+| `storage_end_m3` | m3 | real | [0.0, inf) | 4 ulp of the bound |
+| `storage_steady_m3` | m3 | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- SI units: discharge in m3/s, time in min, storage in m3 (K in min times a discharge in m3/s times the 60 s of a minute of the units table)
+- the weights are named by what they multiply: c_current I[t], c_previous I[t-1], c_outflow O[t-1]; NEH 630 and HEC-HMS call them C2, C1 and C3, the Iowa and NPTEL examples C1, C2 and C3
+- continuity by the trapezoid rule, (S[t] - S[t-1]) / dt = (I[t] + I[t-1]) / 2 - (O[t] + O[t-1]) / 2, with S = k [X I + (1 - X) O] in each sub-reach
+- N equal sub-reaches of K / N in series with the same X (HEC-HMS); every sub-reach starts at rest with O0, so at the first ordinate all but the first are fed by O0
+- within the window's slack a weight that rounding puts below zero is set to zero and the others are divided by their sum (hydrolog.routing._kernels.nonnegative_coefficients)
+- only the given ordinates are routed: MuskingumReach chooses N (K / dt rounded) and the sub-steps of a step without a window, interpolates the inflow linearly between them, and extends the time axis (Tier B, ADR-0008)
+
+**Assumptions**
+
+- the storage of the reach is linear in a weighted discharge, S = K [X I + (1 - X) O], with K and X constant over the flood
+- no backwater: the outflow does not depend on the water downstream
+
+**Validation:** none: K and X are calibrated on observed floods of a reach (HEC-HMS TRM, Muskingum model; EM 1110-2-1417 ch. 9); the sources report no agreement of the scheme itself with observations
+
+**Notices:** `outside_applicability`
+
+**Numerical traps (CMP-6.6)**
+
+- `difference_denominator`: c_current = (dt - 2KX/N) / D vanishes on the window's lower end: limit lag_of_one_step gives it exactly 0; D = 2K(1 - X)/N + dt >= dt > 0 never vanishes
+- `stability_bound`: the window 2KX/N <= dt <= 2K(1 - X)/N: constraint nonnegative_weights with its satisfied, boundary and violated points, and test_a_border_of_the_window_rounds_to_zero_weights
+- `gap_propagation`: type cases inflow_m3s-nan_element and inflow_m3s-inf_element: a gap is refused, the recurrence would carry it to every later ordinate
+- `many_small_terms`: test_a_long_steady_inflow_stays_steady: 200,000 ordinates of a constant inflow stay constant to 1e-14
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `inflow_m3s` increasing, `initial_outflow_m3s` increasing
+- scaling `discharge`: inputs times 2^e (`inflow_m3s` e = 1.0, `initial_outflow_m3s` e = 1.0) give outputs times 2^e (`outflow_m3s` e = 1.0, `storage_start_m3` e = 1.0, `storage_end_m3` e = 1.0, `storage_steady_m3` e = 1.0)
+- scaling `time`: inputs times 2^e (`timestep_min` e = 1.0, `k_min` e = 1.0) give outputs times 2^e (`storage_start_m3` e = 1.0, `storage_end_m3` e = 1.0, `storage_steady_m3` e = 1.0)
+- limit `lag_of_one_step`: X = 0.5 and K = N dt with N = 1: c0 = c2 = 0 and c1 = 1, the outflow is the inflow one step later (HEC-HMS: Muskingum with X = 0.5 and K = dt is the lag of one step)
+- limit `steady_state`: an inflow equal to the initial outflow passes unchanged: the weights sum to 1
+- limit `exact_recurrence`: every outflow equals the recurrence of the sub-reaches in exact rational arithmetic
+- limit `moments`: the impulse response has the mean delay K and the variance K^2 (1 - 2X) / N, whatever dt
+- limit `bounded_by_its_inputs`: every outflow lies between the least and the largest of the inflow and the initial outflow
+- conservation `volume`: the trapezoid continuity holds in every sub-reach: inflow volume - outflow volume = storage at the end - storage at the start
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/muskingum-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the recurrence of the sub-reaches and its weights in exact rational arithmetic (fractions), loop by loop (`tests/unit/test_formulas_muskingum.py (limit exact_recurrence)`)
+- exact: the moments of the impulse response, mean K and variance K^2 (1 - 2X) / N, from the generating function (c0 + c1 s) / (1 - c2 s) of the scheme (`tests/unit/test_formulas_muskingum.py (limit moments)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
 ## Tier B
 
 | Formula | Function | Definition | Constants | Convention | Source |
 |---|---|---|---|---|---|
 | `weighted_cn` | `hydrolog.runoff.cn_lookup.calculate_weighted_cn` | CN_w = sum(A_j CN_j) / sum(A_j), the area-weighted mean CN of the parts | – | areas or shares in any one unit; a part of zero area counts nothing | USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10, example 10-4, p. 10-12 (also KZGW 2017 eq. 6.3) |
+| `muskingum_subreaches` | `hydrolog.routing.muskingum.subreach_window` | the whole numbers N of equal sub-reaches whose weights are non-negative on a step dt, ceil(2KX/dt) <= N <= floor(2K(1 - X)/dt), each end to 1e-9 of itself; MuskingumReach routes with N = K/dt rounded (a half up, at least 1), which lies in the window whenever a whole number does, and divides a step without a window into the fewest of 2 to 100 equal sub-steps that have one, the inflow linear between the ordinates | – | the travel time of a sub-reach is about one time step (HEC-HMS); a number of sub-reaches the caller gives is never changed: outside the window it is refused (unstable_timestep, ADR-0008) | US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum Model, the number of subreaches: the travel time through a subreach approximately equal to the simulation time step |
 
 ## Delegated computations (CMP-1.2)
 
