@@ -189,15 +189,16 @@ def test_the_list_filters_and_routes_the_calculators(tab: Tab) -> None:
     assert page.evaluate("location.hash") == "#kalkulatory/uh/nash"
     form = page.locator(f"{SECTION} .cmd-form")
     expect(form.locator(".cmd-head code")).to_have_text("uh nash")
-    # Lutz from the watershed: the pane of Lutz, filled with its fields (L and J of the
-    # longest flow path, as `hydrograph generate` estimates n and K)
+    # Lutz from the watershed: the pane of Lutz, filled with its fields (L of the
+    # longest flow path and J the equal-area slope of its profile, as `hydrograph
+    # generate` estimates n and K)
     expect(form.locator('.one-of [role="radio"][aria-checked="true"]')).to_have_text(
         "Lutz"
     )
     for name, text in {
         "lutz_length_km": "15,88",
         "lutz_centroid_length_km": "6,76",
-        "lutz_slope_m_per_m": "0,0114",
+        "lutz_slope_m_per_m": "0,00848",
     }.items():
         expect(form.locator(f'[data-option="{name}"] input')).to_have_value(text)
 
