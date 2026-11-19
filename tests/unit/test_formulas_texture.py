@@ -358,4 +358,4 @@ def test_the_formulas_record_their_versions():
         classify_hsg([20], [40], [40])
 
     assert scalar == array == {"usda_texture": 1}
-    assert groups == {"usda_texture": 1}
+    assert groups == {"usda_texture": 1, "texture_hsg": 1}

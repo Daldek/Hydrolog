@@ -1,0 +1,293 @@
+[
+  {
+    "formula": "texture_hsg",
+    "case_id": "tr55-sand",
+    "source": {
+      "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+      "locator": "appendix A, p. A-1, 'Disturbed soil profiles': A sand, loamy sand, or sandy loam; B silt loam or loam; C sandy clay loam; D clay loam, silty clay loam, sandy clay, silty clay, or clay",
+      "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "texture_class": "sand"
+    },
+    "expected": {
+      "hsg": "A"
+    },
+    "conventions": [
+      "TR-55 appendix A: disturbed soil profiles without significant compaction"
+    ],
+    "second_source": {
+      "citation": "USDA-NRCS (2009). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups (210-VI-NEH, January 2009)",
+      "url": "https://www.hydrocad.net/neh/630ch7.pdf",
+      "access": "open",
+      "locator": "p. 7-2: sand is a typical texture of group A"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "texture_hsg",
+    "case_id": "tr55-loamy-sand",
+    "source": {
+      "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+      "locator": "appendix A, p. A-1, 'Disturbed soil profiles': A sand, loamy sand, or sandy loam; B silt loam or loam; C sandy clay loam; D clay loam, silty clay loam, sandy clay, silty clay, or clay",
+      "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "texture_class": "loamy_sand"
+    },
+    "expected": {
+      "hsg": "A"
+    },
+    "conventions": [
+      "TR-55 appendix A: disturbed soil profiles without significant compaction",
+      "NEH 630 ch. 7 p. 7-2 names loamy sand a typical texture of group B; the table keeps TR-55's group (open question of ADR-0066)"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "texture_hsg",
+    "case_id": "neh630-sandy-loam",
+    "source": {
+      "citation": "USDA-NRCS (2009). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups (210-VI-NEH, January 2009)",
+      "url": "https://www.hydrocad.net/neh/630ch7.pdf",
+      "access": "open",
+      "locator": "p. 7-2: group B soils 'typically have between 10 percent and 20 percent clay and 50 percent to 90 percent sand and have loamy sand or sandy loam textures' (TR-55: A)"
+    },
+    "inputs": {
+      "texture_class": "sandy_loam"
+    },
+    "expected": {
+      "hsg": "B"
+    },
+    "conventions": [
+      "NEH 630 ch. 7: groups of thoroughly wet, unfrozen, bare soil; the typical texture of a group, read as the group of the texture (a documented deviation from TR-55 appendix A)"
+    ],
+    "second_source": {
+      "citation": "USDA-NRCS (2025). National Engineering Handbook, 210-H-630 Subpart C, Hydrologic Soil Groups (amended June 2025)",
+      "locator": "section 630.41 and figure 630C-1: the same typical textures of the groups as the 2009 chapter",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1749747316/Subpart%20C%20%E2%80%93%20Hydrologic%20Soil%20Groups.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "texture_hsg",
+    "case_id": "tr55-loam",
+    "source": {
+      "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+      "locator": "appendix A, p. A-1, 'Disturbed soil profiles': A sand, loamy sand, or sandy loam; B silt loam or loam; C sandy clay loam; D clay loam, silty clay loam, sandy clay, silty clay, or clay",
+      "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "texture_class": "loam"
+    },
+    "expected": {
+      "hsg": "B"
+    },
+    "conventions": [
+      "TR-55 appendix A: disturbed soil profiles without significant compaction",
+      "NEH 630 ch. 7 p. 7-2 names loam a typical texture of group C; the table keeps TR-55's group (open question of ADR-0066)"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "texture_hsg",
+    "case_id": "tr55-silt-loam",
+    "source": {
+      "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+      "locator": "appendix A, p. A-1, 'Disturbed soil profiles': A sand, loamy sand, or sandy loam; B silt loam or loam; C sandy clay loam; D clay loam, silty clay loam, sandy clay, silty clay, or clay",
+      "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "texture_class": "silt_loam"
+    },
+    "expected": {
+      "hsg": "B"
+    },
+    "conventions": [
+      "TR-55 appendix A: disturbed soil profiles without significant compaction",
+      "NEH 630 ch. 7 p. 7-2 names silt loam a typical texture of group C; the table keeps TR-55's group (open question of ADR-0066)"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "texture_hsg",
+    "case_id": "neh630-silt",
+    "source": {
+      "citation": "USDA-NRCS (2009). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups (210-VI-NEH, January 2009)",
+      "url": "https://www.hydrocad.net/neh/630ch7.pdf",
+      "access": "open",
+      "locator": "p. 7-2: group B: 'Some soils having loam, silt loam, silt, or sandy clay loam textures may be placed in this group if they are well aggregated, of low bulk density, or contain greater than 35 percent rock fragments'"
+    },
+    "inputs": {
+      "texture_class": "silt"
+    },
+    "expected": {
+      "hsg": "B"
+    },
+    "conventions": [
+      "TR-55 appendix A lists no silt; the table gives silt the group of silt loam (TR-55 B), which NEH 630 ch. 7 allows for well aggregated silt (Kartograf ADR-025)"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "texture_hsg",
+    "case_id": "tr55-sandy-clay-loam",
+    "source": {
+      "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+      "locator": "appendix A, p. A-1, 'Disturbed soil profiles': A sand, loamy sand, or sandy loam; B silt loam or loam; C sandy clay loam; D clay loam, silty clay loam, sandy clay, silty clay, or clay",
+      "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "texture_class": "sandy_clay_loam"
+    },
+    "expected": {
+      "hsg": "C"
+    },
+    "conventions": [
+      "TR-55 appendix A: disturbed soil profiles without significant compaction"
+    ],
+    "second_source": {
+      "citation": "USDA-NRCS (2009). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups (210-VI-NEH, January 2009)",
+      "url": "https://www.hydrocad.net/neh/630ch7.pdf",
+      "access": "open",
+      "locator": "p. 7-2: sandy clay loam is a typical texture of group C"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "texture_hsg",
+    "case_id": "neh630-clay-loam",
+    "source": {
+      "citation": "USDA-NRCS (2009). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups (210-VI-NEH, January 2009)",
+      "url": "https://www.hydrocad.net/neh/630ch7.pdf",
+      "access": "open",
+      "locator": "p. 7-2: group C soils 'typically have between 20 percent and 40 percent clay and less than 50 percent sand and have loam, silt loam, sandy clay loam, clay loam, and silty clay loam textures' (TR-55: D)"
+    },
+    "inputs": {
+      "texture_class": "clay_loam"
+    },
+    "expected": {
+      "hsg": "C"
+    },
+    "conventions": [
+      "NEH 630 ch. 7: groups of thoroughly wet, unfrozen, bare soil; the typical texture of a group, read as the group of the texture (a documented deviation from TR-55 appendix A)"
+    ],
+    "second_source": {
+      "citation": "USDA-NRCS (2025). National Engineering Handbook, 210-H-630 Subpart C, Hydrologic Soil Groups (amended June 2025)",
+      "locator": "section 630.41 and figure 630C-1: the same typical textures of the groups as the 2009 chapter",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1749747316/Subpart%20C%20%E2%80%93%20Hydrologic%20Soil%20Groups.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "texture_hsg",
+    "case_id": "neh630-silty-clay-loam",
+    "source": {
+      "citation": "USDA-NRCS (2009). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups (210-VI-NEH, January 2009)",
+      "url": "https://www.hydrocad.net/neh/630ch7.pdf",
+      "access": "open",
+      "locator": "p. 7-2: group C soils 'typically ... have loam, silt loam, sandy clay loam, clay loam, and silty clay loam textures' (TR-55: D)"
+    },
+    "inputs": {
+      "texture_class": "silty_clay_loam"
+    },
+    "expected": {
+      "hsg": "C"
+    },
+    "conventions": [
+      "NEH 630 ch. 7: groups of thoroughly wet, unfrozen, bare soil; the typical texture of a group, read as the group of the texture (a documented deviation from TR-55 appendix A)"
+    ],
+    "second_source": {
+      "citation": "USDA-NRCS (2025). National Engineering Handbook, 210-H-630 Subpart C, Hydrologic Soil Groups (amended June 2025)",
+      "locator": "section 630.41 and figure 630C-1: the same typical textures of the groups as the 2009 chapter",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1749747316/Subpart%20C%20%E2%80%93%20Hydrologic%20Soil%20Groups.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "texture_hsg",
+    "case_id": "tr55-sandy-clay",
+    "source": {
+      "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+      "locator": "appendix A, p. A-1, 'Disturbed soil profiles': A sand, loamy sand, or sandy loam; B silt loam or loam; C sandy clay loam; D clay loam, silty clay loam, sandy clay, silty clay, or clay",
+      "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "texture_class": "sandy_clay"
+    },
+    "expected": {
+      "hsg": "D"
+    },
+    "conventions": [
+      "TR-55 appendix A: disturbed soil profiles without significant compaction"
+    ],
+    "second_source": {
+      "citation": "USDA-NRCS (2009). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups (210-VI-NEH, January 2009)",
+      "url": "https://www.hydrocad.net/neh/630ch7.pdf",
+      "access": "open",
+      "locator": "p. 7-2: sandy clay is a typical texture of group D"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "texture_hsg",
+    "case_id": "tr55-silty-clay",
+    "source": {
+      "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+      "locator": "appendix A, p. A-1, 'Disturbed soil profiles': A sand, loamy sand, or sandy loam; B silt loam or loam; C sandy clay loam; D clay loam, silty clay loam, sandy clay, silty clay, or clay",
+      "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "texture_class": "silty_clay"
+    },
+    "expected": {
+      "hsg": "D"
+    },
+    "conventions": [
+      "TR-55 appendix A: disturbed soil profiles without significant compaction"
+    ],
+    "second_source": {
+      "citation": "USDA-NRCS (2009). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups (210-VI-NEH, January 2009)",
+      "url": "https://www.hydrocad.net/neh/630ch7.pdf",
+      "access": "open",
+      "locator": "p. 7-2: silty clay is a typical texture of group D"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "texture_hsg",
+    "case_id": "tr55-clay",
+    "source": {
+      "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+      "locator": "appendix A, p. A-1, 'Disturbed soil profiles': A sand, loamy sand, or sandy loam; B silt loam or loam; C sandy clay loam; D clay loam, silty clay loam, sandy clay, silty clay, or clay",
+      "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "texture_class": "clay"
+    },
+    "expected": {
+      "hsg": "D"
+    },
+    "conventions": [
+      "TR-55 appendix A: disturbed soil profiles without significant compaction"
+    ],
+    "second_source": {
+      "citation": "USDA-NRCS (2009). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups (210-VI-NEH, January 2009)",
+      "url": "https://www.hydrocad.net/neh/630ch7.pdf",
+      "access": "open",
+      "locator": "p. 7-2: clay is a typical texture of group D"
+    },
+    "status": "second_source"
+  }
+]

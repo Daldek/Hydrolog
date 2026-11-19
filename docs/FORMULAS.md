@@ -31,6 +31,7 @@
 | [Drainage density: the length of the streams over the watershed's area](#drainage_density) | `hydrolog.network.stream_order.drainage_density` | oracle only | 1 | not measured |
 | [Stream frequency: the number of streams over the watershed's area](#stream_frequency) | `hydrolog.network.stream_order.stream_frequency` | oracle only | 1 | not measured |
 | [USDA soil texture class of clay, sand and silt amounts](#usda_texture) | `hydrolog.soil.texture.classify_usda_texture` | referenced | 1 | not measured |
+| [Hydrologic soil group of a USDA texture class](#texture_hsg) | `hydrolog.soil.texture.texture_to_hsg` | referenced | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
 ### Potential maximum retention S of the SCS curve number
@@ -1928,6 +1929,72 @@ Plain text: `class = the class C of the table usda_texture_classes.csv for which
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
+<a id="texture_hsg"></a>
+### Hydrologic soil group of a USDA texture class
+
+`hydrolog.soil.texture.texture_to_hsg` · family `classification` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\mathrm{HSG} = G(\mathrm{class})
+$$
+
+Plain text: `HSG = G(texture class), G the table texture_hsg.csv: TR-55 appendix A, with sandy loam B and clay loam and silty clay loam C as NEH 630 ch. 7's typical textures and silt B as silt loam`
+
+**Sources**
+
+- USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986), appendix A, p. A-1, 'Disturbed soil profiles': HSG by soil texture, after Brakensiek and Rawls (1983) (open) <https://www.hydrocad.net/pdf/TR-55%20Manual.pdf>
+- USDA-NRCS (2009). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups (210-VI-NEH, January 2009), p. 7-2: the textures groups A to D 'typically' have; group B 'loamy sand or sandy loam', group C 'loam, silt loam, sandy clay loam, clay loam, and silty clay loam', well aggregated silt may be B (open) <https://www.hydrocad.net/neh/630ch7.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `texture_class` | $\mathrm{class}$ | - | choice of sand, loamy_sand, sandy_loam, loam, silt_loam, silt, sandy_clay_loam, clay_loam, silty_clay_loam, sandy_clay, silty_clay, clay | – | – | – |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `hsg` | - | choice | – | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- TR-55 appendix A gives the groups of disturbed soil profiles (urban areas, no significant compaction); the table applies them to every soil
+- documented deviations from TR-55 appendix A: sandy loam B (TR-55 A), clay loam and silty clay loam C (TR-55 D), as NEH 630 ch. 7 p. 7-2 names the typical textures of groups B and C (Kartograf ADR-025, decision b): stricter than TR-55 for sandy loam, milder for the two clay loams
+- silt, which TR-55 does not list, takes the group of silt loam, B; NEH 630 ch. 7 p. 7-2 puts well aggregated silt in group B
+- NEH 630 ch. 7 would put loam and silt loam (and, by Ksat, silt) in C and loamy sand in B; the table keeps TR-55's groups for them (open question of ADR-0066)
+
+**Assumptions**
+
+- the group of a texture alone: no water table, impermeable layer, rock fragments, bulk density or structure (NEH 630 ch. 7, table 7-1)
+
+**Validation:** none stated: TR-55 derives its texture groups from Brakensiek and Rawls (1983) for disturbed profiles; NEH 630 ch. 7 gives typical textures, not a fit
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+None applies: a lookup of a categorical key: no numeric class limit and no series
+
+**Properties (CMP-6.5)**
+
+- units: unit_specific
+- limit `not_milder_as_ksat_falls`: along the classes in the order of falling saturated hydraulic conductivity of Rawls et al. (1982), sand, loamy sand, sandy loam, loam, silt loam, sandy clay loam, clay loam, silty clay loam, sandy clay, silty clay, clay, the group never gets milder (NEH 630 ch. 7 assigns the groups by falling Ksat; silt has no value)
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/hsg-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- frozen: Kartograf 0.8.2, kartograf.hydrology.hsg.TEXTURE_TO_HSG (its own copy of the table, ADR-025) (`tests/oracles/kartograf_0_8_2_texture_hsg.csv (written once by tests/oracles/kartograf_texture_oracle.py), compared by tests/unit/test_formulas_texture_hsg.py`)
+
+**Tables (CMP-2.5)**
+
+- `src/hydrolog/_data/tables/texture_hsg.csv` sha256 `f8e1d4b427ae6bb4c0abf7afbbbf9a70f3c32c42de0b5fe5a0ee2157daebef4a`: USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986), appendix A, p. A-1, 'Disturbed soil profiles': HSG by soil texture, after Brakensiek and Rawls (1983); transcriptions compared in `tests/oracles/tr55_hsg_text_layer.csv (read from the PDF's text layer by tests/oracles/transcribe_tr55_hsg.py) and tests/oracles/kartograf_0_8_2_texture_hsg.csv (Kartograf 0.8.2's table), compared with the data file by tests/unit/test_formulas_texture_hsg.py`
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5).
+
 ## Tier B
 
 | Formula | Function | Definition | Constants | Convention | Source |
@@ -1940,6 +2007,7 @@ Plain text: `class = the class C of the table usda_texture_classes.csv for which
 | `elevation_above_share` | `hydrolog.morphometry.hypsometry.HypsometricCurve.elevation_at_percentile` | the elevation of the first cell, from the highest down, at which the cumulative share of the area reaches the given percent [m a.s.l.] | – | the median elevation is the one with half of the area above it; no interpolation between cells | Strahler, A.N. (1952). Hypsometric (area-altitude) analysis of erosional topography. Geological Society of America Bulletin 63: 1117-1142, Fig. 3 and 'Integration of the hypsometric function': the integral is the area under the percentage hypsometric curve, relative area a/A above relative height h/H, over the unit square; the stages in the text with Fig. 7 (a copy of the article) |
 | `streams_of_each_order` | `hydrolog.network.stream_order.StreamNetwork.get_statistics` | the number of Strahler streams of each order, their total and mean lengths [km] and the total length of the network [km] | – | a segment continues the stream of an upstream segment of its own order and begins one otherwise; the mean length is the total length of the order's segments over the number of its streams | Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, p. 28: Strahler's orders: a source stream is of order 1, two streams of order u form one of order u + 1, and where streams of different orders join, the stream below keeps the higher order |
 | `usda_texture_codes` | `hydrolog.soil.texture.classify_usda_texture_array` | the class of spec usda_texture, cell by cell, as its code 1-12 (TEXTURE_CLASSES) | – | a cell without soil data - zero total, a NaN or an infinite amount - gets the code of loam (4) as a placeholder, which classify_hsg masks as no data; a negative amount is refused | Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC, ch. 3, 'Definitions of Soil Texture Classes and Subclasses', pp. 122-124 (sands and loamy sands p. 122, sandy loams p. 123, loam to clay p. 124); the textural triangle, Fig. 3-7, p. 125 |
+| `texture_hsg_codes` | `hydrolog.soil.texture.texture_to_hsg_array` | the group of spec texture_hsg of each texture code, as the raster code 1-4 for A-D | – | texture code 0 (no data) gives 0; a code outside 0-12 is refused | USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986), appendix A, p. A-1, 'Disturbed soil profiles': HSG by soil texture, after Brakensiek and Rawls (1983) |
 | `hsg_of_amounts` | `hydrolog.soil.hsg.classify_hsg` | the group of spec texture_hsg of the class of spec usda_texture, cell by cell, as the raster code 1-4 for A-D | – | 0 (no data) for a cell with a NaN or infinite amount, an amount equal to its input's nodata tag, or all three amounts zero (the SoilGrids gap); a negative amount in a cell with data is refused | Kartograf ADR-025 (HSG from SoilGrids clay, sand and silt), ported to Hydrolog 0.8.0, raster codes uint8, 0 no data, 1-4 the groups A-D |
 
 ## Delegated computations (CMP-1.2)

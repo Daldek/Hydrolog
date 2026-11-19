@@ -93,6 +93,7 @@ from hydrolog.nogat_formulas import (
 
 __all__ = [
     "TEXTURE_CLASSES",
+    "TEXTURE_HSG",
     "TEXTURE_NAMES",
     "TEXTURE_TO_HSG",
     "USDA_TEXTURE",
@@ -177,25 +178,20 @@ def _read_classes() -> dict[str, tuple[tuple[_Inequality, ...], ...]]:
     }
 
 
+def _read_groups() -> dict[str, str]:
+    """Read the group of each class, in code order, from the data file."""
+    with (_TABLES / "texture_hsg.csv").open(encoding="utf-8", newline="") as handle:
+        groups = {row["texture_class"]: row["hsg"] for row in csv.DictReader(handle)}
+    return {name: groups[name] for name in TEXTURE_CLASSES}
+
+
 _CLASSES: Final = _read_classes()
 """The rows of every class of ``usda_texture_classes.csv``, by alternative."""
 
-#: Texture class -> Hydrologic Soil Group letter (Kartograf ADR-025; TR-55
-#: appendix A but for ``sandy_loam``, ``clay_loam`` and ``silty_clay_loam``).
-TEXTURE_TO_HSG: dict[str, str] = {
-    "sand": "A",
-    "loamy_sand": "A",
-    "sandy_loam": "B",  # TR-55: A
-    "loam": "B",
-    "silt_loam": "B",
-    "silt": "B",
-    "sandy_clay_loam": "C",
-    "clay_loam": "C",  # TR-55: D
-    "silty_clay_loam": "C",  # TR-55: D
-    "sandy_clay": "D",
-    "silty_clay": "D",
-    "clay": "D",
-}
+#: Texture class -> Hydrologic Soil Group letter, from ``texture_hsg.csv`` (spec
+#: :data:`TEXTURE_HSG`; TR-55 appendix A with three classes of NEH 630 ch. 7, see
+#: the module notes).
+TEXTURE_TO_HSG: dict[str, str] = _read_groups()
 
 
 def _build_hsg_lookup() -> NDArray[np.uint8]:
@@ -536,9 +532,159 @@ def classify_usda_texture(clay: float, sand: float, silt: float) -> str:
     return checked_outputs(USDA_TEXTURE, outputs).choice("texture_class")
 
 
+_TR55_APP_A = Source(
+    citation="USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical "
+    "Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+    locator="appendix A, p. A-1, 'Disturbed soil profiles': HSG by soil texture, "
+    "after Brakensiek and Rawls (1983)",
+    url="https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+)
+_NEH_630_7 = Source(
+    citation="USDA-NRCS (2009). National Engineering Handbook, Part 630 Hydrology, "
+    "Chapter 7: Hydrologic Soil Groups (210-VI-NEH, January 2009)",
+    locator="p. 7-2: the textures groups A to D 'typically' have; group B "
+    "'loamy sand or sandy loam', group C 'loam, silt loam, sandy clay loam, clay "
+    "loam, and silty clay loam', well aggregated silt may be B",
+    url="https://www.hydrocad.net/neh/630ch7.pdf",
+)
+_RAWLS_1982 = Source(
+    citation="Rawls, W. J., Brakensiek, D. L. and Saxton, K. E. (1982). Estimation "
+    "of soil water properties. Transactions of the ASAE 25(5): 1316-1320, 1328",
+    locator="Table 2: saturated hydraulic conductivity of eleven texture classes "
+    "(no silt), quoted with the same values by MassDEP (2008), Massachusetts "
+    "Stormwater Handbook, vol. 3, ch. 1, table 2.3.3, and by Kartograf 0.8.2 "
+    "RAWLS_1982_KSAT_CM_H",
+    access="author-provided",
+)
+_FALLING_KSAT = (
+    "sand",
+    "loamy_sand",
+    "sandy_loam",
+    "loam",
+    "silt_loam",
+    "sandy_clay_loam",
+    "clay_loam",
+    "silty_clay_loam",
+    "sandy_clay",
+    "silty_clay",
+    "clay",
+)
+"""The classes of Rawls et al. (1982, Table 2) in the order of falling Ksat."""
+
+
+def _not_milder_as_ksat_falls(run: Callable[..., Values]) -> None:
+    groups = [run(texture_class=name).choice("hsg") for name in _FALLING_KSAT]
+    assert groups == sorted(groups), list(zip(_FALLING_KSAT, groups, strict=True))
+
+
+TEXTURE_HSG: Final = FormulaSpec(
+    name="texture_hsg",
+    title="Hydrologic soil group of a USDA texture class",
+    function="hydrolog.soil.texture.texture_to_hsg",
+    family="classification",
+    equation="HSG = G(texture class), G the table texture_hsg.csv: TR-55 appendix A, "
+    "with sandy loam B and clay loam and silty clay loam C as NEH 630 ch. 7's "
+    "typical textures and silt B as silt loam",
+    latex=r"\mathrm{HSG} = G(\mathrm{class})",
+    variables=(
+        Variable(
+            name="texture_class",
+            symbol=r"\mathrm{class}",
+            unit="-",
+            kind="choice",
+            description="USDA texture class (spec usda_texture).",
+            choices=tuple(TEXTURE_CLASSES),
+        ),
+    ),
+    outputs=(
+        Output(
+            name="hsg",
+            unit="-",
+            kind="choice",
+            symbol=r"\mathrm{HSG}",
+            description="Hydrologic soil group, from A (low runoff potential) to D "
+            "(high).",
+            choices=tuple(HSG_CODES),
+        ),
+    ),
+    sources=(_TR55_APP_A, _NEH_630_7),
+    properties=Properties(
+        units="unit_specific",
+        limits=(
+            Limit(
+                name="not_milder_as_ksat_falls",
+                text="along the classes in the order of falling saturated hydraulic "
+                "conductivity of Rawls et al. (1982), sand, loamy sand, sandy loam, "
+                "loam, silt loam, sandy clay loam, clay loam, silty clay loam, sandy "
+                "clay, silty clay, clay, the group never gets milder (NEH 630 ch. 7 "
+                "assigns the groups by falling Ksat; silt has no value)",
+                check=_not_milder_as_ksat_falls,
+                source=_RAWLS_1982,
+            ),
+        ),
+    ),
+    validation="none stated: TR-55 derives its texture groups from Brakensiek and "
+    "Rawls (1983) for disturbed profiles; NEH 630 ch. 7 gives typical textures, "
+    "not a fit",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        (
+            "TR-55 appendix A gives the groups of disturbed soil profiles (urban "
+            "areas, no significant compaction); the table applies them to every soil"
+        ),
+        (
+            "documented deviations from TR-55 appendix A: sandy loam B (TR-55 A), "
+            "clay loam and silty clay loam C (TR-55 D), as NEH 630 ch. 7 p. 7-2 names "
+            "the typical textures of groups B and C (Kartograf ADR-025, decision b): "
+            "stricter than TR-55 for sandy loam, milder for the two clay loams"
+        ),
+        (
+            "silt, which TR-55 does not list, takes the group of silt loam, B; NEH "
+            "630 ch. 7 p. 7-2 puts well aggregated silt in group B"
+        ),
+        (
+            "NEH 630 ch. 7 would put loam and silt loam (and, by Ksat, silt) in C "
+            "and loamy sand in B; the table keeps TR-55's groups for them (open "
+            "question of ADR-0066)"
+        ),
+    ),
+    assumptions=(
+        (
+            "the group of a texture alone: no water table, impermeable layer, rock "
+            "fragments, bulk density or structure (NEH 630 ch. 7, table 7-1)"
+        ),
+    ),
+    no_traps_reason="a lookup of a categorical key: no numeric class limit and no "
+    "series",
+    reference_cases=("tests/fixtures/formulas/hsg-cases.json",),
+    oracles=(
+        Oracle(
+            kind="frozen",
+            description="Kartograf 0.8.2, kartograf.hydrology.hsg.TEXTURE_TO_HSG "
+            "(its own copy of the table, ADR-025)",
+            test="tests/oracles/kartograf_0_8_2_texture_hsg.csv (written once by "
+            "tests/oracles/kartograf_texture_oracle.py), compared by "
+            "tests/unit/test_formulas_texture_hsg.py",
+        ),
+    ),
+    tables=(
+        Table(
+            path="src/hydrolog/_data/tables/texture_hsg.csv",
+            sha256="f8e1d4b427ae6bb4c0abf7afbbbf9a70f3c32c42de0b5fe5a0ee2157daebef4a",
+            source=_TR55_APP_A,
+            comparison="tests/oracles/tr55_hsg_text_layer.csv (read from the PDF's "
+            "text layer by tests/oracles/transcribe_tr55_hsg.py) and "
+            "tests/oracles/kartograf_0_8_2_texture_hsg.csv (Kartograf 0.8.2's "
+            "table), compared with the data file by "
+            "tests/unit/test_formulas_texture_hsg.py",
+        ),
+    ),
+)
+
+
 def texture_to_hsg(texture_class: str) -> str:
-    """
-    Map a USDA texture class to its Hydrologic Soil Group.
+    """Return the Hydrologic Soil Group of a USDA texture class, spec texture_hsg.
 
     Parameters
     ----------
@@ -548,24 +694,20 @@ def texture_to_hsg(texture_class: str) -> str:
     Returns
     -------
     str
-        Hydrologic Soil Group letter: ``"A"``, ``"B"``, ``"C"`` or ``"D"``.
+        Hydrologic Soil Group letter, from ``"A"`` to ``"D"``.
 
     Raises
     ------
     InvalidParameterError
-        If ``texture_class`` is not one of the 12 USDA classes.
+        If ``texture_class`` is not a string or not one of the USDA classes.
     """
-    try:
-        return TEXTURE_TO_HSG[texture_class]
-    except (KeyError, TypeError) as exc:
-        raise InvalidParameterError(
-            f"Unknown texture class {texture_class!r}",
-            details={"option": "texture_class", "allowed": list(TEXTURE_CLASSES)},
-        ) from exc
+    x = checked_inputs(TEXTURE_HSG, texture_class=texture_class)
+    group = TEXTURE_TO_HSG[x.choice("texture_class")]
+    return checked_outputs(TEXTURE_HSG, {"hsg": group}).choice("hsg")
 
 
-SPECS: Final = (USDA_TEXTURE,)
-"""The Tier A formula of the module."""
+SPECS: Final = (USDA_TEXTURE, TEXTURE_HSG)
+"""The Tier A formulas of the module."""
 
 
 def classify_usda_texture_array(
@@ -688,6 +830,7 @@ def texture_to_hsg_array(texture: ArrayLike) -> NDArray[np.uint8]:
             f"{int(codes.min())} to {int(codes.max())}",
             details={"option": "texture"},
         )
+    record(TEXTURE_HSG.name, TEXTURE_HSG.formula_version)
     return np.asarray(_HSG_OF_TEXTURE[codes])
 
 
@@ -701,6 +844,14 @@ TIER_B: Final = (
         "amount - gets the code of loam (4) as a placeholder, which classify_hsg "
         "masks as no data; a negative amount is refused",
         source=_SSM_2017,
+    ),
+    TierBSpec(
+        name="texture_hsg_codes",
+        function="hydrolog.soil.texture.texture_to_hsg_array",
+        definition="the group of spec texture_hsg of each texture code, as the "
+        "raster code 1-4 for A-D",
+        convention="texture code 0 (no data) gives 0; a code outside 0-12 is refused",
+        source=_TR55_APP_A,
     ),
 )
 """The Tier B formulas of the module (CMP-2.2)."""
