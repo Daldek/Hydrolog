@@ -44,6 +44,10 @@ from hydrolog.statistics.frequency import (
     _by_maximum_likelihood,
     _by_moments,
     _NoParameters,
+    gev_quantiles,
+    log_normal_quantiles,
+    pearson3_quantiles,
+    weibull_quantiles,
 )
 
 _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0])
@@ -375,8 +379,7 @@ class FloodFrequencyAnalysis:
         params = {"shape": shape, "loc": loc, "scale": scale}
         k = 2  # shape + scale (loc is fixed)
 
-        exceedance = 1.0 / self._return_periods
-        quantiles = lognorm.ppf(1 - exceedance, shape, loc=0, scale=scale)
+        quantiles = log_normal_quantiles(shape, 0.0, scale, self._return_periods)
 
         return self._build_result(
             name="log_normal",
@@ -419,8 +422,7 @@ class FloodFrequencyAnalysis:
         params = {"shape": c, "loc": loc, "scale": scale}
         k = 3
 
-        exceedance = 1.0 / self._return_periods
-        quantiles = genextreme.ppf(1 - exceedance, c, loc=loc, scale=scale)
+        quantiles = gev_quantiles(c, loc, scale, self._return_periods)
 
         return self._build_result(
             name="gev",
@@ -459,8 +461,7 @@ class FloodFrequencyAnalysis:
         params = {"skew": skew, "loc": loc, "scale": scale}
         k = 3
 
-        exceedance = 1.0 / self._return_periods
-        quantiles = pearson3.ppf(1 - exceedance, skew, loc=loc, scale=scale)
+        quantiles = pearson3_quantiles(skew, loc, scale, self._return_periods)
 
         return self._build_result(
             name="pearson3",
@@ -499,8 +500,7 @@ class FloodFrequencyAnalysis:
         params = {"shape": shape, "loc": loc, "scale": scale}
         k = 3
 
-        exceedance = 1.0 / self._return_periods
-        quantiles = weibull_min.ppf(1 - exceedance, shape, loc=loc, scale=scale)
+        quantiles = weibull_quantiles(shape, loc, scale, self._return_periods)
 
         return self._build_result(
             name="weibull",

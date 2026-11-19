@@ -525,5 +525,319 @@
    "access": "open"
   },
   "status": "second_source"
+ },
+ {
+  "formula": "pearson3_quantiles",
+  "case_id": "b17b-k-skew-0.7",
+  "source": {
+   "citation": "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia",
+   "url": "https://pubs.usgs.gov/unnumbered/70275162/report.pdf",
+   "access": "open",
+   "locator": "appendix 12, example 1, table 12-3, p. 12-9: the K of G = 0.7 from appendix 3 (Harter 1969), at the exceedance probabilities P"
+  },
+  "inputs": {
+   "skew": 0.7,
+   "loc": 0.0,
+   "scale": 1.0,
+   "return_periods_years": [
+    1.0101010101010102,
+    1.1111111111111112,
+    2.0,
+    10.0,
+    20.0,
+    50.0,
+    100.0,
+    200.0,
+    500.0
+   ]
+  },
+  "expected": {
+   "quantiles": [
+    -1.80621,
+    -1.18347,
+    -0.11578,
+    1.33294,
+    1.81864,
+    2.4067,
+    2.82359,
+    3.22281,
+    3.72957
+   ]
+  },
+  "printed_precision": {
+   "quantiles": 1e-05
+  },
+  "conventions": [
+   "K is the quantile of the Pearson III of mean 0, standard deviation 1 and skewness G at the non-exceedance 1 - P; T = 1/P",
+   "the skewness 0.7 is the table's column, exact: its printed precision here only bounds the corners the module tries, which stay inside the column's own digits"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pearson3_quantiles",
+  "case_id": "kzgw2017-ex3.2-polana",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 3.2 (the Czarna at Polana), eqs. 3.28 to 3.30, pp. 39-40 (epsilon = 4.0 m3/s, lambda = 1.341, alpha = 0.0448) and table 3.9, p. 43 (Q_max,p)"
+  },
+  "inputs": {
+   "skew": 1.7270925338361327,
+   "loc": 33.933035714285715,
+   "scale": 25.84856124859658,
+   "return_periods_years": [
+    2.0,
+    2.5,
+    3.3333333333333335,
+    4.0,
+    5.0,
+    10.0,
+    20.0,
+    33.333333333333336
+   ]
+  },
+  "expected": {
+   "quantiles": [
+    26.89,
+    32.93,
+    40.48,
+    45.17,
+    50.84,
+    68.07,
+    84.93,
+    97.2
+   ]
+  },
+  "printed_precision": {
+   "quantiles": 0.01
+  },
+  "intermediate_rounding": [
+   {
+    "step": "lambda printed 1.341 and alpha 0.0448 (eqs. 3.29, 3.30): the largest change of the quantiles over the corners of their half units, skew = 2 / sqrt(lambda), loc = epsilon + lambda / alpha, scale = sqrt(lambda) / alpha",
+    "effect": {
+     "quantiles": 0.125308
+    }
+   }
+  ],
+  "conventions": [
+   "KZGW's (epsilon, alpha, lambda) as scipy's pearson3: skew = 2 / sqrt(lambda), loc = epsilon + lambda / alpha, scale = sqrt(lambda) / alpha (eq. 3.1); epsilon = 4.0 is the graphical estimate, exact",
+   "p of the table is the exceedance probability, T = 100 / p",
+   "the example's conclusion on p. 42 names epsilon = 4.5, alpha = 0.0420, lambda = 1.235, which table 3.9 does not use: its quantiles are those of 4.0, 1.341, 0.0448"
+  ],
+  "second_source": {
+   "citation": "Hydrolog's research ResFloodFrequency (2026-11-18): the examples of KZGW 2017 recomputed with scipy (check_kzgw.py) from their printed parameters",
+   "locator": "~/tmp/research-ResFloodFrequency/plmethod/check_kzgw.py, kept with the research's notes",
+   "access": "author-provided"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "pearson3_quantiles",
+  "case_id": "kzgw2017-ex3.2-polana-tail",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 3.2 (the Czarna at Polana), eqs. 3.28 to 3.30, pp. 39-40 (epsilon = 4.0 m3/s, lambda = 1.341, alpha = 0.0448) and table 3.9, p. 43 (Q_max,p)"
+  },
+  "inputs": {
+   "skew": 1.7270925338361327,
+   "loc": 33.933035714285715,
+   "scale": 25.84856124859658,
+   "return_periods_years": [
+    50.0,
+    100.0,
+    200.0,
+    1000.0
+   ]
+  },
+  "expected": {
+   "quantiles": [
+    106.9,
+    123.2,
+    139.6,
+    177.1
+   ]
+  },
+  "printed_precision": {
+   "quantiles": 0.1
+  },
+  "intermediate_rounding": [
+   {
+    "step": "lambda printed 1.341 and alpha 0.0448 (eqs. 3.29, 3.30): the largest change of the quantiles over the corners of their half units, skew = 2 / sqrt(lambda), loc = epsilon + lambda / alpha, scale = sqrt(lambda) / alpha",
+    "effect": {
+     "quantiles": 0.220205
+    }
+   }
+  ],
+  "conventions": [
+   "KZGW's (epsilon, alpha, lambda) as scipy's pearson3: skew = 2 / sqrt(lambda), loc = epsilon + lambda / alpha, scale = sqrt(lambda) / alpha (eq. 3.1); epsilon = 4.0 is the graphical estimate, exact",
+   "p of the table is the exceedance probability, T = 100 / p",
+   "the example's conclusion on p. 42 names epsilon = 4.5, alpha = 0.0420, lambda = 1.235, which table 3.9 does not use: its quantiles are those of 4.0, 1.341, 0.0448"
+  ],
+  "second_source": {
+   "citation": "Hydrolog's research ResFloodFrequency (2026-11-18): the examples of KZGW 2017 recomputed with scipy (check_kzgw.py) from their printed parameters",
+   "locator": "~/tmp/research-ResFloodFrequency/plmethod/check_kzgw.py, kept with the research's notes",
+   "access": "author-provided"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "log_normal_quantiles",
+  "case_id": "kzgw2017-ex3.3-rypin",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 3.3 (the Rypienica at Rypin), eqs. 3.45 to 3.47, p. 48 (epsilon = 0.384 m3/s, mu = 0.738, sigma = 0.754) and table 3.12, p. 51 (Q_max,p)"
+  },
+  "inputs": {
+   "shape": 0.754,
+   "loc": 0.384,
+   "scale": 2.091747832543221,
+   "return_periods_years": [
+    2.0,
+    5.0,
+    10.0,
+    20.0,
+    50.0,
+    100.0,
+    1000.0
+   ]
+  },
+  "expected": {
+   "quantiles": [
+    2.476,
+    4.329,
+    5.88,
+    7.611,
+    10.219,
+    12.461,
+    21.861
+   ]
+  },
+  "printed_precision": {
+   "shape": 0.001,
+   "loc": 0.001,
+   "quantiles": 0.001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "mu printed 0.738 (eq. 3.46): scale = exp(mu) moves the quantiles by up to this over mu +- 0.0005",
+    "effect": {
+     "quantiles": 0.010752
+    }
+   }
+  ],
+  "conventions": [
+   "KZGW's Q_p = epsilon + exp(mu + sigma u_p) (eq. 3.35) as scipy's lognorm: shape = sigma, loc = epsilon, scale = exp(mu)",
+   "p of the table is the exceedance probability, T = 100 / p"
+  ],
+  "second_source": {
+   "citation": "Hydrolog's research ResFloodFrequency (2026-11-18): the examples of KZGW 2017 recomputed with scipy (check_kzgw.py) from their printed parameters",
+   "locator": "~/tmp/research-ResFloodFrequency/plmethod/check_kzgw.py, kept with the research's notes",
+   "access": "author-provided"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "weibull_quantiles",
+  "case_id": "kzgw2017-ex3.4-rzepin",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 3.4 (the Świślina at Rzepin), eqs. 3.60 and 3.61, p. 54 (epsilon = 1.8 m3/s, beta_W = 0.947, alpha_W = 0.1001) and table 3.15, p. 60 (Q_max,p)"
+  },
+  "inputs": {
+   "shape": 0.947,
+   "loc": 1.8,
+   "scale": 9.990009990009991,
+   "return_periods_years": [
+    2.0,
+    5.0,
+    10.0,
+    20.0,
+    50.0,
+    100.0,
+    1000.0
+   ]
+  },
+  "expected": {
+   "quantiles": [
+    8.58,
+    18.31,
+    25.9,
+    33.61,
+    43.97,
+    51.9,
+    78.67
+   ]
+  },
+  "printed_precision": {
+   "shape": 0.001,
+   "quantiles": 0.01
+  },
+  "intermediate_rounding": [
+   {
+    "step": "alpha_W printed 0.1001 (eq. 3.61): scale = 1 / alpha_W moves the quantiles by up to this over alpha_W +- 0.00005",
+    "effect": {
+     "quantiles": 0.038426
+    }
+   }
+  ],
+  "conventions": [
+   "KZGW's P(Q >= x) = exp(-[alpha_W (x - epsilon)]^beta_W) (eq. 3.55) as scipy's weibull_min: shape = beta_W, loc = epsilon, scale = 1 / alpha_W; epsilon = 1.8 is the example's estimate, exact",
+   "p of the table is the exceedance probability, T = 100 / p"
+  ],
+  "second_source": {
+   "citation": "Hydrolog's research ResFloodFrequency (2026-11-18): the examples of KZGW 2017 recomputed with scipy (check_kzgw.py) from their printed parameters",
+   "locator": "~/tmp/research-ResFloodFrequency/plmethod/check_kzgw.py, kept with the research's notes",
+   "access": "author-provided"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "gev_quantiles",
+  "case_id": "coles2001-port-pirie",
+  "source": {
+   "citation": "OpenTURNS 1.28 documentation, example 'Estimate a GEV on the Port Pirie sea-levels data', reproducing Coles (2001), sect. 3.4.1",
+   "locator": "its output: mu 3.875, sigma 0.198, xi -0.050 of the maximum likelihood, the 10-year return level 4.29617 m and the 100-year 4.68814 m",
+   "url": "https://openturns.github.io/openturns/latest/auto_data_analysis/distribution_fitting/plot_estimate_gev_pirie.html",
+   "access": "open"
+  },
+  "inputs": {
+   "shape": 0.05,
+   "loc": 3.875,
+   "scale": 0.198,
+   "return_periods_years": [
+    10.0,
+    100.0
+   ]
+  },
+  "expected": {
+   "quantiles": [
+    4.29617,
+    4.68814
+   ]
+  },
+  "printed_precision": {
+   "shape": 0.001,
+   "loc": 0.001,
+   "scale": 0.001,
+   "quantiles": 1e-05
+  },
+  "conventions": [
+   "Coles's (mu, sigma, xi) with xi = -c: scipy's c = 0.050 for xi = -0.050",
+   "the return level z_T at the non-exceedance 1 - 1/T",
+   "the return levels are OpenTURNS's from the unrounded estimates; the corners of the printed parameters cover the difference"
+  ],
+  "second_source": {
+   "citation": "Coles, S. (2001). An Introduction to Statistical Modeling of Extreme Values. Springer",
+   "locator": "sect. 3.4.1, Port Pirie: (mu, sigma, xi) = (3.87, 0.198, -0.050), the 10- and 100-year return levels 4.30 and 4.69 m",
+   "access": "author-provided"
+  },
+  "status": "second_source"
  }
 ]

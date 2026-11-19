@@ -37,10 +37,18 @@ from hydrolog.nogat_formulas import (
     type_cases,
 )
 from hydrolog.statistics.frequency import (
+    GEV_QUANTILES,
     L_MOMENTS,
+    LOG_NORMAL_QUANTILES,
     MOMENTS,
+    PEARSON3_QUANTILES,
+    WEIBULL_QUANTILES,
+    gev_quantiles,
+    log_normal_quantiles,
+    pearson3_quantiles,
     sample_l_moments,
     sample_moments,
+    weibull_quantiles,
 )
 
 from ._formula_checks import as_standard
@@ -53,7 +61,13 @@ LMOM = read_frozen_oracle(TESTS / "oracles" / "frequency_lmom_r.csv")
 FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
     (MOMENTS, sample_moments),
     (L_MOMENTS, sample_l_moments),
+    (GEV_QUANTILES, gev_quantiles),
+    (LOG_NORMAL_QUANTILES, log_normal_quantiles),
+    (PEARSON3_QUANTILES, pearson3_quantiles),
+    (WEIBULL_QUANTILES, weibull_quantiles),
 )
+RETURN_PERIODS = [2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0]
+"""The return periods of the frozen oracles' quantiles."""
 
 
 def _samples() -> dict[str, list[float]]:
@@ -128,6 +142,73 @@ def test_l_moments_properties(inputs):
     assert_properties(L_MOMENTS, as_standard(sample_l_moments), inputs, ERRORS)
 
 
+@given(inputs=strategies(GEV_QUANTILES))
+def test_gev_quantiles_properties(inputs):
+    function = as_standard(gev_quantiles)
+    assert_property_contract(GEV_QUANTILES, function, inputs, ERRORS)
+    assert_properties(GEV_QUANTILES, function, inputs, ERRORS)
+
+
+@given(inputs=strategies(LOG_NORMAL_QUANTILES))
+def test_log_normal_quantiles_properties(inputs):
+    function = as_standard(log_normal_quantiles)
+    assert_property_contract(LOG_NORMAL_QUANTILES, function, inputs, ERRORS)
+    assert_properties(LOG_NORMAL_QUANTILES, function, inputs, ERRORS)
+
+
+@given(inputs=strategies(PEARSON3_QUANTILES))
+def test_pearson3_quantiles_properties(inputs):
+    function = as_standard(pearson3_quantiles)
+    assert_property_contract(PEARSON3_QUANTILES, function, inputs, ERRORS)
+    assert_properties(PEARSON3_QUANTILES, function, inputs, ERRORS)
+
+
+@given(inputs=strategies(WEIBULL_QUANTILES))
+def test_weibull_quantiles_properties(inputs):
+    function = as_standard(weibull_quantiles)
+    assert_property_contract(WEIBULL_QUANTILES, function, inputs, ERRORS)
+    assert_properties(WEIBULL_QUANTILES, function, inputs, ERRORS)
+
+
+def _lmom_quantiles(dataset: str) -> dict[str, tuple[object, ...]]:
+    """lmom's parameters of a dataset, as the arguments of the quantile functions."""
+    gev = _lmom(dataset, "lmom::pelgev")
+    pe3 = _lmom(dataset, "lmom::pelpe3")
+    ln3 = _lmom(dataset, "lmom::pelln3(bound=0)")
+    wei = _lmom(dataset, "lmom::pelwei")
+    return {
+        "lmom::quagev": (gev_quantiles, gev["k"], gev["xi"], gev["alpha"]),
+        "lmom::quape3": (pearson3_quantiles, pe3["gamma"], pe3["mu"], pe3["sigma"]),
+        "lmom::qualn3": (
+            log_normal_quantiles,
+            ln3["sigma"],
+            ln3["zeta"],
+            math.exp(ln3["mu"]),
+        ),
+        "lmom::quawei": (weibull_quantiles, wei["delta"], wei["zeta"], wei["beta"]),
+    }
+
+
+@pytest.mark.parametrize("dataset", sorted(SAMPLES))
+@pytest.mark.parametrize(
+    "function", ["lmom::quagev", "lmom::quape3", "lmom::qualn3", "lmom::quawei"]
+)
+def test_the_quantiles_are_lmoms(dataset, function):
+    """CMP-6.4: lmom's quantiles at its own parameters (frozen, R 4.5.3)."""
+    quantile, *parameters = _lmom_quantiles(dataset)[function]
+    oracle = _lmom(dataset, function)
+
+    found = quantile(*parameters, RETURN_PERIODS)  # type: ignore[operator]
+
+    assert_within(
+        found,
+        [oracle[f"T{period:g}"] for period in RETURN_PERIODS],
+        rel=1e-10,
+        reason="R prints the parameters and quantiles to 15 significant digits; "
+        "lmom's quantile functions (R's qgamma, qnorm) and scipy's agree to about 12",
+    )
+
+
 @pytest.mark.parametrize("dataset", sorted(SAMPLES))
 def test_the_moments_are_numpys_and_scipys(dataset):
     """CMP-6.3: NumPy's mean and std (ddof 1) and SciPy's skew (bias False, G1)."""
@@ -192,5 +273,9 @@ def test_the_formulas_record_their_versions():
     with recording() as used:
         sample_moments([1.0, 2.0, 4.0])
         sample_l_moments([1.0, 2.0, 4.0])
+        gev_quantiles(0.1, 10.0, 2.0, [100.0])
+        log_normal_quantiles(0.5, 0.0, 10.0, [100.0])
+        pearson3_quantiles(1.0, 10.0, 2.0, [100.0])
+        weibull_quantiles(1.5, 1.0, 10.0, [100.0])
 
     assert used == {spec.name: spec.formula_version for spec, _ in FAMILY}
