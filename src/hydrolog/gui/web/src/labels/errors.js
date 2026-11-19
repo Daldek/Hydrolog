@@ -84,6 +84,14 @@ export const errors = {
       "Długość do środka ciężkości Lc nie może być większa od długości cieku L: obie biegną wzdłuż cieku głównego od przekroju zamykającego, Lc do punktu najbliższego środka ciężkości zlewni, L do działu wodnego",
     shares_within_catchment:
       "Udział terenów zurbanizowanych i udział lasów razem nie mogą przekroczyć 100 % powierzchni zlewni",
+    start_below_levels:
+      "Początkowe H₀ musi być niższe od najniższego stanu wody z pomiarów, w tej samej jednostce",
+    levels_not_all_equal:
+      "Wszystkie stany wody są równe: z takich par nie da się wyznaczyć wykładnika b ani stanu zerowego przepływu H₀",
+    discharges_not_all_equal:
+      "Wszystkie przepływy są równe: przepływ, który nie zmienia się ze stanem, nie wyznacza krzywej przepływu",
+    least_squares_minimum:
+      "Metoda najmniejszych kwadratów nie znajduje dla tych par minimum (np. przepływy rosną jak funkcja wykładnicza): sprawdź pary stan–przepływ albo podaj inne początkowe H₀",
   },
   /** The sentences of the errors of Euler II's depth-duration curve, by `details.reason`. */
   curve: {

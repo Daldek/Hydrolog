@@ -43,6 +43,7 @@ __all__ = [
     "UhModelMismatch",
     "UhSubsteps",
     "UnknownHietogramType",
+    "UnreferencedFormula",
     "render",
     "typical_range_fields",
     "warn_outside_typical_range",
@@ -196,7 +197,12 @@ class HydrologWarning(UserWarning):
                 f"got {', '.join(details) or '(none)'}"
             )
         self.details = {key: details[key] for key in kind.keys}
-        super().__init__(render(kind.template, self.details))
+        super().__init__(kind._text(self.details))
+
+    @classmethod
+    def _text(cls, details: Mapping[str, Any]) -> str:
+        """Return the message of the details: the template filled with them."""
+        return render(cls.template, details)
 
     @classmethod
     def code(cls) -> str:
@@ -230,14 +236,45 @@ class OutsideTypicalRange(HydrologWarning):
     the command of the formula), ``field`` (the input the value came from: the option
     of the command that was run or the field of the watershed, see
     :func:`typical_range_fields`), ``value`` and the range ``minimum``, ``maximum``
-    (in the unit of the parameter).
+    (in the unit of the parameter; ``None`` for an end without a bound). A condition
+    of the applicability of a formula between its inputs (Nogat CMP-3.3) gives this
+    warning too: ``parameter`` is then the quantity the condition bounds (the number
+    of ``gaugings`` of a rating curve), ``constraint`` the condition's name,
+    ``condition`` its text and ``source`` its source; for a parameter outside its own
+    range the three are ``None``. A range with one end gives the message of that end.
     """
 
     template = (
         "{method}: {parameter}={value} is outside typical range [{minimum}, "
         "{maximum}]. Results may be unreliable."
     )
-    keys = ("method", "parameter", "field", "value", "minimum", "maximum")
+    keys = (
+        "method",
+        "parameter",
+        "field",
+        "value",
+        "minimum",
+        "maximum",
+        "constraint",
+        "condition",
+        "source",
+    )
+    _below: ClassVar[str] = (
+        "{method}: {parameter}={value} is below its typical minimum {minimum}"
+    )
+    _above: ClassVar[str] = (
+        "{method}: {parameter}={value} is above its typical maximum {maximum}"
+    )
+
+    @classmethod
+    def _text(cls, details: Mapping[str, Any]) -> str:
+        """Return the message: of a range with both ends, or of its one end."""
+        if details["minimum"] is not None and details["maximum"] is not None:
+            return render(cls.template, details)
+        text = render(cls._above if details["minimum"] is None else cls._below, details)
+        if details["condition"] is not None:
+            text += render(": {condition} ({source})", details)
+        return f"{text}. Results may be unreliable."
 
 
 class OutsideUnverifiedRange(OutsideTypicalRange):
@@ -289,10 +326,13 @@ def warn_outside_typical_range(
     method: str,
     parameter: str,
     value: float,
-    minimum: float,
-    maximum: float,
+    minimum: float | None,
+    maximum: float | None,
     *,
     verified: bool = True,
+    constraint: str | None = None,
+    condition: str | None = None,
+    source: str | None = None,
     stacklevel: int = 2,
 ) -> None:
     """Warn if ``value`` is outside [minimum, maximum].
@@ -302,19 +342,22 @@ def warn_outside_typical_range(
     method : str
         The formula or the model.
     parameter : str
-        Its argument; ``field`` is the input that :func:`typical_range_fields` names
-        for it, else the parameter.
+        Its argument, or the quantity a condition of the formula bounds; ``field`` is
+        the input that :func:`typical_range_fields` names for it, else the parameter.
     value : float
         The value.
-    minimum, maximum : float
-        The typical range, bounds included.
+    minimum, maximum : float or None
+        The typical range, bounds included; ``None`` for an end without a bound.
     verified : bool, optional
         Whether the range has a published source: :class:`OutsideTypicalRange` if so
         (the default), else :class:`OutsideUnverifiedRange`.
+    constraint, condition, source : str or None, optional
+        The name, text and source of the condition of the formula's applicability
+        that bounds ``parameter``; ``None`` for a parameter outside its own range.
     stacklevel : int, optional
         As in ``warnings.warn``, counted from the caller of this function.
     """
-    if minimum <= value <= maximum:
+    if (minimum is None or minimum <= value) and (maximum is None or value <= maximum):
         return
     kind = OutsideTypicalRange if verified else OutsideUnverifiedRange
     warnings.warn(
@@ -325,9 +368,30 @@ def warn_outside_typical_range(
             value=value,
             minimum=minimum,
             maximum=maximum,
+            constraint=constraint,
+            condition=condition,
+            source=source,
         ),
         stacklevel=stacklevel + 1,
     )
+
+
+class UnreferencedFormula(HydrologWarning):
+    """A formula has no reference case and no oracle: its result is unverified.
+
+    Nogat's computation standard (CMP-5.1) puts this notice, at level ``info``, on
+    every result of a Tier A formula whose spec has the status ``unreferenced``: no
+    source publishes a case it could be checked against, and no independent oracle
+    exists. Details: the ``formula`` (the name of its spec), its ``title`` and its
+    ``formula_version``.
+    """
+
+    level = "info"
+    template = (
+        "{formula}: {title} has no reference case and no oracle, so its result is "
+        "not verified against a source (Nogat CMP-5.1)."
+    )
+    keys = ("formula", "title", "formula_version")
 
 
 class SmallSample(HydrologWarning):
@@ -508,5 +572,6 @@ LIBRARY_WARNINGS: Final[tuple[type[HydrologWarning], ...]] = (
     UhModelMismatch,
     UhSubsteps,
     PositionsIgnored,
+    UnreferencedFormula,
 )
 """Every warning class of the library, one per code."""

@@ -860,6 +860,16 @@ def test_notices_in_polish(page: Any) -> None:
            details: {curves: ['all pairs', '1981-1990'], b: [6.23341, 6.49733],
              h0: [-205.651, -87.9713]}},
           {code: 'no_such_code', message: 'Something odd'},
+          {code: 'outside_typical_range', message: 'm',
+           details: {method: 'rating_curve_fit', parameter: 'gaugings',
+             field: 'gaugings', value: 6, minimum: 12, maximum: null,
+             constraint: 'enough_gaugings', condition: 'n >= 12', source: 'WMO'}},
+          {code: 'outside_typical_range', message: 'm',
+           details: {method: 'kirpich', parameter: 'length_km', field: 'length_km',
+             value: 0.05, minimum: 0.1, maximum: null, constraint: null,
+             condition: null, source: null}},
+          {code: 'unreferenced_formula', message: 'm',
+           details: {formula: 'rybczynski_zones', title: 'Zones', formula_version: 1}},
         ].map(notices.describeNotice);""",
     )
     assert got == [
@@ -893,6 +903,24 @@ def test_notices_in_polish(page: Any) -> None:
             "english": False,
         },
         {"text": "Something odd" + EN, "english": True},
+        # a range with one end: the end it has, and a constraint by its name
+        {
+            "text": "Krzywa przepływu: liczba par stan–przepływ = 6, mniej niż 12: "
+            "WMO-No. 1044 (tom II, rozdz. 1.5.1) zaleca do krzywej przepływu co "
+            "najmniej 12–15 pomiarów przepływu z okresu analizy, więc krzywa jest "
+            "mniej pewna.",
+            "english": False,
+        },
+        {
+            "text": "kirpich: length_km = 0,05 poniżej typowego zakresu, od 0,1.",
+            "english": False,
+        },
+        {
+            "text": "Strefy stanów wody wg Rybczyńskiego (źródła nie otwarto) "
+            "(wersja 1): źródła nie podają przykładu z wynikiem tej metody i nie ma "
+            "niezależnego sposobu jej sprawdzenia, więc wyniku nie zweryfikowano.",
+            "english": False,
+        },
     ]
 
 

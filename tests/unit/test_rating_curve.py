@@ -45,19 +45,27 @@ class TestRatingCurve:
         result = rc.fit(h0_initial=50.0, remove_outliers=True, outlier_std=2.0)
         assert result.n_outliers_removed >= 1
 
-    def test_mismatched_lengths_raises(self):
+    def test_mismatched_lengths_are_refused_by_the_fit(self):
+        """The spec rating_curve_fit checks the pairs when ``fit`` uses them; the
+        constructor no longer does (CMP-3.5)."""
         from hydrolog.exceptions import InvalidParameterError
         from hydrolog.hydrometrics.rating_curve import RatingCurve
 
-        with pytest.raises(InvalidParameterError):
-            RatingCurve(np.array([1.0, 2.0]), np.array([1.0]))
+        curve = RatingCurve(np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0]))
+        with pytest.raises(InvalidParameterError) as caught:
+            curve.fit()
+        assert caught.value.details["reason"] == "outside_physical_range"
+        assert caught.value.details["constraint"] == "same_length"
+        assert caught.value.details["option"] == "discharges"
 
-    def test_too_few_points_raises(self):
+    def test_too_few_points_are_refused_by_the_fit(self):
         from hydrolog.exceptions import InvalidParameterError
         from hydrolog.hydrometrics.rating_curve import RatingCurve
 
-        with pytest.raises(InvalidParameterError):
-            RatingCurve(np.array([1.0, 2.0]), np.array([1.0, 2.0]))
+        with pytest.raises(InvalidParameterError) as caught:
+            RatingCurve(np.array([1.0, 2.0]), np.array([1.0, 2.0])).fit()
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "enough_pairs"
 
 
 class TestRatingCurveErrors:
@@ -69,12 +77,20 @@ class TestRatingCurveErrors:
         return h, 2.5 * (h - 50.0) ** 1.8
 
     @pytest.mark.parametrize(
-        "h0_initial", [60.0, 70.0, float("nan"), float("inf"), -float("inf")]
+        ("h0_initial", "reason"),
+        [
+            (60.0, "precondition_failed"),
+            (70.0, "precondition_failed"),
+            (float("nan"), "outside_physical_range"),
+            (float("inf"), "outside_physical_range"),
+            (-float("inf"), "outside_physical_range"),
+        ],
     )
     def test_initial_zero_level_must_be_finite_and_below_every_level(
-        self, curve_data, h0_initial
+        self, curve_data, h0_initial, reason
     ):
-        """Was a bare ``ValueError`` from SciPy (``x0`` is infeasible)."""
+        """Was a bare ``ValueError`` from SciPy (``x0`` is infeasible); since 0.9.0
+        the refusal of spec ``rating_curve_fit``."""
         from hydrolog.exceptions import InvalidParameterError
         from hydrolog.hydrometrics import RatingCurve
 
@@ -82,8 +98,10 @@ class TestRatingCurveErrors:
             RatingCurve(*curve_data).fit(h0_initial=h0_initial)
         assert caught.value.code == "validation_error"
         assert caught.value.details["option"] == "h0_initial"
-        assert caught.value.details["maximum"] == 60.0
-        assert "lower than every water level" in caught.value.hint
+        assert caught.value.details["reason"] == reason
+        if reason == "precondition_failed":
+            assert caught.value.details["constraint"] == "start_below_levels"
+            assert "lower than every water level" in caught.value.hint
 
     def test_initial_zero_level_error_is_still_a_value_error(self, curve_data):
         from hydrolog.hydrometrics import RatingCurve
@@ -94,7 +112,7 @@ class TestRatingCurveErrors:
     def test_initial_zero_level_just_below_the_lowest_level_is_accepted(
         self, curve_data
     ):
-        """The optimiser keeps H0 1e-6 below the lowest level; a start inside that
+        """The search keeps H0 a little below the lowest level; a start inside that
         margin is moved to the bound instead of failing."""
         from hydrolog.hydrometrics import RatingCurve
 
@@ -102,52 +120,59 @@ class TestRatingCurveErrors:
         assert result.h0 == pytest.approx(50.0, abs=0.5)
 
     @pytest.mark.parametrize("bad", [float("nan"), float("inf")])
-    def test_non_finite_measurements_are_rejected(self, bad):
+    def test_non_finite_measurements_are_refused(self, bad):
         from hydrolog.exceptions import InvalidParameterError
         from hydrolog.hydrometrics import RatingCurve
 
-        with pytest.raises(InvalidParameterError, match="finite"):
-            RatingCurve(np.array([60.0, 80.0, bad]), np.array([1.0, 2.0, 3.0]))
-        with pytest.raises(InvalidParameterError, match="finite"):
-            RatingCurve(np.array([60.0, 80.0, 90.0]), np.array([1.0, bad, 3.0]))
+        for levels, discharges, option in (
+            ([60.0, 80.0, bad], [1.0, 2.0, 3.0], "water_levels"),
+            ([60.0, 80.0, 90.0], [1.0, bad, 3.0], "discharges"),
+        ):
+            with pytest.raises(InvalidParameterError, match="finite") as caught:
+                RatingCurve(np.array(levels), np.array(discharges)).fit(50.0)
+            assert caught.value.details["option"] == option
 
     @pytest.mark.filterwarnings("ignore::RuntimeWarning")
-    def test_power_law_overflow_is_a_calculation_error(self):
-        """Levels so large that the power law overflows: no fit is possible."""
-        from hydrolog.exceptions import CalculationError
-        from hydrolog.hydrometrics import RatingCurve, RatingCurveFitError
+    def test_a_curve_beyond_float64_is_refused(self):
+        """Levels of 1e250 fit now, as the search runs on normalised pairs (their power
+        law overflowed into a calculation_error before 0.9.0): Q = 1e-250 H. Their
+        square, Q = 1e-400 H^2, has an a below every float64: the precondition
+        least_squares_minimum refuses it."""
+        from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.hydrometrics import RatingCurve
 
-        curve = RatingCurve(
-            np.array([1e250, 2e250, 3e250, 4e250]), np.array([1.0, 2.0, 3.0, 4.0])
-        )
-        with pytest.raises(RatingCurveFitError) as caught:
-            curve.fit()
-        assert isinstance(caught.value, CalculationError)
-        assert caught.value.code == "calculation_error"
-        assert caught.value.exit_code == 13
-        assert caught.value.details == {"fit": "rating curve"}
+        huge = np.array([1e250, 2e250, 3e250, 4e250])
+        linear = RatingCurve(huge, np.array([1.0, 2.0, 3.0, 4.0])).fit()
+        assert linear.b == pytest.approx(1.0, rel=1e-6)
+        assert linear.a == pytest.approx(1e-250, rel=1e-5)
+        with pytest.raises(InvalidParameterError) as caught:
+            RatingCurve(huge / 1e50, np.array([1.0, 4.0, 9.0, 16.0])).fit()
+        assert caught.value.code == "validation_error"
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "least_squares_minimum"
+        assert "another h0_initial" in caught.value.hint
 
-    def test_non_convergence_is_a_calculation_error_catchable_as_before(
-        self, curve_data, monkeypatch
-    ):
-        """Raised as ``InvalidParameterError`` (a ``ValueError``) before 0.8.0, so
-        that is still what ``except`` clauses written for it catch."""
+    def test_non_convergence_is_still_a_value_error(self, curve_data, monkeypatch):
+        """A search that does not settle was ``RatingCurveFitError`` (a
+        ``CalculationError`` and an ``InvalidParameterError``) up to 0.8.1: an
+        ``except ValueError`` or ``except InvalidParameterError`` written for it still
+        catches the refusal of the precondition."""
         from hydrolog.exceptions import CalculationError, InvalidParameterError
-        from hydrolog.hydrometrics import RatingCurve, RatingCurveFitError, rating_curve
+        from hydrolog.hydrometrics import RatingCurve, rating_curve
 
         def no_convergence(*args, **kwargs):
             raise RuntimeError("Optimal parameters not found: maxfev exceeded")
 
+        rating_curve._normalised_search.cache_clear()
         monkeypatch.setattr(rating_curve, "curve_fit", no_convergence)
-        with pytest.raises(RatingCurveFitError) as caught:
+        with pytest.raises(ValueError) as caught:
             RatingCurve(*curve_data).fit(h0_initial=50.0)
+        rating_curve._normalised_search.cache_clear()
         error = caught.value
-        assert isinstance(error, CalculationError)
         assert isinstance(error, InvalidParameterError)
-        assert isinstance(error, ValueError)
-        assert error.code == "calculation_error"
-        assert "maxfev exceeded" in str(error)
-        assert isinstance(error.__cause__, RuntimeError)
+        assert not isinstance(error, CalculationError)
+        assert error.code == "validation_error"
+        assert error.details["constraint"] == "least_squares_minimum"
 
 
 class TestRatingCurveDefaultStart:
@@ -182,23 +207,15 @@ class TestRatingCurveDefaultStart:
         ids=["a tenth of the range", "negative", "all negative", "at least one unit"],
     )
     def test_the_start_is_a_tenth_of_the_range_below_the_lowest_level(
-        self, monkeypatch, levels, start
+        self, levels, start
     ):
-        """``min(H) - max(1, 0.1 * range)``, as given to the optimiser."""
-        from hydrolog.hydrometrics import RatingCurve, rating_curve
+        """``min(H) - max(1, 0.1 * range)`` (Tier B ``rating_curve_start``): the fit
+        without a start is the fit from it."""
+        from hydrolog.hydrometrics import RatingCurve
 
-        starts = []
-        real = rating_curve.curve_fit
-
-        def spy(*args, **kwargs):
-            starts.append(kwargs["p0"][2])
-            return real(*args, **kwargs)
-
-        monkeypatch.setattr(rating_curve, "curve_fit", spy)
         h = np.array(levels)
-        h0 = h.min() - 0.3 * (h.max() - h.min())
-        RatingCurve(h, 0.05 * (h - h0) ** 1.6).fit()
-        assert starts == [pytest.approx(start)]
+        q = 0.05 * (h - (h.min() - 0.3 * (h.max() - h.min()))) ** 1.6
+        assert RatingCurve(h, q).fit() == RatingCurve(h, q).fit(h0_initial=start)
 
     def test_no_start_is_the_same_as_the_documented_start(self):
         from hydrolog.hydrometrics import RatingCurve
@@ -232,7 +249,6 @@ class TestRatingCurveDefaultStart:
         with pytest.raises(InvalidParameterError) as caught:
             curve.fit(h0_initial=bad)
         assert caught.value.details["option"] == "h0_initial"
-        assert caught.value.details["maximum"] == -10.0
 
 
 class TestWaterLevelFrequency:

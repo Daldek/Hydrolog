@@ -2,11 +2,13 @@
 
 The reference module's ``run_case``, ``assert_property_contract``,
 ``assert_properties``, ``assert_limits`` and ``assert_case`` read the standard's
-notice ``outside_applicability`` with ``details.variable``. Until that code replaces
+notice ``outside_applicability`` with ``details.variable`` or, for a violated
+applicability constraint, ``details.constraint``. Until that code replaces
 ``outside_typical_range`` together with its consumers (ADR-0050, point 3), the
 library warns with :class:`~hydrolog._warnings.OutsideTypicalRange`, whose
-``parameter`` is the input: :func:`as_standard` gives the assertions the function
-with each such warning read as the standard's notice, and nothing else changed.
+``parameter`` is the input and whose ``constraint`` names a violated constraint:
+:func:`as_standard` gives the assertions the function with each such warning read as
+the standard's notice, and nothing else changed.
 """
 
 import warnings
@@ -38,8 +40,8 @@ def as_standard(function: Callable[..., object]) -> Callable[..., object]:
     callable
         Takes the same keyword arguments and returns the same result; it issues each
         ``OutsideTypicalRange`` of the call as ``outside_applicability`` whose
-        ``variable`` is the warning's ``parameter``, and every other warning as it
-        was.
+        ``variable`` is the warning's ``parameter``, or whose ``constraint`` is the
+        warning's for a violated constraint, and every other warning as it was.
     """
 
     def call(**inputs: object) -> object:
@@ -49,7 +51,9 @@ def as_standard(function: Callable[..., object]) -> Callable[..., object]:
         for item in caught:
             message = item.message
             if isinstance(message, OutsideTypicalRange) and message.details:
-                details = {"variable": message.details["parameter"], **message.details}
+                details = dict(message.details)
+                if details.get("constraint") is None:
+                    details = {"variable": details["parameter"], **details}
                 warnings.warn(_Applicability(details), stacklevel=2)
             else:
                 warnings.warn_explicit(

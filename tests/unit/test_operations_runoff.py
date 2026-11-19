@@ -71,6 +71,9 @@ from hydrolog.time import ConcentrationTime
 from hydrolog.time.concentration import KIRPICH
 
 RUNOFF_GROUPS = ("tc", "cn", "scs", "precip", "uh", "hydrograph")
+_NO_CONDITION = {"constraint": None, "condition": None, "source": None}
+"""The details of ``outside_typical_range`` that only a violated condition between
+inputs fills (since 0.9.0)."""
 
 FULL_WATERSHED = {
     "name": "Potok Młynówka",
@@ -442,6 +445,7 @@ class TestTimeOfConcentration:
             "value": 8.2,
             "minimum": 0.10668,
             "maximum": 1.2192,
+            **_NO_CONDITION,
         }
         assert slope.details == {
             "method": "kirpich",
@@ -450,6 +454,7 @@ class TestTimeOfConcentration:
             "value": 0.023,
             "minimum": 0.025,
             "maximum": 0.1,
+            **_NO_CONDITION,
         }
 
 
@@ -1830,6 +1835,7 @@ class TestUnitHydrographs:
                 "value": 3.0,
                 "minimum": 1.35,
                 "maximum": 1.65,
+                **_NO_CONDITION,
             },
             {
                 "method": "snyder",
@@ -1838,6 +1844,7 @@ class TestUnitHydrographs:
                 "value": 0.3,
                 "minimum": 0.4,
                 "maximum": 0.8,
+                **_NO_CONDITION,
             },
         ]
 
@@ -2869,6 +2876,7 @@ class TestTypicalRangesOfTheModels:
                 "value": value,
                 "minimum": minimum,
                 "maximum": maximum,
+                **_NO_CONDITION,
             }
         ]
 
@@ -2919,6 +2927,7 @@ class TestTypicalRangesOfTheModels:
                 "value": 12.0,
                 "minimum": 0.0,
                 "maximum": pytest.approx(11.985),
+                **_NO_CONDITION,
             }
         ]
 

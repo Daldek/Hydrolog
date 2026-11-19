@@ -1,0 +1,35 @@
+# tool: R 4.4.3 (2025-02-28), x86_64-conda-linux-gnu, run once by the literature research of the rating curve (Nogat ct-research, trend-regime.md, sect. 5)
+# packages: stats of R 4.4.3: nls(Q ~ a * (H - h0)^b, algorithm = "port"), lm and optimize; no other package
+# platform: x86_64-conda-linux-gnu
+# date: 2026-11-18
+# script: tests/oracles/rating_curve/r_rating_oracle.R, run as Rscript r_rating_oracle.R r_rating_outputs.csv; this file is r_rating_outputs.csv beside it, byte for byte after this header, and neither is regenerated (Nogat CMP-6.4)
+# datasets: doc_negative_stages (H in cm, the catalog's six gaugings with stages below the gauge zero), fixture_pairs (H in cm, tests/fixtures/rating_curve_pairs.csv), wmo1044_table_II_1_1 (H in m, WMO-No. 1044 Vol. II Table II.1.1, 16 gaugings of 1938-1975 that are no single rating)
+# conventions: nls_port_arith is least squares on Q (arithmetic residuals) from a = 1, b = 1.5, h0 = min(H) - max(1 cm or 0.01 m, 0.1 (max(H) - min(H))), bounds a >= 0, b >= 0, h0 <= min(H) - 1e-6, as Hydrolog's spec rating_curve_fit; ols_log_profile_h0 is least squares of log Q on log(H - h0), h0 by optimize over [min(H) - 3 range, min(H) - 1e-6 max(1, range)], the fit of WMO-No. 1044 sect. 1.12.2, reported for contrast; value printed with %.17g
+"dataset","method","statistic","value"
+"doc_negative_stages","nls_port_arith","a","0.0049173276648410962"
+"doc_negative_stages","nls_port_arith","b","1.6401391192342285"
+"doc_negative_stages","nls_port_arith","h0","-25.169829788751926"
+"doc_negative_stages","nls_port_arith","sse","0.052018155257551074"
+"doc_negative_stages","ols_log_profile_h0","a","0.0019158341411720868"
+"doc_negative_stages","ols_log_profile_h0","b","1.8203911079893969"
+"doc_negative_stages","ols_log_profile_h0","h0","-30.971404658707588"
+"doc_negative_stages","ols_log_profile_h0","sse_log","0.012781649339066736"
+"doc_negative_stages","ols_log_profile_h0","h0_at_bound","0"
+"fixture_pairs","nls_port_arith","a","0.035246938800177957"
+"fixture_pairs","nls_port_arith","b","1.2806579879193758"
+"fixture_pairs","nls_port_arith","h0","52.628896428415501"
+"fixture_pairs","nls_port_arith","sse","30.883072039718918"
+"fixture_pairs","ols_log_profile_h0","a","0.010723245097255541"
+"fixture_pairs","ols_log_profile_h0","b","1.4932560429438422"
+"fixture_pairs","ols_log_profile_h0","h0","40.580064157778622"
+"fixture_pairs","ols_log_profile_h0","sse_log","0.10680194104301192"
+"fixture_pairs","ols_log_profile_h0","h0_at_bound","0"
+"wmo1044_table_II_1_1","nls_port_arith","a","50.01167319074478"
+"wmo1044_table_II_1_1","nls_port_arith","b","0.84779633666174214"
+"wmo1044_table_II_1_1","nls_port_arith","h0","1.3959597003551927"
+"wmo1044_table_II_1_1","nls_port_arith","sse","5233.9217588513939"
+"wmo1044_table_II_1_1","ols_log_profile_h0","a","37.310586900328957"
+"wmo1044_table_II_1_1","ols_log_profile_h0","b","1.1243384875782652"
+"wmo1044_table_II_1_1","ols_log_profile_h0","h0","1.2972768183125125"
+"wmo1044_table_II_1_1","ols_log_profile_h0","sse_log","3.9451967947381061"
+"wmo1044_table_II_1_1","ols_log_profile_h0","h0_at_bound","0"

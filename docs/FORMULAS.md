@@ -31,6 +31,10 @@
 | [Coefficient of variation of a sample of a quantity with a true zero](#coefficient_of_variation) | `hydrolog.statistics.characteristic.coefficient_of_variation` | oracle only | 1 | not measured |
 | [Fisher-Pearson coefficient of skewness g1 of a sample](#fisher_pearson_skewness) | `hydrolog.statistics.characteristic.fisher_pearson_skewness` | oracle only | 1 | not measured |
 | [Half-width of the Student t confidence interval of a mean of yearly means](#mean_interval_half_width) | `hydrolog.statistics.characteristic.mean_interval_half_width` | referenced | 1 | not measured |
+| [Discharge at a water level by the power-law rating curve](#rating_curve) | `hydrolog.hydrometrics.rating_curve.rating_discharge` | oracle only | 1 | not measured |
+| [Rating curve Q = a (H - H0)^b fitted to stage-discharge pairs by least squares on Q](#rating_curve_fit) | `hydrolog.hydrometrics.rating_curve.fit_rating_curve` | oracle only | 1 | not measured |
+| [Plausibility of a rating curve as the curve of one stage-discharge relation (Hydrolog's rule of ADR-0041)](#rating_curve_plausibility) | `hydrolog.hydrometrics.rating_curve.rating_curve_plausibility` | unreferenced | 1 | not measured |
+| [Rybczyński's zones of low, medium and high background water levels (NTW, STW, WTW)](#rybczynski_zones) | `hydrolog.hydrometrics.rating_curve.rybczynski_zones` | unreferenced | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
 ### Potential maximum retention S of the SCS curve number
@@ -2020,6 +2024,339 @@ Plain text: `h = t(1 - alpha/2, k - 1) s / sqrt(k) with alpha = 1 - c and s = sq
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
 
+<a id="rating_curve"></a>
+### Discharge at a water level by the power-law rating curve
+
+`hydrolog.hydrometrics.rating_curve.rating_discharge` · family `empirical` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+Q = \begin{cases} a\,(H - H_0)^{b} & H > H_0 \\ 0 & H \le H_0 \end{cases}
+$$
+
+Plain text: `Q = a * (H - H0)**b for H > H0; Q = 0 for H <= H0`
+
+**Sources**
+
+- WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper (open) <https://library.wmo.int/idurl/4/32726>
+- ISO 1100-2:2010. Hydrometry - Measurement of liquid flow in open channels - Part 2: Determination of the stage-discharge relationship, the power-law rating equation and its fit to gaugings (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `water_levels` | $H$ | cm | real_array | (-inf, inf), test bound low -10000.0 and high 10000.0 (100 m above or below a gauge's zero in cm: the stages of the largest rivers in flood range over a few tens of metres, so every stage of a gauge lies within) | unstated | [-10.0, 330.0]: Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, stages of -10 cm (below the gauge zero, the catalog's example) to 329 cm (station_daily.csv); 6 to 161 cm at 150170070 |
+| `a` | $a$ | m3/s per cm^b | real | [0.0, inf), test bound high 1000000.0 (the discharge at a head of one cm cannot exceed the largest discharge of any river, below a million m3/s) | unstated | [0.003, 0.04]: Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, the curves fitted to them with levels in cm: a 0.0049 to 0.035, b 1.28 to 3.02 (all the pairs of 150170070), H0 -25.2 to 52.6 cm |
+| `b` | $b$ | - | real | [0.0, inf), test bound high 20.0 (five times the largest exponent of a plausible curve (4, ADR-0041), three times the exponent of the curve of two relations at IMGW-PIB 150170070 (6.6)) | unstated | [1.2, 3.1]: Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, the curves fitted to them with levels in cm: a 0.0049 to 0.035, b 1.28 to 3.02 (all the pairs of 150170070), H0 -25.2 to 52.6 cm |
+| `h0` | $H_0$ | cm | real | (-inf, inf), test bound low -10000.0 and high 10000.0 (100 m above or below a gauge's zero in cm: the stages of the largest rivers in flood range over a few tens of metres, so every stage of a gauge lies within) | unstated | [-30.0, 55.0]: Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, the curves fitted to them with levels in cm: a 0.0049 to 0.035, b 1.28 to 3.02 (all the pairs of 150170070), H0 -25.2 to 52.6 cm |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `finite_discharge` | precondition | a (max(H) - H0)**b < 1.8e308: the discharge at every level is a float64 number | NumPy documentation, numpy.finfo, float64: the largest number 1.7976931348623157e+308 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `discharge_m3s` | m3/s | real_array | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- H and H0 in one unit of the levels, cm as IMGW-PIB gives them or m; a in m3/s per (unit of H)^b, so the same curve with the levels in m has a 100^b times larger and H0 100 times smaller (symmetry levels_in_another_unit); Q in m3/s
+- Q = 0 at and below H0, the gauge height of zero flow (WMO's e): no flow over the control, whatever b
+- H0 is the stage of zero flow, not the gauge zero (the datum of the staff gauge)
+
+**Assumptions**
+
+- one stage-discharge relation of one control (a section or a channel control) over the levels: no shift, hysteresis or variable backwater
+
+**Validation:** none: WMO-No. 1044 presents the equation as the rating of section and channel controls (sects. 1.3 and 1.5.4 to 1.5.6) and reports no statistic of its agreement with gaugings; a curve's fit to its gaugings is that of spec rating_curve_fit
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: the fractional power of the head at its bound 0: test_the_power_at_the_stage_of_zero_flow_is_finite
+- `exp_overflow`: the power of a head with a large b: test_a_power_that_overflows_is_refused (the precondition finite_discharge)
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `water_levels` increasing, `a` increasing, `h0` decreasing
+- scaling `discharge`: inputs times 2^e (`a` e = 1.0) give outputs times 2^e (`discharge_m3s` e = 1.0)
+- limit `unit_head`: the discharge at a head of one unit is a (WMO's C)
+- limit `no_flow_at_or_below_zero_flow`: no discharge at and below H0, also for b = 0
+- limit `exact_decimal`: Q equals the curve evaluated at 50 decimal digits
+- symmetry `levels_in_another_unit`: levels and H0 in a unit twice as small with a times 2^-b give the same discharges: the curve in cm and in m is one curve
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the curve evaluated with Python's decimal at 50 digits, rounded once (`tests/unit/test_formulas_hydrometrics.py (limit exact_decimal)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="rating_curve_fit"></a>
+### Rating curve Q = a (H - H0)^b fitted to stage-discharge pairs by least squares on Q
+
+`hydrolog.hydrometrics.rating_curve.fit_rating_curve` · family `statistic` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+(\hat a, \hat b, \hat H_0) = \arg\min_{a \ge 0,\, b \ge 0,\, H_0 < \min H} \sum_{i=1}^{n} \left(Q_i - a\,(H_i - H_0)^{b}\right)^2,\quad R^2 = 1 - \frac{SS_{res}}{SS_{tot}}
+$$
+
+Plain text: `(a, b, H0) minimise sum((Q_i - a * (H_i - H0)**b)**2) over a >= 0, b >= 0, H0 < min(H); R2 = 1 - SS_res / SS_tot with SS_tot = sum((Q_i - mean(Q))**2); s = sqrt(sum((r_i - mean(r))**2) / (n - 1)) of the residuals r_i`
+
+**Sources**
+
+- WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper (open) <https://library.wmo.int/idurl/4/32726>
+- WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.12.2, p. II.1-20: the equation of the relation may be computed by the method of least squares, which assumes that the relation plots as a straight line on logarithmic paper (open) <https://library.wmo.int/idurl/4/32726>
+- ISO 1100-2:2010. Hydrometry - Measurement of liquid flow in open channels - Part 2: Determination of the stage-discharge relationship, the power-law rating equation and its fit to gaugings (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `water_levels` | $H$ | cm | real_array | (-inf, inf), test bound low -10000.0 and high 10000.0 (100 m above or below a gauge's zero in cm: the stages of the largest rivers in flood range over a few tens of metres, so every stage of a gauge lies within) | unstated | [-10.0, 330.0]: Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, stages of -10 cm (below the gauge zero, the catalog's example) to 329 cm (station_daily.csv); 6 to 161 cm at 150170070 |
+| `discharges_m3s` | $Q$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (a million m3/s, above the largest flood discharge of any river (the Amazon's, a few hundred thousand m3/s)) | unstated | [0.5, 125.0]: Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, discharges of 0.5 (the catalog's example) to 122.3 m3/s (station_daily.csv) |
+| `h0_initial` | $H_{0,start}$ | cm | real | (-inf, inf), test bound low -10000.0 and high 10000.0 (100 m above or below a gauge's zero in cm: the stages of the largest rivers in flood range over a few tens of metres, so every stage of a gauge lies within) | unstated | [-30.0, 60.0]: Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, the starts of their fits: -23 (the catalog's example of stages below the gauge zero), 40 and 41.2 cm |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `same_length` | physical | one discharge per level | WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.5.1, p. II.1-3: at a minimum the list of discharge measurements should include at least 12 to 15 measurements, all made during the period of analysis |
+| `enough_pairs` | precondition | n >= 3: three pairs or more for the three parameters a, b and H0 | WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper |
+| `levels_not_all_equal` | precondition | min(H) < max(H): levels all equal determine neither b nor H0 | WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper |
+| `discharges_not_all_equal` | precondition | min(Q) < max(Q): a discharge that does not change with the level fits b = 0 at any H0 | WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper |
+| `start_below_levels` | precondition | h0_initial < min(H): the search starts inside its bound, H0 below every level | WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper |
+| `least_squares_minimum` | precondition | the sum of squares has a minimum that the search reaches in 10,000 evaluations, at which the curve is a float64 number at every level | WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.12.2, p. II.1-20: the equation of the relation may be computed by the method of least squares, which assumes that the relation plots as a straight line on logarithmic paper |
+| `enough_gaugings` | applicability | n >= 12: at least 12 to 15 gaugings of the period of analysis | WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.5.1, p. II.1-3: at a minimum the list of discharge measurements should include at least 12 to 15 measurements, all made during the period of analysis |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `least_gaugings` |  | 12.0 | - | WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.5.1, p. II.1-3: at a minimum the list of discharge measurements should include at least 12 to 15 measurements, all made during the period of analysis |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `a` | m3/s per cm^b | real | [0.0, inf) | 4 ulp of the bound |
+| `b` | - | real | [0.0, inf) | 4 ulp of the bound |
+| `h0` | cm | real | (-inf, inf) | 4 ulp of the bound |
+| `r_squared` | - | real | (-inf, 1.0] | 4 ulp of the bound |
+| `std_residuals` | m3/s | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- least squares on Q, the arithmetic residuals of every pair weighted equally; WMO-No. 1044 (sect. 1.12.2) fits the straight line on logarithmic paper, log Q on log(H - H0), which gives another curve (the catalog's six gaugings: b = 1.640 on Q, 1.820 in logarithms)
+- bounds a >= 0, b >= 0 and H0 below the lowest level by 2^-30 of the levels' scale (the power of two that brings the largest |H| into [1/2, 1)), about 5e-7 cm for stages of a few metres
+- the search: SciPy's curve_fit, the trust region reflective method with ftol, xtol and gtol of 1e-12 and at most 10,000 evaluations, from a = 1, b = 1.5 and H0 = h0_initial, on the levels and discharges divided exactly by the powers of two that bring their largest magnitudes into [1/2, 1); the curve is scaled back, so levels in cm or m and discharges scaled by a power of two give the same curve
+- R2 = 1 - SS_res / SS_tot on Q; s the standard deviation of the residuals with n - 1 (numpy.std, ddof 1)
+- H, H0 and h0_initial in one unit of the levels (cm or m); a in m3/s per (unit of H)^b; Q in m3/s
+
+**Assumptions**
+
+- the pairs follow one stage-discharge relation of one control over the period (no shift, hysteresis or variable backwater); the check of spec rating_curve_plausibility flags curves that do not
+- errors in Q only, independent and of equal variance
+
+**Validation:** none: the least squares give the curve closest to the gaugings on Q; WMO-No. 1044 (sect. 1.12.2) reports no statistic of the agreement of such a fit, and the research found no open worked example with gaugings and fitted parameters (WMO-No. 1044, Rantz 1982, Kennedy 1984)
+
+**Notices:** `outside_applicability`
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: the fractional power of a head at H0's bound below the lowest level: test_a_curve_at_its_bound_is_finite
+- `exp_overflow`: the power of the head at the levels' test bounds: test_levels_at_their_test_bounds_fit_or_are_refused
+- `unbounded_iteration`: the search's bounded count of 10,000 evaluations: test_a_search_that_does_not_settle_is_refused (precondition least_squares_minimum)
+- `gap_propagation`: type cases water_levels-nan_element and discharges_m3s-nan_element: a gap is refused
+- `many_small_terms`: test_many_pairs_keep_their_sums: 20,000 pairs against math.fsum
+- `moment_cancellation`: test_a_large_mean_discharge_keeps_r_squared: SS_tot of discharges near 1e6 against exact fractions
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `discharges`: inputs times 2^e (`discharges_m3s` e = 1.0) give outputs times 2^e (`a` e = 1.0, `std_residuals` e = 1.0)
+- limit `noise_free_power_law`: pairs of an exact power law give back its a, b and H0, with levels in cm and in m
+- limit `local_minimum`: no point a step of 1e-4 from the estimate has a smaller sum of squares
+- limit `zero_flow_below_the_levels`: H0 lies below every level of the pairs
+- symmetry `levels_in_another_unit`: levels and the start in a unit twice as small give the same curve: a times 2^-b, H0 doubled, b, R2 and s unchanged
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- frozen: R 4.4.3 stats::nls(algorithm = 'port') from a = 1, b = 1.5 and H0 = min(H) - max(1, 0.1 range), bounds a, b >= 0, H0 <= min(H) - 1e-6: tests/oracles/rating_curve/r_rating_outputs.csv (`tests/unit/test_formulas_hydrometrics.py (test_the_fit_equals_r_nls_port; the cases of tests/fixtures/formulas/hydrometrics-cases.json)`)
+- exact: pairs of the exact power law Q = 0.012 (H - 32)^1.62 give back a, b and H0, with levels in cm and in m (`tests/unit/test_formulas_hydrometrics.py (limit noise_free_power_law; case rating_curve_exact_power_law_and_units)`)
+- algorithm: the sum of squares at points a step of 1e-4 from the estimate, by math.fsum (`tests/unit/test_formulas_hydrometrics.py (limit local_minimum)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="rating_curve_plausibility"></a>
+### Plausibility of a rating curve as the curve of one stage-discharge relation (Hydrolog's rule of ADR-0041)
+
+`hydrolog.hydrometrics.rating_curve.rating_curve_plausibility` · family `classification` · formula_version 1 · status **unreferenced** · mutation score not measured
+
+$$
+b \notin [1, 4] \Rightarrow \text{b\_out\_of\_range},\quad \min H - H_0 > \max H - \min H \Rightarrow \text{h0\_too\_low}
+$$
+
+Plain text: `b_out_of_range unless 1 <= b <= 4; h0_too_low if min(H) - H0 > max(H) - min(H)`
+
+**Sources**
+
+- Hydrolog ADR-0041 (2026). Implausible rating curves: flagged, not refused, docs/decisions/0041-implausible-rating-curves-flagged-not-refused.md, decision 1: b from 1 to 4, H0 below the lowest stage by at most the range of the stages; Hydrolog's own rule, published by no source (open)
+- WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.3, eq. 1.1, p. II.1-2: beta = 1.5 for a rectangular and 2.5 for a V-shaped section control; sect. 1.5.6, p. II.1-8: logarithmic ratings of section controls in natural channels almost always have a slope of 2 or greater, those of channel controls usually less than 2 (open) <https://library.wmo.int/idurl/4/32726>
+- WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.5.6, fig. II.1.5, p. II.1-9: the rating of a real stream with section control throughout, e = 0.6 m, has a slope of about 4.3 below 1.4 m and 2.8 above 1.5 m (open) <https://library.wmo.int/idurl/4/32726>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `water_levels` | $H$ | cm | real_array | (-inf, inf), test bound low -10000.0 and high 10000.0 (100 m above or below a gauge's zero in cm: the stages of the largest rivers in flood range over a few tens of metres, so every stage of a gauge lies within) | unstated | [-10.0, 330.0]: Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, stages of -10 cm (below the gauge zero, the catalog's example) to 329 cm (station_daily.csv); 6 to 161 cm at 150170070 |
+| `b` | $b$ | - | real | [0.0, inf), test bound high 20.0 (five times the largest exponent of a plausible curve (4, ADR-0041), three times the exponent of the curve of two relations at IMGW-PIB 150170070 (6.6)) | unstated | [1.2, 3.1]: Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, the curves fitted to them with levels in cm: a 0.0049 to 0.035, b 1.28 to 3.02 (all the pairs of 150170070), H0 -25.2 to 52.6 cm |
+| `h0` | $H_0$ | cm | real | (-inf, inf), test bound low -10000.0 and high 10000.0 (100 m above or below a gauge's zero in cm: the stages of the largest rivers in flood range over a few tens of metres, so every stage of a gauge lies within) | unstated | [-30.0, 55.0]: Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, the curves fitted to them with levels in cm: a 0.0049 to 0.035, b 1.28 to 3.02 (all the pairs of 150170070), H0 -25.2 to 52.6 cm |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `lowest_exponent` |  | 1.0 | - | Hydrolog ADR-0041 (2026). Implausible rating curves: flagged, not refused, docs/decisions/0041-implausible-rating-curves-flagged-not-refused.md, decision 1: b from 1 to 4, H0 below the lowest stage by at most the range of the stages; Hydrolog's own rule, published by no source |
+| `highest_exponent` |  | 4.0 | - | Hydrolog ADR-0041 (2026). Implausible rating curves: flagged, not refused, docs/decisions/0041-implausible-rating-curves-flagged-not-refused.md, decision 1: b from 1 to 4, H0 below the lowest stage by at most the range of the stages; Hydrolog's own rule, published by no source |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `exponent` | - | choice | – | 4 ulp of the bound |
+| `zero_flow_stage` | - | choice | – | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- b from 1 to 4, bounds included: section controls 1.5 to 2.5 and 2 or more in natural channels, channel controls usually below 2 (WMO-No. 1044, pp. II.1-2 and II.1-8), compound sections and overbank flow left in; a real section control of slope 4.3 (fig. II.1.5) is flagged
+- H0 at most the range of the levels below the lowest level, bound included: Hydrolog's own bound; the levels are those of the pairs given to the fit, before outliers are removed
+- a verdict, not a refusal: the curve is still given (ADR-0041)
+
+**Assumptions**
+
+- a curve fitted to the pairs of two relations (a gauge zero moved, a channel changed within the period) has a steep b and an H0 far below every level
+
+**Validation:** none: a heuristic of Hydrolog (ADR-0041), checked against no observations; WMO-No. 1044 shows a real section control whose rating has a slope of about 4.3 below 1.4 m (fig. II.1.5, p. II.1-9), which the rule flags b_out_of_range
+
+**Notices:** `unreferenced_formula`
+
+**Numerical traps (CMP-6.6)**
+
+- `class_limit`: limit class_limits: b = 1, b = 4 and H0 at the range below the lowest level, and the next values beyond them
+- `gap_propagation`: type case water_levels-nan_element: a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `levels`: inputs times 2^e (`water_levels` e = 1.0, `h0` e = 1.0) give outputs times 2^e (none)
+- limit `class_limits`: b = 1 and b = 4 are plausible, the next floats beyond are not; H0 exactly the range below the lowest level is plausible, a little deeper is not
+- limit `two_relations`: the curve of two relations at IMGW-PIB 150170070, 1981-1990 (b = 6.5, H0 = -88 cm under stages of 45 to 161 cm), fails both
+- limit `levels_in_metres`: the verdicts of levels in cm and in m are the same
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+None.
+
+**Tests by class (CMP §6):** generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="rybczynski_zones"></a>
+### Rybczyński's zones of low, medium and high background water levels (NTW, STW, WTW)
+
+`hydrolog.hydrometrics.rating_curve.rybczynski_zones` · family `classification` · formula_version 1 · status **unreferenced** · mutation score not measured
+
+$$
+H_{NTW} = c_{\arg\max_i f_i},\quad H_{STW} = c_{\min\{i:\, D_i < 50\%\}},\quad D_i = 100 - \sum_{j<i} f_j,\quad f_j = \frac{100\,n_j}{\sum n}
+$$
+
+Plain text: `NTW ends at the centre of the most frequent class; STW at the centre of the first class i with D_i < 50 %, D_i = 100 - sum(f_j, j < i), f_j = 100 n_j / sum(n)`
+
+**Sources**
+
+- Rybczyński, M. (1932). Kilka uwag o charakterystyce przepływów. Biuletyn Towarzystwa Geofizyków w Warszawie 4-5; and his lecture notes of 1923, not opened: the names NTW, STW and WTW and the limits of the zones are not confirmed from the source (research of 2026-11-18, trend-regime sect. 3.12) (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `bin_edges` | $e$ | cm | real_array | (-inf, inf), test bound low -10000.0 and high 10000.0 (100 m above or below a gauge's zero in cm: the stages of the largest rivers in flood range over a few tens of metres, so every stage of a gauge lies within) | unstated | [-10.0, 340.0]: Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, stages of -10 cm (below the gauge zero, the catalog's example) to 329 cm (station_daily.csv); 6 to 161 cm at 150170070 |
+| `counts` | $n$ | - | real_array | [0.0, inf), test bound high 1000000.0 (a million levels in a class, the hourly stages of more than a century) | unstated | [0.0, 820.0]: Hydrolog's water level data: tests/fixtures/station_daily.csv and the classes of 5 to 20 cm of the catalog's and the tests' examples, 1,811 daily stages of 45 to 329 cm: classes of 10 cm hold up to 483 levels, of 20 cm up to 815 |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `one_count_per_class` | physical | one count per class between two edges | Rybczyński, M. (1932). Kilka uwag o charakterystyce przepływów. Biuletyn Towarzystwa Geofizyków w Warszawie 4-5; and his lecture notes of 1923, not opened: the names NTW, STW and WTW and the limits of the zones are not confirmed from the source (research of 2026-11-18, trend-regime sect. 3.12) |
+| `edges_increasing` | physical | e[i+1] > e[i]: classes of positive width, from the lowest level up | Rybczyński, M. (1932). Kilka uwag o charakterystyce przepływów. Biuletyn Towarzystwa Geofizyków w Warszawie 4-5; and his lecture notes of 1923, not opened: the names NTW, STW and WTW and the limits of the zones are not confirmed from the source (research of 2026-11-18, trend-regime sect. 3.12) |
+| `some_levels` | precondition | sum(n) > 0: the frequencies need levels | Rybczyński, M. (1932). Kilka uwag o charakterystyce przepływów. Biuletyn Towarzystwa Geofizyków w Warszawie 4-5; and his lecture notes of 1923, not opened: the names NTW, STW and WTW and the limits of the zones are not confirmed from the source (research of 2026-11-18, trend-regime sect. 3.12) |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `duration_limit_pct` |  | 50.0 | % | Rybczyński, M. (1932). Kilka uwag o charakterystyce przepływów. Biuletyn Towarzystwa Geofizyków w Warszawie 4-5; and his lecture notes of 1923, not opened: the names NTW, STW and WTW and the limits of the zones are not confirmed from the source (research of 2026-11-18, trend-regime sect. 3.12) |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `ntw_upper` | cm | real | (-inf, inf) | 4 ulp of the bound |
+| `stw_upper` | cm | real | (-inf, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the limits are class centres: NTW ends at the centre of the most frequent class (the first of equal ones), STW at the centre of the first class at whose lower edge the duration (the share of levels at or above it) is below 50 %
+- when no class has a duration below 50 %, or STW would not lie above NTW, STW ends at the centre of the class above the most frequent one; when that is the last class, one class width above NTW, beyond the highest edge (WTW then runs backwards)
+- the classes and counts of spec water_level_frequency (Tier B), levels in cm or m
+
+**Assumptions**
+
+- the levels of a long series, daily or more often, of one gauge zero
+
+**Validation:** none: Rybczyński's source was not opened
+
+**Notices:** `unreferenced_formula`
+
+**Numerical traps (CMP-6.6)**
+
+- `class_limit`: limit half_duration: a duration of exactly 50 %; limit fallbacks: equal most frequent classes
+- `gap_propagation`: type cases bin_edges-nan_element and counts-nan_element: a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `levels`: inputs times 2^e (`bin_edges` e = 1.0) give outputs times 2^e (`ntw_upper` e = 1.0, `stw_upper` e = 1.0)
+- scaling `counts`: inputs times 2^e (`counts` e = 1.0) give outputs times 2^e (none)
+- limit `worked_example`: the most frequent class and the duration below 50 %
+- limit `fallbacks`: STW when no duration falls below 50 % and when the most frequent class is the last; of equal classes, the first
+- limit `half_duration`: a duration of exactly 50 % is not below it
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+None.
+
+**Tests by class (CMP §6):** generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
 ## Tier B
 
 | Formula | Function | Definition | Constants | Convention | Source |
@@ -2051,6 +2388,9 @@ Plain text: `h = t(1 - alpha/2, k - 1) s / sqrt(k) with alpha = 1 - c and s = sq
 | `hydrological_year_start` | `hydrolog.statistics._hydrological_year.hydrological_year_start` | The first day of a hydrological year: 1 November of the calendar year before its name. | first_month = 11 month (IMGW-PIB, public hydrological data: hydrologia_info_ogolne.txt (file of 2020-06-23), 'rok hydrologiczny 2016 to okres od 1.11.2015 r. do 31.10.2016 r.'; 'półrocze zimowe odpowiada okresowi 1.11.2015-30.04.2016, natomiast półrocze letnie - okresowi 1.05.2016-31.10.2016') | The year named after the calendar year in which it ends. | IMGW-PIB, public hydrological data: hydrologia_info_ogolne.txt (file of 2020-06-23), 'rok hydrologiczny 2016 to okres od 1.11.2015 r. do 31.10.2016 r.'; 'półrocze zimowe odpowiada okresowi 1.11.2015-30.04.2016, natomiast półrocze letnie - okresowi 1.05.2016-31.10.2016' |
 | `daily_calendar` | `hydrolog.statistics._hydrological_year.on_daily_calendar` | Every day from the first to the last date of a series, with its value. | – | A day whose date is absent or whose value is NaN has no value (NaN); no value is filled in. | Hydrolog, ADR-0029: station analyses for Obserwator, docs/decisions/0029-station-analyses-for-obserwator.md: a day whose date is absent or whose value is empty has no value |
 | `complete_year_extremes` | `hydrolog.statistics._hydrological_year.annual_extremes` | The maximum or the minimum of each complete hydrological year, one with a value on each of its 365 or 366 days. | – | A year with a day without a value is skipped and reported (its extreme may fall on that day); a date given twice counts once. | IMGW-PIB, public hydrological data: POLR_publiczne_format.txt (file of 2026-04-29), 'Wartość stanu wody/przepływu/temperatury wody równa 99999.999 albo NULL oznacza przerwy w obserwacjach': no characteristic of a period with a break |
+| `water_level_frequency` | `hydrolog.hydrometrics.rating_curve.WaterLevelFrequency.frequency_distribution` | classes of bin_width from the lowest level rounded down to a whole unit up to the first edge above the highest level rounded up; the count of each class, its frequency 100 n_i / n %, the cumulative frequency from the lowest class and the duration D_i = 100 - the cumulative frequency below class i, the share of levels at or above its lower edge | – | classes [lower, upper) of numpy.histogram, the last one closed; the first edge a whole unit of the levels (cm or m), so the classes depend on the unit; duration as the share equalled or exceeded | Searcy, J.K. (1959). Flow-duration curves. Manual of Hydrology: Part 2, Low-flow techniques. U.S. Geological Survey Water-Supply Paper 1542-A, p. 2: the percent of time a value was equalled or exceeded; p. 6: class intervals barely including the extremes of the record |
+| `rating_curve_start` | `hydrolog.hydrometrics.rating_curve.RatingCurve.fit` | without h0_initial the search starts at H0 = min(H) - max(1, 0.1 (max(H) - min(H))), below every level whatever their sign | start_fraction = 0.1 - (Hydrolog, docs/COMPUTATION_PATHS.md, sect. 3.8, the H0 starting point) | one unit of the levels at least (1 cm or 1 m), so the start depends on the unit; starts 0.1 to 1 range below the lowest level reached the same least squares in Hydrolog's benchmark of synthetic curves | Hydrolog, docs/COMPUTATION_PATHS.md, sect. 3.8, the H0 starting point (0.8.0); the R oracle of the research starts there too (tests/oracles/rating_curve/r_rating_oracle.R) |
+| `rating_curve_outlier_screening` | `hydrolog.hydrometrics.rating_curve.RatingCurve.fit` | with remove_outliers, the pairs whose residual from the first fit exceeds outlier_std standard deviations of the residuals (n - 1) are left out and the curve is fitted again to the rest, once, when at least 3 remain | – | one pass, \|r\| > k s left out and \|r\| = k s kept; the start of the second fit is that of the first; Hydrolog's own rule, while WMO-No. 1044 (sect. 1.12.1) checks a gauging that departs from the curve by more than 5 per cent by a check measurement | WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.12.1, pp. II.1-19 to II.1-20: a measurement that does not check the rating by 5 per cent is repeated |
 
 ## Delegated computations (CMP-1.2)
 
@@ -2061,3 +2401,4 @@ Plain text: `h = t(1 - alpha/2, k - 1) s / sqrt(k) with alpha = 1 - c and s = sq
 | student_t_quantile | scipy.stats.t.isf | scipy>=1.10 (1.18.1 locked) | the upper quantile of the tail 0.025 with one degree of freedom is tan(0.475 pi) = 12.7062047361747 within 1e-13 relative (spec mean_interval_half_width) | `tests/unit/test_formulas_characteristic.py::test_the_delegated_t_quantile_is_a_known_one` |
 | mann_whitney_u | scipy.stats.mannwhitneyu (two-sided, method auto: exact for parts of at most 8 values without ties, else normal with the corrections for ties and continuity) | scipy>=1.10 (1.18.1 locked) | Helsel et al. (2020), Example 5.1: U of the first part 76.5, p = 0.04911 (R's wilcox.test W = 76.5, p = 0.0491099747); the frozen oracle tests/oracles/trend_regime holds R's U and p of three pairs of samples (stats homogeneity) | `tests/unit/test_formulas_trend.py::test_the_delegated_mann_whitney_is_helsels_and_rs` |
 | ks_two_sample | scipy.stats.ks_2samp (two-sided, method auto: exact for a continuous distribution) | scipy>=1.10 (1.18.1 locked) | three values all below four others: D = 1, p = 2 / C(7, 3) = 0.0571429; seeded samples without ties against the exact count of spec ks_exact (stats homogeneity without ties) | `tests/unit/test_formulas_trend.py::test_the_delegated_ks_2samp_is_exact_without_ties` |
+| rating_curve_least_squares | scipy.optimize.curve_fit (bounds: least_squares, trust region reflective) | scipy>=1.10 (1.18.1 locked) | eight noise-free pairs of Q = 0.012 (H - 32)^1.62 at H = 40 to 270 cm give back a = 0.012, b = 1.62 and H0 = 32 cm within 1e-6 relative (spec rating_curve_fit) | `tests/unit/test_formulas_hydrometrics.py::test_the_delegated_least_squares_recover_a_noise_free_curve` |

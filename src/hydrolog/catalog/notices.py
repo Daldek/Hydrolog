@@ -44,6 +44,7 @@ from hydrolog._warnings import (
     UhModelMismatch,
     UhSubsteps,
     UnknownHietogramType,
+    UnreferencedFormula,
     render,
 )
 from hydrolog.catalog.envelope import Notice, NoticeLevel
@@ -286,6 +287,7 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
     _library(UhModelMismatch),
     _library(UhSubsteps),
     _library(PositionsIgnored),
+    _library(UnreferencedFormula),
     NoticeSpec(
         "exposed_without_auth",
         "warning",
