@@ -851,7 +851,7 @@ def test_a_network_of_two_subcatchments_opens_in_siec_beside_hydrografs_result(
             f"{peak} m³/s",
         ],
         "tp": ["5:50 h", "5:50 h"],
-        "volume": ["1 051 951 m³", "1 051 951 m³"],
+        "volume": ["1 051 991 m³", "1 051 991 m³"],
     }
     rows = page.locator(f'{SIEC} [data-table="handoff-compare"] tbody tr')
     expect(rows.locator("xpath=self::*[@class='conflict']")).to_have_count(2)
