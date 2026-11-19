@@ -988,8 +988,20 @@ def precipitation_record(
     )
     if flags.size != values.size:
         raise InvalidParameterError("accumulated must have one flag per value")
-    if bool((values[np.isfinite(values)] < 0).any()):
-        raise InvalidParameterError("precipitation must not be negative")
+    negative = np.flatnonzero(values < 0)
+    if negative.size:
+        at = int(negative[0])
+        raise InvalidParameterError(
+            f"precipitation must not be negative; precipitation_mm[{at}] = "
+            f"{values[at]:g} mm is outside its physical range [0, inf)",
+            details={
+                "reason": "outside_physical_range",
+                "option": "precipitation_mm",
+                "variable": "precipitation_mm",
+                "value": float(values[at]),
+                "index": [at],
+            },
+        )
     return PrecipitationRecord(days, values, flags, year_type)
 
 

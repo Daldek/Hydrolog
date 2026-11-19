@@ -59,6 +59,7 @@ MODULES = (
     "hydrolog.statistics.high_flows",
     "hydrolog.statistics.homogeneity",
     "hydrolog.statistics.low_flows",
+    "hydrolog.statistics.meteo_spells",
     "hydrolog.statistics.meteo_spi",
     "hydrolog.statistics.stationarity",
     "hydrolog.testing",

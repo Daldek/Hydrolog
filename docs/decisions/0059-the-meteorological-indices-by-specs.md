@@ -48,12 +48,17 @@ classes are ranges of whole percents while the code rounded the percentage with 
 4. **The inputs are refused as the specs say.** `fit_gamma` refuses a negative or missing sum and, for its
    preconditions, sums with fewer than three positive values or positive values all equal (it returned `None`);
    `spi_values` refuses a negative sum (taken as 0) and keeps a missing one missing; the classes refuse NaN and `None`
-   (they returned `None`), which the series functions no longer pass.
+   (they returned `None`), which the series functions no longer pass. `precipitation_spells` refuses a negative
+   precipitation, which it counted as a dry day, as the other functions of daily precipitation do; their refusal
+   names `details.reason` `outside_physical_range` and the day (`details.index`).
 
 ## Consequences
 
 - `meteo spi` gives the same numbers but for the classes of years at exactly a half percent; its envelope carries
   `formula_versions` `spi_gamma_fit`, `spi`, `kaczorowska_class` and `month_precipitation_class`.
+- `meteo spells` gives the same spells and carries `formula_versions` `spell_lengths` (the length of the spell ending
+  on each day, from which `precipitation_spells` builds its spells); the year a spell counts in (ADR-0044) and the
+  yearly summaries are its Tier B.
 - Breaking for library callers: `fit_gamma(sums_mm)` returns `(alpha, beta_mm, zero_probability)` and raises
   `InvalidParameterError` (`precondition_failed`) where it returned `None`; `spi_values` takes `beta_mm`;
   `year_precipitation_class` and `month_precipitation_class` take `percent_of_normal`, a number.

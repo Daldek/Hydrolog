@@ -62,6 +62,7 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.runoff.cn_lookup",
     "hydrolog.statistics.meteo_spi",
     "hydrolog.statistics.meteo_temperature",
+    "hydrolog.statistics.meteo_spells",
 )
 """The modules whose ``SPECS`` (and ``TIER_B``) declare Hydrolog's formulas, in the
 order of ``docs/FORMULAS.md``."""
