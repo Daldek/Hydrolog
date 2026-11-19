@@ -217,5 +217,94 @@
       "access": "open"
     },
     "status": "second_source"
+  },
+  {
+    "formula": "shreve_magnitude",
+    "case_id": "shreve-source",
+    "source": {
+      "citation": "Esri. How Stream Order works. ArcGIS Pro 3.8 documentation, Spatial Analyst",
+      "url": "https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/how-stream-order-works.htm",
+      "access": "open",
+      "locator": "'Shreve method': all exterior links are assigned an order of 1 (a link without upstream links)"
+    },
+    "inputs": {
+      "upstream_magnitudes": []
+    },
+    "expected": {
+      "magnitude": 1
+    },
+    "conventions": [
+      "Shreve's magnitudes of the links meeting at a junction, in any order"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "shreve_magnitude",
+    "case_id": "shreve-two-first",
+    "source": {
+      "citation": "Esri. How Stream Order works. ArcGIS Pro 3.8 documentation, Spatial Analyst",
+      "url": "https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/how-stream-order-works.htm",
+      "access": "open",
+      "locator": "'Shreve method': the intersection of two first-order links creates a second-order link"
+    },
+    "inputs": {
+      "upstream_magnitudes": [
+        1.0,
+        1.0
+      ]
+    },
+    "expected": {
+      "magnitude": 2
+    },
+    "conventions": [
+      "Shreve's magnitudes of the links meeting at a junction, in any order"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "shreve_magnitude",
+    "case_id": "shreve-first-and-second",
+    "source": {
+      "citation": "Esri. How Stream Order works. ArcGIS Pro 3.8 documentation, Spatial Analyst",
+      "url": "https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/how-stream-order-works.htm",
+      "access": "open",
+      "locator": "'Shreve method': the intersection of a first-order and second-order link creates a third-order link"
+    },
+    "inputs": {
+      "upstream_magnitudes": [
+        1.0,
+        2.0
+      ]
+    },
+    "expected": {
+      "magnitude": 3
+    },
+    "conventions": [
+      "Shreve's magnitudes of the links meeting at a junction, in any order"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "shreve_magnitude",
+    "case_id": "shreve-second-and-third",
+    "source": {
+      "citation": "Esri. How Stream Order works. ArcGIS Pro 3.8 documentation, Spatial Analyst",
+      "url": "https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/how-stream-order-works.htm",
+      "access": "open",
+      "locator": "'Shreve method': the intersection of a second-order and third-order link creates a fifth-order link"
+    },
+    "inputs": {
+      "upstream_magnitudes": [
+        2.0,
+        3.0
+      ]
+    },
+    "expected": {
+      "magnitude": 5
+    },
+    "conventions": [
+      "Shreve's magnitudes of the links meeting at a junction, in any order"
+    ],
+    "status": "single_source"
   }
 ]

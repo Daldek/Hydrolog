@@ -139,6 +139,15 @@ DELEGATED: Final[tuple[Delegated, ...]] = (
         "test_the_delegated_incomplete_beta_is_the_closed_form",
     ),
     Delegated(
+        name="incomplete_gamma",
+        library="scipy.special.gammainc (the S-curve of nash_iuh)",
+        versions="scipy>=1.10 (1.18.1 locked)",
+        smoke_case="P(1, x) = 1 - e^-x and P(1/2, x) = erf(sqrt(x)) at x = 0.25, 1 "
+        "and 7.5, and P(2, 1) = 1 - 2/e, within 1e-15 relative (spec nash_iuh)",
+        test="tests/unit/test_formulas_unit_hydrographs.py::"
+        "test_the_delegated_incomplete_gamma_is_the_closed_form",
+    ),
+    Delegated(
         name="nash_shape_root",
         library="scipy.optimize.brentq",
         versions="scipy>=1.10 (1.18.1 locked)",

@@ -650,5 +650,38 @@
    "locator": "pp. 77-78: the unit hydrograph sketched through the peak, the widths W50 and W75, a third of each before the peak, and the time base"
   },
   "discrepancy": "the shape between the points of the method: KZGW draws the unit hydrograph with straight lines (fig. 6.1), and a triangle or Chow's polygon of the widths through the peak reproduces table 6.1 within 0.5 % (73.1 to 73.6 m3/s); the gamma curve of 1 mm gives 78.27 m3/s at 25 h, 6.9 % higher"
+ },
+ {
+  "formula": "nash_iuh",
+  "case_id": "kzgw2017-ex6-2-uh-from-n-k",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 6.2 (the Niedźwiadka at km 3+450), step 11 and table 6.2, p. 100: u_t and h_t of N 2.55 and k 0.70 h at t = 0 to 10 h (eqs. 6.13, 6.22-6.23)"
+  },
+  "inputs": {
+   "n": 2.55,
+   "k_min": 42.0,
+   "area_km2": 7.2,
+   "timestep_min": 60.0,
+   "duration_min": 60.0,
+   "total_duration_min": 600.0
+  },
+  "expected": {
+   "iuh_ordinates_per_min": [0.0, 0.00718333333333, 0.00505, 0.00228333333333, 0.00085, 0.000283333333333, 0.0001, 0.0000333333333333, 0.0000166666666667, 0.0, 0.0],
+   "ordinates_m3s": [0.0, 0.528, 0.771, 0.425, 0.175, 0.063, 0.021, 0.007, 0.002, 0.001, 0.0]
+  },
+  "printed_precision": {
+   "n": 0.01,
+   "k_min": 0.6,
+   "iuh_ordinates_per_min": 0.0000166666666667,
+   "ordinates_m3s": 0.001
+  },
+  "conventions": [
+   "u_t in 1/h in the source, divided by 60 here; h_t = A / 3.6 x (1 / dt) int u over the step, in m3/s per mm (eq. 6.22), the ordinates of D = dt = 1 h",
+   "N read from table C.2 to two decimals and k = 1.09 / 1.55 h printed as 0.70 h: the inputs as printed"
+  ],
+  "status": "single_source"
  }
 ]

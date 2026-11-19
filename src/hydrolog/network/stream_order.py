@@ -298,10 +298,8 @@ class StreamNetwork:
         return strahler_order([float(order) for order in upstream_orders])
 
     def _shreve_order(self, upstream_orders: list[int]) -> int:
-        """Calculate Shreve order from upstream orders."""
-        if not upstream_orders:
-            return 1
-        return sum(upstream_orders)
+        """Calculate Shreve magnitude from upstream ones (:func:`shreve_magnitude`)."""
+        return shreve_magnitude([float(order) for order in upstream_orders])
 
     def get_statistics(self) -> NetworkStatistics:
         """
@@ -1011,7 +1009,8 @@ STRAHLER_ORDER: Final = FormulaSpec(
             "a junction of three or more streams raises the order when at least two "
             "of them have the highest order"
         ),
-        "Shreve's magnitude, the sum of the upstream magnitudes, is another ordering",
+        "Shreve's magnitude, the sum of the upstream magnitudes, is another ordering "
+        "(spec shreve_magnitude)",
     ),
     traps={
         "class_limit": "reference cases strahler-* at the junctions of equal and "
@@ -1031,8 +1030,143 @@ STRAHLER_ORDER: Final = FormulaSpec(
     base={"upstream_orders": [1.0, 1.0]},
 )
 
+_SHREVE_1966 = Source(
+    citation="Shreve, R.L. (1966). Statistical law of stream numbers. Journal of "
+    "Geology 74(1): 17-37",
+    locator="the magnitude of a link, the number of sources upstream of it: a source "
+    "link is of magnitude 1 and the magnitudes add at every junction (not opened; the "
+    "definition as Esri's documentation gives it)",
+    url="https://doi.org/10.1086/627137",
+)
+_ESRI_SHREVE = Source(
+    citation="Esri. How Stream Order works. ArcGIS Pro 3.8 documentation, Spatial "
+    "Analyst",
+    locator="'Shreve method': exterior links are of order 1 and the orders of interior "
+    "links are additive, 1 and 1 give 2, 1 and 2 give 3, 2 and 3 give 5; the "
+    "magnitude of a link is the number of upstream links (after Shreve 1966)",
+    url="https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/"
+    "how-stream-order-works.htm",
+)
+
+
+SHREVE_MAGNITUDE: Final = FormulaSpec(
+    name="shreve_magnitude",
+    title="Shreve's magnitude of a link below a junction",
+    function="hydrolog.network.stream_order.shreve_magnitude",
+    family="classification",
+    equation="M = 1 for a source; else M = sum of the upstream magnitudes",
+    latex=(
+        r"M = \begin{cases} 1 & \text{no upstream link} \\ "
+        r"\sum_i M_i & \text{otherwise} \end{cases}"
+    ),
+    variables=(
+        Variable(
+            name="upstream_magnitudes",
+            symbol="M_i",
+            unit="-",
+            kind="real_array",
+            description="Shreve magnitudes of the links that flow into the link; "
+            "empty for a source.",
+            physical=Range(low=1.0, test_high=_COUNT_TEST, test_reason=_COUNT_REASON),
+            applicability="unstated",
+            typical=Range(low=1.0, high=4.0, source=_fixture("magnitudes 1 to 4 meet")),
+            min_length=0,
+        ),
+    ),
+    outputs=(
+        Output(
+            name="magnitude",
+            unit="-",
+            kind="integer",
+            symbol="M",
+            description="Shreve magnitude of the link below the junction, the number "
+            "of sources upstream of it.",
+            physical=Range(low=1.0),
+        ),
+    ),
+    sources=(_ESRI_SHREVE, _SHREVE_1966),
+    constraints=(
+        Constraint(
+            name="whole_magnitudes",
+            cls="physical",
+            check=lambda x: bool(
+                np.all(np.mod(x.array("upstream_magnitudes"), 1.0) == 0.0)
+            ),
+            text="magnitudes are whole numbers, counts of sources",
+            source=_SHREVE_1966,
+            satisfied={"upstream_magnitudes": [1.0, 2.0]},
+            violated={"upstream_magnitudes": [1.5, 2.0]},
+        ),
+        Constraint(
+            name="sum_exact",
+            cls="precondition",
+            check=lambda x: float(np.sum(x.array("upstream_magnitudes"))) < 2.0**53,
+            text="the sum of the magnitudes is below 2^53, where float64 holds every "
+            "whole number",
+            source=Source(
+                citation="IEEE 754 double precision (float64)",
+                locator="53-bit significand: whole numbers exact up to 2^53",
+            ),
+            satisfied={"upstream_magnitudes": [1.0, 2.0]},
+            violated={"upstream_magnitudes": [2.0**52, 2.0**52]},
+        ),
+    ),
+    properties=Properties(
+        units="unit_specific",
+        monotonic={"upstream_magnitudes": 1},
+        limits=(
+            Limit(
+                name="source",
+                text="a link without upstream links is of magnitude 1",
+                inputs={"upstream_magnitudes": []},
+                expected={"magnitude": 1},
+                tolerance=Tolerance(abs=0.0, reason="an integer count"),
+            ),
+            Limit(
+                name="pass_through",
+                text="a single upstream link keeps its magnitude",
+                inputs={"upstream_magnitudes": [3.0]},
+                expected={"magnitude": 3},
+                tolerance=Tolerance(abs=0.0, reason="an integer count"),
+            ),
+            Limit(
+                name="three_links",
+                text="three links meeting add their magnitudes, as two do",
+                inputs={"upstream_magnitudes": [2.0, 1.0, 4.0]},
+                expected={"magnitude": 7},
+                tolerance=Tolerance(abs=0.0, reason="an integer count"),
+            ),
+        ),
+    ),
+    validation="none: a classification of the links of a network",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "magnitudes of links, the segments between junctions, as the segments of "
+        "StreamNetwork are",
+        "network stats --method shreve counts the links of each magnitude and gives no "
+        "Horton ratios, which are defined for Strahler's orders",
+    ),
+    traps={
+        "gap_propagation": "type case upstream_magnitudes-nan_element: a gap is "
+        "refused",
+    },
+    reference_cases=("tests/fixtures/formulas/morphometry-cases.json",),
+    oracles=(
+        Oracle(
+            kind="algorithm",
+            description="the magnitude of every link of a random network as the number "
+            "of sources reached by a search upstream of it",
+            test="tests/unit/test_formulas_network.py "
+            "(test_magnitudes_count_the_sources_upstream)",
+        ),
+    ),
+    base={"upstream_magnitudes": [1.0, 1.0]},
+)
+
 SPECS: Final[tuple[FormulaSpec, ...]] = (
     STRAHLER_ORDER,
+    SHREVE_MAGNITUDE,
     BIFURCATION_RATIO,
     LENGTH_RATIO,
     DRAINAGE_DENSITY,
@@ -1077,6 +1211,32 @@ def strahler_order(upstream_orders: NDArray[np.float64] | Sequence[float]) -> in
     return checked_outputs(
         STRAHLER_ORDER, {"order": _strahler(x.array("upstream_orders"))}
     ).integer("order")
+
+
+def shreve_magnitude(upstream_magnitudes: NDArray[np.float64] | Sequence[float]) -> int:
+    """Return Shreve's magnitude of a link below a junction, spec shreve_magnitude.
+
+    Parameters
+    ----------
+    upstream_magnitudes : array_like
+        Magnitudes of the links flowing into it; empty for a source.
+
+    Returns
+    -------
+    int
+        Shreve magnitude, the number of sources upstream.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the spec refuses the magnitudes (``details.reason``, ``details.option``).
+    """
+    x = checked_inputs(SHREVE_MAGNITUDE, upstream_magnitudes=upstream_magnitudes)
+    magnitudes = x.array("upstream_magnitudes")
+    magnitude = int(np.sum(magnitudes)) if magnitudes.size else 1
+    return checked_outputs(SHREVE_MAGNITUDE, {"magnitude": magnitude}).integer(
+        "magnitude"
+    )
 
 
 def bifurcation_ratio(n_lower: float, n_higher: float) -> float:

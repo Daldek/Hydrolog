@@ -178,10 +178,14 @@ class TestNashIUHGenerate:
         """Test that zero timestep raises error."""
         iuh = NashIUH(n=3.0, k_min=30.0)
 
-        with pytest.raises(
-            InvalidParameterError, match="timestep_min must be positive"
-        ):
+        with pytest.raises(InvalidParameterError) as caught:
             iuh.generate(timestep_min=0)
+
+        details = caught.value.details
+        assert (details["reason"], details["option"]) == (
+            "outside_physical_range",
+            "timestep_min",
+        )
 
     def test_generate_custom_duration(self):
         """Test generation with custom duration."""
@@ -262,17 +266,27 @@ class TestNashIUHToUnitHydrograph:
         """Test that zero area raises error."""
         iuh = NashIUH(n=3.0, k_min=30.0)
 
-        with pytest.raises(InvalidParameterError, match="area_km2 must be positive"):
+        with pytest.raises(InvalidParameterError) as caught:
             iuh.to_unit_hydrograph(area_km2=0, duration_min=30.0)
+
+        details = caught.value.details
+        assert (details["reason"], details["option"]) == (
+            "outside_physical_range",
+            "area_km2",
+        )
 
     def test_to_uh_zero_duration_raises(self):
         """Test that zero duration raises error."""
         iuh = NashIUH(n=3.0, k_min=30.0)
 
-        with pytest.raises(
-            InvalidParameterError, match="duration_min must be positive"
-        ):
+        with pytest.raises(InvalidParameterError) as caught:
             iuh.to_unit_hydrograph(area_km2=45.0, duration_min=0)
+
+        details = caught.value.details
+        assert (details["reason"], details["option"]) == (
+            "outside_physical_range",
+            "duration_min",
+        )
 
 
 class TestNashIUHWithArea:

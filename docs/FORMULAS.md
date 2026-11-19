@@ -25,12 +25,14 @@
 | [Overland flow time by Kerby's formula (1959)](#kerby) | `hydrolog.time.concentration.ConcentrationTime.kerby` | referenced | 1 | not measured |
 | [Time of concentration by the Kerby-Kirpich method (Roussel et al. 2005)](#kerby_kirpich) | `hydrolog.time.concentration.ConcentrationTime.kerby_kirpich` | referenced | 1 | not measured |
 | [Equal-area slope of a longitudinal profile (the line through the outlet with equal areas above and below it)](#equal_area_slope) | `hydrolog.morphometry.profile.equal_area_slope` | oracle only | 1 | not measured |
+| [Nash's instantaneous unit hydrograph and its unit hydrograph of a duration](#nash_iuh) | `hydrolog.runoff.nash_iuh.nash_unit_hydrograph` | referenced | 1 | not measured |
 | [Nash's n and K of an ungauged watershed by Lutz's method (KZGW 2017)](#lutz) | `hydrolog.runoff.nash_iuh.lutz_parameters` | referenced | 1 | not measured |
 | [Nash's n and K of an urbanized watershed by the regression of Rao, Delleur and Sarma (1972)](#nash_urban_regression) | `hydrolog.runoff.nash_iuh.urban_regression_parameters` | oracle only | 1 | not measured |
 | [SCS (NRCS) dimensionless unit hydrograph of a unit duration](#scs) | `hydrolog.runoff.unit_hydrograph.scs_unit_hydrograph` | referenced | 1 | not measured |
 | [Snyder's synthetic unit hydrograph: lag, peak, time base and widths](#snyder) | `hydrolog.runoff.snyder_uh.snyder_parameters` | referenced | 1 | not measured |
 | [Snyder's unit hydrograph as the gamma curve of 1 mm through its peak](#snyder_shape) | `hydrolog.runoff.snyder_uh.snyder_shape` | oracle only | 1 | not measured |
 | [Clark's unit hydrograph of a duration: time-area curve and linear reservoir](#clark) | `hydrolog.runoff.clark_iuh.clark_unit_hydrograph` | oracle only | 1 | not measured |
+| [Lag of Clark's model: the centroid of the time-area curve plus R](#clark_lag) | `hydrolog.runoff.clark_iuh.clark_lag_time` | oracle only | 1 | not measured |
 | [Direct runoff of excess rainfall by discrete convolution with a unit hydrograph](#uh_convolution) | `hydrolog.runoff.convolution.convolve_discrete` | referenced | 1 | not measured |
 | [Muskingum routing through N equal sub-reaches (McCarthy's storage, trapezoid continuity)](#muskingum) | `hydrolog.routing.formulas.muskingum.muskingum_route` | referenced | 1 | not measured |
 | [Cascade of n equal linear reservoirs, exact for an inflow linear between the ordinates (Nash)](#linear_reservoir_cascade) | `hydrolog.routing.formulas.cascade.cascade_route` | oracle only | 1 | not measured |
@@ -46,6 +48,7 @@
 | [Relief ratio: the relief of a watershed over a length (Schumm)](#relief_ratio) | `hydrolog.morphometry.terrain.relief_ratio` | referenced | 1 | not measured |
 | [Hypsometric integral of a watershed by the trapezoid of its curve (Strahler)](#hypsometric_integral) | `hydrolog.morphometry.hypsometry.hypsometric_integral` | oracle only | 1 | not measured |
 | [Strahler's order of a stream below a junction](#strahler_order) | `hydrolog.network.stream_order.strahler_order` | referenced | 1 | not measured |
+| [Shreve's magnitude of a link below a junction](#shreve_magnitude) | `hydrolog.network.stream_order.shreve_magnitude` | referenced | 1 | not measured |
 | [Horton's bifurcation ratio of the streams of two consecutive orders](#bifurcation_ratio) | `hydrolog.network.stream_order.bifurcation_ratio` | oracle only | 1 | not measured |
 | [Horton's length ratio of the streams of two consecutive orders](#length_ratio) | `hydrolog.network.stream_order.length_ratio` | oracle only | 1 | not measured |
 | [Drainage density: the length of the streams over the watershed's area](#drainage_density) | `hydrolog.network.stream_order.drainage_density` | oracle only | 1 | not measured |
@@ -1584,6 +1587,93 @@ None.
 
 **Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
+<a id="nash_iuh"></a>
+### Nash's instantaneous unit hydrograph and its unit hydrograph of a duration
+
+`hydrolog.runoff.nash_iuh.nash_unit_hydrograph` · family `scheme` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+u(t) = \frac{1}{K\,\Gamma(n)}\left(\frac{t}{K}\right)^{n-1} e^{-t/K};\quad t_{lag} = n K;\quad S(t) = P\!\left(n, \frac{t}{K}\right);\quad U_D(t) = \frac{S(t) - S(t - D)}{D}
+$$
+
+Plain text: `u(t) = (t / K)^(n - 1) e^(-t / K) / (K Gamma(n)) for t > 0, u(0) = 0; LAG = n K; S(t) = P(n, t / K), the regularized lower incomplete gamma function, 0 for t <= 0; U_D(t) = (S(t) - S(t - D)) / D; q_i = U_D(i dt) A x 1 mm per s; i = 0 to max(1, ceil(T / dt))`
+
+**Sources**
+
+- KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), annex 2, section 3.1.2, p. 96: eqs. 6.13 (the IUH) and 6.15 (LAG = N k); p. 99: eqs. 6.22-6.23, the ordinates of the unit hydrograph of dt as the IUH averaged over dt times A / 3.6 (open) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+- Sikorska, A.E., Scheidegger, A., Banasik, K., Rieckermann, J. (2012). Bayesian uncertainty assessment of flood predictions in ungauged urban basins for conceptual rainfall-runoff models. Hydrology and Earth System Sciences 16, 1221-1236, eqs. 8-10, p. 1225: the IUH of the cascade, tp and up (open) <https://hess.copernicus.org/articles/16/1221/2012/hess-16-1221-2012.pdf>
+- Nash, J.E. (1957). The form of the instantaneous unit hydrograph. International Association of Scientific Hydrology, Publication 45(3): 114-121, the IUH of a cascade of n equal linear reservoirs of storage constant K, a gamma density of shape n and scale K, and its first moment n K (not opened; the equations as KZGW 2017 and Sikorska et al. 2012 print them) (open)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `n` | $n$ | - | real | (0.0, inf), test bound high 100.0 (a hundred reservoirs, more than ten times the last row of KZGW's Table C.2 (N = 7.99)) | unstated | [1.1, 8.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), Table C.2, pp. 132-133: N from 1.10 to 7.99, the cascades the method reads off |
+| `k_min` | $K$ | min | real | (0.0, inf), test bound high 2700.0 (ten times the largest K the estimations give for the hand-offs (264 min)) | unstated | [0.8, 270.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: K of 0.87 to 264.3 min by the spec lutz for the shortest and the longest flow path, 23.7 to 107.4 min by the spec nash_urban_regression for its points; KZGW Ex. 6.2: 42 min |
+| `area_km2` | $A$ | km2 | real | (0.0, inf), test bound high 1000000.0 (a million km2, five times the basin of the Vistula (194,000 km2) and four thousand times the largest watershed Hydrograf hands over) | unstated | [0.0003, 250.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 135 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py) |
+| `timestep_min` | $\Delta t$ | min | real | (0.0, inf), test bound high 1440.0 (a day, the step of a daily rainfall series (E5b-07: tc 90.7 min at a step of 1440 min)) | unstated | [5.0, 60.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2); and KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: 5 min; KZGW 2017, annex 2, ex. 6.1 and 6.2 (1 h) and 6.4 (0.5 h), pp. 92-110 |
+| `duration_min` | $D$ | min | real | (0.0, inf), test bound high 1440.0 (a day, the step of a daily rainfall series (E5b-07: tc 90.7 min at a step of 1440 min)) | unstated | [5.0, 60.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2); and KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: 5 min; KZGW 2017, annex 2, ex. 6.1 and 6.2 (1 h) and 6.4 (0.5 h), pp. 92-110 |
+| `total_duration_min` | $T$ | min | real | (0.0, inf), test bound high 108600.0 (ten times the longest default length of the typical ranges) | unstated | [9.0, 10860.0]: Hydrolog: the default length 5 n K + D over the typical ranges of n, K and D, 5 x 1.1 x 0.8 + 5 = 9.4 to 5 x 8 x 270 + 60 = 10,860 min |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `length_bounded` | precondition | the grid has at most a million ordinates | Hydrolog's bound of a hydrograph's length (hydrolog.routing.reach.MAX_ORDINATES), a million ordinates: the routing of a hydrograph refuses a longer one |
+| `representable` | precondition | float64 holds T / K, 1 / K and 1 mm over the watershed per second of D, A x 1 mm / D, and K and D are normal numbers | IEEE 754 double precision (float64), normal numbers from 2.2e-308 to 1.8e308 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `times_min` | min | real_array | [0.0, inf) | 4 ulp of the bound |
+| `iuh_ordinates_per_min` | 1/min | real_array | [0.0, inf) | 4 ulp of the bound |
+| `ordinates_m3s` | m3/s per mm | real_array | [0.0, inf) | 4 ulp of the bound |
+| `lag_time_min` | min | real | (0.0, inf) | 4 ulp of the bound |
+| `time_to_peak_min` | min | real | [0.0, inf) | 4 ulp of the bound |
+| `peak_discharge_m3s` | m3/s per mm | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- times in min from the beginning of the rainfall; the IUH in 1/min; ordinates in m3/s per mm
+- the IUH at t = 0 is 0 on the grid, also for n <= 1, where the density is 1 / K (n = 1) or unbounded (n < 1) as t tends to 0
+- the unit hydrograph of D is the IUH averaged over D by the exact S-curve, KZGW's eqs. 6.22-6.23 for D = dt: D need not be a whole number of steps; a D far shorter than dt loses digits in S(t) - S(t - D)
+- the grid ends at T (NashIUH: 5 n K + D, and max(5 n K, 10 K) for the IUH alone): the ordinates hold S(T) of the unit, short of 1 mm by the tail beyond T
+- n outside 1 to 10 or K outside 10 to 200 min given to NashIUH gives the notice outside_unverified_range (nash.n, nash.k_min): no source publishes those ranges
+
+**Assumptions**
+
+- the watershed responds as a cascade of n equal linear reservoirs
+- excess rainfall uniform over the watershed and in time over D
+
+**Validation:** none: Nash (1957) gives the model; n and K are fitted to gauged floods or estimated (specs lutz and nash_urban_regression), and the sources give no error statistic of the shape
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `many_small_terms`: test_nash_a_million_ordinates_hold_their_volume: the volume of a million ordinates of a 2^-10 min step against math.fsum
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `time`: inputs times 2^e (`k_min` e = 1.0, `timestep_min` e = 1.0, `duration_min` e = 1.0, `total_duration_min` e = 1.0) give outputs times 2^e (`times_min` e = 1.0, `iuh_ordinates_per_min` e = -1.0, `ordinates_m3s` e = -1.0, `lag_time_min` e = 1.0, `time_to_peak_min` e = 1.0, `peak_discharge_m3s` e = -1.0)
+- scaling `area`: inputs times 2^e (`area_km2` e = 1.0) give outputs times 2^e (`ordinates_m3s` e = 1.0, `peak_discharge_m3s` e = 1.0)
+- limit `erlang`: for a whole n the S-curve is the Erlang distribution function 1 - e^-x sum_j<n x^j / j! and the IUH x^(n-1) e^-x / (K (n-1)!), x = t / K: the ordinates of D = 15, 60 and 90 min agree
+- limit `quadrature`: for a fractional n the S-curve is the integral of the IUH from 0 to t, by adaptive quadrature
+- limit `telescoping_volume`: the ordinates of D = dt hold S at the end of the grid in mm over the watershed
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/unit-hydrographs-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the Erlang distribution function and density of a whole n in closed form, with math.fsum (`tests/unit/test_formulas_unit_hydrographs.py (limit erlang)`)
+- algorithm: the S-curve of a fractional n as the integral of the IUH by adaptive Gauss-Kronrod quadrature (scipy.integrate.quad, SciPy 1.18.1) (`tests/unit/test_formulas_unit_hydrographs.py (limit quadrature)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
 <a id="lutz"></a>
 ### Nash's n and K of an ungauged watershed by Lutz's method (KZGW 2017)
 
@@ -2145,6 +2235,77 @@ None.
 - algorithm: the same recursion ended at 0.995 of the volume as HEC-HMS ends it and rescaled to one unit: the research case clark-hec-hms-trm-oracle (tc 120 min, R 60 min, dt 10 min, A 45.3 km2), the peak within 0.5 % (`tests/unit/test_formulas_unit_hydrographs.py (limit hec_truncation)`)
 
 **Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="clark_lag"></a>
+### Lag of Clark's model: the centroid of the time-area curve plus R
+
+`hydrolog.runoff.clark_iuh.clark_lag_time` · family `scheme` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+t_{lag} = \frac{t_c}{2} + R
+$$
+
+Plain text: `t_lag = tc / 2 + R`
+
+**Sources**
+
+- USACE-HEC (2000). Hydrologic Modeling System HEC-HMS, Technical Reference Manual (CPD-74B, March 2000), Clark's unit hydrograph model, eq. 50, p. 59: the time-area curve of an elliptical watershed, whose centroid is at tc / 2; eqs. 47-49, p. 58: the linear reservoir S = R O, whose response has the first moment R (open) <https://www.hec.usace.army.mil/software/hec-hms/documentation/HEC-HMS_Technical%20Reference%20Manual_%28CPD-74B%29.pdf>
+- Nash, J.E. (1959). Systematic determination of unit hydrograph parameters. Journal of Geophysical Research 64(1): 111-115, the theorem of moments: the first moment of a linear system's response to an input is the input's first moment plus the IUH's, so translation and reservoir add their lags (not opened) (open) <https://doi.org/10.1029/JZ064i001p00111>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `tc_min` | $t_c$ | min | real | (0.0, inf), test bound high 4500.0 (ten times the longest time of concentration of the hand-offs (450 min)) | unstated | [1.0, 450.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: Kirpich's tc of the flow paths of the 27 watersheds, the default method of hydrograph generate, 1.04 to 450 min |
+| `r_min` | $R$ | min | real | (0.0, inf), test bound high 10440.0 (ten times the longest R of the Polish calibrations, 17.4 h (Wałęga and Cupak 2013)) | unstated | [0.2, 1050.0]: Wałęga, A. and Cupak, A. (2013). In Węglarczyk, S. (ed.), Problemy obliczania przepływów ekstremalnych, Monografie Komitetu Gospodarki Wodnej PAN 35, pp. 145-151, table 2, p. 148: R of 12.14 and 17.4 h calibrated for the Stobnica (335.84 km2); and Hydrolog's R/tc of 0.2 to 1.5 times the typical tc of 1 to 450 min, R from 0.2 min |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `centroid_share` | $1/2$ | 0.5 | - | USACE-HEC (2000). Hydrologic Modeling System HEC-HMS, Technical Reference Manual (CPD-74B, March 2000), Clark's unit hydrograph model, eq. 50, p. 59: At / A = 1.414 (t / tc)^1.5 for t <= tc / 2 and 1 - 1.414 (1 - t / tc)^1.5 for t >= tc / 2 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `lag_time_min` | min | real | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the lag from the instant of a unit of rainfall to the centroid of the response, in min; the unit hydrograph of D lags a further D / 2 after the rainfall's beginning
+- the centroid of HEC-HMS's elliptical time-area curve is tc / 2 whatever its factor (1.414): the areas its two halves cut off from the line A = 1 are equal
+
+**Assumptions**
+
+- the time-area curve of an elliptical watershed (spec clark); another curve has another centroid
+
+**Validation:** none: an exact property of the model; Clark's tc and R are calibrated on gauged floods (HEC-HMS), and the sources give no error statistic
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+None applies: half of one input plus another: no denominator, iteration, gap or long sum
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `tc_min` increasing, `r_min` increasing
+- scaling `time`: inputs times 2^e (`tc_min` e = 1.0, `r_min` e = 1.0) give outputs times 2^e (`lag_time_min` e = 1.0)
+- limit `time_area_centroid`: tc / 2 is the centroid of the time-area curve: the integral of 1 - A(t) / A over the curve, its two halves cancelling the factor 1.414
+- limit `unit_hydrograph_centroid`: the first moment of the spec clark's unit hydrograph on a fine grid, less D / 2, is tc / 2 + R
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the centroid of the time-area curve by adaptive quadrature (scipy.integrate.quad, SciPy 1.18.1) (`tests/unit/test_formulas_unit_hydrographs.py (limit time_area_centroid)`)
+- algorithm: the first moment of the unit hydrograph of the spec clark on a grid of 0.25 min, less D / 2 (`tests/unit/test_formulas_unit_hydrographs.py (limit unit_hydrograph_centroid)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5).
 
 <a id="uh_convolution"></a>
 ### Direct runoff of excess rainfall by discrete convolution with a unit hydrograph
@@ -3378,7 +3539,7 @@ Plain text: `u = 1 for a source; else u = max(upstream) + 1 if two or more upstr
 **Conventions (CMP-2.3)**
 
 - a junction of three or more streams raises the order when at least two of them have the highest order
-- Shreve's magnitude, the sum of the upstream magnitudes, is another ordering
+- Shreve's magnitude, the sum of the upstream magnitudes, is another ordering (spec shreve_magnitude)
 
 **Assumptions**
 
@@ -3408,6 +3569,76 @@ None stated.
 **Oracles (CMP-6.2 to CMP-6.4)**
 
 - algorithm: the streams of a network counted as the connected runs of links of one order (union-find) (`tests/unit/test_formulas_network.py (test_streams_are_the_runs_of_links_of_one_order)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="shreve_magnitude"></a>
+### Shreve's magnitude of a link below a junction
+
+`hydrolog.network.stream_order.shreve_magnitude` · family `classification` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+M = \begin{cases} 1 & \text{no upstream link} \\ \sum_i M_i & \text{otherwise} \end{cases}
+$$
+
+Plain text: `M = 1 for a source; else M = sum of the upstream magnitudes`
+
+**Sources**
+
+- Esri. How Stream Order works. ArcGIS Pro 3.8 documentation, Spatial Analyst, 'Shreve method': exterior links are of order 1 and the orders of interior links are additive, 1 and 1 give 2, 1 and 2 give 3, 2 and 3 give 5; the magnitude of a link is the number of upstream links (after Shreve 1966) (open) <https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/how-stream-order-works.htm>
+- Shreve, R.L. (1966). Statistical law of stream numbers. Journal of Geology 74(1): 17-37, the magnitude of a link, the number of sources upstream of it: a source link is of magnitude 1 and the magnitudes add at every junction (not opened; the definition as Esri's documentation gives it) (open) <https://doi.org/10.1086/627137>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `upstream_magnitudes` | $M_i$ | - | real_array | [1.0, inf), test bound high 10000000.0 (ten million streams: a D8 network on 10^8 cells, a 10 m DEM of 10,000 km2, has fewer sources than cells) | unstated | [1.0, 4.0]: Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2, magnitudes 1 to 4 meet |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `whole_magnitudes` | physical | magnitudes are whole numbers, counts of sources | Shreve, R.L. (1966). Statistical law of stream numbers. Journal of Geology 74(1): 17-37, the magnitude of a link, the number of sources upstream of it: a source link is of magnitude 1 and the magnitudes add at every junction (not opened; the definition as Esri's documentation gives it) |
+| `sum_exact` | precondition | the sum of the magnitudes is below 2^53, where float64 holds every whole number | IEEE 754 double precision (float64), 53-bit significand: whole numbers exact up to 2^53 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `magnitude` | - | integer | [1.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- magnitudes of links, the segments between junctions, as the segments of StreamNetwork are
+- network stats --method shreve counts the links of each magnitude and gives no Horton ratios, which are defined for Strahler's orders
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a classification of the links of a network
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `gap_propagation`: type case upstream_magnitudes-nan_element: a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: unit_specific
+- monotonic: `upstream_magnitudes` increasing
+- limit `source`: a link without upstream links is of magnitude 1
+- limit `pass_through`: a single upstream link keeps its magnitude
+- limit `three_links`: three links meeting add their magnitudes, as two do
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/morphometry-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the magnitude of every link of a random network as the number of sources reached by a search upstream of it (`tests/unit/test_formulas_network.py (test_magnitudes_count_the_sources_upstream)`)
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
@@ -8103,6 +8334,7 @@ None.
 | Computation | Library | Versions | Smoke case | Test |
 |---|---|---|---|---|
 | regularised_incomplete_beta | scipy.special.betainc (the block integrals of beta_hyetograph) | scipy>=1.10 (1.18.1 locked) | I_x(2, 5) at x = 1/4 is 1 - (3/4)^6 - 6 (1/4) (3/4)^5 = 1909/4096 within an ulp (spec beta_hyetograph) | `tests/unit/test_formulas_hyetographs.py::test_the_delegated_incomplete_beta_is_the_closed_form` |
+| incomplete_gamma | scipy.special.gammainc (the S-curve of nash_iuh) | scipy>=1.10 (1.18.1 locked) | P(1, x) = 1 - e^-x and P(1/2, x) = erf(sqrt(x)) at x = 0.25, 1 and 7.5, and P(2, 1) = 1 - 2/e, within 1e-15 relative (spec nash_iuh) | `tests/unit/test_formulas_unit_hydrographs.py::test_the_delegated_incomplete_gamma_is_the_closed_form` |
 | nash_shape_root | scipy.optimize.brentq | scipy>=1.10 (1.18.1 locked) | the root N of f(N) = (N-1)^N e^-(N-1) / Gamma(N) = f(2.55) on [1.1, 20] with xtol 1e-6 is 2.55 within 1e-6 (spec lutz) | `tests/unit/test_formulas_lutz.py::test_the_delegated_root_finder_finds_a_known_root` |
 | manning_normal_depth | scipy.optimize.brentq | scipy>=1.10 (1.18.1 locked) | the root ln y = 0 of ln K(e^u) - ln K(1) for Manning's conveyance A R^(2/3) of a rectangle 2 m wide on [-1, 1] with xtol 1e-15 is 0 within 1e-14 (spec manning_normal_flow) | `tests/unit/test_formulas_muskingum_cunge.py::test_the_delegated_root_finder_finds_a_known_root` |
 | kolmogorov_smirnov_test | scipy.stats.kstest (the K-S statistic and p-value of the flood and low-flow frequency analyses) | scipy>=1.10 (1.18.1 locked) | three values 0.05, 0.1 and 0.2 against the uniform distribution on [0, 1]: D = 0.8, the largest of i / n - u_i and u_i - (i - 1) / n, and the exact p = 2 (1 - D)^3 = 0.016 of D >= 2/3 | `tests/unit/test_formulas_flood_frequency.py::test_the_delegated_ks_test_gives_the_exact_statistic_and_p` |

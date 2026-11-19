@@ -296,7 +296,7 @@ def uh_nash(
         area_km2=area_km2,
         timestep_min=timestep_min,
         duration_min=shape.duration_min,
-        lag_time_min=cascade.lag_time_min,
+        lag_time_min=shape.lag_time_min,
         time_to_peak_min=shape.time_to_peak_min,
         peak_discharge_m3s_per_mm=shape.peak_discharge_m3s,
         time_base_min=None,
