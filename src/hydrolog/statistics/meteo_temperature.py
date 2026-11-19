@@ -59,13 +59,26 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import NamedTuple
+from typing import Final, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._formulas import checked_inputs, checked_outputs
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.nogat_formulas import (
+    Constraint,
+    FormulaSpec,
+    Output,
+    Properties,
+    Range,
+    Source,
+    Symmetry,
+    Tolerance,
+    Values,
+    Variable,
+)
 from hydrolog.statistics._climate import (
     DailyGrid,
     as_days,
@@ -103,6 +116,10 @@ __all__ = [
     "TemperatureRangeMonth",
     "TemperatureRangePeriod",
     "TemperatureRangeYear",
+    "DEGREE_DAYS",
+    "DailyDegreeDays",
+    "SPECS",
+    "daily_degree_days",
     "degree_days",
     "temperature_days",
     "temperature_means",
@@ -908,6 +925,247 @@ class DegreeDays(JsonResultMixin):
     period: DegreeDaysPeriod
 
 
+_EUROSTAT = Source(
+    citation="Eurostat (2024). Energy statistics - cooling and heating degree days "
+    "(nrg_chdd), reference metadata, updated 25 October 2024",
+    locator="section 3.4: HDD = 18 °C - Tm if Tm <= 15 °C, else 0; examples 12 °C "
+    "gives 6, 16 °C gives 0 (Commission Directive (EU) 2015/1127, Annex)",
+    url="https://ec.europa.eu/eurostat/cache/metadata/en/nrg_chdd_esms.htm",
+)
+_WYPYCH = Source(
+    citation="Wypych, A., Sulikowska, A., Ustrnul, Z. and Czekierda, D. (2017). "
+    "Variability of growing degree days in Poland in response to ongoing climate "
+    "changes in Europe. International Journal of Biometeorology 61, 49-59",
+    locator="eq. 1, p. 50: GDD = sum of (T - Tbase) over the days with T > Tbase; "
+    "the bases 0, 5 and 10 °C",
+)
+_WARSZAWA_T = Source(
+    citation="Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: "
+    "the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020",
+    locator="the daily mean temperature: -22.2 to 29.3 °C",
+)
+_RECORD_HEAT = (
+    "the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 "
+    "(WMO Archive of Weather and Climate Extremes)"
+)
+
+
+def _air(name: str, symbol: str, description: str, typical: Range) -> Variable:
+    return Variable(
+        name=name,
+        symbol=symbol,
+        unit="°C",
+        description=description,
+        physical=Range(low=-273.15, test_high=56.7, test_reason=_RECORD_HEAT),
+        applicability="unstated",
+        typical=typical,
+    )
+
+
+class DailyDegreeDays(NamedTuple):
+    """The degree days of each day (spec ``degree_days``).
+
+    Attributes
+    ----------
+    growing_degree_days, heating_degree_days : numpy.ndarray
+        GDD and HDD of each day [°C·d]; ``NaN`` where Tmean is.
+    """
+
+    growing_degree_days: NDArray[np.float64]
+    heating_degree_days: NDArray[np.float64]
+
+
+def _degree_days(x: Values) -> dict[str, NDArray[np.float64]]:
+    tmean = x.array("tmean_c")
+    known = ~np.isnan(tmean)
+    with np.errstate(invalid="ignore"):
+        growing = np.where(
+            known, np.maximum(tmean - x.real("growing_base_c"), 0.0), np.nan
+        )
+        heating = np.where(
+            known,
+            np.where(
+                tmean <= x.real("heating_limit_c"),
+                x.real("heating_base_c") - tmean,
+                0.0,
+            ),
+            np.nan,
+        )
+    return {"growing_degree_days": growing, "heating_degree_days": heating}
+
+
+def _shifted(x: Values) -> dict[str, object]:
+    return {
+        "tmean_c": x.array("tmean_c") + 1.0,
+        "growing_base_c": x.real("growing_base_c") + 1.0,
+        "heating_base_c": x.real("heating_base_c") + 1.0,
+        "heating_limit_c": x.real("heating_limit_c") + 1.0,
+    }
+
+
+DEGREE_DAYS: Final = FormulaSpec(
+    name="degree_days",
+    title="Growing and heating degree days of each day",
+    function="hydrolog.statistics.meteo_temperature.daily_degree_days",
+    family="index",
+    equation=(
+        "GDD = max(Tm - Tb, 0); HDD = Tr - Tm if Tm <= Tl, else 0 (Eurostat: Tr = 18 "
+        "°C, Tl = 15 °C); Tl <= Tr"
+    ),
+    latex=(
+        r"\mathrm{GDD} = \max(T_m - T_b, 0),\quad \mathrm{HDD} = \begin{cases} T_r - "
+        r"T_m & T_m \le T_l \\ 0 & T_m > T_l \end{cases},\quad T_l \le T_r"
+    ),
+    variables=(
+        Variable(
+            name="tmean_c",
+            symbol="T_m",
+            unit="°C",
+            kind="real_array",
+            description="Daily mean air temperature; NaN on a missing day.",
+            physical=Range(low=-273.15, test_high=56.7, test_reason=_RECORD_HEAT),
+            applicability="unstated",
+            typical=Range(low=-22.2, high=29.3, source=_WARSZAWA_T),
+            gaps_allowed=True,
+        ),
+        _air(
+            "growing_base_c",
+            "T_b",
+            "Base of the growing degree days.",
+            Range(low=0.0, high=10.0, source=_WYPYCH),
+        ),
+        _air(
+            "heating_base_c",
+            "T_r",
+            "Reference temperature of the heating degree days (Polish „temperatura "
+            "bazowa”).",
+            Range(low=18.0, high=18.0, source=_EUROSTAT),
+        ),
+        _air(
+            "heating_limit_c",
+            "T_l",
+            "Heating threshold: a day heats when Tm is at most this (Eurostat's "
+            "English base temperature, Polish „temperatura graniczna”).",
+            Range(low=15.0, high=15.0, source=_EUROSTAT),
+        ),
+    ),
+    outputs=(
+        Output(
+            name="growing_degree_days",
+            unit="°C·d",
+            kind="real_array",
+            symbol=r"\mathrm{GDD}",
+            description="Growing degree days of each day.",
+            physical=Range(low=0.0),
+            gaps_allowed=True,
+            gaps_from="tmean_c",
+        ),
+        Output(
+            name="heating_degree_days",
+            unit="°C·d",
+            kind="real_array",
+            symbol=r"\mathrm{HDD}",
+            description="Heating degree days of each day.",
+            physical=Range(low=0.0),
+            gaps_allowed=True,
+            gaps_from="tmean_c",
+        ),
+    ),
+    sources=(_EUROSTAT, _WYPYCH),
+    constraints=(
+        Constraint(
+            name="heating_limit_not_above_base",
+            cls="precondition",
+            check=lambda x: x.real("heating_limit_c") <= x.real("heating_base_c"),
+            text="heating_limit_c <= heating_base_c: a heating day lies below the "
+            "reference temperature, so its degree days are not negative",
+            source=_EUROSTAT,
+            satisfied={"heating_base_c": 18.0, "heating_limit_c": 15.0},
+            violated={"heating_base_c": 18.0, "heating_limit_c": 18.5},
+            boundary={"heating_base_c": 18.0, "heating_limit_c": 18.0},
+        ),
+    ),
+    properties=Properties(
+        units="unit_specific",
+        monotonic={"tmean_c": 1, "growing_base_c": -1},
+        symmetries=(
+            Symmetry(
+                name="shifted_temperatures",
+                text="the temperature and the three thresholds shifted by 1 °C give "
+                "the same degree days",
+                inputs=_shifted,
+                outputs=lambda out: {
+                    "growing_degree_days": out.array("growing_degree_days"),
+                    "heating_degree_days": out.array("heating_degree_days"),
+                },
+                tolerance=Tolerance(
+                    abs=1e-12,
+                    reason="each sum of a temperature and 1 °C rounds by half a unit "
+                    "in the last place of values below 330 °C",
+                ),
+            ),
+        ),
+    ),
+    validation="none: an index of the daily mean",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "Tm is the daily mean given; Eurostat's Directive takes Tm = (Tmin + Tmax) / "
+        "2 (at Warszawa-Okęcie 1991-2020 HDD 3407 against 3365 °C·d)",
+        "a day heats at Tm <= Tl (inclusive) and grows at Tm > Tb",
+        "the series function sums the days of complete months and the twelve months "
+        "of the year: no growing or heating season is cut out",
+    ),
+    traps={
+        "gap_propagation": "type case tmean_c-nan_element: a missing day gives missing "
+        "degree days and no other",
+        "difference_denominator": "none divides; precondition "
+        "heating_limit_not_above_base keeps Tr - Tm of a heating day >= 0",
+    },
+    reference_cases=("tests/fixtures/formulas/meteo-indices-cases.json",),
+)
+
+
+def daily_degree_days(
+    tmean_c: NDArray[np.float64] | Sequence[float],
+    growing_base_c: float,
+    heating_base_c: float,
+    heating_limit_c: float,
+) -> DailyDegreeDays:
+    """Return the growing and heating degree days of each day, spec degree_days.
+
+    Parameters
+    ----------
+    tmean_c : array_like of float
+        Daily mean temperature [°C]; ``NaN`` on a missing day.
+    growing_base_c, heating_base_c, heating_limit_c : float
+        The base of the growing degree days, the reference temperature and the
+        heating threshold of the heating degree days [°C].
+
+    Returns
+    -------
+    DailyDegreeDays
+        The degree days of each day [°C·d].
+
+    Raises
+    ------
+    InvalidParameterError
+        If an input is refused by the spec, a heating threshold above the reference
+        temperature among them (``precondition_failed``).
+    """
+    x = checked_inputs(
+        DEGREE_DAYS,
+        tmean_c=tmean_c,
+        growing_base_c=growing_base_c,
+        heating_base_c=heating_base_c,
+        heating_limit_c=heating_limit_c,
+    )
+    out = checked_outputs(DEGREE_DAYS, _degree_days(x), inputs=x)
+    return DailyDegreeDays(
+        out.array("growing_degree_days"), out.array("heating_degree_days")
+    )
+
+
 def degree_days(
     dates: NDArray[np.datetime64] | Sequence[object],
     *,
@@ -957,31 +1215,21 @@ def degree_days(
     Raises
     ------
     InvalidParameterError
-        If the arrays are invalid, a base is not finite or ``year_type`` is unknown.
+        If the arrays are invalid, a base is not finite or ``year_type`` is unknown,
+        or the heating threshold lies above the reference temperature (the spec
+        ``degree_days``, ``precondition_failed``).
     """
-    bases = {
-        name: _finite_threshold(name, value)
-        for name, value in (
-            ("growing_base_c", growing_base_c),
-            ("heating_base_c", heating_base_c),
-            ("heating_limit_c", heating_limit_c),
-        )
-    }
     data = _series(dates, year_type, tmean_c=tmean_c)
     grid = data.grid
-    tmean = _require(data.tmean, "tmean_c")
-    known = np.isfinite(tmean)
-    with np.errstate(invalid="ignore"):
-        growing = np.where(
-            known, np.maximum(tmean - bases["growing_base_c"], 0.0), np.nan
-        )
-        heating = np.where(
-            known,
-            np.where(
-                tmean <= bases["heating_limit_c"], bases["heating_base_c"] - tmean, 0.0
-            ),
-            np.nan,
-        )
+    days = daily_degree_days(
+        _require(data.tmean, "tmean_c"), growing_base_c, heating_base_c, heating_limit_c
+    )
+    bases = {
+        "growing_base_c": float(growing_base_c),
+        "heating_base_c": float(heating_base_c),
+        "heating_limit_c": float(heating_limit_c),
+    }
+    growing, heating = days.growing_degree_days, days.heating_degree_days
     tables = {
         "growing": monthly_totals(grid, growing),
         "heating": monthly_totals(grid, heating),
@@ -1026,6 +1274,10 @@ def degree_days(
             ],
         ),
     )
+
+
+SPECS: Final = (DEGREE_DAYS,)
+"""The Tier A formulas of the module."""
 
 
 # --- daily range ----------------------------------------------------------------------

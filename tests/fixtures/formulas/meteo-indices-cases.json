@@ -806,5 +806,75 @@
    "the interval closures of Table 1 as printed"
   ],
   "status": "single_source"
+ },
+ {
+  "formula": "degree_days",
+  "case_id": "eurostat-hdd-examples",
+  "source": {
+   "citation": "Eurostat (2024). Energy statistics - cooling and heating degree days (nrg_chdd), reference metadata, updated 25 October 2024",
+   "url": "https://ec.europa.eu/eurostat/cache/metadata/en/nrg_chdd_esms.htm",
+   "access": "open",
+   "locator": "section 3.4: a daily mean of 12 °C gives an HDD of 6 (18 - 12), one of 16 °C gives 0"
+  },
+  "inputs": {
+   "tmean_c": [
+    12.0,
+    16.0
+   ],
+   "growing_base_c": 5.0,
+   "heating_base_c": 18.0,
+   "heating_limit_c": 15.0
+  },
+  "expected": {
+   "heating_degree_days": [
+    6.0,
+    0.0
+   ]
+  },
+  "conventions": [
+   "HDD = 18 - Tm when Tm <= 15 °C, else 0"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Dopke, J. (2010). Obliczanie liczby stopniodni grzania według metody Eurostat",
+   "locator": "eq. 2: HDD = 18 - Tm for Tm <= 15 °C",
+   "url": "https://www.cire.pl/pliki/2/Dopke273blstometoeurostat1963129496.pdf",
+   "access": "open"
+  }
+ },
+ {
+  "formula": "degree_days",
+  "case_id": "eurostat-hdd-at-the-threshold",
+  "source": {
+   "citation": "Eurostat (2024). Energy statistics - cooling and heating degree days (nrg_chdd), reference metadata, updated 25 October 2024",
+   "url": "https://ec.europa.eu/eurostat/cache/metadata/en/nrg_chdd_esms.htm",
+   "access": "open",
+   "locator": "section 3.4: 'If Tm <= 15 °C Then [HDD = sum (18 °C - Tim)]': a mean of 15 °C heats, 3 °C·d"
+  },
+  "inputs": {
+   "tmean_c": [
+    15.0,
+    15.1
+   ],
+   "growing_base_c": 5.0,
+   "heating_base_c": 18.0,
+   "heating_limit_c": 15.0
+  },
+  "expected": {
+   "heating_degree_days": [
+    3.0,
+    0.0
+   ]
+  },
+  "conventions": [
+   "the threshold is inclusive"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "Dopke, J. (2010). Obliczanie liczby stopniodni grzania według metody Eurostat",
+   "locator": "eq. 2: HDD = 18 - Tm for Tm <= 15 °C",
+   "url": "https://www.cire.pl/pliki/2/Dopke273blstometoeurostat1963129496.pdf",
+   "access": "open"
+  }
  }
 ]

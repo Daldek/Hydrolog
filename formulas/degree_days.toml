@@ -1,0 +1,198 @@
+schema = "nogat-formula-card/1"
+name = "degree_days"
+title = "Growing and heating degree days of each day"
+function = "hydrolog.statistics.meteo_temperature.daily_degree_days"
+family = "index"
+formula_version = 1
+status = "referenced"
+equation = "GDD = max(Tm - Tb, 0); HDD = Tr - Tm if Tm <= Tl, else 0 (Eurostat: Tr = 18 °C, Tl = 15 °C); Tl <= Tr"
+latex = "\\mathrm{GDD} = \\max(T_m - T_b, 0),\\quad \\mathrm{HDD} = \\begin{cases} T_r - T_m & T_m \\le T_l \\\\ 0 & T_m > T_l \\end{cases},\\quad T_l \\le T_r"
+validation = "none: an index of the daily mean"
+conventions = ["Tm is the daily mean given; Eurostat's Directive takes Tm = (Tmin + Tmax) / 2 (at Warszawa-Okęcie 1991-2020 HDD 3407 against 3365 °C·d)", "a day heats at Tm <= Tl (inclusive) and grows at Tm > Tb", "the series function sums the days of complete months and the twelve months of the year: no growing or heating season is cut out"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/meteo-indices-cases.json"]
+constants = []
+oracles = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+limits = []
+conservation = []
+
+[properties.monotonic]
+tmean_c = 1
+growing_base_c = -1
+
+[[properties.symmetries]]
+name = "shifted_temperatures"
+text = "the temperature and the three thresholds shifted by 1 °C give the same degree days"
+
+[properties.symmetries.tolerance]
+reason = "each sum of a temperature and 1 °C rounds by half a unit in the last place of values below 330 °C"
+abs = 1e-12
+
+[[sources]]
+citation = "Eurostat (2024). Energy statistics - cooling and heating degree days (nrg_chdd), reference metadata, updated 25 October 2024"
+access = "open"
+locator = "section 3.4: HDD = 18 °C - Tm if Tm <= 15 °C, else 0; examples 12 °C gives 6, 16 °C gives 0 (Commission Directive (EU) 2015/1127, Annex)"
+url = "https://ec.europa.eu/eurostat/cache/metadata/en/nrg_chdd_esms.htm"
+
+[[sources]]
+citation = "Wypych, A., Sulikowska, A., Ustrnul, Z. and Czekierda, D. (2017). Variability of growing degree days in Poland in response to ongoing climate changes in Europe. International Journal of Biometeorology 61, 49-59"
+access = "open"
+locator = "eq. 1, p. 50: GDD = sum of (T - Tbase) over the days with T > Tbase; the bases 0, 5 and 10 °C"
+
+[[variables]]
+name = "tmean_c"
+symbol = "T_m"
+unit = "°C"
+kind = "real_array"
+description = "Daily mean air temperature; NaN on a missing day."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = -273.15
+low_inclusive = true
+test_high = 56.7
+test_reason = "the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = -22.2
+low_inclusive = true
+high = 29.3
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the daily mean temperature: -22.2 to 29.3 °C"
+
+[[variables]]
+name = "growing_base_c"
+symbol = "T_b"
+unit = "°C"
+kind = "real"
+description = "Base of the growing degree days."
+applicability = "unstated"
+
+[variables.physical]
+low = -273.15
+low_inclusive = true
+test_high = 56.7
+test_reason = "the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 10.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Wypych, A., Sulikowska, A., Ustrnul, Z. and Czekierda, D. (2017). Variability of growing degree days in Poland in response to ongoing climate changes in Europe. International Journal of Biometeorology 61, 49-59"
+access = "open"
+locator = "eq. 1, p. 50: GDD = sum of (T - Tbase) over the days with T > Tbase; the bases 0, 5 and 10 °C"
+
+[[variables]]
+name = "heating_base_c"
+symbol = "T_r"
+unit = "°C"
+kind = "real"
+description = "Reference temperature of the heating degree days (Polish „temperatura bazowa”)."
+applicability = "unstated"
+
+[variables.physical]
+low = -273.15
+low_inclusive = true
+test_high = 56.7
+test_reason = "the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 18.0
+low_inclusive = true
+high = 18.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Eurostat (2024). Energy statistics - cooling and heating degree days (nrg_chdd), reference metadata, updated 25 October 2024"
+access = "open"
+locator = "section 3.4: HDD = 18 °C - Tm if Tm <= 15 °C, else 0; examples 12 °C gives 6, 16 °C gives 0 (Commission Directive (EU) 2015/1127, Annex)"
+url = "https://ec.europa.eu/eurostat/cache/metadata/en/nrg_chdd_esms.htm"
+
+[[variables]]
+name = "heating_limit_c"
+symbol = "T_l"
+unit = "°C"
+kind = "real"
+description = "Heating threshold: a day heats when Tm is at most this (Eurostat's English base temperature, Polish „temperatura graniczna”)."
+applicability = "unstated"
+
+[variables.physical]
+low = -273.15
+low_inclusive = true
+test_high = 56.7
+test_reason = "the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 15.0
+low_inclusive = true
+high = 15.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Eurostat (2024). Energy statistics - cooling and heating degree days (nrg_chdd), reference metadata, updated 25 October 2024"
+access = "open"
+locator = "section 3.4: HDD = 18 °C - Tm if Tm <= 15 °C, else 0; examples 12 °C gives 6, 16 °C gives 0 (Commission Directive (EU) 2015/1127, Annex)"
+url = "https://ec.europa.eu/eurostat/cache/metadata/en/nrg_chdd_esms.htm"
+
+[[constraints]]
+name = "heating_limit_not_above_base"
+class = "precondition"
+text = "heating_limit_c <= heating_base_c: a heating day lies below the reference temperature, so its degree days are not negative"
+
+[constraints.source]
+citation = "Eurostat (2024). Energy statistics - cooling and heating degree days (nrg_chdd), reference metadata, updated 25 October 2024"
+access = "open"
+locator = "section 3.4: HDD = 18 °C - Tm if Tm <= 15 °C, else 0; examples 12 °C gives 6, 16 °C gives 0 (Commission Directive (EU) 2015/1127, Annex)"
+url = "https://ec.europa.eu/eurostat/cache/metadata/en/nrg_chdd_esms.htm"
+
+[[outputs]]
+name = "growing_degree_days"
+unit = "°C·d"
+kind = "real_array"
+symbol = "\\mathrm{GDD}"
+description = "Growing degree days of each day."
+gaps_allowed = true
+gaps_from = "tmean_c"
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "heating_degree_days"
+unit = "°C·d"
+kind = "real_array"
+symbol = "\\mathrm{HDD}"
+description = "Heating degree days of each day."
+gaps_allowed = true
+gaps_from = "tmean_c"
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case tmean_c-nan_element: a missing day gives missing degree days and no other"
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "none divides; precondition heating_limit_not_above_base keeps Tr - Tm of a heating day >= 0"
