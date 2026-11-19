@@ -17,7 +17,17 @@ import numpy as np
 import pytest
 from hypothesis import example, given
 from scipy.optimize import minimize
-from scipy.stats import skew
+from scipy.stats import (
+    anderson,
+    genextreme,
+    gumbel_r,
+    kstest,
+    lognorm,
+    pearson3,
+    skew,
+    uniform,
+    weibull_min,
+)
 from scipy.stats.mstats import plotting_positions
 
 from hydrolog._formula_versions import recording
@@ -47,6 +57,8 @@ from hydrolog.statistics._types import (
     compute_plotting_positions,
 )
 from hydrolog.statistics.frequency import (
+    AKAIKE,
+    ANDERSON_DARLING,
     FIT_L_MOMENTS,
     FIT_LEAST_SQUARES,
     FIT_MAXIMUM_LIKELIHOOD,
@@ -57,6 +69,8 @@ from hydrolog.statistics.frequency import (
     MOMENTS,
     PEARSON3_QUANTILES,
     WEIBULL_QUANTILES,
+    akaike_information_criterion,
+    anderson_darling,
     fit_l_moments,
     fit_least_squares,
     fit_maximum_likelihood,
@@ -87,6 +101,8 @@ FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
     (FIT_MOMENTS, fit_moments),
     (FIT_MAXIMUM_LIKELIHOOD, fit_maximum_likelihood),
     (FIT_LEAST_SQUARES, fit_least_squares),
+    (ANDERSON_DARLING, anderson_darling),
+    (AKAIKE, akaike_information_criterion),
     (PLOTTING_POSITIONS, compute_plotting_positions),
     (NON_EXCEEDANCE_POSITIONS, compute_non_exceedance_positions),
 )
@@ -308,6 +324,8 @@ def test_the_formulas_record_their_versions():
         fit_least_squares(POLANA, "gev")
         compute_plotting_positions(POLANA, "weibull")
         compute_non_exceedance_positions(POLANA, "weibull")
+        anderson_darling(POLANA, "gev", -0.18, 20.9, 16.4)
+        akaike_information_criterion(POLANA, "gev", -0.18, 20.9, 16.4)
 
     assert used == {spec.name: spec.formula_version for spec, _ in FAMILY}
 
@@ -369,6 +387,102 @@ def test_the_plotting_positions_are_scipys(sample, method, a):
         rel=4.5e-16,
         reason="scipy rounds (i - a) / (n + 1 - 2a) as the code does, with alpha + "
         "beta for 2a: the same value within an ulp or two",
+    )
+
+
+@given(inputs=strategies(ANDERSON_DARLING))
+def test_anderson_darling_properties(inputs):
+    function = as_standard(anderson_darling)
+    assert_property_contract(ANDERSON_DARLING, function, inputs, ERRORS)
+    assert_properties(ANDERSON_DARLING, function, inputs, ERRORS)
+
+
+@given(inputs=strategies(AKAIKE))
+def test_akaike_information_criterion_properties(inputs):
+    function = as_standard(akaike_information_criterion)
+    assert_property_contract(AKAIKE, function, inputs, ERRORS)
+    assert_properties(AKAIKE, function, inputs, ERRORS)
+
+
+@pytest.mark.parametrize("sample", [POLANA, list(frequency._FLOODS11)])
+def test_the_a_squared_is_scipys(sample):
+    """CMP-6.3: scipy's A² of the normal and Gumbel distributions it estimates."""
+    data = np.array(sample)
+    normal = anderson(data, dist="norm", method="interpolate")
+    gumbel = anderson(data, dist="gumbel_r", method="interpolate")
+    loc, scale = gumbel_r.fit(data)
+    mean, std = float(np.mean(data)), float(np.std(data, ddof=1))
+
+    assert_within(
+        [
+            anderson_darling(sample, "pearson3", 0.0, mean, std),
+            anderson_darling(sample, "gev", 0.0, float(loc), float(scale)),
+        ],
+        [normal.statistic, gumbel.statistic],
+        rel=1e-12,
+        reason="scipy sums ln F and ln(1 - F) as logcdf and logsf; the code takes the "
+        "logarithms of F, rounded within an ulp, whose logarithms differ by an ulp "
+        "over 1 - F",
+    )
+
+
+def test_the_delegated_ks_test_gives_the_exact_statistic_and_p():
+    """DELEGATED kolmogorov_smirnov_test: D and the exact p of three values."""
+    found = kstest([0.05, 0.1, 0.2], uniform.cdf)
+
+    assert_within(
+        [found.statistic, found.pvalue],
+        [0.8, 2.0 * 0.2**3],
+        rel=1e-12,
+        reason="D = 1 - 0.2 by hand; p = 2 (1 - D)**3, the exact distribution of D of "
+        "three values for D >= 2/3, which scipy computes for small samples",
+    )
+
+
+def test_the_delegated_distribution_functions_are_the_closed_forms():
+    """DELEGATED distribution_functions: F of the four distributions at one point."""
+    found = [
+        genextreme.cdf(1.0, 0.5),
+        lognorm.cdf(math.e, 1.0),
+        pearson3.cdf(1.0, 2.0),
+        weibull_min.cdf(1.0, 2.0),
+    ]
+
+    assert_within(
+        found,
+        [
+            math.exp(-0.25),
+            0.5 * (1.0 + math.erf(1.0 / math.sqrt(2.0))),
+            -math.expm1(-2.0),
+            -math.expm1(-1.0),
+        ],
+        rel=1e-14,
+        reason="exp(-(1 - c x)**(1/c)), Phi(ln x / s), the exponential distribution "
+        "from -1 (gamma shape 1) and 1 - exp(-x**k) by hand, each within a few ulp",
+    )
+
+
+def test_the_delegated_densities_are_the_closed_forms():
+    """DELEGATED densities: f and ln f of the four distributions at one point."""
+    points = [
+        (genextreme, 0.5, 1.0),
+        (lognorm, 1.0, math.e),
+        (pearson3, 2.0, 1.0),
+        (weibull_min, 2.0, 1.0),
+    ]
+    exact = [
+        math.exp(-0.25) / 2.0,
+        math.exp(-1.5) / math.sqrt(2.0 * math.pi),
+        math.exp(-2.0),
+        2.0 * math.exp(-1.0),
+    ]
+
+    assert_within(
+        [d.pdf(x, shape) for d, shape, x in points]
+        + [d.logpdf(x, shape) for d, shape, x in points],
+        exact + [math.log(value) for value in exact],
+        rel=1e-14,
+        reason="the densities written out at the point by hand, each within a few ulp",
     )
 
 

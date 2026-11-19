@@ -17,6 +17,7 @@ Hosking J.R.M., Wallis J.R. (1997): Regional Frequency Analysis: An Approach
 
 from __future__ import annotations
 
+import math
 import warnings
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -24,7 +25,7 @@ from typing import Final, Literal, cast, get_args
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.stats import genextreme, kstest, lognorm, pearson3, weibull_min
+from scipy.stats import kstest
 
 from hydrolog._ranges import typical_range
 from hydrolog._serialization import JsonResultMixin
@@ -39,9 +40,12 @@ from hydrolog.exceptions import CalculationError, InvalidParameterError
 from hydrolog.statistics._types import EmpiricalFrequency, compute_plotting_positions
 from hydrolog.statistics.frequency import (
     _DISTRIBUTIONS,
+    _a_squared,
     _by_l_moments,
     _maximum_likelihood,
     _within_l_moments,
+    akaike_information_criterion,
+    anderson_darling,
     fit_l_moments,
     fit_least_squares,
     fit_maximum_likelihood,
@@ -121,7 +125,7 @@ class FrequencyAnalysisResult(JsonResultMixin):
     ks_valid : bool
         Always ``False`` — parameters were estimated from the data.
     ad_statistic : float
-        Anderson-Darling test statistic.
+        Anderson-Darling statistic A² of the fit (spec ``anderson_darling``).
     ad_critical_values : dict[str, float] or None
         Critical values of ``ad_statistic`` at the levels ``"15%"`` … ``"1%"`` for
         the distribution fitted to this sample, from a parametric bootstrap
@@ -129,8 +133,9 @@ class FrequencyAnalysisResult(JsonResultMixin):
         ``"l_moments"``, whose refits are too slow to bootstrap.
     aic : float
         Akaike Information Criterion, from the log-likelihood at the fitted
-        parameters; infinite when an annual maximum lies outside the support of
-        the fitted distribution.
+        parameters (spec ``akaike_information_criterion``); infinite, without the
+        formula, when an annual maximum lies outside the support of the fitted
+        distribution.
     """
 
     distribution_name: str
@@ -146,48 +151,6 @@ class FrequencyAnalysisResult(JsonResultMixin):
     ad_statistic: float
     ad_critical_values: dict[str, float] | None
     aic: float
-
-
-def _a_squared(probabilities: NDArray[np.float64]) -> NDArray[np.float64]:
-    """Anderson-Darling A² of the fitted CDF values of ascending samples.
-
-    The samples run along the last axis; the values are clipped to [1e-10,
-    1 - 1e-10], so that a value outside the support adds a large finite term.
-    A² = -n - Σ [(2i − 1)/n · (ln F(x_i) + ln(1 − F(x_{n+1−i})))].
-    """
-    n = probabilities.shape[-1]
-    clipped = np.clip(probabilities, 1e-10, 1 - 1e-10)
-    weights = (2.0 * np.arange(1, n + 1) - 1.0) / n
-    terms = np.log(clipped) + np.log(1.0 - clipped[..., ::-1])
-    result: NDArray[np.float64] = -n - np.sum(weights * terms, axis=-1)
-    return result
-
-
-def _anderson_darling(
-    data: NDArray[np.float64],
-    cdf_func: object,
-) -> float:
-    """Compute Anderson-Darling statistic for any continuous distribution.
-
-    Parameters
-    ----------
-    data : NDArray[np.float64]
-        Observed sample.
-    cdf_func : callable
-        CDF function that accepts an array and returns probabilities.
-
-    Returns
-    -------
-    float
-        Anderson-Darling *A*² statistic (:func:`_a_squared`).
-
-    Notes
-    -----
-    ``scipy.stats.anderson`` only supports a limited set of distributions
-    (norm, expon, logistic, gumbel, gumbel_l), with their own estimators.
-    """
-    probabilities = np.asarray(cdf_func(np.sort(data)), dtype=np.float64)  # type: ignore[operator]
-    return float(_a_squared(probabilities))
 
 
 def _ad_critical_values(
@@ -393,19 +356,10 @@ class FloodFrequencyAnalysis:
         """
         shape, loc, scale = self._estimate("log_normal", fit_method)
         params = {"shape": shape, "loc": loc, "scale": scale}
-        k = 2  # shape + scale (loc is fixed)
 
         quantiles = log_normal_quantiles(shape, 0.0, scale, self._return_periods)
 
-        return self._build_result(
-            name="log_normal",
-            fit_method=fit_method,
-            params=params,
-            k=k,
-            quantiles=quantiles,
-            cdf_func=lambda x: lognorm.cdf(x, shape, loc=0, scale=scale),
-            logpdf_func=lambda x: lognorm.logpdf(x, shape, loc=0, scale=scale),
-        )
+        return self._build_result("log_normal", fit_method, params, quantiles)
 
     def fit_gev(
         self, *, fit_method: FitMethod = "l_moments"
@@ -437,19 +391,10 @@ class FloodFrequencyAnalysis:
         """
         c, loc, scale = self._estimate("gev", fit_method)
         params = {"shape": c, "loc": loc, "scale": scale}
-        k = 3
 
         quantiles = gev_quantiles(c, loc, scale, self._return_periods)
 
-        return self._build_result(
-            name="gev",
-            fit_method=fit_method,
-            params=params,
-            k=k,
-            quantiles=quantiles,
-            cdf_func=lambda x: genextreme.cdf(x, c, loc=loc, scale=scale),
-            logpdf_func=lambda x: genextreme.logpdf(x, c, loc=loc, scale=scale),
-        )
+        return self._build_result("gev", fit_method, params, quantiles)
 
     def fit_pearson3(
         self, *, fit_method: FitMethod = "l_moments"
@@ -477,19 +422,10 @@ class FloodFrequencyAnalysis:
         """
         skew, loc, scale = self._estimate("pearson3", fit_method)
         params = {"skew": skew, "loc": loc, "scale": scale}
-        k = 3
 
         quantiles = pearson3_quantiles(skew, loc, scale, self._return_periods)
 
-        return self._build_result(
-            name="pearson3",
-            fit_method=fit_method,
-            params=params,
-            k=k,
-            quantiles=quantiles,
-            cdf_func=lambda x: pearson3.cdf(x, skew, loc=loc, scale=scale),
-            logpdf_func=lambda x: pearson3.logpdf(x, skew, loc=loc, scale=scale),
-        )
+        return self._build_result("pearson3", fit_method, params, quantiles)
 
     def fit_weibull(
         self, *, fit_method: FitMethod = "l_moments"
@@ -517,19 +453,10 @@ class FloodFrequencyAnalysis:
         """
         shape, loc, scale = self._estimate("weibull", fit_method)
         params = {"shape": shape, "loc": loc, "scale": scale}
-        k = 3
 
         quantiles = weibull_quantiles(shape, loc, scale, self._return_periods)
 
-        return self._build_result(
-            name="weibull",
-            fit_method=fit_method,
-            params=params,
-            k=k,
-            quantiles=quantiles,
-            cdf_func=lambda x: weibull_min.cdf(x, shape, loc=loc, scale=scale),
-            logpdf_func=lambda x: weibull_min.logpdf(x, shape, loc=loc, scale=scale),
-        )
+        return self._build_result("weibull", fit_method, params, quantiles)
 
     def empirical_frequency(self, method: str = "weibull") -> EmpiricalFrequency:
         """Compute empirical plotting positions.
@@ -712,10 +639,7 @@ class FloodFrequencyAnalysis:
         name: str,
         fit_method: str,
         params: dict[str, float],
-        k: int,
         quantiles: NDArray[np.float64],
-        cdf_func: object,
-        logpdf_func: object,
     ) -> FrequencyAnalysisResult:
         """Build a :class:`FrequencyAnalysisResult` with GOF diagnostics.
 
@@ -726,38 +650,33 @@ class FloodFrequencyAnalysis:
         fit_method : str
             Method that estimated ``params``.
         params : dict[str, float]
-            Fitted parameter dictionary.
-        k : int
-            Number of estimated parameters (for AIC).
+            Fitted parameters ``(shape, loc, scale)`` of the scipy distribution.
         quantiles : NDArray[np.float64]
             Quantile estimates at ``self._return_periods``.
-        cdf_func : callable
-            CDF evaluated with fitted parameters.
-        logpdf_func : callable
-            Log-PDF evaluated with fitted parameters.
 
         Returns
         -------
         FrequencyAnalysisResult
         """
+        shape, loc, scale = params.values()  # (shape, loc, scale) of every fit
+        fitted = _DISTRIBUTIONS[name](shape, loc=loc, scale=scale)
+
         # K-S test
-        ks_stat, ks_pval = kstest(self._data, cdf_func)
+        ks_stat, ks_pval = kstest(self._data, fitted.cdf)
         warnings.warn(KsTestApproximate(), stacklevel=3)
 
         # Anderson-Darling: the critical values of this fit by a parametric
         # bootstrap, for the L-moments only (the other refits are too slow)
-        ad_stat = _anderson_darling(self._data, cdf_func)
-        shape, loc, scale = params.values()  # (shape, loc, scale) of every fit
+        ad_stat = anderson_darling(self._data, name, shape, loc, scale)
         ad_critical = (
             _ad_critical_values(name, (shape, loc, scale), self._data.size)
             if fit_method == "l_moments"
             else None
         )
 
-        # AIC
-        log_densities = np.asarray(logpdf_func(self._data))  # type: ignore[operator]
-        log_likelihood = float(np.sum(log_densities))
-        aic = 2.0 * k - 2.0 * log_likelihood
+        # AIC: infinite, without the formula, where a value has no density (the
+        # precondition values_within_support of its spec)
+        log_densities = np.asarray(fitted.logpdf(self._data))
         outside = ~np.isfinite(log_densities)
         if outside.any():
             values = [float(value) for value in np.sort(self._data[outside])]
@@ -765,9 +684,12 @@ class FloodFrequencyAnalysis:
                 OutsideSupport(distribution=name, fit_method=fit_method, values=values),
                 stacklevel=3,
             )
+            aic = math.inf
+        else:
+            aic = akaike_information_criterion(self._data, name, shape, loc, scale)
 
         exceedance = 1.0 / self._return_periods
-        densities = np.exp(np.asarray(logpdf_func(quantiles)))  # type: ignore[operator]
+        densities = np.exp(np.asarray(fitted.logpdf(quantiles)))
 
         return FrequencyAnalysisResult(
             distribution_name=name,
@@ -782,5 +704,5 @@ class FloodFrequencyAnalysis:
             ks_valid=False,
             ad_statistic=ad_stat,
             ad_critical_values=ad_critical,
-            aic=float(aic),
+            aic=aic,
         )

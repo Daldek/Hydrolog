@@ -1,0 +1,214 @@
+schema = "nogat-formula-card/1"
+name = "akaike_information_criterion"
+title = "Akaike information criterion of a distribution fitted to a sample"
+function = "hydrolog.statistics.frequency.akaike_information_criterion"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "AIC = 2 k - 2 sum_i ln f(x_i; shape, loc, scale), f the density at the parameters; k = 2 for the log-normal of location 0, 3 for the others"
+latex = "\\mathrm{AIC} = 2k - 2\\sum_{i=1}^{n} \\ln f(x_i; k, \\xi, \\alpha)"
+validation = "none: a criterion for comparing fits; WMO-No. 168 finds it alone not appropriate for choosing one"
+conventions = ["the likelihood at the parameters of the method that fitted them, the maximum only for maximum likelihood (ADR-0021, point 7): a ranking by AIC compares the likelihood of each fit's parameters", "k counts the parameters fitted: 2 for the log-normal, whose location is fixed at 0, 3 for the others", "a fit that leaves a value outside its support has no finite AIC: FloodFrequencyAnalysis gives it an infinite AIC without the formula, with the notice outside_support, and ranks it last", "ln f of scipy.stats at the parameters of its lognorm, genextreme, pearson3 or weibull_min, summed exactly rounded (math.fsum)", "the natural logarithm; the AIC depends on the unit of the sample"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/flood-frequency-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+
+[properties.monotonic]
+
+[[properties.limits]]
+name = "closed_form"
+text = "the AIC of the moment fits of two samples, every value inside their supports, with the densities of the four distributions written out"
+
+[[properties.limits]]
+name = "unit_of_the_sample"
+text = "doubling the sample, loc and scale adds 2 n ln 2: the AIC depends on the unit of the sample"
+
+[[properties.symmetries]]
+name = "order"
+text = "the sample in the reverse order has the same AIC"
+
+[properties.symmetries.tolerance]
+reason = "the log-likelihood is summed exactly rounded (math.fsum), in any order"
+abs = 0.0
+
+[[sources]]
+citation = "WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168"
+access = "open"
+locator = "sect. 5.6.3, eq. 5.31, pp. II.5-14 and II.5-15: AIC(f) = -2 log L(theta, x) + 2k, with L the likelihood function and k the number of parameters; alone not appropriate for model selection"
+url = "https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf"
+
+[[sources]]
+citation = "Akaike, H. (1974). A new look at the statistical model identification. IEEE Transactions on Automatic Control 19(6), 716-723"
+access = "author-provided"
+locator = "the criterion -2 ln (maximum likelihood) + 2 k"
+
+[[variables]]
+name = "annual_maxima"
+symbol = "x_i"
+unit = "m3/s"
+kind = "real_array"
+description = "The sample: annual maxima, or any sample of the distribution."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0"
+
+[variables.typical]
+low = 0.81
+low_inclusive = true
+high = 111.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "distribution"
+symbol = "F"
+unit = "-"
+kind = "choice"
+description = "The distribution: the log-normal of location 0, the GEV, Pearson type III or the three-parameter Weibull distribution of scipy.stats."
+choices = ["log_normal", "gev", "pearson3", "weibull"]
+
+[[variables]]
+name = "shape"
+symbol = "k"
+unit = "-"
+kind = "real"
+description = "Shape: s of the log-normal, c of the GEV (scipy's sign, k of Hosking, -xi of Coles), the skewness of Pearson III, the Weibull shape."
+applicability = "unstated"
+
+[variables.physical]
+test_low = -9.0
+test_high = 50.0
+test_reason = "the shapes of Hydrolog's estimators: a Pearson III skewness above -9 by least squares, a GEV c and a Weibull shape of at most 50"
+
+[variables.typical]
+low = -0.6
+low_inclusive = true
+high = 2.7
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "loc"
+symbol = "\\xi"
+unit = "m3/s"
+kind = "real"
+description = "Location."
+applicability = "unstated"
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0"
+
+[variables.typical]
+low = -1.0
+low_inclusive = true
+high = 35.4
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "scale"
+symbol = "\\alpha"
+unit = "m3/s"
+kind = "real"
+description = "Scale."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of loc and scale (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 37.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[constraints]]
+name = "shape_of_the_distribution"
+class = "physical"
+text = "shape > 0 for the log-normal (s) and Weibull (k)"
+
+[constraints.source]
+citation = "Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272"
+access = "open"
+locator = "scipy.stats.lognorm, shape s > 0, and scipy.stats.weibull_min, shape c > 0"
+url = "https://docs.scipy.org/doc/scipy/reference/stats.html"
+
+[[constraints]]
+name = "values_within_support"
+class = "precondition"
+text = "ln f(x_i) is finite for every value, and so is their sum: each value inside the support of the distribution, where its density is positive and finite"
+
+[constraints.source]
+citation = "WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168"
+access = "open"
+locator = "sect. 5.6.3, eq. 5.31: the logarithm of the likelihood, -inf where a value has no density"
+url = "https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf"
+
+[[outputs]]
+name = "aic"
+unit = "-"
+kind = "real"
+symbol = "\\mathrm{AIC}"
+description = "The criterion: the lower, the better the fit for its number of parameters."
+
+[outputs.physical]
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "constraint case values_within_support-violated: ln f of a value outside the support is refused before the sum"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case annual_maxima-nan_element: a gap is refused"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "symmetry order: the log-likelihood is summed exactly rounded, in any order"
+
+[[oracles]]
+kind = "algorithm"
+description = "the log-likelihood with the densities of the GEV, the log-normal, Pearson III and Weibull written out (math)"
+test = "tests/unit/test_formulas_flood_frequency.py (limit closed_form)"
+conventions = []

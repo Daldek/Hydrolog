@@ -5,10 +5,12 @@ The formulas of the frequency analyses of annual maxima
 (:func:`~hydrolog.statistics.fit_fisher_tippett_minima`), declared by their specs
 (Nogat's computation standard, ADR-0050): the sample's product moments
 (:data:`MOMENTS`, ``sample_moments``) and L-moments (:data:`L_MOMENTS`,
-``sample_l_moments``), and the estimators of the parameters of the log-normal, GEV,
+``sample_l_moments``), the estimators of the parameters of the log-normal, GEV,
 Pearson type III and Weibull distributions of :mod:`scipy.stats` by L-moments,
-moments, maximum likelihood and least squares. ``docs/FORMULAS.md`` shows their
-equations, constants, ranges and sources.
+moments, maximum likelihood and least squares, and the goodness of a fit: the
+Anderson-Darling statistic (:data:`ANDERSON_DARLING`, ``anderson_darling``) and
+the Akaike information criterion (:data:`AKAIKE`, ``akaike_information_criterion``).
+``docs/FORMULAS.md`` shows their equations, constants, ranges and sources.
 
 Examples
 --------
@@ -55,6 +57,8 @@ from hydrolog.nogat_formulas import (
 )
 
 __all__ = [
+    "AKAIKE",
+    "ANDERSON_DARLING",
     "FIT_LEAST_SQUARES",
     "FIT_L_MOMENTS",
     "FIT_MAXIMUM_LIKELIHOOD",
@@ -69,6 +73,8 @@ __all__ = [
     "FittedParameters",
     "SampleLMoments",
     "SampleMoments",
+    "akaike_information_criterion",
+    "anderson_darling",
     "fit_l_moments",
     "fit_least_squares",
     "fit_maximum_likelihood",
@@ -3056,6 +3062,595 @@ def fit_least_squares(
     return _fitted(FIT_LEAST_SQUARES, _settled(FIT_LEAST_SQUARES, search))
 
 
+# --- goodness of fit -------------------------------------------------------------
+
+_ADR_0048: Final = Source(
+    citation="Hydrolog (2026). ADR-0048: Anderson-Darling critical values by a "
+    "parametric bootstrap",
+    locator="decision 1: A² keeps its form, F clipped to [1e-10, 1 - 1e-10]",
+    url="https://github.com/Daldek/Hydrolog/blob/main/docs/decisions/"
+    "0048-anderson-darling-critical-values-by-a-parametric-bootstrap.md",
+)
+_SHAPE_OF_THE_DISTRIBUTION: Final = Constraint(
+    name="shape_of_the_distribution",
+    cls="physical",
+    check=lambda x: (
+        x.choice("distribution") not in ("log_normal", "weibull") or x.real("shape") > 0
+    ),
+    text="shape > 0 for the log-normal (s) and Weibull (k)",
+    source=Source(
+        citation="Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for "
+        "scientific computing in Python. Nature Methods 17, 261-272",
+        locator="scipy.stats.lognorm, shape s > 0, and scipy.stats.weibull_min, shape "
+        "c > 0",
+        url="https://docs.scipy.org/doc/scipy/reference/stats.html",
+    ),
+    satisfied={"distribution": "weibull", "shape": 1.2, "loc": 0.0},
+    violated={"distribution": "weibull", "shape": -0.01, "loc": 0.0},
+    boundary={"distribution": "weibull", "shape": 0.0, "loc": 0.0},
+    boundary_holds=False,
+)
+
+
+def _fitted_variables() -> tuple[Variable, ...]:
+    """Return the inputs of a statistic of a fitted distribution: sample, parameters."""
+    return (
+        _maxima_variable(),
+        _DISTRIBUTION_CHOICE,
+        _parameter(
+            "shape",
+            "k",
+            "Shape: s of the log-normal, c of the GEV (scipy's sign, k of Hosking, -xi "
+            "of Coles), the skewness of Pearson III, the Weibull shape.",
+            Range(
+                test_low=-9.0,
+                test_high=50.0,
+                test_reason="the shapes of Hydrolog's estimators: a Pearson III "
+                "skewness above -9 by least squares, a GEV c and a Weibull shape of "
+                "at most 50",
+            ),
+            (-0.6, 2.7),
+            unit="-",
+        ),
+        _parameter("loc", r"\xi", "Location.", _ANY_VALUE, (-1.0, 35.4)),
+        _parameter("scale", r"\alpha", "Scale.", _SCALE_RANGE, (1.0, 37.0)),
+    )
+
+
+_FITTED_BASE: Final = {
+    "annual_maxima": list(_POLANA),
+    "distribution": "gev",
+    "shape": -0.18,
+    "loc": 20.9,
+    "scale": 16.4,
+}
+"""The typical point: the Polana maxima and their GEV of the L-moments, rounded."""
+_GOODNESS_SAMPLES: Final = (_POLANA, _FLOODS11)
+"""The samples of the oracles of the statistics of the fits."""
+_OUTSIDE_SUPPORT: Final = ("weibull", (1.2, 5.0, 30.0))
+"""A Weibull distribution with its lower bound above the smallest Polana maximum."""
+
+
+def _distribution(x: Values) -> Any:
+    """Return the scipy distribution of the inputs, frozen at their parameters."""
+    return _DISTRIBUTIONS[x.choice("distribution")](
+        x.real("shape"), loc=x.real("loc"), scale=x.real("scale")
+    )
+
+
+def _a_squared(probabilities: NDArray[np.float64]) -> NDArray[np.float64]:
+    """A² of the distribution function's values at ascending samples (the last axis).
+
+    The values are clipped to the spec's ``[cdf_clip, 1 - cdf_clip]``, so a value
+    outside the support adds a large finite term.
+    """
+    clip = ANDERSON_DARLING.constant("cdf_clip")
+    n = probabilities.shape[-1]
+    clipped = np.clip(probabilities, clip, 1.0 - clip)
+    weights = (2.0 * np.arange(1, n + 1) - 1.0) / n
+    terms = np.log(clipped) + np.log(1.0 - clipped[..., ::-1])
+    result: NDArray[np.float64] = -n - np.sum(weights * terms, axis=-1)
+    return result
+
+
+def _a_squared_integral(probabilities: list[float]) -> Decimal:
+    """A² = n ∫ (F_n(u) - u)² / (u (1 - u)) du over [0, 1], at 50 digits.
+
+    Between the ith and the next of the ascending u the empirical distribution
+    function is c = i / n, and (c - u)² / (u (1 - u)) = c² / u + (1 - c)² / (1 - u)
+    - 1 has a closed integral.
+    """
+    with localcontext(prec=50):
+        ends = [Decimal(0), *sorted(Decimal(p) for p in probabilities), Decimal(1)]
+        n = len(probabilities)
+        total = Decimal(0)
+        for i in range(n + 1):
+            low, high, c = ends[i], ends[i + 1], Decimal(i) / n
+            total -= high - low
+            if i > 0:
+                total += c * c * (high / low).ln()
+            if i < n:
+                total -= (1 - c) ** 2 * ((1 - high) / (1 - low)).ln()
+        return n * total
+
+
+def _a_squared_by_the_integral(run: Callable[..., Values]) -> None:
+    """Assert A² of the fits, and of one outside its support, against the integral."""
+    clip = ANDERSON_DARLING.constant("cdf_clip")
+    fits = [
+        (sample, name, _by_l_moments(name, np.array(sample)))
+        for sample in _GOODNESS_SAMPLES
+        for name in _DISTRIBUTIONS
+    ]
+    for sample, name, (shape, loc, scale) in [
+        *fits,
+        (_POLANA, _OUTSIDE_SUPPORT[0], _OUTSIDE_SUPPORT[1]),
+    ]:
+        out = run(
+            annual_maxima=list(sample),
+            distribution=name,
+            shape=shape,
+            loc=loc,
+            scale=scale,
+        )
+        cdf = _DISTRIBUTIONS[name].cdf(np.array(sample), shape, loc=loc, scale=scale)
+        exact = _a_squared_integral(list(np.clip(cdf, clip, 1.0 - clip)))
+        assert_within(
+            out.real("a_squared"),
+            float(exact),
+            abs=1e-12,
+            reason="the integral form of A² in closed pieces at 50 digits; the code "
+            "sums n terms of up to 2 |ln 1e-10|, each within an ulp",
+        )
+
+
+ANDERSON_DARLING: Final = FormulaSpec(
+    name="anderson_darling",
+    title="Anderson-Darling statistic A² of a sample against a fitted distribution",
+    function="hydrolog.statistics.frequency.anderson_darling",
+    family="statistic",
+    equation=(
+        "A² = -n - sum_i (2 i - 1) / n [ln F(x_(i)) + ln(1 - F(x_(n+1-i)))] over the "
+        "ascending sample x_(1) <= ... <= x_(n), F the distribution function at the "
+        "parameters, clipped to [cdf_clip, 1 - cdf_clip]"
+    ),
+    latex=(
+        r"A^2 = -n - \sum_{i=1}^{n} \frac{2i - 1}{n}\left[\ln F(x_{(i)}) + "
+        r"\ln\left(1 - F(x_{(n+1-i)})\right)\right]"
+    ),
+    variables=_fitted_variables(),
+    outputs=(
+        Output(
+            name="a_squared",
+            unit="-",
+            symbol="A^2",
+            description="The statistic: n times the integral of the squared distance "
+            "of the empirical and the fitted distribution functions, weighted by "
+            "1 / (F (1 - F)).",
+            physical=Range(low=0.0),
+        ),
+    ),
+    sources=(
+        Source(
+            citation="NIST/SEMATECH e-Handbook of Statistical Methods (2012)",
+            locator="sect. 1.3.5.14, Anderson-Darling test: A² = -N - S, S = sum (2i "
+            "- 1) / N [ln F(Y_i) + ln(1 - F(Y_(N+1-i)))] of the ordered data",
+            url="https://www.itl.nist.gov/div898/handbook/eda/section3/eda35e.htm",
+        ),
+        Source(
+            citation="Anderson, T.W. and Darling, D.A. (1954). A test of goodness of "
+            "fit. Journal of the American Statistical Association 49(268), 765-769",
+            locator="the statistic W_n² and its computing form",
+            access="author-provided",
+        ),
+        Source(
+            citation="Stephens, M.A. (1974). EDF statistics for goodness of fit and "
+            "some comparisons. Journal of the American Statistical Association "
+            "69(347), 730-737",
+            locator="the computing form of A²; case 0, a distribution given in advance",
+            access="author-provided",
+        ),
+    ),
+    constants=(
+        Constant(
+            name="cdf_clip", value=1e-10, unit="-", symbol=r"\epsilon", source=_ADR_0048
+        ),
+    ),
+    constraints=(_SHAPE_OF_THE_DISTRIBUTION,),
+    properties=Properties(
+        units="homogeneous",
+        scalings=(
+            Scaling(
+                name="unit_of_the_sample",
+                inputs={"annual_maxima": 1.0, "loc": 1.0, "scale": 1.0},
+                outputs={},
+                tolerance=Tolerance(
+                    abs=0.0,
+                    reason="(x - loc) / scale of the doubled sample, loc and scale is "
+                    "the same float, so F is",
+                ),
+            ),
+        ),
+        symmetries=(
+            Symmetry(
+                name="order",
+                text="the sample in the reverse order has the same A²",
+                inputs=lambda x: {**x, "annual_maxima": x.array("annual_maxima")[::-1]},
+                outputs=dict,
+                tolerance=Tolerance(
+                    abs=0.0, reason="the statistic sorts the sample first"
+                ),
+            ),
+        ),
+        limits=(
+            Limit(
+                name="integral_form",
+                text="n times the integral of (F_n(u) - u)² / (u (1 - u)) over [0, "
+                "1], in closed pieces at 50 digits, for the L-moment fits of two "
+                "samples and a Weibull distribution that leaves a value outside its "
+                "support",
+                check=_a_squared_by_the_integral,
+            ),
+        ),
+    ),
+    validation="none: a distance between the sample and the fitted distribution",
+    formula_version=1,
+    status="oracle only",
+    conventions=(
+        "the statistic of a distribution given in advance (case 0 of Stephens 1974), "
+        "here at the parameters estimated from the same sample: its critical values "
+        "are not case 0's",
+        "the critical values FloodFrequencyAnalysis gives a fit by L-moments are "
+        "those of a parametric bootstrap of that fit (ADR-0048): 999 samples of n "
+        "values drawn from it with the seed 20261118, each refitted by L-moments; a "
+        "fit by another method has none",
+        "F clipped to [cdf_clip, 1 - cdf_clip], so a value outside the support of the "
+        "distribution adds a large finite term instead of an infinite one",
+        "F of scipy.stats at the parameters of its lognorm, genextreme, pearson3 or "
+        "weibull_min",
+        "the sample in any unit, with loc and scale in it: A² has none",
+    ),
+    traps={
+        "singular_at_bound": "limit integral_form: ln F at a value outside the "
+        "support, where F = 0, is ln cdf_clip",
+        "gap_propagation": "type case annual_maxima-nan_element: a gap is refused",
+    },
+    oracles=(
+        Oracle(
+            kind="exact",
+            description="the integral form of the definition, n times the integral of "
+            "(F_n(u) - u)² / (u (1 - u)) du, in closed pieces at 50 digits (decimal)",
+            test="tests/unit/test_formulas_flood_frequency.py (limit integral_form)",
+        ),
+        Oracle(
+            kind="established",
+            description="scipy.stats.anderson for the normal distribution (Pearson "
+            "III of skewness 0) and the Gumbel distribution (the GEV of c = 0)",
+            test="tests/unit/test_formulas_flood_frequency.py "
+            "(test_the_a_squared_is_scipys)",
+            conventions=(
+                "scipy.stats.anderson estimates the parameters itself (the mean and "
+                "the standard deviation of ddof 1; the Gumbel's by maximum "
+                "likelihood): they are given to the formula",
+                "scipy takes ln F and ln(1 - F) as logcdf and logsf, unclipped",
+            ),
+        ),
+    ),
+    base=_FITTED_BASE,
+)
+
+
+def anderson_darling(
+    annual_maxima: NDArray[np.float64] | list[float] | tuple[float, ...],
+    distribution: str,
+    shape: float,
+    loc: float,
+    scale: float,
+) -> float:
+    """Return the A² of a sample against a distribution, spec anderson_darling.
+
+    Parameters
+    ----------
+    annual_maxima : array_like of float
+        The sample.
+    distribution : str
+        The distribution: ``"log_normal"``, ``"gev"``, Pearson III or ``"weibull"``.
+    shape, loc, scale : float
+        Its parameters, those of :mod:`scipy.stats`.
+
+    Returns
+    -------
+    float
+        The statistic A².
+
+    Raises
+    ------
+    InvalidParameterError
+        If the inputs are refused by the spec.
+    """
+    x = checked_inputs(
+        ANDERSON_DARLING,
+        annual_maxima=annual_maxima,
+        distribution=distribution,
+        shape=shape,
+        loc=loc,
+        scale=scale,
+    )
+    probabilities = _distribution(x).cdf(np.sort(x.array("annual_maxima")))
+    statistic = float(_a_squared(np.asarray(probabilities, dtype=np.float64)))
+    return checked_outputs(ANDERSON_DARLING, {"a_squared": statistic}).real("a_squared")
+
+
+def _log_densities(x: Values) -> NDArray[np.float64]:
+    """Return ln f of each value of the sample under the distribution of the inputs."""
+    with np.errstate(all="ignore"):
+        found = _distribution(x).logpdf(x.array("annual_maxima"))
+    return np.asarray(found, dtype=np.float64)
+
+
+def _within_support(x: Values) -> bool:
+    """Whether every ln f, and so the log-likelihood, is finite."""
+    log_densities = _log_densities(x)
+    return bool(np.isfinite(log_densities).all() and np.isfinite(np.sum(log_densities)))
+
+
+def _log_density_by_hand(
+    name: str, value: float, shape: float, loc: float, scale: float
+) -> float:
+    """Return ln f of a value inside the support, the density written out by hand."""
+    z = (value - loc) / scale
+    if name == "log_normal":
+        w = math.log(z) / shape
+        return (
+            -math.log(value - loc)
+            - math.log(shape * math.sqrt(2 * math.pi))
+            - w * w / 2
+        )
+    if name == "gev":
+        if shape == 0.0:
+            return -math.log(scale) - z - math.exp(-z)
+        t = 1.0 - shape * z
+        return (
+            -math.log(scale)
+            + (1.0 / shape - 1.0) * math.log(t)
+            - math.pow(t, 1.0 / shape)
+        )
+    if name == "weibull":
+        return (
+            math.log(shape / scale) + (shape - 1.0) * math.log(z) - math.pow(z, shape)
+        )
+    alpha = 4.0 / shape**2  # Pearson III: a gamma distribution from its bound
+    beta = scale * shape / 2.0
+    y = (value - (loc - 2.0 * scale / shape)) / beta
+    return -math.log(abs(beta)) + (alpha - 1.0) * math.log(y) - y - math.lgamma(alpha)
+
+
+def _aic_by_hand(run: Callable[..., Values]) -> None:
+    """Assert the AIC of the moment fits against the densities written out."""
+    for sample in _GOODNESS_SAMPLES:
+        for name in _DISTRIBUTIONS:
+            shape, loc, scale = _by_moments(name, np.array(sample))
+            out = run(
+                annual_maxima=list(sample),
+                distribution=name,
+                shape=shape,
+                loc=loc,
+                scale=scale,
+            )
+            log_likelihood = math.fsum(
+                _log_density_by_hand(name, value, shape, loc, scale) for value in sample
+            )
+            assert_within(
+                out.real("aic"),
+                2.0 * _PARAMETER_COUNTS[name] - 2.0 * log_likelihood,
+                rel=1e-12,
+                reason="the densities written out in floating point: each ln f "
+                "within a few ulp of its largest term",
+            )
+
+
+def _aic_of_the_doubled_sample(run: Callable[..., Values]) -> None:
+    """Assert that doubling the sample, loc and scale adds 2 n ln 2 to the AIC."""
+    for sample in _GOODNESS_SAMPLES:
+        for name in _DISTRIBUTIONS:
+            shape, loc, scale = _by_moments(name, np.array(sample))
+            here, there = (
+                run(
+                    annual_maxima=[factor * value for value in sample],
+                    distribution=name,
+                    shape=shape,
+                    loc=factor * loc,
+                    scale=factor * scale,
+                ).real("aic")
+                for factor in (1.0, 2.0)
+            )
+            assert_within(
+                there,
+                here + 2.0 * len(sample) * math.log(2.0),
+                rel=1e-13,
+                abs=1e-12,
+                reason="each density of the doubled sample is half its density: ln f "
+                "falls by ln 2 for each value, which rounds within an ulp of ln f",
+            )
+
+
+AKAIKE: Final = FormulaSpec(
+    name="akaike_information_criterion",
+    title="Akaike information criterion of a distribution fitted to a sample",
+    function="hydrolog.statistics.frequency.akaike_information_criterion",
+    family="statistic",
+    equation=(
+        "AIC = 2 k - 2 sum_i ln f(x_i; shape, loc, scale), f the density at the "
+        "parameters; k = 2 for the log-normal of location 0, 3 for the others"
+    ),
+    latex=r"\mathrm{AIC} = 2k - 2\sum_{i=1}^{n} \ln f(x_i; k, \xi, \alpha)",
+    variables=_fitted_variables(),
+    outputs=(
+        Output(
+            name="aic",
+            unit="-",
+            symbol=r"\mathrm{AIC}",
+            description="The criterion: the lower, the better the fit for its number "
+            "of parameters.",
+            physical=Range(),
+        ),
+    ),
+    sources=(
+        Source(
+            citation=_WMO_168,
+            locator="sect. 5.6.3, eq. 5.31, pp. II.5-14 and II.5-15: AIC(f) = -2 log "
+            "L(theta, x) + 2k, with L the likelihood function and k the number of "
+            "parameters; alone not appropriate for model selection",
+            url=_WMO_168_URL,
+        ),
+        Source(
+            citation="Akaike, H. (1974). A new look at the statistical model "
+            "identification. IEEE Transactions on Automatic Control 19(6), 716-723",
+            locator="the criterion -2 ln (maximum likelihood) + 2 k",
+            access="author-provided",
+        ),
+    ),
+    constraints=(
+        _SHAPE_OF_THE_DISTRIBUTION,
+        Constraint(
+            name="values_within_support",
+            cls="precondition",
+            check=_within_support,
+            text="ln f(x_i) is finite for every value, and so is their sum: each value "
+            "inside the support of the distribution, where its density is positive "
+            "and finite",
+            source=Source(
+                citation=_WMO_168,
+                locator="sect. 5.6.3, eq. 5.31: the logarithm of the likelihood, "
+                "-inf where a value has no density",
+                url=_WMO_168_URL,
+            ),
+            satisfied={"distribution": "gev"},
+            violated={
+                "distribution": "weibull",
+                "shape": 1.2,
+                "loc": 4.93,
+                "scale": 30.0,
+            },
+            boundary={
+                "distribution": "weibull",
+                "shape": 1.2,
+                "loc": 4.92,
+                "scale": 30.0,
+            },
+            boundary_holds=False,
+        ),
+    ),
+    properties=Properties(
+        units="unit_specific",
+        symmetries=(
+            Symmetry(
+                name="order",
+                text="the sample in the reverse order has the same AIC",
+                inputs=lambda x: {**x, "annual_maxima": x.array("annual_maxima")[::-1]},
+                outputs=dict,
+                tolerance=Tolerance(
+                    abs=0.0,
+                    reason="the log-likelihood is summed exactly rounded (math.fsum), "
+                    "in any order",
+                ),
+            ),
+        ),
+        limits=(
+            Limit(
+                name="closed_form",
+                text="the AIC of the moment fits of two samples, every value inside "
+                "their supports, with the densities of the four distributions written "
+                "out",
+                check=_aic_by_hand,
+            ),
+            Limit(
+                name="unit_of_the_sample",
+                text="doubling the sample, loc and scale adds 2 n ln 2: the AIC "
+                "depends on the unit of the sample",
+                check=_aic_of_the_doubled_sample,
+            ),
+        ),
+    ),
+    validation="none: a criterion for comparing fits; WMO-No. 168 finds it alone not "
+    "appropriate for choosing one",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "the likelihood at the parameters of the method that fitted them, the "
+        "maximum only for maximum likelihood (ADR-0021, point 7): a ranking by AIC "
+        "compares the likelihood of each fit's parameters",
+        "k counts the parameters fitted: 2 for the log-normal, whose location is fixed "
+        "at 0, 3 for the others",
+        "a fit that leaves a value outside its support has no finite AIC: "
+        "FloodFrequencyAnalysis gives it an infinite AIC without the formula, with "
+        "the notice outside_support, and ranks it last",
+        "ln f of scipy.stats at the parameters of its lognorm, genextreme, pearson3 "
+        "or weibull_min, summed exactly rounded (math.fsum)",
+        "the natural logarithm; the AIC depends on the unit of the sample",
+    ),
+    traps={
+        "singular_at_bound": "constraint case values_within_support-violated: ln f "
+        "of a value outside the support is refused before the sum",
+        "gap_propagation": "type case annual_maxima-nan_element: a gap is refused",
+        "many_small_terms": "symmetry order: the log-likelihood is summed exactly "
+        "rounded, in any order",
+    },
+    reference_cases=("tests/fixtures/formulas/flood-frequency-cases.json",),
+    oracles=(
+        Oracle(
+            kind="algorithm",
+            description="the log-likelihood with the densities of the GEV, the "
+            "log-normal, Pearson III and Weibull written out (math)",
+            test="tests/unit/test_formulas_flood_frequency.py (limit closed_form)",
+        ),
+    ),
+    base=_FITTED_BASE,
+)
+
+
+def akaike_information_criterion(
+    annual_maxima: NDArray[np.float64] | list[float] | tuple[float, ...],
+    distribution: str,
+    shape: float,
+    loc: float,
+    scale: float,
+) -> float:
+    """Return the AIC of a distribution of a sample, spec akaike_information_criterion.
+
+    Parameters
+    ----------
+    annual_maxima : array_like of float
+        The sample.
+    distribution : str
+        The distribution: ``"log_normal"``, ``"gev"``, Pearson III or ``"weibull"``.
+    shape, loc, scale : float
+        Its parameters, those of :mod:`scipy.stats`.
+
+    Returns
+    -------
+    float
+        The criterion.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the inputs are refused by the spec (``values_within_support`` for a value
+        without a density).
+    """
+    x = checked_inputs(
+        AKAIKE,
+        annual_maxima=annual_maxima,
+        distribution=distribution,
+        shape=shape,
+        loc=loc,
+        scale=scale,
+    )
+    parameters = _PARAMETER_COUNTS[x.choice("distribution")]
+    aic = 2.0 * parameters - 2.0 * math.fsum(_log_densities(x))
+    return checked_outputs(AKAIKE, {"aic": aic}).real("aic")
+
+
 SPECS: Final = (
     MOMENTS,
     L_MOMENTS,
@@ -3067,5 +3662,7 @@ SPECS: Final = (
     FIT_MOMENTS,
     FIT_MAXIMUM_LIKELIHOOD,
     FIT_LEAST_SQUARES,
+    ANDERSON_DARLING,
+    AKAIKE,
 )
 """The Tier A formulas of the module, in the order of ``docs/FORMULAS.md``."""

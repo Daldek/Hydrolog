@@ -1764,5 +1764,108 @@
    "a = 0 is WMO-No. 1029's Weibull formula; a = 1/2 (Hazen) and 2/5 (Cunnane) are WMO-No. 168's (sect. 5.6.1)"
   ],
   "status": "single_source"
+ },
+ {
+  "formula": "akaike_information_criterion",
+  "case_id": "coles2001-port-pirie",
+  "source": {
+   "citation": "OpenTURNS 1.28 documentation, example 'Estimate a GEV on the Port Pirie sea-levels data', reproducing Coles (2001), sect. 3.4.1",
+   "locator": "its output of the maximum likelihood: mu 3.875, sigma 0.198, xi -0.050 and the log-likelihood 4.339056652316124 at these estimates",
+   "url": "https://openturns.github.io/openturns/latest/auto_data_analysis/distribution_fitting/plot_estimate_gev_pirie.html",
+   "access": "open"
+  },
+  "inputs": {
+   "annual_maxima": [
+    4.03,
+    3.83,
+    3.65,
+    3.88,
+    4.01,
+    4.08,
+    4.18,
+    3.8,
+    4.36,
+    3.96,
+    3.98,
+    4.69,
+    3.85,
+    3.96,
+    3.85,
+    3.93,
+    3.75,
+    3.63,
+    3.57,
+    4.25,
+    3.97,
+    4.05,
+    4.24,
+    4.22,
+    3.73,
+    4.37,
+    4.06,
+    3.71,
+    3.96,
+    4.06,
+    4.55,
+    3.79,
+    3.89,
+    4.11,
+    3.85,
+    3.86,
+    3.86,
+    4.21,
+    4.01,
+    4.11,
+    4.24,
+    3.96,
+    4.21,
+    3.74,
+    3.85,
+    3.88,
+    3.66,
+    4.11,
+    3.71,
+    4.18,
+    3.9,
+    3.78,
+    3.91,
+    3.72,
+    4.0,
+    3.66,
+    3.62,
+    4.33,
+    4.55,
+    3.75,
+    4.08,
+    3.9,
+    3.88,
+    3.94,
+    4.33
+   ],
+   "distribution": "gev",
+   "shape": 0.05,
+   "loc": 3.875,
+   "scale": 0.198
+  },
+  "expected": {
+   "aic": -2.678113304632248
+  },
+  "printed_precision": {
+   "shape": 0.001,
+   "loc": 0.001,
+   "scale": 0.001,
+   "aic": 2e-15
+  },
+  "conventions": [
+   "the 65 annual maximum sea levels [m] of Port Pirie, 1923-1987, as R's evd::portpirie and Coles's data give them",
+   "AIC = 2 k - 2 ln L with k = 3 of the GEV and ln L the printed log-likelihood (WMO-No. 168 eq. 5.31)",
+   "Coles's (mu, sigma, xi) with xi = -c: scipy's c = 0.050 for xi = -0.050; the log-likelihood is OpenTURNS's at its unrounded estimates, which the corners of the printed ones cover"
+  ],
+  "second_source": {
+   "citation": "Coles, S. (2001). An Introduction to Statistical Modeling of Extreme Values. Springer",
+   "locator": "sect. 3.4.1, Port Pirie: the maximized log-likelihood 4.34",
+   "access": "author-provided"
+  },
+  "status": "second_source"
  }
 ]

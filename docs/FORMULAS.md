@@ -20,6 +20,8 @@
 | [Parameters of a distribution of annual maxima by the method of moments](#fit_moments) | `hydrolog.statistics.frequency.fit_moments` | referenced | 1 | not measured |
 | [Parameters of a distribution of annual maxima by maximum likelihood](#fit_maximum_likelihood) | `hydrolog.statistics.frequency.fit_maximum_likelihood` | referenced | 1 | not measured |
 | [Parameters of a distribution of annual maxima by least squares on the plotting positions](#fit_least_squares) | `hydrolog.statistics.frequency.fit_least_squares` | oracle only | 1 | not measured |
+| [Anderson-Darling statistic A² of a sample against a fitted distribution](#anderson_darling) | `hydrolog.statistics.frequency.anderson_darling` | oracle only | 1 | not measured |
+| [Akaike information criterion of a distribution fitted to a sample](#akaike_information_criterion) | `hydrolog.statistics.frequency.akaike_information_criterion` | referenced | 1 | not measured |
 | [Plotting positions of annual maxima: exceedance probabilities and return periods](#plotting_positions) | `hydrolog.statistics._types.compute_plotting_positions` | referenced | 1 | not measured |
 | [Plotting positions of annual minima: non-exceedance probabilities and return periods](#non_exceedance_positions) | `hydrolog.statistics._types.compute_non_exceedance_positions` | referenced | 1 | not measured |
 | [Fisher-Tippett distribution of annual minima by maximum likelihood and its quantiles](#fisher_tippett_minima) | `hydrolog.statistics.low_flows.fisher_tippett_minima` | oracle only | 1 | not measured |
@@ -1111,6 +1113,168 @@ None.
 
 **Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
 
+<a id="anderson_darling"></a>
+### Anderson-Darling statistic A² of a sample against a fitted distribution
+
+`hydrolog.statistics.frequency.anderson_darling` · family `statistic` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+A^2 = -n - \sum_{i=1}^{n} \frac{2i - 1}{n}\left[\ln F(x_{(i)}) + \ln\left(1 - F(x_{(n+1-i)})\right)\right]
+$$
+
+Plain text: `A² = -n - sum_i (2 i - 1) / n [ln F(x_(i)) + ln(1 - F(x_(n+1-i)))] over the ascending sample x_(1) <= ... <= x_(n), F the distribution function at the parameters, clipped to [cdf_clip, 1 - cdf_clip]`
+
+**Sources**
+
+- NIST/SEMATECH e-Handbook of Statistical Methods (2012), sect. 1.3.5.14, Anderson-Darling test: A² = -N - S, S = sum (2i - 1) / N [ln F(Y_i) + ln(1 - F(Y_(N+1-i)))] of the ordered data (open) <https://www.itl.nist.gov/div898/handbook/eda/section3/eda35e.htm>
+- Anderson, T.W. and Darling, D.A. (1954). A test of goodness of fit. Journal of the American Statistical Association 49(268), 765-769, the statistic W_n² and its computing form (author-provided)
+- Stephens, M.A. (1974). EDF statistics for goodness of fit and some comparisons. Journal of the American Statistical Association 69(347), 730-737, the computing form of A²; case 0, a distribution given in advance (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `annual_maxima` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+| `distribution` | $F$ | - | choice of log_normal, gev, pearson3, weibull | – | – | – |
+| `shape` | $k$ | - | real | (-inf, inf), test bound low -9.0 and high 50.0 (the shapes of Hydrolog's estimators: a Pearson III skewness above -9 by least squares, a GEV c and a Weibull shape of at most 50) | unstated | [-0.6, 2.7]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `loc` | $\xi$ | m3/s | real | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [-1.0, 35.4]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `scale` | $\alpha$ | m3/s | real | (0.0, inf), test bound high 1000000.0 (the formulas are homogeneous in the unit of loc and scale (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river) | unstated | [1.0, 37.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `shape_of_the_distribution` | physical | shape > 0 for the log-normal (s) and Weibull (k) | Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.lognorm, shape s > 0, and scipy.stats.weibull_min, shape c > 0 |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `cdf_clip` | $\epsilon$ | 1e-10 | - | Hydrolog (2026). ADR-0048: Anderson-Darling critical values by a parametric bootstrap, decision 1: A² keeps its form, F clipped to [1e-10, 1 - 1e-10] |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `a_squared` | - | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the statistic of a distribution given in advance (case 0 of Stephens 1974), here at the parameters estimated from the same sample: its critical values are not case 0's
+- the critical values FloodFrequencyAnalysis gives a fit by L-moments are those of a parametric bootstrap of that fit (ADR-0048): 999 samples of n values drawn from it with the seed 20261118, each refitted by L-moments; a fit by another method has none
+- F clipped to [cdf_clip, 1 - cdf_clip], so a value outside the support of the distribution adds a large finite term instead of an infinite one
+- F of scipy.stats at the parameters of its lognorm, genextreme, pearson3 or weibull_min
+- the sample in any unit, with loc and scale in it: A² has none
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a distance between the sample and the fitted distribution
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: limit integral_form: ln F at a value outside the support, where F = 0, is ln cdf_clip
+- `gap_propagation`: type case annual_maxima-nan_element: a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_sample`: inputs times 2^e (`annual_maxima` e = 1.0, `loc` e = 1.0, `scale` e = 1.0) give outputs times 2^e (none)
+- limit `integral_form`: n times the integral of (F_n(u) - u)² / (u (1 - u)) over [0, 1], in closed pieces at 50 digits, for the L-moment fits of two samples and a Weibull distribution that leaves a value outside its support
+- symmetry `order`: the sample in the reverse order has the same A²
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the integral form of the definition, n times the integral of (F_n(u) - u)² / (u (1 - u)) du, in closed pieces at 50 digits (decimal) (`tests/unit/test_formulas_flood_frequency.py (limit integral_form)`)
+- established: scipy.stats.anderson for the normal distribution (Pearson III of skewness 0) and the Gumbel distribution (the GEV of c = 0) (`tests/unit/test_formulas_flood_frequency.py (test_the_a_squared_is_scipys)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="akaike_information_criterion"></a>
+### Akaike information criterion of a distribution fitted to a sample
+
+`hydrolog.statistics.frequency.akaike_information_criterion` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\mathrm{AIC} = 2k - 2\sum_{i=1}^{n} \ln f(x_i; k, \xi, \alpha)
+$$
+
+Plain text: `AIC = 2 k - 2 sum_i ln f(x_i; shape, loc, scale), f the density at the parameters; k = 2 for the log-normal of location 0, 3 for the others`
+
+**Sources**
+
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.3, eq. 5.31, pp. II.5-14 and II.5-15: AIC(f) = -2 log L(theta, x) + 2k, with L the likelihood function and k the number of parameters; alone not appropriate for model selection (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+- Akaike, H. (1974). A new look at the statistical model identification. IEEE Transactions on Automatic Control 19(6), 716-723, the criterion -2 ln (maximum likelihood) + 2 k (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `annual_maxima` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+| `distribution` | $F$ | - | choice of log_normal, gev, pearson3, weibull | – | – | – |
+| `shape` | $k$ | - | real | (-inf, inf), test bound low -9.0 and high 50.0 (the shapes of Hydrolog's estimators: a Pearson III skewness above -9 by least squares, a GEV c and a Weibull shape of at most 50) | unstated | [-0.6, 2.7]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `loc` | $\xi$ | m3/s | real | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [-1.0, 35.4]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `scale` | $\alpha$ | m3/s | real | (0.0, inf), test bound high 1000000.0 (the formulas are homogeneous in the unit of loc and scale (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river) | unstated | [1.0, 37.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `shape_of_the_distribution` | physical | shape > 0 for the log-normal (s) and Weibull (k) | Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.lognorm, shape s > 0, and scipy.stats.weibull_min, shape c > 0 |
+| `values_within_support` | precondition | ln f(x_i) is finite for every value, and so is their sum: each value inside the support of the distribution, where its density is positive and finite | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.3, eq. 5.31: the logarithm of the likelihood, -inf where a value has no density |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `aic` | - | real | (-inf, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the likelihood at the parameters of the method that fitted them, the maximum only for maximum likelihood (ADR-0021, point 7): a ranking by AIC compares the likelihood of each fit's parameters
+- k counts the parameters fitted: 2 for the log-normal, whose location is fixed at 0, 3 for the others
+- a fit that leaves a value outside its support has no finite AIC: FloodFrequencyAnalysis gives it an infinite AIC without the formula, with the notice outside_support, and ranks it last
+- ln f of scipy.stats at the parameters of its lognorm, genextreme, pearson3 or weibull_min, summed exactly rounded (math.fsum)
+- the natural logarithm; the AIC depends on the unit of the sample
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a criterion for comparing fits; WMO-No. 168 finds it alone not appropriate for choosing one
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case values_within_support-violated: ln f of a value outside the support is refused before the sum
+- `gap_propagation`: type case annual_maxima-nan_element: a gap is refused
+- `many_small_terms`: symmetry order: the log-likelihood is summed exactly rounded, in any order
+
+**Properties (CMP-6.5)**
+
+- units: unit_specific
+- limit `closed_form`: the AIC of the moment fits of two samples, every value inside their supports, with the densities of the four distributions written out
+- limit `unit_of_the_sample`: doubling the sample, loc and scale adds 2 n ln 2: the AIC depends on the unit of the sample
+- symmetry `order`: the sample in the reverse order has the same AIC
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the log-likelihood with the densities of the GEV, the log-normal, Pearson III and Weibull written out (math) (`tests/unit/test_formulas_flood_frequency.py (limit closed_form)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
 <a id="plotting_positions"></a>
 ### Plotting positions of annual maxima: exceedance probabilities and return periods
 
@@ -1355,3 +1519,11 @@ None.
 | Formula | Function | Definition | Constants | Convention | Source |
 |---|---|---|---|---|---|
 | `weighted_cn` | `hydrolog.runoff.cn_lookup.calculate_weighted_cn` | CN_w = sum(A_j CN_j) / sum(A_j), the area-weighted mean CN of the parts | – | areas or shares in any one unit; a part of zero area counts nothing | USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10, example 10-4, p. 10-12 (also KZGW 2017 eq. 6.3) |
+
+## Delegated computations (CMP-1.2)
+
+| Computation | Library | Versions | Smoke case | Test |
+|---|---|---|---|---|
+| kolmogorov_smirnov_test | scipy.stats.kstest (the K-S statistic and p-value of the flood and low-flow frequency analyses) | scipy>=1.10 (1.18.1 locked) | three values 0.05, 0.1 and 0.2 against the uniform distribution on [0, 1]: D = 0.8, the largest of i / n - u_i and u_i - (i - 1) / n, and the exact p = 2 (1 - D)^3 = 0.016 of D >= 2/3 | `tests/unit/test_formulas_flood_frequency.py::test_the_delegated_ks_test_gives_the_exact_statistic_and_p` |
+| distribution_functions | scipy.stats genextreme, lognorm, pearson3 and weibull_min: cdf (the statistics of the fits and the bootstrap of A²) | scipy>=1.10 (1.18.1 locked) | F(1) of the GEV of c = 0.5, exp(-1/4); F(e) of the log-normal of s = 1, Phi(1); F(1) of Pearson III of skewness 2, 1 - exp(-2); F(1) of the Weibull of shape 2, 1 - exp(-1); loc 0 and scale 1 | `tests/unit/test_formulas_flood_frequency.py::test_the_delegated_distribution_functions_are_the_closed_forms` |
+| densities | scipy.stats genextreme, lognorm, pearson3 and weibull_min: pdf and logpdf (the AIC, the densities at the quantiles, the likelihood searched) | scipy>=1.10 (1.18.1 locked) | f(1) of the GEV of c = 0.5, exp(-1/4) / 2; f(e) of the log-normal of s = 1, exp(-3/2) / sqrt(2 pi); f(1) of Pearson III of skewness 2, exp(-2); f(1) of the Weibull of shape 2, 2 exp(-1); loc 0 and scale 1, and ln f | `tests/unit/test_formulas_flood_frequency.py::test_the_delegated_densities_are_the_closed_forms` |
