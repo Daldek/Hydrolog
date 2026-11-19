@@ -598,9 +598,8 @@ rozkładu opadu w czasie.
   drobných vodohospodářských staveb v krajině*. Metodika ČVUT w Pradze i ÚFA AV ČR.
   https://rain.fsv.cvut.cz/data/files/metodika_old_web.pdf
 - KZGW (2017). *Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym
-  prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych oraz identyfikacji
-  modeli transformacji opadu w odpływ*, załącznik 2 do OPZ (ujednolicony): rozdz. 6, przykłady
-  6.1, 6.2 i 6.4, tabela C.2.
+  prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych*, załącznik 2 do
+  OPZ (wersja ujednolicona): rozdz. 6, przykłady 6.1, 6.2 i 6.4.
   https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf
 - Lutz W. (1984). *Berechnung von Hochwasserabflüssen unter Anwendung von Gebietskenngrößen*.
   Mitteilungen des Instituts für Hydrologie und Wasserwirtschaft, H. 24, Universität Karlsruhe (*).
