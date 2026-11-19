@@ -878,6 +878,223 @@
   }
  },
  {
+  "formula": "threshold_days",
+  "case_id": "etccdi-fd-boundary",
+  "source": {
+   "citation": "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices",
+   "url": "https://etccdi.pacificclimate.org/list_27_indices.shtml",
+   "access": "open",
+   "locator": "FD: the count of days when TN < 0 °C"
+  },
+  "inputs": {
+   "tmax_c": [
+    5.0,
+    5.0
+   ],
+   "tmin_c": [
+    0.0,
+    -0.1
+   ],
+   "frost_tmin_c": 0.0,
+   "ice_tmax_c": 0.0,
+   "summer_tmax_c": 25.0,
+   "hot_tmax_c": 30.0,
+   "tropical_tmin_c": 20.0
+  },
+  "expected": {
+   "frost": [
+    0.0,
+    1.0
+   ]
+  },
+  "conventions": [
+   "strict signs: a day exactly at a threshold does not count (IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "threshold_days",
+  "case_id": "etccdi-id-boundary",
+  "source": {
+   "citation": "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices",
+   "url": "https://etccdi.pacificclimate.org/list_27_indices.shtml",
+   "access": "open",
+   "locator": "ID: the count of days when TX < 0 °C"
+  },
+  "inputs": {
+   "tmax_c": [
+    0.0,
+    -0.1
+   ],
+   "tmin_c": [
+    -5.0,
+    -5.0
+   ],
+   "frost_tmin_c": 0.0,
+   "ice_tmax_c": 0.0,
+   "summer_tmax_c": 25.0,
+   "hot_tmax_c": 30.0,
+   "tropical_tmin_c": 20.0
+  },
+  "expected": {
+   "ice": [
+    0.0,
+    1.0
+   ]
+  },
+  "conventions": [
+   "strict signs: a day exactly at a threshold does not count (IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "threshold_days",
+  "case_id": "etccdi-su-boundary",
+  "source": {
+   "citation": "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices",
+   "url": "https://etccdi.pacificclimate.org/list_27_indices.shtml",
+   "access": "open",
+   "locator": "SU: the count of days when TX > 25 °C"
+  },
+  "inputs": {
+   "tmax_c": [
+    25.0,
+    25.1
+   ],
+   "tmin_c": [
+    10.0,
+    10.0
+   ],
+   "frost_tmin_c": 0.0,
+   "ice_tmax_c": 0.0,
+   "summer_tmax_c": 25.0,
+   "hot_tmax_c": 30.0,
+   "tropical_tmin_c": 20.0
+  },
+  "expected": {
+   "summer": [
+    0.0,
+    1.0
+   ]
+  },
+  "conventions": [
+   "strict signs: a day exactly at a threshold does not count (IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "threshold_days",
+  "case_id": "etccdi-tr-boundary",
+  "source": {
+   "citation": "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices",
+   "url": "https://etccdi.pacificclimate.org/list_27_indices.shtml",
+   "access": "open",
+   "locator": "TR: the count of days when TN > 20 °C"
+  },
+  "inputs": {
+   "tmax_c": [
+    28.0,
+    28.0
+   ],
+   "tmin_c": [
+    20.0,
+    20.1
+   ],
+   "frost_tmin_c": 0.0,
+   "ice_tmax_c": 0.0,
+   "summer_tmax_c": 25.0,
+   "hot_tmax_c": 30.0,
+   "tropical_tmin_c": 20.0
+  },
+  "expected": {
+   "tropical": [
+    0.0,
+    1.0
+   ]
+  },
+  "conventions": [
+   "strict signs: a day exactly at a threshold does not count (IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "threshold_days",
+  "case_id": "hot-day-boundary",
+  "source": {
+   "citation": "Kossowska-Cezak, U. (2014). Zmiany wieloletnie liczby termicznych dni charakterystycznych w Warszawie (1951-2010). Prace Geograficzne 136, 9-30",
+   "access": "open",
+   "locator": "p. 14, after the Słownik meteorologiczny (2003): a hot day („upalny”) has tmax > 30 °C"
+  },
+  "inputs": {
+   "tmax_c": [
+    30.0,
+    30.1
+   ],
+   "tmin_c": [
+    15.0,
+    15.0
+   ],
+   "frost_tmin_c": 0.0,
+   "ice_tmax_c": 0.0,
+   "summer_tmax_c": 25.0,
+   "hot_tmax_c": 30.0,
+   "tropical_tmin_c": 20.0
+  },
+  "expected": {
+   "hot": [
+    0.0,
+    1.0
+   ]
+  },
+  "conventions": [
+   "strict signs: a day exactly at a threshold does not count (IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "threshold_days",
+  "case_id": "freeze-thaw-day",
+  "source": {
+   "citation": "Kossowska-Cezak, U. (2014). Zmiany wieloletnie liczby termicznych dni charakterystycznych w Warszawie (1951-2010). Prace Geograficzne 136, 9-30",
+   "access": "open",
+   "locator": "p. 14, after the Słownik meteorologiczny (2003): a freeze-thaw day („przymrozkowy”) has tmin < 0 °C and tmax > 0 °C"
+  },
+  "inputs": {
+   "tmax_c": [
+    0.1,
+    0.0,
+    3.0
+   ],
+   "tmin_c": [
+    -0.1,
+    -0.1,
+    0.0
+   ],
+   "frost_tmin_c": 0.0,
+   "ice_tmax_c": 0.0,
+   "summer_tmax_c": 25.0,
+   "hot_tmax_c": 30.0,
+   "tropical_tmin_c": 20.0
+  },
+  "expected": {
+   "freeze_thaw": [
+    1.0,
+    0.0,
+    0.0
+   ]
+  },
+  "conventions": [
+   "strict signs: a day exactly at a threshold does not count (IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "IMGW-PIB: Normy klimatyczne 1991-2020",
+   "locator": "product PRZYMROZKI, „Liczba dni przymrozkowych (TMAX>0 & TMIN<0)”",
+   "url": "https://klimat.imgw.pl",
+   "access": "open"
+  }
+ },
+ {
   "formula": "wet_day_percentile",
   "case_id": "type8-analytic-1-to-100-p95",
   "source": {

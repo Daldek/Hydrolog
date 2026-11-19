@@ -14,6 +14,7 @@
 | [Standardized precipitation index of precipitation sums](#spi) | `hydrolog.statistics.meteo_spi.spi_values` | referenced | 1 | not measured |
 | [Kaczorowska's class of a year's precipitation in % of its normal](#kaczorowska_class) | `hydrolog.statistics.meteo_spi.year_precipitation_class` | referenced | 1 | not measured |
 | [Class of a month's precipitation in % of its normal](#month_precipitation_class) | `hydrolog.statistics.meteo_spi.month_precipitation_class` | referenced | 1 | not measured |
+| [Frost, freeze-thaw, ice, summer and hot days and tropical nights of a day](#threshold_days) | `hydrolog.statistics.meteo_temperature.threshold_days` | referenced | 1 | not measured |
 | [Growing and heating degree days of each day](#degree_days) | `hydrolog.statistics.meteo_temperature.daily_degree_days` | referenced | 1 | not measured |
 | [The length of the dry or wet spell ending on each day](#spell_lengths) | `hydrolog.statistics.meteo_spells.spell_lengths` | oracle only | 1 | not measured |
 | [Simple daily intensity index: the mean precipitation of a wet day](#sdii) | `hydrolog.statistics.meteo_precipitation.wet_day_intensity` | oracle only | 1 | not measured |
@@ -629,6 +630,88 @@ None.
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
+<a id="threshold_days"></a>
+### Frost, freeze-thaw, ice, summer and hot days and tropical nights of a day
+
+`hydrolog.statistics.meteo_temperature.threshold_days` · family `classification` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\mathrm{FD} = [T_{n} < T_f],\ \mathrm{FT} = [T_{n} < T_f][T_{x} > T_i],\ \mathrm{ID} = [T_{x} < T_i],\ \mathrm{SU} = [T_{x} > T_s],\ \mathrm{HD} = [T_{x} > T_h],\ \mathrm{TR} = [T_{n} > T_t]
+$$
+
+Plain text: `frost: Tmin < Tf; freeze-thaw: Tmin < Tf and Tmax > Ti; ice: Tmax < Ti; summer: Tmax > Ts; hot: Tmax > Th; tropical night: Tmin > Tt; 1 when it holds, else 0 (the ETCCDI: Tf = Ti = 0, Ts = 25, Tt = 20 °C; Th = 30 °C)`
+
+**Sources**
+
+- ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, FD: days with TN < 0 °C; SU: TX > 25 °C; ID: TX < 0 °C; TR: TN > 20 °C; DTR: the monthly mean of TX - TN (open) <https://etccdi.pacificclimate.org/list_27_indices.shtml>
+- Kossowska-Cezak, U. (2014). Zmiany wieloletnie liczby termicznych dni charakterystycznych w Warszawie (1951-2010). Prace Geograficzne 136, 9-30, p. 14, after the Słownik meteorologiczny (2003): a hot day („upalny”) has tmax > 30 °C, a freeze-thaw day („przymrozkowy”) tmin < 0 °C and tmax > 0 °C (open)
+- IMGW-PIB: Normy klimatyczne 1991-2020, product PRZYMROZKI, „Liczba dni przymrozkowych (TMAX>0 & TMIN<0)” (open) <https://klimat.imgw.pl>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `tmax_c` | $T_x$ | °C | real_array | [-273.15, inf), test bound high 56.7 (the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)) | unstated | [-16.7, 37.0]: Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020, the daily maximum temperature: -16.7 to 37.0 °C |
+| `tmin_c` | $T_n$ | °C | real_array | [-273.15, inf), test bound high 56.7 (the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)) | unstated | [-27.1, 22.8]: Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020, the daily minimum temperature: -27.1 to 22.8 °C |
+| `frost_tmin_c` | $T_f$ | °C | real | [-273.15, inf), test bound high 56.7 (the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)) | unstated | [0.0, 0.0]: ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, FD: days with TN < 0 °C; SU: TX > 25 °C; ID: TX < 0 °C; TR: TN > 20 °C; DTR: the monthly mean of TX - TN |
+| `ice_tmax_c` | $T_i$ | °C | real | [-273.15, inf), test bound high 56.7 (the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)) | unstated | [0.0, 0.0]: ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, FD: days with TN < 0 °C; SU: TX > 25 °C; ID: TX < 0 °C; TR: TN > 20 °C; DTR: the monthly mean of TX - TN |
+| `summer_tmax_c` | $T_s$ | °C | real | [-273.15, inf), test bound high 56.7 (the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)) | unstated | [25.0, 25.0]: ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, FD: days with TN < 0 °C; SU: TX > 25 °C; ID: TX < 0 °C; TR: TN > 20 °C; DTR: the monthly mean of TX - TN |
+| `hot_tmax_c` | $T_h$ | °C | real | [-273.15, inf), test bound high 56.7 (the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)) | unstated | [30.0, 30.0]: Kossowska-Cezak, U. (2014). Zmiany wieloletnie liczby termicznych dni charakterystycznych w Warszawie (1951-2010). Prace Geograficzne 136, 9-30, p. 14, after the Słownik meteorologiczny (2003): a hot day („upalny”) has tmax > 30 °C, a freeze-thaw day („przymrozkowy”) tmin < 0 °C and tmax > 0 °C |
+| `tropical_tmin_c` | $T_t$ | °C | real | [-273.15, inf), test bound high 56.7 (the highest air temperature on record, 56.7 °C at Furnace Creek, 10 July 1913 (WMO Archive of Weather and Climate Extremes)) | unstated | [20.0, 20.0]: ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, FD: days with TN < 0 °C; SU: TX > 25 °C; ID: TX < 0 °C; TR: TN > 20 °C; DTR: the monthly mean of TX - TN |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `the_same_days` | precondition | tmax_c and tmin_c hold the same days, one value of each a day | ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, FD: days with TN < 0 °C; SU: TX > 25 °C; ID: TX < 0 °C; TR: TN > 20 °C; DTR: the monthly mean of TX - TN |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `frost` | - | real_array | [0.0, 1.0] | 4 ulp of the bound |
+| `freeze_thaw` | - | real_array | [0.0, 1.0] | 4 ulp of the bound |
+| `ice` | - | real_array | [0.0, 1.0] | 4 ulp of the bound |
+| `summer` | - | real_array | [0.0, 1.0] | 4 ulp of the bound |
+| `hot` | - | real_array | [0.0, 1.0] | 4 ulp of the bound |
+| `tropical` | - | real_array | [0.0, 1.0] | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- strict signs as the ETCCDI: a day exactly at a threshold is none of these days; IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C
+- the freeze-thaw day is the „dzień przymrozkowy” of the Słownik meteorologiczny and of IMGW-PIB's normals (PRZYMROZKI); the frost day is FD
+- a flag is missing (NaN) where a temperature it needs is; the series function gives an all-missing series for one it lacks
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a classification of a day
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `class_limit`: reference cases etccdi-*-boundary: each threshold and 0.1 °C beyond it
+- `gap_propagation`: type cases tmax_c-nan_element and tmin_c-nan_element: a missing temperature leaves only its own flags missing
+
+**Properties (CMP-6.5)**
+
+- units: unit_specific
+- monotonic: `tmin_c` decreasing, `frost_tmin_c` increasing
+- limit `counting_oracle`: every flag equals the comparison made day by day in a loop, at the ETCCDI's thresholds and beside them, with gaps
+- conservation `a_freeze_thaw_day_is_a_frost_day`: no freeze-thaw day without a frost day
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/meteo-indices-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the flags compared day by day in a Python loop on a seeded series with gaps and on the thresholds themselves (`tests/unit/test_formulas_meteo_temperature.py (limit counting_oracle)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
 <a id="degree_days"></a>
 ### Growing and heating degree days of each day
 
@@ -690,7 +773,7 @@ None stated.
 
 - units: unit_specific
 - monotonic: `tmean_c` increasing, `growing_base_c` decreasing
-- symmetry `shifted_temperatures`: the temperature and the three thresholds shifted by 1 °C give the same degree days
+- symmetry `shifted_temperatures`: the temperature and the three thresholds shifted by 1 °C, where the shift is exact in binary, give the same degree days
 
 **Reference cases (CMP-6.1)**
 
@@ -1279,6 +1362,12 @@ None stated.
 | `weighted_cn` | `hydrolog.runoff.cn_lookup.calculate_weighted_cn` | CN_w = sum(A_j CN_j) / sum(A_j), the area-weighted mean CN of the parts | – | areas or shares in any one unit; a part of zero area counts nothing | USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10, example 10-4, p. 10-12 (also KZGW 2017 eq. 6.3) |
 | `spi_k_month_sums` | `hydrolog.statistics.meteo_spi.standardized_precipitation_index` | the k-month sum of a month is the sum of the monthly sums of the k months that end in it, missing unless all k are known; the sums of each calendar month over the reference period are fitted (spi_gamma_fit) when they are known in at least 80 % of its years, those without data counted | normal_share = 4/5 - (WMO (2017). WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203, Geneva, section 4.4.2, pp. 8-9: values in at least 80 % of the years of the period; section 4.3.3, p. 6: the normal of several months from the monthly normals) | the k-month sums of the reference period stay within its years (climate_indices 3.2.0 lets those of its first k - 1 months reach before it); every analysed month gets the SPI of its own sum under the fit of its calendar month; a month whose sums the fit refuses has no SPI (notice spi_not_fitted) | WMO (2012). Standardized Precipitation Index User Guide. WMO-No. 1090, Geneva, chapter 2 and section 6.1: the gamma distribution of the sums of each calendar month transformed to the standard normal (McKee et al. 1993) |
 | `relative_precipitation` | `hydrolog.statistics.meteo_spi.standardized_precipitation_index` | 100 P / N: a month's sum in % of the normal of its calendar month, a year's in % of the sum of the twelve monthly normals (classed by month_precipitation_class and kaczorowska_class) | – | the normals of the reference period; no percentage without a normal or with a normal of 0 | Gąsiorek, E. and Musiał, E. (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. Woda-Środowisko-Obszary Wiejskie 11, 4(36), 107-119 (after Tomaszewska 1994), eq. 1, p. 109: RPI = P / P-bar 100 % |
+| `temperature_monthly_means` | `hydrolog.statistics.meteo_temperature.temperature_means` | the mean of the daily Tmean, Tmax and Tmin of a month with fewer than 11 missing days and fewer than 5 in a row; of a year, the mean of its twelve monthly means, needing each | – | the twelve months weigh the same (WMO-No. 1203, 4.3.3 a, footnote 1: weighting by days not recommended) | WMO (2017). WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203, Geneva, sections 4.3.1 (a) and 4.4.1 (a), pp. 5-7; 4.3.3 (a), p. 6 |
+| `temperature_normals_and_anomalies` | `hydrolog.statistics.meteo_temperature.temperature_means` | the normal of Tmean of a calendar month: the mean of its monthly means in the years of the reference period that have one, when they are at least 80 % of its years; the annual normal, the mean of the twelve monthly normals; an anomaly, a mean less its normal | – | the reference period is by default the analysed years; its years without data count among its years | WMO (2017). WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203, Geneva, section 4.4.2, pp. 8-9; section 4.3.3 (a), p. 6 |
+| `temperature_extremes` | `hydrolog.statistics.meteo_temperature.temperature_means` | the highest Tmax and the lowest Tmin of a month, a year and the period, with their dates, from the days that have a value | – | an extreme takes whatever days there are (WMO-No. 1203, 4.4.1 b); the first of equal extremes and its date | WMO (2017). WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203, Geneva, section 4.4.1 (b), p. 7 |
+| `temperature_day_counts` | `hydrolog.statistics.meteo_temperature.temperature_days` | the days of each kind of threshold_days in a month with fewer than 11 missing days and fewer than 5 in a row, scaled to the days of the month; of a year, the sum of its twelve months, needing each | – | with gaps a month's count is not a whole number (climdex.pcic counts the days it has) | WMO (2017). WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203, Geneva, section 4.3.1 (d) and 4.4.1 (d), pp. 5-8 |
+| `degree_day_sums` | `hydrolog.statistics.meteo_temperature.degree_days` | the sum of the degree_days of each day of a month, needing every day; of a year, the sum of its twelve months, needing each | – | no growing or heating season is cut out (Eurostat: computed daily and summed to the year) | Eurostat (2024). Energy statistics - cooling and heating degree days (nrg_chdd), reference metadata, updated 25 October 2024, section 3.4: HDD = 18 °C - Tm if Tm <= 15 °C, else 0; examples 12 °C gives 6, 16 °C gives 0 (Commission Directive (EU) 2015/1127, Annex) |
+| `daily_temperature_range` | `hydrolog.statistics.meteo_temperature.temperature_range` | DTR: Tmax - Tmin of each day with both, its mean in a month with fewer than 11 missing days and fewer than 5 in a row, and of a year the mean of its twelve monthly means | – | a day with Tmax below Tmin is taken as it is (no check; an open question of the audit of 2026-11-18) | ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, FD: days with TN < 0 °C; SU: TX > 25 °C; ID: TX < 0 °C; TR: TN > 20 °C; DTR: the monthly mean of TX - TN |
 | `spell_year` | `hydrolog.statistics.meteo_spells.precipitation_spells` | a spell (spell_lengths) counts, whole, in the year of its last day: a spell over the start of a year is not cut, and a year wholly inside a spell that ends later has no longest spell | – | the year of the spell's end, as climdex.pcic 1.1-11 (its default spells.can.span.years = TRUE) and ECA&D; the ETCCDI's definition read literally cuts a spell at the start of the year (ADR-0044) | ECA&D (2021). European Climate Assessment & Dataset, Algorithm Theoretical Basis Document (ATBD), version 11. KNMI, De Bilt, section 5.1, p. 20: a spell can continue into the next year and is counted against the year in which the spell ends |
 | `spell_summaries` | `hydrolog.statistics.meteo_spells.precipitation_spells` | per year with a value on every day: the spells that end in it, the longest of them (CDD, CWD) with its days, and the spells of at least 10, 15 and 20 days; per period: their means over those years and the distribution of the durations of their spells that are not open, per year | – | a year needs every day (climdex.pcic accepts up to 15 missing days); an open spell, beside a missing day or an end of the series, is left out of the distribution of durations only; min_duration_days shortens the list of spells, not the summaries | ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices, CDD: the largest number of consecutive days with RR < 1 mm; CWD: the largest number of consecutive days with RR >= 1 mm (RR the daily precipitation) |
 | `precipitation_sums` | `hydrolog.statistics.meteo_precipitation.precipitation_sums` | the sum of the daily precipitation of a month, needing every day or accumulated totals that cover the missing days; of a half-year (XI-IV, V-X), a season (DJF with the December before, MAM, JJA, SON) and a year, the sum of its months, needing each; a sum in % of its normal, 100 P / N | – | every sum of daily precipitation rounded to 1e-6 mm (round_sums); no percentage without a normal or with a normal of 0 | WMO (2017). WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203, Geneva, section 4.3.1 (c) and 4.4.1 (c), pp. 5-8: a sum needs complete data or accumulated observations covering the missing days |

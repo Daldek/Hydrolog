@@ -52,12 +52,27 @@ Kossowska-Cezak, U. (2014): Zmiany wieloletnie liczby termicznych dni
     0 °C; the Atlas klimatu Polski, 2005, Tmin < 0 °C).
 IMGW-PIB: Normy klimatyczne 1991-2020 (klimat.imgw.pl), product PRZYMROZKI, "Liczba
     dni przymrozkowych (TMAX>0 & TMIN<0)".
+
+The formulas of a day are declared by specs (Nogat's computation standard, ADR-0050
+and ADR-0059): :data:`THRESHOLD_DAYS` (``threshold_days``, the characteristic days)
+and :data:`DEGREE_DAYS` (``degree_days``); the monthly and annual means, normals,
+anomalies, extremes, counts, sums and the daily range around them are the module's
+:data:`TIER_B`, and ``docs/FORMULAS.md`` shows both.
+
+Examples
+--------
+>>> found = threshold_days([25.0, 25.1, -0.1], [-0.1, 20.1, -3.0], 0.0, 0.0, 25.0,
+...                        30.0, 20.0)
+>>> found.summer, found.freeze_thaw
+(array([0., 1., 0.]), array([1., 0., 0.]))
+>>> daily_degree_days([12.0, 16.0], 5.0, 18.0, 15.0).heating_degree_days
+array([6., 0.])
 """
 
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Final, NamedTuple
 
@@ -68,16 +83,21 @@ from hydrolog._formulas import checked_inputs, checked_outputs
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.nogat_formulas import (
+    Conservation,
     Constraint,
     FormulaSpec,
+    Limit,
+    Oracle,
     Output,
     Properties,
     Range,
     Source,
     Symmetry,
+    TierBSpec,
     Tolerance,
     Values,
     Variable,
+    assert_within,
 )
 from hydrolog.statistics._climate import (
     DailyGrid,
@@ -119,7 +139,11 @@ __all__ = [
     "DEGREE_DAYS",
     "DailyDegreeDays",
     "SPECS",
+    "THRESHOLD_DAYS",
+    "TIER_B",
+    "ThresholdDays",
     "daily_degree_days",
+    "threshold_days",
     "degree_days",
     "temperature_days",
     "temperature_means",
@@ -689,12 +713,6 @@ _DAY_KINDS = (
 )
 
 
-def _finite_threshold(name: str, value: float) -> float:
-    if not math.isfinite(value):
-        raise InvalidParameterError(f"{name} must be a finite number, got {value!r}")
-    return float(value)
-
-
 def temperature_days(
     dates: NDArray[np.datetime64] | Sequence[object],
     *,
@@ -743,47 +761,29 @@ def temperature_days(
         If neither series is given, the arrays are invalid, a threshold is not finite
         or ``year_type`` is unknown.
     """
-    limits = {
-        name: _finite_threshold(name, value)
-        for name, value in (
-            ("frost_tmin_c", frost_tmin_c),
-            ("ice_tmax_c", ice_tmax_c),
-            ("summer_tmax_c", summer_tmax_c),
-            ("hot_tmax_c", hot_tmax_c),
-            ("tropical_tmin_c", tropical_tmin_c),
-        )
-    }
     data = _series(dates, year_type, tmax_c=tmax_c, tmin_c=tmin_c)
     grid = data.grid
-    empty = np.full((grid.n_years, 12), np.nan)
-
-    def count(
-        values: NDArray[np.float64] | None, event: str, limit: float
-    ) -> NDArray[np.float64]:
-        if values is None:
-            return empty
-        with np.errstate(invalid="ignore"):
-            hit = values < limit if event == "below" else values > limit
-        return monthly_counts(grid, values, hit)
-
-    def both() -> NDArray[np.float64]:
-        """Tmin on the days that have both series, ``NaN`` on the others."""
-        if data.tmin is None or data.tmax is None:
-            return empty
-        paired = np.where(np.isfinite(data.tmax), data.tmin, np.nan)
-        with np.errstate(invalid="ignore"):
-            hit = (data.tmin < limits["frost_tmin_c"]) & (
-                data.tmax > limits["ice_tmax_c"]
-            )
-        return monthly_counts(grid, paired, hit)
-
+    known = data.tmax if data.tmax is not None else _require(data.tmin, "tmin_c")
+    missing = np.full(known.size, np.nan)
+    days = threshold_days(
+        data.tmax if data.tmax is not None else missing,
+        data.tmin if data.tmin is not None else missing,
+        frost_tmin_c,
+        ice_tmax_c,
+        summer_tmax_c,
+        hot_tmax_c,
+        tropical_tmin_c,
+    )
+    limits = {
+        "frost_tmin_c": float(frost_tmin_c),
+        "ice_tmax_c": float(ice_tmax_c),
+        "summer_tmax_c": float(summer_tmax_c),
+        "hot_tmax_c": float(hot_tmax_c),
+        "tropical_tmin_c": float(tropical_tmin_c),
+    }
     tables = {
-        "frost_days": count(data.tmin, "below", limits["frost_tmin_c"]),
-        "freeze_thaw_days": both(),
-        "ice_days": count(data.tmax, "below", limits["ice_tmax_c"]),
-        "summer_days": count(data.tmax, "above", limits["summer_tmax_c"]),
-        "hot_days": count(data.tmax, "above", limits["hot_tmax_c"]),
-        "tropical_nights": count(data.tmin, "above", limits["tropical_tmin_c"]),
+        name: monthly_counts(grid, flags, flags == 1.0)
+        for name, flags in zip(_DAY_KINDS, days, strict=True)
     }
     annual = {name: table.sum(axis=1) for name, table in tables.items()}
     months = grid.months
@@ -995,11 +995,21 @@ def _degree_days(x: Values) -> dict[str, NDArray[np.float64]]:
 
 
 def _shifted(x: Values) -> dict[str, object]:
+    """Shift the temperature and the three thresholds by 1 °C where that is exact.
+
+    Adding 1 °C rounds away the digits of a value below its last place (3e-165 °C
+    becomes 1 °C) and can move it onto a threshold, so such inputs stay as they
+    are (the counterexample of the Hypothesis profile ci, pinned in the tests).
+    """
+    values = {name: np.asarray(x[name], dtype=np.float64) for name in x}
+    moved = {name: value + 1.0 for name, value in values.items()}
+    if not all(
+        np.array_equal(moved[name] - 1.0, value, equal_nan=True)
+        for name, value in values.items()
+    ):
+        moved = values
     return {
-        "tmean_c": x.array("tmean_c") + 1.0,
-        "growing_base_c": x.real("growing_base_c") + 1.0,
-        "heating_base_c": x.real("heating_base_c") + 1.0,
-        "heating_limit_c": x.real("heating_limit_c") + 1.0,
+        name: value if value.ndim else float(value) for name, value in moved.items()
     }
 
 
@@ -1091,8 +1101,8 @@ DEGREE_DAYS: Final = FormulaSpec(
         symmetries=(
             Symmetry(
                 name="shifted_temperatures",
-                text="the temperature and the three thresholds shifted by 1 °C give "
-                "the same degree days",
+                text="the temperature and the three thresholds shifted by 1 °C, where "
+                "the shift is exact in binary, give the same degree days",
                 inputs=_shifted,
                 outputs=lambda out: {
                     "growing_degree_days": out.array("growing_degree_days"),
@@ -1276,8 +1286,392 @@ def degree_days(
     )
 
 
-SPECS: Final = (DEGREE_DAYS,)
+_ETCCDI_T = Source(
+    citation="ETCCDI (2009). Climate Change Indices: definitions of the 27 core "
+    "indices. Expert Team on Climate Change Detection and Indices",
+    locator="FD: days with TN < 0 °C; SU: TX > 25 °C; ID: TX < 0 °C; TR: TN > 20 °C; "
+    "DTR: the monthly mean of TX - TN",
+    url="https://etccdi.pacificclimate.org/list_27_indices.shtml",
+)
+_KOSSOWSKA = Source(
+    citation="Kossowska-Cezak, U. (2014). Zmiany wieloletnie liczby termicznych dni "
+    "charakterystycznych w Warszawie (1951-2010). Prace Geograficzne 136, 9-30",
+    locator="p. 14, after the Słownik meteorologiczny (2003): a hot day („upalny”) "
+    "has tmax > 30 °C, a freeze-thaw day („przymrozkowy”) tmin < 0 °C and tmax > 0 °C",
+)
+_IMGW_NORMALS = Source(
+    citation="IMGW-PIB: Normy klimatyczne 1991-2020",
+    locator="product PRZYMROZKI, „Liczba dni przymrozkowych (TMAX>0 & TMIN<0)”",
+    url="https://klimat.imgw.pl",
+)
+_WARSZAWA_TX = Source(
+    citation=_WARSZAWA_T.citation,
+    locator="the daily maximum temperature: -16.7 to 37.0 °C",
+)
+_WARSZAWA_TN = Source(
+    citation=_WARSZAWA_T.citation,
+    locator="the daily minimum temperature: -27.1 to 22.8 °C",
+)
+
+
+class ThresholdDays(NamedTuple):
+    """The characteristic days of each day (spec ``threshold_days``).
+
+    Attributes
+    ----------
+    frost, freeze_thaw, ice, summer, hot, tropical : numpy.ndarray
+        1 on a frost (freeze-thaw, ice, summer, hot) day or a tropical night, 0 on
+        any other day, ``NaN`` where a temperature it needs is missing.
+    """
+
+    frost: NDArray[np.float64]
+    freeze_thaw: NDArray[np.float64]
+    ice: NDArray[np.float64]
+    summer: NDArray[np.float64]
+    hot: NDArray[np.float64]
+    tropical: NDArray[np.float64]
+
+
+def _flags(values: NDArray[np.float64], hit: NDArray[np.bool_]) -> NDArray[np.float64]:
+    return np.where(np.isnan(values), np.nan, hit.astype(np.float64))
+
+
+def _threshold_days(x: Values) -> dict[str, NDArray[np.float64]]:
+    tmax, tmin = x.array("tmax_c"), x.array("tmin_c")
+    with np.errstate(invalid="ignore"):
+        frost = tmin < x.real("frost_tmin_c")
+        thaw = tmax > x.real("ice_tmax_c")
+        return {
+            "frost": _flags(tmin, frost),
+            "freeze_thaw": _flags(tmin + tmax, frost & thaw),
+            "ice": _flags(tmax, tmax < x.real("ice_tmax_c")),
+            "summer": _flags(tmax, tmax > x.real("summer_tmax_c")),
+            "hot": _flags(tmax, tmax > x.real("hot_tmax_c")),
+            "tropical": _flags(tmin, tmin > x.real("tropical_tmin_c")),
+        }
+
+
+_LIMITS = {
+    "frost_tmin_c": 0.0,
+    "ice_tmax_c": 0.0,
+    "summer_tmax_c": 25.0,
+    "hot_tmax_c": 30.0,
+    "tropical_tmin_c": 20.0,
+}
+
+
+def _counted_days(run: Callable[..., Values]) -> None:
+    rng = np.random.default_rng(20261119)
+    tmax = np.round(rng.normal(12.0, 12.0, 400), 1)
+    tmin = np.round(tmax - rng.gamma(4.0, 2.0, 400), 1)
+    tmax[rng.random(400) < 0.05] = np.nan
+    tmin[rng.random(400) < 0.05] = np.nan
+    tmax[:8] = [0.0, -0.1, 25.0, 25.1, 30.0, 30.1, 0.1, 0.0]
+    tmin[:8] = [0.0, -0.1, 20.0, 20.1, -0.1, -0.1, -0.1, -0.1]
+    out = run(tmax_c=tmax.tolist(), tmin_c=tmin.tolist(), **_LIMITS)
+    expected: dict[str, list[float]] = {name: [] for name in ThresholdDays._fields}
+    for high, low in zip(tmax.tolist(), tmin.tolist(), strict=True):
+        no_high, no_low = math.isnan(high), math.isnan(low)
+        expected["frost"].append(math.nan if no_low else float(low < 0.0))
+        expected["freeze_thaw"].append(
+            math.nan if no_low or no_high else float(low < 0.0 and high > 0.0)
+        )
+        expected["ice"].append(math.nan if no_high else float(high < 0.0))
+        expected["summer"].append(math.nan if no_high else float(high > 25.0))
+        expected["hot"].append(math.nan if no_high else float(high > 30.0))
+        expected["tropical"].append(math.nan if no_low else float(low > 20.0))
+    for name, values in expected.items():
+        assert_within(
+            out.array(name), values, abs=0.0, reason="0 or 1 a day, NaN where missing"
+        )
+
+
+def _thaw_without_frost(x: Values, out: Values) -> float:
+    """Return the freeze-thaw days that are not frost days: none."""
+    excess = out.array("freeze_thaw") - out.array("frost")
+    return float(np.nansum(np.clip(excess, 0.0, None)))
+
+
+THRESHOLD_DAYS: Final = FormulaSpec(
+    name="threshold_days",
+    title="Frost, freeze-thaw, ice, summer and hot days and tropical nights of a day",
+    function="hydrolog.statistics.meteo_temperature.threshold_days",
+    family="classification",
+    equation=(
+        "frost: Tmin < Tf; freeze-thaw: Tmin < Tf and Tmax > Ti; ice: Tmax < Ti; "
+        "summer: Tmax > Ts; hot: Tmax > Th; tropical night: Tmin > Tt; 1 when it "
+        "holds, else 0 (the ETCCDI: Tf = Ti = 0, Ts = 25, Tt = 20 °C; Th = 30 °C)"
+    ),
+    latex=(
+        r"\mathrm{FD} = [T_{n} < T_f],\ \mathrm{FT} = [T_{n} < T_f][T_{x} > T_i],\ "
+        r"\mathrm{ID} = [T_{x} < T_i],\ \mathrm{SU} = [T_{x} > T_s],\ \mathrm{HD} = "
+        r"[T_{x} > T_h],\ \mathrm{TR} = [T_{n} > T_t]"
+    ),
+    variables=(
+        Variable(
+            name="tmax_c",
+            symbol="T_x",
+            unit="°C",
+            kind="real_array",
+            description="Daily maximum air temperature; NaN on a missing day.",
+            physical=Range(low=-273.15, test_high=56.7, test_reason=_RECORD_HEAT),
+            applicability="unstated",
+            typical=Range(low=-16.7, high=37.0, source=_WARSZAWA_TX),
+            gaps_allowed=True,
+        ),
+        Variable(
+            name="tmin_c",
+            symbol="T_n",
+            unit="°C",
+            kind="real_array",
+            description="Daily minimum air temperature of the same days; NaN on a "
+            "missing day.",
+            physical=Range(low=-273.15, test_high=56.7, test_reason=_RECORD_HEAT),
+            applicability="unstated",
+            typical=Range(low=-27.1, high=22.8, source=_WARSZAWA_TN),
+            gaps_allowed=True,
+        ),
+        _air(
+            "frost_tmin_c",
+            "T_f",
+            "A frost day has Tmin below this.",
+            Range(low=0.0, high=0.0, source=_ETCCDI_T),
+        ),
+        _air(
+            "ice_tmax_c",
+            "T_i",
+            "An ice day has Tmax below this, a freeze-thaw day above it.",
+            Range(low=0.0, high=0.0, source=_ETCCDI_T),
+        ),
+        _air(
+            "summer_tmax_c",
+            "T_s",
+            "A summer day has Tmax above this.",
+            Range(low=25.0, high=25.0, source=_ETCCDI_T),
+        ),
+        _air(
+            "hot_tmax_c",
+            "T_h",
+            "A hot day has Tmax above this.",
+            Range(low=30.0, high=30.0, source=_KOSSOWSKA),
+        ),
+        _air(
+            "tropical_tmin_c",
+            "T_t",
+            "A tropical night has Tmin above this.",
+            Range(low=20.0, high=20.0, source=_ETCCDI_T),
+        ),
+    ),
+    outputs=tuple(
+        Output(
+            name=name,
+            unit="-",
+            kind="real_array",
+            description=description,
+            physical=Range(low=0.0, high=1.0),
+            gaps_allowed=True,
+            gaps_from=source,
+        )
+        for name, description, source in (
+            ("frost", "1 on a frost day.", "tmin_c"),
+            ("freeze_thaw", "1 on a freeze-thaw day; NaN without both.", None),
+            ("ice", "1 on an ice day.", "tmax_c"),
+            ("summer", "1 on a summer day.", "tmax_c"),
+            ("hot", "1 on a hot day.", "tmax_c"),
+            ("tropical", "1 on a tropical night.", "tmin_c"),
+        )
+    ),
+    sources=(_ETCCDI_T, _KOSSOWSKA, _IMGW_NORMALS),
+    constraints=(
+        Constraint(
+            name="the_same_days",
+            cls="precondition",
+            check=lambda x: x.array("tmax_c").shape == x.array("tmin_c").shape,
+            text="tmax_c and tmin_c hold the same days, one value of each a day",
+            source=_ETCCDI_T,
+            satisfied={"tmax_c": [5.0, 6.0], "tmin_c": [-1.0, 0.5]},
+            violated={"tmax_c": [5.0, 6.0], "tmin_c": [-1.0]},
+        ),
+    ),
+    properties=Properties(
+        units="unit_specific",
+        monotonic={"tmin_c": -1, "frost_tmin_c": 1},
+        conservation=(
+            Conservation(
+                name="a_freeze_thaw_day_is_a_frost_day",
+                text="no freeze-thaw day without a frost day",
+                residual=_thaw_without_frost,
+                tolerance=Tolerance(abs=0.0, reason="counts of 0 and 1"),
+            ),
+        ),
+        limits=(
+            Limit(
+                name="counting_oracle",
+                text="every flag equals the comparison made day by day in a loop, at "
+                "the ETCCDI's thresholds and beside them, with gaps",
+                check=_counted_days,
+            ),
+        ),
+    ),
+    validation="none: a classification of a day",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "strict signs as the ETCCDI: a day exactly at a threshold is none of these "
+        "days; IMGW-PIB's yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C",
+        "the freeze-thaw day is the „dzień przymrozkowy” of the Słownik "
+        "meteorologiczny and of IMGW-PIB's normals (PRZYMROZKI); the frost day is FD",
+        "a flag is missing (NaN) where a temperature it needs is; the series function "
+        "gives an all-missing series for one it lacks",
+    ),
+    traps={
+        "class_limit": "reference cases etccdi-*-boundary: each threshold and 0.1 °C "
+        "beyond it",
+        "gap_propagation": "type cases tmax_c-nan_element and tmin_c-nan_element: a "
+        "missing temperature leaves only its own flags missing",
+    },
+    reference_cases=("tests/fixtures/formulas/meteo-indices-cases.json",),
+    oracles=(
+        Oracle(
+            kind="algorithm",
+            description="the flags compared day by day in a Python loop on a seeded "
+            "series with gaps and on the thresholds themselves",
+            test="tests/unit/test_formulas_meteo_temperature.py (limit "
+            "counting_oracle)",
+        ),
+    ),
+)
+
+
+def threshold_days(
+    tmax_c: NDArray[np.float64] | Sequence[float],
+    tmin_c: NDArray[np.float64] | Sequence[float],
+    frost_tmin_c: float,
+    ice_tmax_c: float,
+    summer_tmax_c: float,
+    hot_tmax_c: float,
+    tropical_tmin_c: float,
+) -> ThresholdDays:
+    """Mark the characteristic days of each day, spec threshold_days.
+
+    Parameters
+    ----------
+    tmax_c, tmin_c : array_like of float
+        Daily maximum and minimum temperature of the same days [°C]; ``NaN`` on a
+        missing day.
+    frost_tmin_c, ice_tmax_c, summer_tmax_c, hot_tmax_c, tropical_tmin_c : float
+        The thresholds [°C].
+
+    Returns
+    -------
+    ThresholdDays
+        The flags of each day.
+
+    Raises
+    ------
+    InvalidParameterError
+        If an input is refused by the spec, series of different days among them
+        (``precondition_failed``).
+    """
+    x = checked_inputs(
+        THRESHOLD_DAYS,
+        tmax_c=tmax_c,
+        tmin_c=tmin_c,
+        frost_tmin_c=frost_tmin_c,
+        ice_tmax_c=ice_tmax_c,
+        summer_tmax_c=summer_tmax_c,
+        hot_tmax_c=hot_tmax_c,
+        tropical_tmin_c=tropical_tmin_c,
+    )
+    out = checked_outputs(THRESHOLD_DAYS, _threshold_days(x), inputs=x)
+    return ThresholdDays(*(out.array(name) for name in ThresholdDays._fields))
+
+
+SPECS: Final = (THRESHOLD_DAYS, DEGREE_DAYS)
 """The Tier A formulas of the module."""
+
+_WMO_1203_T = (
+    "WMO (2017). WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203, "
+    "Geneva"
+)
+_WMO_1203_URL = "https://library.wmo.int/idurl/4/55797"
+
+TIER_B: Final = (
+    TierBSpec(
+        name="temperature_monthly_means",
+        function="hydrolog.statistics.meteo_temperature.temperature_means",
+        definition="the mean of the daily Tmean, Tmax and Tmin of a month with fewer "
+        "than 11 missing days and fewer than 5 in a row; of a year, the mean of its "
+        "twelve monthly means, needing each",
+        convention="the twelve months weigh the same (WMO-No. 1203, 4.3.3 a, footnote "
+        "1: weighting by days not recommended)",
+        source=Source(
+            citation=_WMO_1203_T,
+            locator="sections 4.3.1 (a) and 4.4.1 (a), pp. 5-7; 4.3.3 (a), p. 6",
+            url=_WMO_1203_URL,
+        ),
+    ),
+    TierBSpec(
+        name="temperature_normals_and_anomalies",
+        function="hydrolog.statistics.meteo_temperature.temperature_means",
+        definition="the normal of Tmean of a calendar month: the mean of its monthly "
+        "means in the years of the reference period that have one, when they are at "
+        "least 80 % of its years; the annual normal, the mean of the twelve monthly "
+        "normals; an anomaly, a mean less its normal",
+        convention="the reference period is by default the analysed years; its years "
+        "without data count among its years",
+        source=Source(
+            citation=_WMO_1203_T,
+            locator="section 4.4.2, pp. 8-9; section 4.3.3 (a), p. 6",
+            url=_WMO_1203_URL,
+        ),
+    ),
+    TierBSpec(
+        name="temperature_extremes",
+        function="hydrolog.statistics.meteo_temperature.temperature_means",
+        definition="the highest Tmax and the lowest Tmin of a month, a year and the "
+        "period, with their dates, from the days that have a value",
+        convention="an extreme takes whatever days there are (WMO-No. 1203, 4.4.1 b); "
+        "the first of equal extremes and its date",
+        source=Source(
+            citation=_WMO_1203_T, locator="section 4.4.1 (b), p. 7", url=_WMO_1203_URL
+        ),
+    ),
+    TierBSpec(
+        name="temperature_day_counts",
+        function="hydrolog.statistics.meteo_temperature.temperature_days",
+        definition="the days of each kind of threshold_days in a month with fewer than "
+        "11 missing days and fewer than 5 in a row, scaled to the days of the month; "
+        "of a year, the sum of its twelve months, needing each",
+        convention="with gaps a month's count is not a whole number (climdex.pcic "
+        "counts the days it has)",
+        source=Source(
+            citation=_WMO_1203_T,
+            locator="section 4.3.1 (d) and 4.4.1 (d), pp. 5-8",
+            url=_WMO_1203_URL,
+        ),
+    ),
+    TierBSpec(
+        name="degree_day_sums",
+        function="hydrolog.statistics.meteo_temperature.degree_days",
+        definition="the sum of the degree_days of each day of a month, needing every "
+        "day; of a year, the sum of its twelve months, needing each",
+        convention="no growing or heating season is cut out (Eurostat: computed daily "
+        "and summed to the year)",
+        source=_EUROSTAT,
+    ),
+    TierBSpec(
+        name="daily_temperature_range",
+        function="hydrolog.statistics.meteo_temperature.temperature_range",
+        definition="DTR: Tmax - Tmin of each day with both, its mean in a month with "
+        "fewer than 11 missing days and fewer than 5 in a row, and of a year the mean "
+        "of its twelve monthly means",
+        convention="a day with Tmax below Tmin is taken as it is (no check; an open "
+        "question of the audit of 2026-11-18)",
+        source=_ETCCDI_T,
+    ),
+)
+"""The Tier B formulas of the module (CMP-2.2)."""
 
 
 # --- daily range ----------------------------------------------------------------------

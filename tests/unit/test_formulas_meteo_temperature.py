@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 
 from hydrolog._formulas import ERRORS
 from hydrolog.catalog import run_command
@@ -29,15 +29,23 @@ from hydrolog.nogat_formulas import (
     type_cases,
 )
 from hydrolog.statistics import degree_days
-from hydrolog.statistics.meteo_temperature import DEGREE_DAYS, daily_degree_days
+from hydrolog.statistics.meteo_temperature import (
+    DEGREE_DAYS,
+    THRESHOLD_DAYS,
+    daily_degree_days,
+    threshold_days,
+)
 
 from ._formula_checks import as_standard
-from ._warszawa import DATES, TMEAN
+from ._warszawa import DATES, TMAX, TMEAN, TMIN
 
 pytestmark = pytest.mark.formula
 
 CASES = Path(__file__).parents[1] / "fixtures" / "formulas" / "meteo-indices-cases.json"
-FAMILY: tuple[tuple[FormulaSpec, object], ...] = ((DEGREE_DAYS, daily_degree_days),)
+FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
+    (THRESHOLD_DAYS, threshold_days),
+    (DEGREE_DAYS, daily_degree_days),
+)
 
 
 def _generated() -> list[object]:
@@ -72,10 +80,36 @@ def test_limits_and_oracles(spec: FormulaSpec, function):
 
 
 @given(inputs=strategies(DEGREE_DAYS))
+@example(  # 1 °C added to 3e-165 °C rounds to 1 °C, onto a threshold of 0 °C + 1
+    inputs={
+        "tmean_c": np.array([3.15871518e-165]),
+        "growing_base_c": 0.0,
+        "heating_base_c": 18.0,
+        "heating_limit_c": 0.0,
+    }
+)
 def test_degree_days_properties(inputs):
     function = as_standard(daily_degree_days)
     assert_property_contract(DEGREE_DAYS, function, inputs, ERRORS)
     assert_properties(DEGREE_DAYS, function, inputs, ERRORS)
+
+
+def _same_days(inputs: dict[str, object]) -> dict[str, object]:
+    """Cut both series to the shorter: the generator draws their lengths apart.
+
+    Hand-written for what the generator cannot express: drawn independently, the
+    lengths differ in most draws, which the precondition the_same_days refuses.
+    """
+    tmax, tmin = np.asarray(inputs["tmax_c"]), np.asarray(inputs["tmin_c"])
+    days = min(tmax.size, tmin.size)
+    return {**inputs, "tmax_c": tmax[:days], "tmin_c": tmin[:days]}
+
+
+@given(inputs=strategies(THRESHOLD_DAYS).map(_same_days))
+def test_threshold_days_properties(inputs):
+    function = as_standard(threshold_days)
+    assert_property_contract(THRESHOLD_DAYS, function, inputs, ERRORS)
+    assert_properties(THRESHOLD_DAYS, function, inputs, ERRORS)
 
 
 def test_a_heating_threshold_above_the_reference_temperature_is_refused():
@@ -105,3 +139,19 @@ def test_the_series_records_the_version_of_its_formula():
     ).to_dict()
 
     assert envelope["formula_versions"] == {"degree_days": DEGREE_DAYS.formula_version}
+
+
+def test_the_days_record_the_version_of_their_formula():
+    envelope = run_command(
+        "meteo temperature",
+        {
+            "index": "days",
+            "dates": [str(day) for day in DATES[:366]],
+            "tmax_c": TMAX[:366].tolist(),
+            "tmin_c": TMIN[:366].tolist(),
+        },
+    ).to_dict()
+
+    assert envelope["formula_versions"] == {
+        "threshold_days": THRESHOLD_DAYS.formula_version
+    }

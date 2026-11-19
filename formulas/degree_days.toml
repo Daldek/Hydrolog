@@ -28,7 +28,7 @@ growing_base_c = -1
 
 [[properties.symmetries]]
 name = "shifted_temperatures"
-text = "the temperature and the three thresholds shifted by 1 °C give the same degree days"
+text = "the temperature and the three thresholds shifted by 1 °C, where the shift is exact in binary, give the same degree days"
 
 [properties.symmetries.tolerance]
 reason = "each sum of a temperature and 1 °C rounds by half a unit in the last place of values below 330 °C"

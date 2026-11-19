@@ -62,6 +62,7 @@ MODULES = (
     "hydrolog.statistics.meteo_precipitation",
     "hydrolog.statistics.meteo_spells",
     "hydrolog.statistics.meteo_spi",
+    "hydrolog.statistics.meteo_temperature",
     "hydrolog.statistics.regime",
     "hydrolog.statistics.stationarity",
     "hydrolog.testing",

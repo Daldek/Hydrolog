@@ -65,6 +65,9 @@ classes are ranges of whole percents while the code rounded the percentage with 
   `seasonality_index` and `si_class`. A ratio comes from the unrounded sums; the sums a result shows are rounded to
   1e-6 mm as before (Tier B). The gaps between the published classes (Oliver's whole numbers, Walsh and Lawler's two
   decimals) go to the class above, as before.
+- `meteo temperature --index days` gives the same counts and carries `formula_versions` `threshold_days` (the flags of
+  each day, which the series counts by the WMO-No. 1203 rules); a missing series is passed as missing days. The means,
+  normals, anomalies, extremes, counts, degree-day sums and the daily range of `meteo_temperature` are its Tier B.
 - Breaking for library callers: `fit_gamma(sums_mm)` returns `(alpha, beta_mm, zero_probability)` and raises
   `InvalidParameterError` (`precondition_failed`) where it returned `None`; `spi_values` takes `beta_mm`;
   `year_precipitation_class` and `month_precipitation_class` take `percent_of_normal`, a number;
