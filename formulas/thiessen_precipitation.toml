@@ -1,0 +1,210 @@
+schema = "nogat-formula-card/1"
+name = "thiessen_precipitation"
+title = "Areal precipitation by the Thiessen polygons of the gauges"
+function = "hydrolog.precipitation.interpolation.thiessen_precipitation"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "P = sum(A_i P_i) / sum(A_i); w_i = A_i / sum(A_i)"
+latex = "\\bar{P} = \\frac{\\sum_i A_i P_i}{\\sum_i A_i},\\quad w_i = \\frac{A_i}{\\sum_j A_j}"
+validation = "none: Chow et al. (1988, p. 78) describe the method as more accurate than the arithmetic mean where the gauges are unevenly spread, without an error statistic"
+conventions = ["depths in mm, areas in km2 (any one unit gives the same mean)", "the weights are the areas over their sum: KZGW (2017, eq. 2.1) divides by the area of the watershed, the same when the polygons tile it", "the polygons are given; drawing them is not part of the formula"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/areal-precipitation-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+
+[properties.monotonic]
+precipitation_mm = 1
+
+[[properties.scalings]]
+name = "depth"
+
+[properties.scalings.inputs]
+precipitation_mm = 1.0
+
+[properties.scalings.outputs]
+areal_precipitation_mm = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling the depths doubles every product exactly in binary; the sums round once, but for subnormal values"
+abs = 1e-300
+rel = 1e-15
+
+[[properties.scalings]]
+name = "area"
+
+[properties.scalings.inputs]
+polygon_areas_km2 = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "doubling the depths doubles every product exactly in binary; the sums round once, but for subnormal values"
+abs = 1e-300
+rel = 1e-15
+
+[[properties.limits]]
+name = "exact_rational"
+text = "the weighted mean equals it in exact rational arithmetic"
+
+[[properties.limits]]
+name = "equal_areas"
+text = "equal polygons give the arithmetic mean"
+
+[[properties.conservation]]
+name = "weights_add_up"
+text = "the weights sum to one"
+
+[properties.conservation.tolerance]
+reason = "each weight is a quotient rounded once; a few units in the last place of one per weight, for up to a few hundred gauges"
+abs = 1e-12
+
+[[properties.symmetries]]
+name = "order"
+text = "the order of the gauges does not matter"
+
+[properties.symmetries.tolerance]
+reason = "the same terms summed in another order: correctly rounded sums of products that each round once"
+abs = 1e-12
+rel = 1e-12
+
+[[sources]]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 3.4, eq. 3.4.1 and Fig. 3.4.3(b), pp. 78-79: the polygons of the example, 0.22 to 4.02 km2"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[sources]]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "ch. II.1, eq. 2.1, pp. 15-16: metoda wieloboków równego opadu (after Byczkowski 1996)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[sources]]
+citation = "Thiessen, A.H. (1911). Precipitation averages for large areas. Monthly Weather Review 39(7), 1082-1084"
+access = "author-provided"
+
+[[variables]]
+name = "precipitation_mm"
+symbol = "P_i"
+unit = "mm"
+kind = "real_array"
+description = "Depth at each gauge."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 6.96
+low_inclusive = true
+high = 341.27
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's areal PMAXTP depth (Thiessen cells of the PMAXTP grid points of a catchment) over the depths of Hydrolog's PMAXTP fixtures for Kamiennik and Warsaw (POT, recorded in November 2026)"
+access = "open"
+locator = "tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm"
+
+[[variables]]
+name = "polygon_areas_km2"
+symbol = "A_i"
+unit = "km2"
+kind = "real_array"
+description = "Area of each gauge's polygon within the watershed."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 149000000.0
+test_reason = "the land area of the Earth, about 149 million km2"
+
+[variables.typical]
+low = 0.22
+low_inclusive = true
+high = 4.02
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 3.4, eq. 3.4.1 and Fig. 3.4.3(b), pp. 78-79: the polygons of the example, 0.22 to 4.02 km2"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[constraints]]
+name = "gauge_count"
+class = "precondition"
+text = "one polygon area for each gauge"
+
+[constraints.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 3.4, eq. 3.4.1 and Fig. 3.4.3(b), pp. 78-79: the polygons of the example, 0.22 to 4.02 km2"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[constraints]]
+name = "area_positive"
+class = "precondition"
+text = "sum(A_i) > 0: the polygons cover some of the watershed"
+
+[constraints.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 3.4, eq. 3.4.1 and Fig. 3.4.3(b), pp. 78-79: the polygons of the example, 0.22 to 4.02 km2"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[outputs]]
+name = "areal_precipitation_mm"
+unit = "mm"
+kind = "real"
+symbol = "\\bar{P}"
+description = "Mean precipitation over the watershed."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "weights"
+unit = "-"
+kind = "real_array"
+symbol = "w_i"
+description = "Weight of each gauge, summing to one."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases precipitation_mm-nan_element and polygon_areas_km2-nan_element: a gap is refused"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "the sums by math.fsum; limit exact_rational"
+
+[[oracles]]
+kind = "exact"
+description = "the weighted mean in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_areal_precipitation.py (limit exact_rational)"
+conventions = []

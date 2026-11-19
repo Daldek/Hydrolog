@@ -1,0 +1,178 @@
+[
+ {
+  "formula": "areal_mean_precipitation",
+  "case_id": "chow1988-fig3.4.3a",
+  "source": {
+   "citation": "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York",
+   "url": "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf",
+   "access": "open",
+   "locator": "sec. 3.4, Fig. 3.4.3(a), p. 78: the arithmetic mean of the four gauges within the watershed, 35.0 mm"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    20.0,
+    30.0,
+    40.0,
+    50.0
+   ]
+  },
+  "expected": {
+   "areal_precipitation_mm": 35.0
+  },
+  "printed_precision": {
+   "areal_precipitation_mm": 0.1
+  },
+  "conventions": [
+   "the gauges outside the watershed (P1 and P2') are left out, as the source does"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "thiessen_precipitation",
+  "case_id": "chow1988-fig3.4.3b",
+  "source": {
+   "citation": "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York",
+   "url": "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf",
+   "access": "open",
+   "locator": "sec. 3.4, eq. 3.4.1 and Fig. 3.4.3(b), pp. 78-79: polygon areas 0.22 to 4.02 km2, weighted sum 284.6, area 9.14 km2, 31.1 mm"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    10.0,
+    20.0,
+    30.0,
+    40.0,
+    50.0
+   ],
+   "polygon_areas_km2": [
+    0.22,
+    4.02,
+    1.35,
+    1.6,
+    1.95
+   ]
+  },
+  "expected": {
+   "areal_precipitation_mm": 31.1
+  },
+  "printed_precision": {
+   "areal_precipitation_mm": 0.1,
+   "polygon_areas_km2": 0.01
+  },
+  "tolerance": {
+   "abs": 0.0334,
+   "reason": "the areas are printed to 0.01 km2 each on its own: moving each by half a unit with the sign of P_i - P moves the mean by 0.005 sum|P_i - P| / sum(A_i), where the corners move them together"
+  },
+  "conventions": [
+   "depths in mm and areas in km2 as the source prints them"
+  ],
+  "second_source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "locator": "ch. II.1, eq. 2.1, pp. 15-16: the same weighted mean (the formula, not the example)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "isohyet_precipitation",
+  "case_id": "chow1988-fig3.4.3c",
+  "source": {
+   "citation": "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York",
+   "url": "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf",
+   "access": "open",
+   "locator": "sec. 3.4, Fig. 3.4.3(c), p. 80: zones of 0.88, 1.59, 2.24, 3.01, 1.22 and 0.20 km2 between the isohyets 10 to 50 mm, the edge zones estimated at 5 and 53 mm, 27.9 mm"
+  },
+  "inputs": {
+   "isohyet_values_mm": [
+    0.0,
+    10.0,
+    20.0,
+    30.0,
+    40.0,
+    50.0,
+    56.0
+   ],
+   "zone_areas_km2": [
+    0.88,
+    1.59,
+    2.24,
+    3.01,
+    1.22,
+    0.2
+   ]
+  },
+  "expected": {
+   "areal_precipitation_mm": 27.9
+  },
+  "printed_precision": {
+   "areal_precipitation_mm": 0.1,
+   "zone_areas_km2": 0.01
+  },
+  "conventions": [
+   "the edge zones' estimated means 5 and 53 mm are the means of the notional bounds 0 and 56 mm (the convention of the spec)"
+  ],
+  "second_source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "locator": "ch. II.1, eq. 2.2, pp. 16-17: the same mean of the zones (the formula, not the example)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "idw_precipitation",
+  "case_id": "nptel-iitr-hydrology-ex3.7",
+  "source": {
+   "citation": "Indian Institute of Technology Roorkee, NPTEL course Hydrology (105107129), module 3, lecture 4, 3.6 Estimation of missing data",
+   "locator": "eq. 3.12 and Example 3.7: gauges B, C and D at 28.0, 17.7 and 42.5 from station A, 98.9, 120.5 and 110.0 mm, weights 1/D^2, 113.9 mm",
+   "url": "https://archive.nptel.ac.in/content/storage2/courses/105107129/module3/lecture4/lecture4.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "station_x_m": [
+    28.0,
+    17.7,
+    42.5
+   ],
+   "station_y_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "precipitation_mm": [
+    98.9,
+    120.5,
+    110.0
+   ],
+   "target_x_m": 0.0,
+   "target_y_m": 0.0,
+   "power": 2.0
+  },
+  "expected": {
+   "point_precipitation_mm": 113.9
+  },
+  "printed_precision": {
+   "point_precipitation_mm": 0.1,
+   "station_x_m": 0.1,
+   "precipitation_mm": 0.1
+  },
+  "intermediate_rounding": [
+   {
+    "step": "the weights 1/D^2 printed and used to three figures (1.29e-3, 3.19e-3, 0.55e-3), the weighted depths to 0.1e-3: 570.7e-3 / 5.01e-3",
+    "effect": {
+     "point_precipitation_mm": 0.0575
+    }
+   }
+  ],
+  "tolerance": {
+   "abs": 0.0385,
+   "reason": "the distances are printed to 0.1 each on its own: the largest move of the estimate over the corners of the three distances, beyond the corners that move them together"
+  },
+  "conventions": [
+   "the source gives the distances, not the coordinates (unit not printed; the estimate does not depend on it): the gauges on the x axis at those distances from the point at the origin",
+   "p = 2, the inverse square of the source"
+  ],
+  "status": "single_source"
+ }
+]

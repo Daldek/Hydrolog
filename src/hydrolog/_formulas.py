@@ -72,6 +72,8 @@ __all__ = [
 ]
 
 FORMULA_MODULES: Final[tuple[str, ...]] = (
+    "hydrolog.precipitation.hietogram",
+    "hydrolog.precipitation.interpolation",
     "hydrolog.runoff.scs_cn",
     "hydrolog.runoff.cn_lookup",
     "hydrolog.time.concentration",
@@ -127,6 +129,15 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
 order of ``docs/FORMULAS.md``."""
 
 DELEGATED: Final[tuple[Delegated, ...]] = (
+    Delegated(
+        name="regularised_incomplete_beta",
+        library="scipy.special.betainc (the block integrals of beta_hyetograph)",
+        versions="scipy>=1.10 (1.18.1 locked)",
+        smoke_case="I_x(2, 5) at x = 1/4 is 1 - (3/4)^6 - 6 (1/4) (3/4)^5 = 1909/4096 "
+        "within an ulp (spec beta_hyetograph)",
+        test="tests/unit/test_formulas_hyetographs.py::"
+        "test_the_delegated_incomplete_beta_is_the_closed_form",
+    ),
     Delegated(
         name="nash_shape_root",
         library="scipy.optimize.brentq",

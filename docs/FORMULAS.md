@@ -6,6 +6,14 @@
 
 | Formula | Function | Status | Version | Mutation score |
 |---|---|---|---|---|
+| [Block (uniform) design hyetograph](#block_hyetograph) | `hydrolog.precipitation.hietogram.block_hyetograph` | oracle only | 1 | not measured |
+| [Triangular design hyetograph of Yen and Chow: block integrals of a triangle](#triangular_hyetograph) | `hydrolog.precipitation.hietogram.triangular_hyetograph` | referenced | 1 | not measured |
+| [Beta design hyetograph: block integrals of the Beta density](#beta_hyetograph) | `hydrolog.precipitation.hietogram.beta_hyetograph` | oracle only | 1 | not measured |
+| [Euler type II design storm of ATV-DVWK-A 118 from a depth-duration curve](#euler_ii_hyetograph) | `hydrolog.precipitation.hietogram.euler_ii_hyetograph` | referenced | 1 | not measured |
+| [Areal precipitation by the arithmetic mean of the gauges](#areal_mean_precipitation) | `hydrolog.precipitation.interpolation.areal_mean_precipitation` | referenced | 1 | not measured |
+| [Areal precipitation by the Thiessen polygons of the gauges](#thiessen_precipitation) | `hydrolog.precipitation.interpolation.thiessen_precipitation` | referenced | 1 | not measured |
+| [Precipitation at a point by inverse distance weighting of the gauges](#idw_precipitation) | `hydrolog.precipitation.interpolation.idw_precipitation` | referenced | 1 | not measured |
+| [Areal precipitation by the isohyet method](#isohyet_precipitation) | `hydrolog.precipitation.interpolation.isohyet_precipitation` | referenced | 1 | not measured |
 | [Potential maximum retention S of the SCS curve number](#scs_cn_retention) | `hydrolog.runoff.scs_cn.potential_retention` | referenced | 1 | not measured |
 | [Direct runoff of a storm by the SCS curve number](#scs_cn_runoff) | `hydrolog.runoff.scs_cn.runoff_depths` | referenced | 1 | not measured |
 | [Curve number of antecedent runoff condition I or III (Hawkins et al. 1985)](#scs_cn_amc) | `hydrolog.runoff.scs_cn.amc_curve_number` | referenced | 1 | not measured |
@@ -96,6 +104,637 @@
 | [Rating curve Q = a (H - H0)^b fitted to stage-discharge pairs by least squares on Q](#rating_curve_fit) | `hydrolog.hydrometrics.rating_curve.fit_rating_curve` | oracle only | 1 | not measured |
 | [Plausibility of a rating curve as the curve of one stage-discharge relation (Hydrolog's rule of ADR-0041)](#rating_curve_plausibility) | `hydrolog.hydrometrics.rating_curve.rating_curve_plausibility` | unreferenced | 1 | not measured |
 | [Rybczyński's zones of low, medium and high background water levels (NTW, STW, WTW)](#rybczynski_zones) | `hydrolog.hydrometrics.rating_curve.rybczynski_zones` | unreferenced | 1 | not measured |
+
+<a id="block_hyetograph"></a>
+### Block (uniform) design hyetograph
+
+`hydrolog.precipitation.hietogram.block_hyetograph` · family `scheme` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+P_j = \frac{P}{n},\quad n = \frac{T_d}{\Delta t},\quad t_j = j\,\Delta t
+$$
+
+Plain text: `P_j = P / n for j = 1..n, n = Td / dt; t_j = j dt`
+
+**Sources**
+
+- Wachulec, K., Licznar, P., Zaleski, J. and Wójcik, R. (2016). Przegląd Naukowy Inżynieria i Kształtowanie Środowiska 71, p. 74: the block rain of constant intensity, the design rain most often taken by designers of drainage systems (open)
+- Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt (open) <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `total_mm` | $P$ | mm | real | (0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [6.96, 341.27]: Hydrolog's test fixtures: the PMAXTP depths of IMGW-PIB for Kamiennik (51.015 N, 15.890 E) and Warsaw (52.23 N, 21.01 E), POT, recorded in November 2026, tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm over durations of 5 min to 72 h and probabilities of 0.01 to 99.9 % |
+| `duration_min` | $T_d$ | min | real | (0.0, inf), test bound high 43200.0 (ten times the longest duration of the PMAXTP tables, 72 h) | unstated | [5.0, 4320.0]: Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, ISBN 978-83-64979-48-4, p. 10: the tables give 16 durations, 5 min to 72 h |
+| `timestep_min` | $\Delta t$ | min | real | (0.0, inf), test bound high 43200.0 (ten times the longest duration of the PMAXTP tables, 72 h) | unstated | [5.0, 60.0]: The steps of the design storms of the sources: 5 min (DWD, Malitz 2009, slide 17; the shortest duration of the PMAXTP tables) to 1 h (KZGW 2017, example 6.1, p. 92), Malitz 2009 slide 17; KZGW 2017 p. 92 |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `step_within_duration` | precondition | dt <= Td: the storm holds at least one step | Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt |
+| `steps_representable` | precondition | Td / dt <= 1,000,000: at most a million steps | Hydrolog, ADR-0067: the precipitation formulas by specs, docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3 |
+| `whole_steps` | precondition | Td = n dt for a whole n, to 1e-9 of Td: the storm is made of whole steps | Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `intensities_mm` | mm | real_array | [0.0, inf) | 1e-09 |
+| `times_min` | min | real_array | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- depths in mm per step; t_j the end of step j, step j covers ((j - 1) dt, j dt]
+- the storm is made of whole steps: Td = n dt (ADR-0046)
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: the block storm is a design convention, not a model of observed storms
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `many_small_terms`: conservation steps_add_up and test_a_storm_of_a_million_steps_holds_its_total
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `total_mm` increasing
+- scaling `depth`: inputs times 2^e (`total_mm` e = 1.0) give outputs times 2^e (`intensities_mm` e = 1.0)
+- scaling `time`: inputs times 2^e (`duration_min` e = 1.0, `timestep_min` e = 1.0) give outputs times 2^e (`times_min` e = 1.0)
+- limit `exact_rational`: every step holds P / n in exact rational arithmetic
+- conservation `steps_add_up`: the steps hold the total
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: P / n in exact rational arithmetic (fractions) (`tests/unit/test_formulas_hyetographs.py (limit exact_rational)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="triangular_hyetograph"></a>
+### Triangular design hyetograph of Yen and Chow: block integrals of a triangle
+
+`hydrolog.precipitation.hietogram.triangular_hyetograph` · family `scheme` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+h = \frac{2P}{T_d},\quad t_a = r\,T_d,\quad F(u) = \begin{cases} u^2/r & u \le r \\ 1 - (1-u)^2/(1-r) & u > r \end{cases},\quad P_j = P\left[F\left(\tfrac{j}{n}\right) - F\left(\tfrac{j-1}{n}\right)\right]
+$$
+
+Plain text: `h = 2 P / Td, ta = r Td; cumulative share F(u) = u**2 / r for u <= r, else 1 - (1 - u)**2 / (1 - r), u = t / Td; P_j = P (F(j / n) - F((j - 1) / n)), n = Td / dt`
+
+**Sources**
+
+- Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.3 Triangular hyetograph method, eqs. 14.3.1 to 14.3.3, Example 14.3.1, pp. 462-465 (after Yen and Chow 1980) (open) <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+- Yen, B.C. and Chow, V.T. (1980). Design hyetographs for small drainage structures. Journal of the Hydraulics Division, ASCE 106(HY6), 1055-1076 (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `total_mm` | $P$ | mm | real | (0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [6.96, 341.27]: Hydrolog's test fixtures: the PMAXTP depths of IMGW-PIB for Kamiennik (51.015 N, 15.890 E) and Warsaw (52.23 N, 21.01 E), POT, recorded in November 2026, tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm over durations of 5 min to 72 h and probabilities of 0.01 to 99.9 % |
+| `duration_min` | $T_d$ | min | real | (0.0, inf), test bound high 43200.0 (ten times the longest duration of the PMAXTP tables, 72 h) | unstated | [5.0, 4320.0]: Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, ISBN 978-83-64979-48-4, p. 10: the tables give 16 durations, 5 min to 72 h |
+| `timestep_min` | $\Delta t$ | min | real | (0.0, inf), test bound high 43200.0 (ten times the longest duration of the PMAXTP tables, 72 h) | unstated | [5.0, 60.0]: The steps of the design storms of the sources: 5 min (DWD, Malitz 2009, slide 17; the shortest duration of the PMAXTP tables) to 1 h (KZGW 2017, example 6.1, p. 92), Malitz 2009 slide 17; KZGW 2017 p. 92 |
+| `peak_position` | $r$ | - | real | (0.0, 1.0) | unstated | [0.294, 0.5]: Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, Table 14.3.2, p. 464: storm advancement coefficients r of 0.294 to 0.480 for cities of the USA, India and Canada; Hydrolog's default 0.5 puts the peak at the centre |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `step_within_duration` | precondition | dt <= Td: the storm holds at least one step | Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt |
+| `steps_representable` | precondition | Td / dt <= 1,000,000: at most a million steps | Hydrolog, ADR-0067: the precipitation formulas by specs, docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3 |
+| `whole_steps` | precondition | Td = n dt for a whole n, to 1e-9 of Td: the storm is made of whole steps | Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt |
+| `peak_intensity_finite` | precondition | 2 P / Td is a finite intensity in float64 (a storm of a fraction of a second of 1e-300 mm or more is beyond it) | Hydrolog, ADR-0067: the precipitation formulas by specs, docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `intensities_mm` | mm | real_array | [0.0, inf) | 1e-09 |
+| `times_min` | min | real_array | (0.0, inf) | 4 ulp of the bound |
+| `peak_intensity_mm_per_h` | mm/h | real | [0.0, inf) | 4 ulp of the bound |
+| `peak_time_min` | min | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- depths in mm per step; t_j the end of step j; h in mm/h through the units table
+- each step holds the depth the continuous triangle gives it, the difference of the cumulative share at its ends (ADR-0046); the triangle is not sampled
+- the storm is made of whole steps: Td = n dt (ADR-0046)
+
+**Assumptions**
+
+None stated.
+
+**Validation:** Chow et al. (1988, p. 464) tabulate r fitted to storms of cities of the USA, India and Canada; the triangle itself is a design shape and the sources give no error statistic of it
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `difference_denominator`: range cases peak_position-physical_low_inside and physical_high_inside: r next to 0 and next to 1 divide by r and 1 - r and stay finite
+- `many_small_terms`: conservation steps_add_up and test_a_storm_of_a_million_steps_holds_its_total
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `total_mm` increasing
+- scaling `depth`: inputs times 2^e (`total_mm` e = 1.0) give outputs times 2^e (`intensities_mm` e = 1.0, `peak_intensity_mm_per_h` e = 1.0)
+- scaling `time`: inputs times 2^e (`duration_min` e = 1.0, `timestep_min` e = 1.0) give outputs times 2^e (`times_min` e = 1.0, `peak_time_min` e = 1.0, `peak_intensity_mm_per_h` e = -1.0)
+- limit `exact_rational`: the steps equal the block integrals of the triangle in exact rational arithmetic
+- conservation `steps_add_up`: the steps hold the total
+- symmetry `mirror`: the peak at 1 - r gives the steps in reverse order
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/hyetographs-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the block integrals of the triangle in exact rational arithmetic (fractions) (`tests/unit/test_formulas_hyetographs.py (limit exact_rational)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="beta_hyetograph"></a>
+### Beta design hyetograph: block integrals of the Beta density
+
+`hydrolog.precipitation.hietogram.beta_hyetograph` · family `scheme` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+P_j = P\left[I_{j/n}(\alpha, \beta) - I_{(j-1)/n}(\alpha, \beta)\right],\quad I_u(\alpha, \beta) = \frac{1}{B(\alpha, \beta)}\int_0^u s^{\alpha - 1}(1 - s)^{\beta - 1}\,ds
+$$
+
+Plain text: `P_j = P (I_(j / n)(alpha, beta) - I_((j - 1) / n)(alpha, beta)), n = Td / dt, I the regularised incomplete Beta function: the integral of the density u**(alpha - 1) (1 - u)**(beta - 1) / B(alpha, beta) over the step, u = t / Td`
+
+**Sources**
+
+- KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), ch. II.3, eqs. 2.20-2.22, p. 25 (after Węglarczyk 1993); Fig. 2.7, p. 26 (open) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+- Węglarczyk, S. (1993), as cited by KZGW (2017) (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `total_mm` | $P$ | mm | real | (0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [6.96, 341.27]: Hydrolog's test fixtures: the PMAXTP depths of IMGW-PIB for Kamiennik (51.015 N, 15.890 E) and Warsaw (52.23 N, 21.01 E), POT, recorded in November 2026, tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm over durations of 5 min to 72 h and probabilities of 0.01 to 99.9 % |
+| `duration_min` | $T_d$ | min | real | (0.0, inf), test bound high 43200.0 (ten times the longest duration of the PMAXTP tables, 72 h) | unstated | [5.0, 4320.0]: Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, ISBN 978-83-64979-48-4, p. 10: the tables give 16 durations, 5 min to 72 h |
+| `timestep_min` | $\Delta t$ | min | real | (0.0, inf), test bound high 43200.0 (ten times the longest duration of the PMAXTP tables, 72 h) | unstated | [5.0, 60.0]: The steps of the design storms of the sources: 5 min (DWD, Malitz 2009, slide 17; the shortest duration of the PMAXTP tables) to 1 h (KZGW 2017, example 6.1, p. 92), Malitz 2009 slide 17; KZGW 2017 p. 92 |
+| `alpha` | $\alpha$ | - | real | (0.0, inf), test bound high 1000.0 (a hundred times the largest parameter of KZGW (2017) Fig. 2.7, 10) | unstated | [1.0, 10.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), Fig. 2.7, p. 26: typical Beta shapes (1, 10), (2, 10), (6, 6) and (10, 2); Hydrolog's default (2, 5) |
+| `beta` | $\beta$ | - | real | (0.0, inf), test bound high 1000.0 (a hundred times the largest parameter of KZGW (2017) Fig. 2.7, 10) | unstated | [2.0, 10.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), Fig. 2.7, p. 26: typical Beta shapes (1, 10), (2, 10), (6, 6) and (10, 2); Hydrolog's default (2, 5) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `step_within_duration` | precondition | dt <= Td: the storm holds at least one step | Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt |
+| `steps_representable` | precondition | Td / dt <= 1,000,000: at most a million steps | Hydrolog, ADR-0067: the precipitation formulas by specs, docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3 |
+| `whole_steps` | precondition | Td = n dt for a whole n, to 1e-9 of Td: the storm is made of whole steps | Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `intensities_mm` | mm | real_array | [0.0, inf) | 1e-09 |
+| `times_min` | min | real_array | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- depths in mm per step; t_j the end of step j
+- each step holds the integral of the density over it (ADR-0046); KZGW (2017, eq. 2.20) evaluates the density at the ends of the steps, which shifts the storm by half a step and is not followed
+- the storm is made of whole steps: Td = n dt (ADR-0046)
+
+**Assumptions**
+
+- KZGW (2017) splits a daily total into hourly steps of a hypothetical flood; Hydrolog takes any duration and step
+
+**Validation:** KZGW (2017, p. 26) fits alpha and beta so that the peak of the hydrograph of the storm equals the flow of the same probability; the sources give no error statistic of the shape against observed storms
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `many_small_terms`: conservation steps_add_up and test_a_storm_of_a_million_steps_holds_its_total
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `total_mm` increasing
+- scaling `depth`: inputs times 2^e (`total_mm` e = 1.0) give outputs times 2^e (`intensities_mm` e = 1.0)
+- scaling `time`: inputs times 2^e (`duration_min` e = 1.0, `timestep_min` e = 1.0) give outputs times 2^e (`times_min` e = 1.0)
+- limit `uniform`: alpha = beta = 1 gives the block storm
+- limit `exact_integrals`: the steps equal the integrals of the density in exact arithmetic: rational for whole alpha and beta, a closed form at 50 digits for alpha = 1/2
+- conservation `steps_add_up`: the steps hold the total
+- symmetry `swap`: swapping alpha and beta gives the steps in reverse order
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the block integrals in exact rational arithmetic for whole alpha and beta (the binomial sum of I_u) and in closed form at 50 digits (decimal) for alpha = 1/2 (`tests/unit/test_formulas_hyetographs.py (limit exact_integrals)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="euler_ii_hyetograph"></a>
+### Euler type II design storm of ATV-DVWK-A 118 from a depth-duration curve
+
+`hydrolog.precipitation.hietogram.euler_ii_hyetograph` · family `scheme` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\Delta h_j = h(j\,\Delta t) - h((j-1)\,\Delta t),\quad k = \lfloor 0.3\,n \rfloor,\quad P_{k-i} = \Delta h_{i+1}\ (i = 0..k),\quad P_{i-1} = \Delta h_i\ (i = k+2..n)
+$$
+
+Plain text: `h(t) of the curve at t = j dt (depth_duration_interpolation); increments dh_j = h(j dt) - h((j - 1) dt), j = 1..n, n = Td / dt; peak block k = floor(0.3 n) (from 0, the interval from 0.3 Td rounded down to a step); block k holds dh_1, blocks k - 1 .. 0 hold dh_2 .. dh_(k+1), blocks k + 1 .. n - 1 hold dh_(k+2) .. dh_n; the total is h(Td)`
+
+**Sources**
+
+- ATV-DVWK (2001). Arbeitsblatt ATV-DVWK-A 118, Kap. 5.2.2.1, as quoted by Thewes, K. (2005). Diplomarbeit, Fachhochschule Trier, p. 10: the interval of the highest intensity begins at 0.3 of the duration rounded down to a multiple of 5 min; the next lower intervals follow to the left back to t = 0, the others to the right (open) <https://www.hochschule-trier.de/fileadmin/Hauptcampus/Fachbereich_BL/BI/Personen/Erzmann/Abschlussarbeiten/DA-Thewes.pdf>
+- Malitz, G. (2009). Stark- und Extremniederschlag im Kurzzeitbereich. Deutscher Wetterdienst, Hydrometeorologie; slides of the 2. Trierer Workshop zur Niederschlag-Abfluss-Modellierung, slide 17: the highest 5-min value at position 4, the three next higher to its left, the rest decreasing to its right, the sum of the three largest the depth of 15 min; slides 18 and 19: two storms of 60 min (open) <https://www.uni-trier.de/fileadmin/fb6/prof/PHY/PDF-Dateien/AG_ModSim/N-A-Workshop_2009/Malitz.pdf>
+- Kaźmierczak, B. and Kotowski, A. (2012). Weryfikacja przepustowości kanalizacji deszczowej w modelowaniu hydrodynamicznym. Oficyna Wydawnicza Politechniki Wrocławskiej, Wrocław, pp. 31-32 (the construction); Tab. 4.6, pp. 65-66 (eight storms of 75 to 180 min) (open) <https://www.dbc.wroc.pl/Content/19608/PDF/kazmierczak_weryfikacja.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `durations_min` | $D_i$ | min | real_array | (0.0, inf), test bound high 43200.0 (ten times the longest duration of the PMAXTP tables, 72 h) | unstated | [5.0, 4320.0]: Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, ISBN 978-83-64979-48-4, p. 10: the tables give 16 durations, 5 min to 72 h |
+| `depths_mm` | $h_i$ | mm | real_array | [0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [6.96, 341.27]: Hydrolog's test fixtures: the PMAXTP depths of IMGW-PIB for Kamiennik (51.015 N, 15.890 E) and Warsaw (52.23 N, 21.01 E), POT, recorded in November 2026, tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm over durations of 5 min to 72 h and probabilities of 0.01 to 99.9 % |
+| `duration_min` | $T_d$ | min | real | (0.0, inf), test bound high 43200.0 (ten times the longest duration of the PMAXTP tables, 72 h) | unstated | [5.0, 4320.0]: Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, ISBN 978-83-64979-48-4, p. 10: the tables give 16 durations, 5 min to 72 h |
+| `timestep_min` | $\Delta t$ | min | real | (0.0, inf), test bound high 43200.0 (ten times the longest duration of the PMAXTP tables, 72 h) | unstated | [5.0, 60.0]: The steps of the design storms of the sources: 5 min (DWD, Malitz 2009, slide 17; the shortest duration of the PMAXTP tables) to 1 h (KZGW 2017, example 6.1, p. 92), Malitz 2009 slide 17; KZGW 2017 p. 92 |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `depths_not_decreasing` | physical | h_(i+1) >= h_i: the depth of a longer duration is never smaller | Malitz, G. (2009). Stark- und Extremniederschlag im Kurzzeitbereich. Deutscher Wetterdienst, Hydrometeorologie; slides of the 2. Trierer Workshop zur Niederschlag-Abfluss-Modellierung, slide 17: the highest 5-min value at position 4, the three next higher to its left, the rest decreasing to its right, the sum of the three largest the depth of 15 min; slides 18 and 19: two storms of 60 min |
+| `curve_lengths` | precondition | one depth for each duration of the curve | ATV-DVWK (2001). Arbeitsblatt ATV-DVWK-A 118, Kap. 5.2.2.1, as quoted by Thewes, K. (2005). Diplomarbeit, Fachhochschule Trier, p. 10: the interval of the highest intensity begins at 0.3 of the duration rounded down to a multiple of 5 min; the next lower intervals follow to the left back to t = 0, the others to the right |
+| `durations_increasing` | precondition | D_(i+1) > D_i: each duration of the curve once, in order | ATV-DVWK (2001). Arbeitsblatt ATV-DVWK-A 118, Kap. 5.2.2.1, as quoted by Thewes, K. (2005). Diplomarbeit, Fachhochschule Trier, p. 10: the interval of the highest intensity begins at 0.3 of the duration rounded down to a multiple of 5 min; the next lower intervals follow to the left back to t = 0, the others to the right |
+| `step_within_duration` | precondition | dt <= Td: the storm holds at least one step | Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt |
+| `steps_representable` | precondition | Td / dt <= 1,000,000: at most a million steps | Hydrolog, ADR-0067: the precipitation formulas by specs, docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3 |
+| `whole_steps` | precondition | Td = n dt for a whole n, to 1e-9 of Td: the storm is made of whole steps | Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt |
+| `curve_covers` | precondition | D_1 <= dt and D_m >= Td: the curve reaches from the step to the duration, nothing is extrapolated | Hydrolog, ADR-0067: the precipitation formulas by specs, docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3 |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `peak_start_share` | $0.3$ | 3/10 | - | ATV-DVWK (2001). Arbeitsblatt ATV-DVWK-A 118, Kap. 5.2.2.1, as quoted by Thewes, K. (2005). Diplomarbeit, Fachhochschule Trier, p. 10: the interval of the highest intensity begins at 0.3 of the duration rounded down to a multiple of 5 min; the next lower intervals follow to the left back to t = 0, the others to the right |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `intensities_mm` | mm | real_array | [0.0, inf) | 1e-09 |
+| `times_min` | min | real_array | (0.0, inf) | 4 ulp of the bound |
+| `total_mm` | mm | real | [0.0, inf) | 4 ulp of the bound |
+| `peak_start_min` | min | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- depths in mm per step; t_j the end of step j
+- the increments keep the order of their durations and are not sorted, so the m steps that end with the peak hold h(m dt) also where interpolation makes an increment grow (ADR-0042, as the itwh software); for a curve whose increments decrease this is the sorted arrangement of A 118 and DWD
+- the peak starts at 0.3 Td rounded down to a whole step (A 118 as quoted: to a multiple of 5 min); the itwh software puts the peak of 15 min in the second step and Kaźmierczak and Kotowski (2012) end it at Td / 3, a step later for Td of 165 and 180 min
+- the total is h(Td) of the curve; the curve is of one probability
+- the storm is made of whole steps: Td = n dt (ADR-0046)
+
+**Assumptions**
+
+- A 118 asks for a duration of at least twice the longest flow time; the Polish models of Wartalska and Kotowski (2020) span 30 to 180 min; the sources state no range of the formula's inputs, so none gives a notice
+
+**Validation:** none: a design storm of drainage design (A 118); Licznar and Szeląg (2014, abstract) find its shape departs from observed storms beyond 180 min
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `difference_denominator`: durations_increasing refuses equal durations, whose ln ratio is 0; a step end within 1e-9 of a point takes its depth
+- `gap_propagation`: type cases durations_min-nan_element and depths_mm-nan_element: a gap is refused
+- `many_small_terms`: conservation steps_add_up and windows_hold_design_depths
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `depth`: inputs times 2^e (`depths_mm` e = 1.0) give outputs times 2^e (`intensities_mm` e = 1.0, `total_mm` e = 1.0)
+- scaling `time`: inputs times 2^e (`durations_min` e = 1.0, `duration_min` e = 1.0, `timestep_min` e = 1.0) give outputs times 2^e (`times_min` e = 1.0, `peak_start_min` e = 1.0)
+- limit `a118_sorted`: for a curve whose increments decrease, the storm DWD describes: the largest increment at the peak, the next larger ones before it in ascending order, the rest after it in descending order
+- limit `peak_start`: the peak interval starts at 0.3 Td rounded down to a step: 0, 0, 15, 45, 45, 50 and 160 min for 5 to 540 min in steps of 5 min
+- conservation `steps_add_up`: the steps hold h(Td), the total
+- conservation `windows_hold_design_depths`: the m steps around the peak (back to t = 0, then onward) hold h(m dt) of the curve for every m (Malitz 2009, slide 17)
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/hyetographs-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the arrangement DWD describes (sorted increments) on a curve interpolated in ln D at 40 digits (decimal), for curves whose increments decrease (`tests/unit/test_formulas_hyetographs.py (limit a118_sorted)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="areal_mean_precipitation"></a>
+### Areal precipitation by the arithmetic mean of the gauges
+
+`hydrolog.precipitation.interpolation.areal_mean_precipitation` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\bar{P} = \frac{1}{n}\sum_{i=1}^{n} P_i
+$$
+
+Plain text: `P = (P_1 + ... + P_n) / n over the gauges in the watershed`
+
+**Sources**
+
+- Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, Fig. 3.4.3(a), p. 78: the arithmetic mean of the gauges within the watershed (open) <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `precipitation_mm` | $P_i$ | mm | real_array | [0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [6.96, 341.27]: Hydrograf's areal PMAXTP depth (Thiessen cells of the PMAXTP grid points of a catchment) over the depths of Hydrolog's PMAXTP fixtures for Kamiennik and Warsaw (POT, recorded in November 2026), tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `areal_precipitation_mm` | mm | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- depths in mm; only the gauges within the watershed are given (Chow et al. 1988 leave out the gauges outside it)
+- the sum by math.fsum, correctly rounded
+
+**Assumptions**
+
+None stated.
+
+**Validation:** Chow et al. (1988, p. 78) find the method satisfactory where the gauges are uniformly spread over flat terrain; no error statistic
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `gap_propagation`: type case precipitation_mm-nan_element: a gap is refused
+- `many_small_terms`: limit exact_rational: seven depths of 0.1 mm against the exact rational mean
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `precipitation_mm` increasing
+- scaling `depth`: inputs times 2^e (`precipitation_mm` e = 1.0) give outputs times 2^e (`areal_precipitation_mm` e = 1.0)
+- limit `exact_rational`: the mean equals the mean in exact rational arithmetic
+- symmetry `order`: the order of the gauges does not matter
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/areal-precipitation-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the mean in exact rational arithmetic (fractions) (`tests/unit/test_formulas_areal_precipitation.py (limit exact_rational)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="thiessen_precipitation"></a>
+### Areal precipitation by the Thiessen polygons of the gauges
+
+`hydrolog.precipitation.interpolation.thiessen_precipitation` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\bar{P} = \frac{\sum_i A_i P_i}{\sum_i A_i},\quad w_i = \frac{A_i}{\sum_j A_j}
+$$
+
+Plain text: `P = sum(A_i P_i) / sum(A_i); w_i = A_i / sum(A_i)`
+
+**Sources**
+
+- Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, eq. 3.4.1 and Fig. 3.4.3(b), pp. 78-79: the polygons of the example, 0.22 to 4.02 km2 (open) <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+- KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), ch. II.1, eq. 2.1, pp. 15-16: metoda wieloboków równego opadu (after Byczkowski 1996) (open) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+- Thiessen, A.H. (1911). Precipitation averages for large areas. Monthly Weather Review 39(7), 1082-1084 (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `precipitation_mm` | $P_i$ | mm | real_array | [0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [6.96, 341.27]: Hydrograf's areal PMAXTP depth (Thiessen cells of the PMAXTP grid points of a catchment) over the depths of Hydrolog's PMAXTP fixtures for Kamiennik and Warsaw (POT, recorded in November 2026), tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm |
+| `polygon_areas_km2` | $A_i$ | km2 | real_array | [0.0, inf), test bound high 149000000.0 (the land area of the Earth, about 149 million km2) | unstated | [0.22, 4.02]: Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, eq. 3.4.1 and Fig. 3.4.3(b), pp. 78-79: the polygons of the example, 0.22 to 4.02 km2 |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `gauge_count` | precondition | one polygon area for each gauge | Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, eq. 3.4.1 and Fig. 3.4.3(b), pp. 78-79: the polygons of the example, 0.22 to 4.02 km2 |
+| `area_positive` | precondition | sum(A_i) > 0: the polygons cover some of the watershed | Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, eq. 3.4.1 and Fig. 3.4.3(b), pp. 78-79: the polygons of the example, 0.22 to 4.02 km2 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `areal_precipitation_mm` | mm | real | [0.0, inf) | 4 ulp of the bound |
+| `weights` | - | real_array | [0.0, 1.0] | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- depths in mm, areas in km2 (any one unit gives the same mean)
+- the weights are the areas over their sum: KZGW (2017, eq. 2.1) divides by the area of the watershed, the same when the polygons tile it
+- the polygons are given; drawing them is not part of the formula
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: Chow et al. (1988, p. 78) describe the method as more accurate than the arithmetic mean where the gauges are unevenly spread, without an error statistic
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `gap_propagation`: type cases precipitation_mm-nan_element and polygon_areas_km2-nan_element: a gap is refused
+- `many_small_terms`: the sums by math.fsum; limit exact_rational
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `precipitation_mm` increasing
+- scaling `depth`: inputs times 2^e (`precipitation_mm` e = 1.0) give outputs times 2^e (`areal_precipitation_mm` e = 1.0)
+- scaling `area`: inputs times 2^e (`polygon_areas_km2` e = 1.0) give outputs times 2^e (none)
+- limit `exact_rational`: the weighted mean equals it in exact rational arithmetic
+- limit `equal_areas`: equal polygons give the arithmetic mean
+- conservation `weights_add_up`: the weights sum to one
+- symmetry `order`: the order of the gauges does not matter
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/areal-precipitation-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the weighted mean in exact rational arithmetic (fractions) (`tests/unit/test_formulas_areal_precipitation.py (limit exact_rational)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="idw_precipitation"></a>
+### Precipitation at a point by inverse distance weighting of the gauges
+
+`hydrolog.precipitation.interpolation.idw_precipitation` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+P = \sum_i w_i P_i,\quad w_i = \frac{d_i^{-p}}{\sum_j d_j^{-p}},\quad d_i = \sqrt{(x_i - x)^2 + (y_i - y)^2}
+$$
+
+Plain text: `P = sum(w_i P_i), w_i = d_i**-p / sum(d_j**-p), d_i the distance of gauge i from the point; at the point of a gauge (d_i < 1e-10 m) P is the mean of the gauges there`
+
+**Sources**
+
+- Indian Institute of Technology Roorkee, NPTEL course Hydrology (105107129), module 3, lecture 4, 3.6 Estimation of missing data, eq. 3.12 (the distance power method, weights 1/D^2) and Example 3.7 (open) <https://archive.nptel.ac.in/content/storage2/courses/105107129/module3/lecture4/lecture4.pdf>
+- US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual: Inverse distance gage weighting, the weight of a gage, 1/d^2 over the sum of 1/d^2 of the gages (open) <https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/meteorology/precipitation/inverse-distance-gage-weighting>
+- Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, p. 79: the reciprocal-distance-squared method (Wei and McGuinness 1973); HEC-HMS's inverse distance gage weighting and Hydrolog's default use p = 2 (open) <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+- Shepard, D. (1968). A two-dimensional interpolation function for irregularly-spaced data. Proceedings of the 1968 23rd ACM National Conference, 517-524 (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `station_x_m` | $x_i$ | m | real_array | (-inf, inf), test bound low -10000000.0 and high 10000000.0 (the coordinates of a projected system lie within half the circumference of the Earth, 2e7 m, of its origin; 1e7 m tests it) | unstated | [545900.0, 562900.0]: Hydrolog's catalog example of precip areal: three gauges near Kraków in EPSG:2180, src/hydrolog/catalog/groups/precip.py, the examples of precip areal: x 545,900 to 562,900 m, y 229,400 to 249,700 m |
+| `station_y_m` | $y_i$ | m | real_array | (-inf, inf), test bound low -10000000.0 and high 10000000.0 (the coordinates of a projected system lie within half the circumference of the Earth, 2e7 m, of its origin; 1e7 m tests it) | unstated | [229400.0, 249700.0]: Hydrolog's catalog example of precip areal: three gauges near Kraków in EPSG:2180, src/hydrolog/catalog/groups/precip.py, the examples of precip areal: x 545,900 to 562,900 m, y 229,400 to 249,700 m |
+| `precipitation_mm` | $P_i$ | mm | real_array | [0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [6.96, 341.27]: Hydrograf's areal PMAXTP depth (Thiessen cells of the PMAXTP grid points of a catchment) over the depths of Hydrolog's PMAXTP fixtures for Kamiennik and Warsaw (POT, recorded in November 2026), tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm |
+| `target_x_m` | $x$ | m | real | (-inf, inf), test bound low -10000000.0 and high 10000000.0 (the coordinates of a projected system lie within half the circumference of the Earth, 2e7 m, of its origin; 1e7 m tests it) | unstated | [545900.0, 562900.0]: Hydrolog's catalog example of precip areal: three gauges near Kraków in EPSG:2180, src/hydrolog/catalog/groups/precip.py, the examples of precip areal: x 545,900 to 562,900 m, y 229,400 to 249,700 m |
+| `target_y_m` | $y$ | m | real | (-inf, inf), test bound low -10000000.0 and high 10000000.0 (the coordinates of a projected system lie within half the circumference of the Earth, 2e7 m, of its origin; 1e7 m tests it) | unstated | [229400.0, 249700.0]: Hydrolog's catalog example of precip areal: three gauges near Kraków in EPSG:2180, src/hydrolog/catalog/groups/precip.py, the examples of precip areal: x 545,900 to 562,900 m, y 229,400 to 249,700 m |
+| `power` | $p$ | - | real | (0.0, inf), test bound high 100.0 (p = 100 already gives the nearest gauge; fifty times the usual p = 2) | unstated | [2.0, 2.0]: Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, p. 79: the reciprocal-distance-squared method (Wei and McGuinness 1973); HEC-HMS's inverse distance gage weighting and Hydrolog's default use p = 2 |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `station_count` | precondition | two coordinates and a depth for each gauge | Indian Institute of Technology Roorkee, NPTEL course Hydrology (105107129), module 3, lecture 4, 3.6 Estimation of missing data, eq. 3.12 (the distance power method, weights 1/D^2) and Example 3.7 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `point_precipitation_mm` | mm | real | [0.0, inf) | 4 ulp of the bound |
+| `weights` | - | real_array | [0.0, 1.0] | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- coordinates in metres of one projected system (EPSG:2180 in Poland); the weights depend only on ratios of distances, so any one unit gives the same estimate but for the threshold of a gauge at the point, 1e-10 of the unit
+- every gauge given is used: HEC-HMS's nearest gauge per quadrant and a largest distance are choices of the caller; gauges at the point share it equally
+- the weights from ln d relative to the nearest gauge, so d**-p neither overflows nor underflows to a zero sum
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: the sources give the method without an error statistic; HEC-HMS uses it for real-time forecasting
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: limit at_a_gauge: a distance of 0 gives the gauge's depth, not 1/0
+- `exp_overflow`: range case power-physical_high_test_bound: p = 100 over distances of kilometres stays finite
+- `gap_propagation`: type cases of every array, nan_element: a gap is refused
+- `many_small_terms`: the sums by math.fsum
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `precipitation_mm` increasing
+- scaling `depth`: inputs times 2^e (`precipitation_mm` e = 1.0) give outputs times 2^e (`point_precipitation_mm` e = 1.0)
+- scaling `coordinates`: inputs times 2^e (`station_x_m` e = 1.0, `station_y_m` e = 1.0, `target_x_m` e = 1.0, `target_y_m` e = 1.0) give outputs times 2^e (none)
+- limit `exact_decimal`: the estimate equals the weights d^-p computed at 50 digits
+- limit `at_a_gauge`: at a gauge the estimate is the gauge's depth (Shepard 1968)
+- conservation `weights_add_up`: the weights sum to one
+- symmetry `order`: the order of the gauges does not matter
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/areal-precipitation-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the weights d^-p from square roots and logarithms at 50 digits (decimal) (`tests/unit/test_formulas_areal_precipitation.py (limit exact_decimal)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="isohyet_precipitation"></a>
+### Areal precipitation by the isohyet method
+
+`hydrolog.precipitation.interpolation.isohyet_precipitation` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\bar{P} = \frac{\sum_i A_i \frac{v_i + v_{i+1}}{2}}{\sum_i A_i}
+$$
+
+Plain text: `P = sum(A_i (v_i + v_(i+1)) / 2) / sum(A_i), zone i between the isohyets v_i and v_(i+1)`
+
+**Sources**
+
+- Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, Fig. 3.4.3(c), p. 80: the isohyets 10 to 50 mm and the zones of 0.20 to 3.01 km2 of the example (open) <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+- KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), ch. II.1, eq. 2.2, pp. 16-17: metoda izohiet, the mean between neighbouring isohyets times the area between them (after Byczkowski 1996) (open) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `isohyet_values_mm` | $v_i$ | mm | real_array | [0.0, inf), test bound high 1825.0 (the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)) | unstated | [10.0, 50.0]: Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, Fig. 3.4.3(c), p. 80: the isohyets 10 to 50 mm and the zones of 0.20 to 3.01 km2 of the example |
+| `zone_areas_km2` | $A_i$ | km2 | real_array | [0.0, inf), test bound high 149000000.0 (the land area of the Earth, about 149 million km2) | unstated | [0.2, 3.01]: Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, Fig. 3.4.3(c), p. 80: the isohyets 10 to 50 mm and the zones of 0.20 to 3.01 km2 of the example |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `zone_count` | precondition | n isohyets bound n - 1 zones | Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, Fig. 3.4.3(c), p. 80: the isohyets 10 to 50 mm and the zones of 0.20 to 3.01 km2 of the example |
+| `area_positive` | precondition | sum(A_i) > 0: the zones cover some of the watershed | Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, Fig. 3.4.3(c), p. 80: the isohyets 10 to 50 mm and the zones of 0.20 to 3.01 km2 of the example |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `areal_precipitation_mm` | mm | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- depths in mm, areas in km2 (any one unit gives the same mean, so shares of the watershed do too)
+- the mean of a zone is the mean of its two isohyets (KZGW 2017, eq. 2.2); an edge zone takes a notional bound that makes that mean the depth estimated for it (Chow et al. 1988, Fig. 3.4.3c: bounds 0 and 56 mm for 5 and 53 mm)
+- the areas are divided by their sum, the watershed's area when the zones tile it
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: Chow et al. (1988, p. 80) call the method the most accurate of the three where the isohyets are drawn with the topography; no error statistic
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `gap_propagation`: type cases of both arrays, nan_element: a gap is refused
+- `many_small_terms`: the sums by math.fsum; limit exact_rational
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `isohyet_values_mm` increasing
+- scaling `depth`: inputs times 2^e (`isohyet_values_mm` e = 1.0) give outputs times 2^e (`areal_precipitation_mm` e = 1.0)
+- scaling `area`: inputs times 2^e (`zone_areas_km2` e = 1.0) give outputs times 2^e (none)
+- limit `exact_rational`: the mean equals it in exact rational arithmetic
+- symmetry `order`: the isohyets and zones read from the other end give the same mean
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/areal-precipitation-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the area-weighted mean of the zones in exact rational arithmetic (fractions) (`tests/unit/test_formulas_areal_precipitation.py (limit exact_rational)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
 
 <a id="scs_cn_retention"></a>
 ### Potential maximum retention S of the SCS curve number
@@ -7275,6 +7914,9 @@ None.
 
 | Formula | Function | Definition | Constants | Convention | Source |
 |---|---|---|---|---|---|
+| `depth_duration_interpolation` | `hydrolog.precipitation.hietogram.EulerIIHietogram.depth_mm` | the depth of a depth-duration curve at a duration between two of its points D_i <= D <= D_(i+1): h = h_i + (h_(i+1) - h_i) ln(D / D_i) / ln(D_(i+1) / D_i); a duration within 1e-9 of a point takes its depth; none outside the curve | – | linear in ln D (ADR-0042): it reproduces the itwh KOSTRA-DWD 2010R printouts of Göllheim to 0.07 mm from their depths printed to 0.1 mm, where linear in D misses by 0.16 mm; the DWA MDMS tool interpolates linearly in D and HEC-HMS in log-log; nothing is extrapolated | itwh KOSTRA-DWD 2010R 3.2.3, model rains of Göllheim (T = 5 a), Anhang III of a planning procedure of Rhineland-Palatinate, pp. 2-5 (storms of 15 to 90 min) against p. 6 (depths hN) |
+| `pmaxtp_depth` | `hydrolog._pmaxtp.fetch_depth` | the depth of the PMAXTP table of IMGW-PIB for a point, a duration and a probability of exceedance of the tables, by POT or AMP, with the depths of the 16 durations at that probability: the depth-duration curve of euler_ii_hyetograph; nothing is computed or interpolated | – | p is a probability of exceedance in per cent (practice reads T = 100 / p years; IMGW-PIB documents no conversion of POT to annual probabilities); the depth is returned as IMGW-PIB gives it (0.01 mm); only the durations and probabilities of the tables; POT by default, which IMGW-PIB recommends for p >= 50 % and treats as equivalent to AMP below (p. 23). The row is declared here: hydrolog._pmaxtp imports no numerical library | Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, p. 10 (16 durations of 5 min to 72 h, 27 probabilities of 0.01 to 99.9 %), p. 23 (POT and AMP) |
+| `idw_grid_mean` | `hydrolog.precipitation.interpolation.areal_precipitation_idw` | the areal precipitation of a watershed as the arithmetic mean of the IDW estimates (idw_precipitation) at the points of a grid | – | the mean of the points is the mean over the watershed only for a regular grid of points inside it; every gauge is used at every point | Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, p. 79: an areal mean from values interpolated at grid points by the reciprocal-distance-squared method |
 | `weighted_cn` | `hydrolog.runoff.cn_lookup.calculate_weighted_cn` | CN_w = sum(A_j CN_j) / sum(A_j), the area-weighted mean CN of the parts | – | areas or shares in any one unit; a part of zero area counts nothing | USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10, example 10-4, p. 10-12 (also KZGW 2017 eq. 6.3) |
 | `hydrograph_volume` | `hydrolog.routing.hydrograph.Hydrograph.volume_m3` | the volume under the ordinates by the trapezoid rule: the step times the sum of the ordinates with the first and the last halved, in m3 | – | the discharge is linear between the ordinates; minutes to seconds by the units table | Hydrolog ADR-0008: routing conventions, docs/decisions/0008-routing-conventions.md, Hydrograph table, Balance and Stability |
 | `hydrograph_refinement` | `hydrolog.routing.hydrograph.Hydrograph.refined` | the hydrograph on a step divided into equal sub-steps, the new ordinates on the straight lines between the old ones | – | the old ordinates are kept exactly and the volume is unchanged; a scheme run on the sub-steps is read back at the original ordinates | Hydrolog ADR-0008: routing conventions, docs/decisions/0008-routing-conventions.md, Hydrograph table, Balance and Stability |
@@ -7373,6 +8015,7 @@ None.
 
 | Computation | Library | Versions | Smoke case | Test |
 |---|---|---|---|---|
+| regularised_incomplete_beta | scipy.special.betainc (the block integrals of beta_hyetograph) | scipy>=1.10 (1.18.1 locked) | I_x(2, 5) at x = 1/4 is 1 - (3/4)^6 - 6 (1/4) (3/4)^5 = 1909/4096 within an ulp (spec beta_hyetograph) | `tests/unit/test_formulas_hyetographs.py::test_the_delegated_incomplete_beta_is_the_closed_form` |
 | nash_shape_root | scipy.optimize.brentq | scipy>=1.10 (1.18.1 locked) | the root N of f(N) = (N-1)^N e^-(N-1) / Gamma(N) = f(2.55) on [1.1, 20] with xtol 1e-6 is 2.55 within 1e-6 (spec lutz) | `tests/unit/test_formulas_lutz.py::test_the_delegated_root_finder_finds_a_known_root` |
 | manning_normal_depth | scipy.optimize.brentq | scipy>=1.10 (1.18.1 locked) | the root ln y = 0 of ln K(e^u) - ln K(1) for Manning's conveyance A R^(2/3) of a rectangle 2 m wide on [-1, 1] with xtol 1e-15 is 0 within 1e-14 (spec manning_normal_flow) | `tests/unit/test_formulas_muskingum_cunge.py::test_the_delegated_root_finder_finds_a_known_root` |
 | kolmogorov_smirnov_test | scipy.stats.kstest (the K-S statistic and p-value of the flood and low-flow frequency analyses) | scipy>=1.10 (1.18.1 locked) | three values 0.05, 0.1 and 0.2 against the uniform distribution on [0, 1]: D = 0.8, the largest of i / n - u_i and u_i - (i - 1) / n, and the exact p = 2 (1 - D)^3 = 0.016 of D >= 2/3 | `tests/unit/test_formulas_flood_frequency.py::test_the_delegated_ks_test_gives_the_exact_statistic_and_p` |
