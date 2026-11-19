@@ -544,7 +544,7 @@ dobowe.
 - Stephens M.A. (1974). EDF statistics for goodness of fit and some comparisons. *Journal of the American
   Statistical Association* 69(347), 730–737. Niedostępne w otwartym dostępie.
 - Stute W., González Manteiga W., Presedo Quindimil M. (1993). Bootstrap based goodness-of-fit-tests.
-  *Metrika* 40, 243–256. Niedostępne w otwartym dostępie.
+  *Metrika* 40, 243–256. Skan w bibliotece EuDML: https://eudml.org/doc/176470
 - Virtanen P. i in. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python.
   *Nature Methods* 17, 261–272 (`scipy.stats`). https://docs.scipy.org/doc/scipy/reference/stats.html
 - Węglarczyk S. (red.) (2013). *Problemy obliczania przepływów ekstremalnych w zlewniach kontrolowanych
