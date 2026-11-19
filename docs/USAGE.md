@@ -421,8 +421,8 @@ here: the published table ends in the recession and `--extend-min 0` keeps its a
 
 `route cascade` sends the hydrograph through `--n` equal linear reservoirs in series, each with the
 storage `S = K O` (the Nash model of `uh nash`; with `n` equal to the reach length over
-`Q / (T S0 c)` it is the Kalinin-Milyukov method). `--n` need not be whole: 1 is one reservoir (the
-most attenuation) and a large `n` only delays the wave by `n K`. Give the time scale as one of two
+`Q / (T S0 c)` it is the Kalinin-Milyukov method). `--n` need not be whole: at the same mean delay `n K` a
+smaller `n` attenuates more (the variance is `n K²`) and a large `n` only moves the wave's centroid by `n K`. Give the time scale as one of two
 groups: the storage constant of one reservoir (`--k-min`), or the length and the celerity of the
 reach (`--length-km` with `--celerity-m-per-s`), whose travel time `L / c` is the delay `n K`; both
 groups or neither is an error (`details.reason` `one_of`). The outflow is the exact response of the
@@ -444,7 +444,7 @@ hydrolog route cascade --n 2.5 --length-km 18 --celerity-m-per-s 1.5 \
 `route level-pool` sends the hydrograph through a reservoir, a pond or a reach that is given by a
 storage-outflow table, by storage indication (the modified Puls method of NEH-630 chapter 17):
 each row of the table is a state of the pool, the storage `S` [m3] it holds while it releases the
-outflow `O` [m3/s], both not decreasing from the empty state. Give the table inline
+outflow `O` [m3/s], both not decreasing from the lowest state (only differences of storage count). Give the table inline
 (`--storage-m3` with `--outflow-m3s`, and `--stage-m` for the water level of each row) or as a CSV
 or JSON `--rating-file` with the columns `storage_m3`, `outflow_m3s` and, if the table has one,
 `stage_m` (the file brings its own stage, so `--stage-m` next to it is an error); neither source or

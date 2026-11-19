@@ -1,0 +1,463 @@
+schema = "nogat-formula-card/1"
+name = "level_pool"
+title = "Level-pool routing by storage indication (modified Puls) through N equal pools"
+function = "hydrolog.routing.formulas.level_pool.level_pool_route"
+family = "scheme"
+formula_version = 1
+status = "referenced"
+equation = "in each of N pools in series, holding s = S(O) / N of the table for the same outflow: s[t] / dt + O[t] / 2 = (I[t-1] + I[t]) / 2 + s[t-1] / dt - O[t-1] / 2, O[t] read from the working curve s / dt + O / 2 of the table, linear between its rows; O[0] = O0 in every pool, at rest at the highest storage the table gives O0"
+latex = "\\frac{s_t}{\\Delta t} + \\frac{O_t}{2} = \\frac{I_{t-1} + I_t}{2} + \\frac{s_{t-1}}{\\Delta t} - \\frac{O_{t-1}}{2},\\quad s = \\frac{S(O)}{N}"
+validation = "none: the storage-outflow relation of a reach or a reservoir comes from water-surface profiles, the reservoir's topography or observed floods (HEC-HMS TRM, Modified Puls; NEH 630 ch. 17); the sources report no agreement of the scheme itself with observations"
+conventions = ["SI units: discharge in m3/s, storage in m3, the step in min (S / dt with the 60 s of a minute of the units table)", "the outflow is read from the working curve S / (N dt) + O / 2 by linear interpolation between the rows of the table, as the table is linear between them (NEH 630 interpolates its working table, HEC-HMS solves the same equation by trial and error)", "N pools in series each hold S / N for the same outflow (HEC-HMS subreaches); every pool starts at rest with O0, at the highest storage the table gives that outflow, so a pool with a dead zone below a crest starts full to the crest", "the datum of the storage column is free: only differences of storage enter the outflow, and the storages reported are measured from it", "a state that rounding puts beyond an end of the table by at most 1e-9 of the working curve's top is held at that end; further beyond, the pool has left the table, which the preconditions flood_below_table_top and flood_above_table_bottom refuse", "the storage at rest under the last inflow ordinate is read at the end row of the table for a flow beyond it", "only the given ordinates are routed: LevelPoolReach divides a longer step into sub-steps, the inflow linear between the ordinates, extends the time axis and reads the stage of the last pool (Tier B, ADR-0008)"]
+assumptions = ["the storage is a single-valued function of the outflow: a level water surface, or a reach whose storage follows its outflow, without hysteresis (NEH 630: the water surface is level or nearly level)", "for a channel NEH 630 asks for a travel time through the reach of about half the inflow's time of rise or less (not an input: not checked)", "the inflow is linear between its ordinates (the trapezoid rule)"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/level-pool-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "discharge"
+
+[properties.scalings.inputs]
+inflow_m3s = 1.0
+table_storage_m3 = 1.0
+table_outflow_m3s = 1.0
+initial_outflow_m3s = 1.0
+
+[properties.scalings.outputs]
+outflow_m3s = 1.0
+storage_m3 = 1.0
+last_pool_storage_m3 = 1.0
+storage_peak_m3 = 1.0
+storage_steady_m3 = 1.0
+
+[properties.scalings.tolerance]
+reason = "a power of two scales every value of the working curve, of the state and of the interpolation exactly in binary, but for subnormal values, which round to fewer digits"
+abs = 1e-300
+rel = 0.0
+
+[[properties.scalings]]
+name = "time"
+
+[properties.scalings.inputs]
+timestep_min = 1.0
+table_storage_m3 = 1.0
+
+[properties.scalings.outputs]
+storage_m3 = 1.0
+last_pool_storage_m3 = 1.0
+storage_peak_m3 = 1.0
+storage_steady_m3 = 1.0
+
+[properties.scalings.tolerance]
+reason = "a power of two scales every value of the working curve, of the state and of the interpolation exactly in binary, but for subnormal values, which round to fewer digits"
+abs = 1e-300
+rel = 0.0
+
+[[properties.limits]]
+name = "steady_state"
+text = "an inflow equal to the initial outflow passes unchanged, and the pools hold what the table gives it at rest"
+
+[[properties.limits]]
+name = "exact_recurrence"
+text = "every outflow equals the recurrence of the pools in exact rational arithmetic"
+
+[[properties.limits]]
+name = "muskingum_without_weight"
+text = "a table S = K O is the linear reservoir: the outflow and the storage of the spec muskingum with X = 0 and the same K, N and step"
+
+[[properties.limits]]
+name = "bounded_by_its_flows"
+text = "every outflow lies between the least and the largest of the inflow and the initial outflow, a kinked table on the step its steep segment allows included; the scheme is non-decreasing in the inflow and the initial outflow to the rounding of its working curve, larger than four units in the last place of the outflow on a short step (test_the_outflow_rises_with_its_inflow_and_initial_outflow)"
+
+[[properties.limits]]
+name = "datum_free"
+text = "a constant added to the storage column changes no outflow and adds itself to the storage"
+
+[[properties.conservation]]
+name = "volume"
+text = "the trapezoid continuity holds in every pool: inflow volume - outflow volume = storage at the end - storage at the start"
+
+[properties.conservation.tolerance]
+reason = "relative to the largest volume or storage, at least the volume of the smallest normal discharge over the run (a subnormal flood rounds to its fewer digits): the state rounds at 1e-16 of the working curve per step, damped by the weight (2K - dt) / (2K + dt) < 1; a state that rounding puts beyond an end of the table, within 1e-9 of it, is held at the end"
+abs = 1e-09
+
+[[sources]]
+citation = "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)"
+access = "open"
+locator = "eqs. 17-1 to 17-3, pp. 17-9 to 17-10 (a working curve of O2 against S2/dt + O2/2 is necessary); examples 17-1 and 17-2, tables 17-5 to 17-12, pp. 17-11 to 17-25"
+url = "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf"
+
+[[sources]]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model"
+access = "open"
+locator = "eq. 3; Required Parameters: the initial outflow, a storage vs. discharge relationship and the number of subreaches"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/modified-puls-model"
+
+[[sources]]
+citation = "US Army Corps of Engineers (1994). Engineering and Design: Flood-Runoff Analysis, EM 1110-2-1417"
+access = "open"
+locator = "chapter 9, modified Puls, eq. 9-12"
+url = "https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-1417.pdf"
+
+[[variables]]
+name = "inflow_m3s"
+symbol = "I_t"
+unit = "m3/s"
+kind = "real_array"
+description = "Inflow at t = 0, dt, 2 dt, ...: the hydrograph that enters the reach, linear between its ordinates."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 2
+max_length = 1000000
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s"
+
+[[variables]]
+name = "timestep_min"
+symbol = "\\Delta t"
+unit = "min"
+kind = "real"
+description = "Time step of the inflow and of the outflow."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1440.0
+test_reason = "a day, the step of a series of daily discharges (IMGW-PIB)"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 720.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "steps of 5 min (Hydrograf's networks, tests/fixtures/handoff_hydrograf_network*.json) to 12 h (the Iowa example and NEH 630 ch. 17 example 17-2, 0.5 d)"
+
+[[variables]]
+name = "table_storage_m3"
+symbol = "S_i"
+unit = "m3"
+kind = "real_array"
+description = "Storage of each row of the storage-outflow table, not decreasing; only its differences enter the outflow, so its datum is free."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 2
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 30000000.0
+test_reason = "ten times the largest table of Hydrolog's routing tests (NEH 630 ch. 17 example 17-2, 2.87e6 m3); the scheme is homogeneous in the storage and the discharge (scaling discharge), so any bound tests its arithmetic"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 3000000.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "tables up to 2.87e6 m3: NEH 630 ch. 17 example 17-2, 1,174.5 ft3/s-d; the catalog's pond, 255,000 m3 (tests/fixtures/pond_rating.csv)"
+
+[[variables]]
+name = "table_outflow_m3s"
+symbol = "O_i"
+unit = "m3/s"
+kind = "real_array"
+description = "Outflow of each row of the table, not decreasing; zero below a crest."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 2
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 300.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "tables up to 283.2 m3/s: NEH 630 ch. 17 example 17-1, 10,000 ft3/s; the catalog's pond, 27.17 m3/s"
+
+[[variables]]
+name = "subreaches"
+symbol = "N"
+unit = "-"
+kind = "integer"
+description = "Number of pools in series, each holding S / N of the table for the same outflow."
+applicability = "unstated"
+
+[variables.physical]
+low = 1.0
+low_inclusive = true
+test_high = 1000.0
+test_reason = "HEC-HMS's estimate L / (c dt) for a reach of 100 km, a celerity of 1 m/s and a step of 100 s"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 6.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "1 (a pond or a reservoir, the default of LevelPoolReach) to 6 pools in the tests of the reach"
+
+[[variables]]
+name = "initial_outflow_m3s"
+symbol = "O_0"
+unit = "m3/s"
+kind = "real"
+description = "Outflow at the first ordinate; the reach starts at rest with it."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s"
+
+[[constraints]]
+name = "table_columns_paired"
+class = "physical"
+text = "the storage and the outflow columns have as many rows"
+
+[constraints.source]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model"
+access = "open"
+locator = "Required Parameters: the storage vs. discharge relationship is a paired data object whose storages cover the entire range met in a simulation; the initial storage is computed from the initial outflow and that relationship"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/modified-puls-model"
+
+[[constraints]]
+name = "table_not_decreasing"
+class = "physical"
+text = "S[i] <= S[i+1] and O[i] <= O[i+1]: storage and outflow rise together with the water level"
+
+[constraints.source]
+citation = "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)"
+access = "open"
+locator = "tables 17-4 and 17-9 to 17-11: storage and discharge accumulated with the elevation, both rising with it"
+url = "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf"
+
+[[constraints]]
+name = "table_rows_distinct"
+class = "physical"
+text = "no row repeats the one before it: the working curve rises from row to row"
+
+[constraints.source]
+citation = "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)"
+access = "open"
+locator = "eqs. 17-1 to 17-3, pp. 17-9 to 17-10 (a working curve of O2 against S2/dt + O2/2 is necessary); examples 17-1 and 17-2, tables 17-5 to 17-12, pp. 17-11 to 17-25"
+url = "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf"
+
+[[constraints]]
+name = "initial_outflow_in_table"
+class = "precondition"
+text = "O[0] <= O0 <= O[-1]: the pools start at rest at a state of the table"
+
+[constraints.source]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model"
+access = "open"
+locator = "Required Parameters: the storage vs. discharge relationship is a paired data object whose storages cover the entire range met in a simulation; the initial storage is computed from the initial outflow and that relationship"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/modified-puls-model"
+
+[[constraints]]
+name = "storage_where_outflow_rises"
+class = "precondition"
+text = "dS > 0 on every segment where the outflow rises, from the state at rest under the lowest flow of the run to the first row that reaches its largest: no step meets the step rule on a segment without storage"
+
+[constraints.source]
+citation = "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)"
+access = "open"
+locator = "pp. 17-10 to 17-11: negative outflows whenever dt > 2 S2/O2 (O2/2 > S2/dt); a working curve with any part left of the line of equal values is discarded and computed again with a smaller dt, as WinTR-20 does internally"
+url = "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf"
+
+[[constraints]]
+name = "timestep_within_limit"
+class = "precondition"
+text = "dt <= 2 min(dS/dO) / N over the segments the run can reach (from the state at rest under its lowest flow to the first row that reaches its largest), to 1e-9 of itself: the weight (2K - dt) / (2K + dt) of the previous state is not negative on any of them, so the outflow stays between the lowest and the highest flow of the run"
+
+[constraints.source]
+citation = "Hydrolog ADR-0008: routing conventions"
+access = "open"
+locator = "docs/decisions/0008-routing-conventions.md, Stability: a level-pool step of at most twice the shortest dS/dO of the segments between the lowest and the highest flow of the run, over the number of sub-reaches; NEH's rule for the whole curve let the outflow exceed the inflow peak on 201 of 1,499 random tables"
+
+[[constraints]]
+name = "working_curve_rises"
+class = "precondition"
+text = "S / (N dt) + O / 2 is finite and rises from row to row in float64: the outflow is read from it"
+
+[constraints.source]
+citation = "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)"
+access = "open"
+locator = "eqs. 17-1 to 17-3, pp. 17-9 to 17-10 (a working curve of O2 against S2/dt + O2/2 is necessary); examples 17-1 and 17-2, tables 17-5 to 17-12, pp. 17-11 to 17-25"
+url = "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf"
+
+[[constraints]]
+name = "flood_below_table_top"
+class = "precondition"
+text = "no pool fills beyond the last row (its working curve above the last row's by more than 1e-9 of it): the table covers the flood, never an extrapolation"
+
+[constraints.source]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model"
+access = "open"
+locator = "Required Parameters: the storage vs. discharge relationship is a paired data object whose storages cover the entire range met in a simulation; the initial storage is computed from the initial outflow and that relationship"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/modified-puls-model"
+
+[[constraints]]
+name = "flood_above_table_bottom"
+class = "precondition"
+text = "no pool empties below the first row (its working curve below the first row's by more than 1e-9 of the last row's): an inflow below the first outflow of the table must not drain it"
+
+[constraints.source]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model"
+access = "open"
+locator = "Required Parameters: the storage vs. discharge relationship is a paired data object whose storages cover the entire range met in a simulation; the initial storage is computed from the initial outflow and that relationship"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/modified-puls-model"
+
+[[outputs]]
+name = "outflow_m3s"
+unit = "m3/s"
+kind = "real_array"
+symbol = "O_t"
+description = "Outflow at the ordinates of the inflow."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[[outputs]]
+name = "storage_m3"
+unit = "m3"
+kind = "real_array"
+symbol = "S_t"
+description = "Water held by all pools at every ordinate."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "last_pool_storage_m3"
+unit = "m3"
+kind = "real_array"
+symbol = "s_t"
+description = "Water held by the last pool at every ordinate, all of it when N = 1."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "storage_peak_m3"
+unit = "m3"
+kind = "real"
+symbol = "S"
+description = "The largest water held by all pools."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "storage_steady_m3"
+unit = "m3"
+kind = "real"
+symbol = "S"
+description = "Water the pools would hold at rest under the last inflow ordinate."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "the fraction (Y - W[r]) / (W[r+1] - W[r]) of a segment of the working curve: rows whose working curve is equal in float64 are refused by the precondition working_curve_rises (test_rows_the_working_curve_cannot_tell_apart_are_refused); K = dS/dO of the step rule is taken only where the outflow rises"
+
+[[traps]]
+name = "stability_bound"
+description = "The stability bound of a numerical scheme (a Courant number, Muskingum's 2KX <= dt <= 2K(1-X))."
+test = "dt <= 2 min(dS/dO) / N on the segments the run reaches: precondition timestep_within_limit with its satisfied, boundary and violated points, limit bounded_by_its_flows (a kinked table on the step of its steep segment) and test_a_step_that_the_rule_for_the_whole_curve_allows_is_refused"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases inflow_m3s-nan_element, table_storage_m3-nan_element and table_outflow_m3s-nan_element: a gap is refused, the recurrence would carry it to every later ordinate"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_a_long_steady_inflow_stays_steady: 200,000 ordinates of a steady inflow stay steady to 1e-12"
+
+[[oracles]]
+kind = "exact"
+description = "the recurrence of the pools and their state at rest in exact rational arithmetic (fractions), ordinate by ordinate"
+test = "tests/unit/test_formulas_level_pool.py (limit exact_recurrence)"
+conventions = []
+
+[[oracles]]
+kind = "algorithm"
+description = "a table S = K O is the linear reservoir: the spec muskingum with X = 0 and the same K, N and step, its three-point recurrence (scipy.signal.lfilter)"
+test = "tests/unit/test_formulas_level_pool.py (limit muskingum_without_weight)"
+conventions = []
+
+[[oracles]]
+kind = "established"
+description = "scipy.integrate.solve_ivp (RK45, rtol 1e-11) of dS/dt = I(t) - O(S) through a weir's table: the scheme's error falls as the step squared"
+test = "tests/unit/test_formulas_level_pool.py::test_the_scheme_converges_to_the_integrated_equation"
+conventions = ["both sides read O(S) from the same table, linear between its rows, and take the inflow linear between its ordinates", "the scheme is the trapezoid rule on the step; solve_ivp an adaptive Runge-Kutta method of order 5(4) in continuous time"]

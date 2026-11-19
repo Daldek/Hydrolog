@@ -1,0 +1,367 @@
+schema = "nogat-formula-card/1"
+name = "manning_normal_flow"
+title = "Normal flow of a trapezoidal, rectangular or triangular channel by Manning's equation, with the kinematic celerity dQ/dA"
+function = "hydrolog.routing.formulas.manning.normal_flow"
+family = "empirical"
+formula_version = 1
+status = "referenced"
+equation = "Q = A R^(2/3) S^(1/2) / n, A = (b + z y) y, P = b + 2 y (1 + z^2)^(1/2), R = A / P; T = b + 2 z y; V = Q / A; c = dQ/dA = V (5/3 - 2/3 A P' / (T P)), P' = 2 (1 + z^2)^(1/2); the normal depth y is the root of the first equation"
+latex = "Q = \\frac{1}{n} A R^{2/3} S^{1/2},\\quad A = (b + z y) y,\\ P = b + 2 y \\sqrt{1 + z^2},\\ R = \\frac{A}{P};\\quad T = b + 2 z y,\\ V = \\frac{Q}{A},\\ c = \\frac{dQ}{dA} = V \\left(\\frac{5}{3} - \\frac{2}{3} \\frac{A P'}{T P}\\right)"
+validation = "none: the sources give Manning's equation as the practice of uniform open channel flow and report no agreement of their own with observations; n is chosen from tables or calibrated (USGS WSP 2339)"
+conventions = ["SI units: Q in m3/s, lengths in m, n in s/m^(1/3); the US customary form multiplies by 1.486, the cube root of the feet in a metre (1.4859) rounded, as HEC-RAS does (USGS WSP 2339 eq. 1)", "the bed slope is the friction slope: the flow is uniform", "the celerity is the local kinematic celerity dQ/dA at the depth (HEC-HMS eq. 4; NEH eq. 17-25 with m = d ln Q / d ln A); NEH's example 17-4 takes a discharge-weighted m of the rating from zero to Q (eqs. 17-29, 17-30a), 2 % above the local one (case mc_neh17_example17_4_from_section)", "one roughness for the whole wetted perimeter; a trapezoid with both banks at z:1, a rectangle at z = 0 and a triangle at b = 0; no floodplain", "the normal depth is found by Brent's method in ln y (scipy.optimize.brentq, delegated, CMP-1.2) in a bracket from the slope of ln K in ln y, between 1 and 10/3, to four units of 1e-16 of max(1, |ln y|)"]
+assumptions = ["steady uniform flow: the depth is the normal depth of the discharge", "a prismatic channel whose n does not change with the depth", "the flow stays within the section, which has no top"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/muskingum-cunge-cases.json"]
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+discharge_m3s = 1
+slope_m_per_m = -1
+manning_n = 1
+
+[[properties.scalings]]
+name = "length"
+
+[properties.scalings.inputs]
+discharge_m3s = 9.0
+bottom_width_m = 3.0
+manning_n = -1.0
+
+[properties.scalings.outputs]
+depth_m = 3.0
+area_m2 = 6.0
+top_width_m = 3.0
+velocity_m_per_s = 3.0
+celerity_m_per_s = 3.0
+
+[properties.scalings.tolerance]
+reason = "the root finder solves the scaled point afresh: ln y to a few units of 1e-16 of max(1, |ln y|), up to 1e-13 for depths near the ends of the floats"
+rel = 1e-12
+
+[[properties.scalings]]
+name = "time"
+
+[properties.scalings.inputs]
+discharge_m3s = -1.0
+manning_n = 1.0
+
+[properties.scalings.outputs]
+velocity_m_per_s = -1.0
+celerity_m_per_s = -1.0
+
+[properties.scalings.tolerance]
+reason = "the root finder solves the scaled point afresh: ln y to a few units of 1e-16 of max(1, |ln y|), up to 1e-13 for depths near the ends of the floats"
+rel = 1e-12
+
+[[properties.scalings]]
+name = "slope"
+
+[properties.scalings.inputs]
+discharge_m3s = 1.0
+slope_m_per_m = 2.0
+
+[properties.scalings.outputs]
+velocity_m_per_s = 1.0
+celerity_m_per_s = 1.0
+
+[properties.scalings.tolerance]
+reason = "the root finder solves the scaled point afresh: ln y to a few units of 1e-16 of max(1, |ln y|), up to 1e-13 for depths near the ends of the floats"
+rel = 1e-12
+
+[[properties.limits]]
+name = "rectangle_by_hand"
+text = "b = 2 m, z = 0, n = 0.03, S = 0.001 and Q = 2 (1/2)^(2/3) 0.001^(1/2) / 0.03: A = 2, P = 4, R = 1/2, so y = 1 m"
+
+[[properties.limits]]
+name = "triangle_closed_form"
+text = "a triangle (b = 0) has the closed form y = (Q n P'^(2/3) / (S^(1/2) z^(5/3)))^(3/8) and c = 4/3 V"
+
+[[properties.limits]]
+name = "kinematic_celerity_bounds"
+text = "V <= c <= 5/3 V: the celerity of a trapezoid lies between that of a deep narrow rectangle and that of a wide one"
+
+[[properties.limits]]
+name = "decimal_oracle"
+text = "the depth and dQ/dA equal Manning's equation written as S^(1/2) / n (A^5 / P^2)^(1/3), solved by bisection and differenced at 50 digits"
+
+[[sources]]
+citation = "Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339"
+access = "open"
+locator = "Introduction, eqs. 1 and 2 (the first page of the text): V = 1.486/n R^(2/3) Se^(1/2) and the conveyance K = 1.486/n A R^(2/3), in feet"
+url = "https://pubs.usgs.gov/wsp/2339/report.pdf"
+
+[[sources]]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. Water Surface Profile Calculations with HEC-RAS (training lesson 1.6, PROSPECT course)"
+access = "open"
+locator = "slides 'Cross Section Subdivision for Conveyance Calculations' (Q = 1.486/n A R^(2/3) Sf^(1/2), in feet) and 'Computational Procedure: Tolerances and trials' (water surface calculation tolerance 0.01 ft by default)"
+url = "https://www.hec.usace.army.mil/confluence/prospect/files/124452884/124453107/1/1669663021202/1.6+L+-+Water+Surface+Profile+Calculations.pdf"
+
+[[sources]]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum-Cunge Model"
+access = "open"
+locator = "eq. 4, the flood wave celerity c = dQ/dA; Required Parameters: the reach's Manning's n and a rectangle, trapezoid or triangle by its bottom width and side slope"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-cunge-model"
+
+[[sources]]
+citation = "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)"
+access = "open"
+locator = "eqs. 17-24 and 17-25, c = dQ/dA = m Q / A, and 17-29 and 17-30a, the weighted m of a rating table; Table 17-16 and example 17-4, pp. 17-36 to 17-43"
+url = "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf"
+
+[[sources]]
+citation = "Manning, R. (1891). On the flow of water in open channels and pipes, Transactions of the Institution of Civil Engineers of Ireland 20, 161-207"
+access = "author-provided"
+
+[[variables]]
+name = "discharge_m3s"
+symbol = "Q"
+unit = "m3/s"
+kind = "real"
+description = "Discharge whose normal flow is sought."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 300.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "reference discharges of 0.95 to 300.05 m3/s in the tests of the reach (tests/unit/test_routing_cunge.py), 12 m3/s in tests/fixtures/network_flood.json; NEH 630 examples 17-4 and 17-5, 684.18 and 3,385.4 ft3/s (19.4 and 95.9 m3/s)"
+
+[[variables]]
+name = "slope_m_per_m"
+symbol = "S"
+unit = "m/m"
+kind = "real"
+description = "Bed slope, the friction slope of a uniform flow."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 0.2
+test_reason = "ten times the steepest reach of the project's data, 0.02 in Hydrograf's network tests/fixtures/handoff_hydrograf_network.json"
+
+[variables.typical]
+low = 0.0002
+low_inclusive = true
+high = 0.02
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "0.0002 to 0.002778 in the tests of the reach (tests/unit/test_routing_cunge.py), 0.00208 to 0.009859 on the reaches of Hydrograf's Nysa Szalona network from the DEM (tests/fixtures/handoff_hydrograf_network_nysa_szalona.json), 0.02 in tests/fixtures/handoff_hydrograf_network.json; 0.00091 in NEH 630 examples 17-4 and 17-5"
+
+[[variables]]
+name = "bottom_width_m"
+symbol = "b"
+unit = "m"
+kind = "real"
+description = "Bottom width of the section; zero for a triangle."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 50000.0
+test_reason = "ten times the widest section of the tests, the 5,000 m rectangle of tests/unit/test_routing_sections.py"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 30.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "0 (a triangle) to 30 m in the tests of the section (tests/unit/test_routing_sections.py), 5 to 15 m in the tests of the reach, 8 m in tests/fixtures/network_flood.json; NEH 630 example 17-4, 15 ft (4.57 m)"
+
+[[variables]]
+name = "side_slope_m_per_m"
+symbol = "z"
+unit = "m/m"
+kind = "real"
+description = "Horizontal metres per vertical metre of both banks; zero for a rectangle."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 20.0
+test_reason = "ten times the gentlest banks of the tests, NEH's 2:1"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 2.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "0 (a rectangle) to 2 (2:1 banks) in the tests of the section and of the reach, 2 in tests/fixtures/network_flood.json and NEH 630 example 17-4"
+
+[[variables]]
+name = "manning_n"
+symbol = "n"
+unit = "s/m^(1/3)"
+kind = "real"
+description = "Manning's roughness of the whole wetted perimeter."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1.0
+test_reason = "ten times the roughest channel of the tests, n = 0.1 in tests/unit/test_routing_sections.py"
+
+[variables.typical]
+low = 0.03
+low_inclusive = true
+high = 0.05
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "0.03 to 0.05 in the tests of the section and of the reach, 0.035 in docs/USAGE.md and tests/fixtures/network_flood.json; NEH 630 example 17-4, 0.04"
+
+[[constraints]]
+name = "has_width"
+class = "physical"
+text = "b + z > 0: a section with a bottom or banks; neither holds no water"
+
+[constraints.source]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum-Cunge Model"
+access = "open"
+locator = "eq. 4, the flood wave celerity c = dQ/dA; Required Parameters: the reach's Manning's n and a rectangle, trapezoid or triangle by its bottom width and side slope"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-cunge-model"
+
+[[constraints]]
+name = "representable_flow"
+class = "precondition"
+text = "2.2e-308 <= y, A, T, V, c < inf: float64 holds the normal flow to sixteen digits; a section so narrow, flat or rough, or a discharge so large or small, that one of them overflows or falls among the subnormal floats has none"
+
+[constraints.source]
+citation = "IEEE 754-2019, binary64: normal numbers of magnitude about 2.2e-308 to 1.8e308, with 53 significant bits; below them the subnormal numbers keep fewer"
+access = "open"
+locator = "the depth, the area, the top width, the velocity and the celerity of a flow must be normal numbers to hold their sixteen digits"
+
+[[constants]]
+name = "radius_exponent"
+value = 0.6666666666666666
+unit = "-"
+symbol = "2/3"
+exact = "2/3"
+
+[constants.source]
+citation = "Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339"
+access = "open"
+locator = "Introduction, eqs. 1 and 2 (the first page of the text): V = 1.486/n R^(2/3) Se^(1/2) and the conveyance K = 1.486/n A R^(2/3), in feet"
+url = "https://pubs.usgs.gov/wsp/2339/report.pdf"
+
+[[constants]]
+name = "slope_exponent"
+value = 0.5
+unit = "-"
+symbol = "1/2"
+exact = "1/2"
+
+[constants.source]
+citation = "Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339"
+access = "open"
+locator = "Introduction, eqs. 1 and 2 (the first page of the text): V = 1.486/n R^(2/3) Se^(1/2) and the conveyance K = 1.486/n A R^(2/3), in feet"
+url = "https://pubs.usgs.gov/wsp/2339/report.pdf"
+
+[[outputs]]
+name = "depth_m"
+unit = "m"
+kind = "real"
+symbol = "y"
+description = "Normal depth."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "area_m2"
+unit = "m2"
+kind = "real"
+symbol = "A"
+description = "Flow area at the normal depth."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "top_width_m"
+unit = "m"
+kind = "real"
+symbol = "T"
+description = "Width of the water surface at the normal depth."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "velocity_m_per_s"
+unit = "m/s"
+kind = "real"
+symbol = "V"
+description = "Mean velocity Q / A."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "celerity_m_per_s"
+unit = "m/s"
+kind = "real"
+symbol = "c"
+description = "Celerity of a kinematic flood wave, dQ/dA at a fixed slope."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "ln b and ln z of a triangle (b = 0) and of a rectangle (z = 0) are minus infinity, which logaddexp takes: range cases bottom_width_m-physical_low and side_slope_m_per_m-physical_low give finite flows; ln Q and S^(1/2) at their open lower ends: range cases discharge_m3s-physical_low_inside and slope_m_per_m-physical_low_inside, a finite flow or the precondition representable_flow"
+
+[[traps]]
+name = "exp_overflow"
+description = "exp of a scaled input at its test bound."
+test = "y = e^u beyond the largest float: the violated point of representable_flow and test_a_depth_beyond_a_float_is_refused; the range cases at the test bounds give finite flows"
+
+[[oracles]]
+kind = "exact"
+description = "the closed form of a triangle, y = (Q n P'^(2/3) / (S^(1/2) z^(5/3)))^(3/8), and its c = 4/3 V"
+test = "tests/unit/test_formulas_muskingum_cunge.py (limit triangle_closed_form)"
+conventions = []
+
+[[oracles]]
+kind = "algorithm"
+description = "Manning's equation written as S^(1/2) / n (A^5 / P^2)^(1/3) in decimal arithmetic at 50 digits, its depth by bisection and dQ/dA by a central difference"
+test = "tests/unit/test_formulas_muskingum_cunge.py (limit decimal_oracle)"
+conventions = []

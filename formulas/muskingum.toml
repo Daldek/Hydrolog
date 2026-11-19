@@ -1,0 +1,418 @@
+schema = "nogat-formula-card/1"
+name = "muskingum"
+title = "Muskingum routing through N equal sub-reaches (McCarthy's storage, trapezoid continuity)"
+function = "hydrolog.routing.formulas.muskingum.muskingum_route"
+family = "scheme"
+formula_version = 1
+status = "referenced"
+equation = "in each of N sub-reaches of k = K / N in series: O[t] = c0 I[t] + c1 I[t-1] + c2 O[t-1], c0 = (dt - 2 k X) / D, c1 = (dt + 2 k X) / D, c2 = (2 k (1 - X) - dt) / D, D = 2 k (1 - X) + dt; O[0] = O0 in every sub-reach; storage S = k sum_j [X I_j + (1 - X) O_j] [m3]"
+latex = "O_t = c_0 I_t + c_1 I_{t-1} + c_2 O_{t-1},\\quad c_0 = \\frac{\\Delta t - 2kX}{D},\\ c_1 = \\frac{\\Delta t + 2kX}{D},\\ c_2 = \\frac{2k(1-X) - \\Delta t}{D},\\ D = 2k(1-X) + \\Delta t,\\ k = \\frac{K}{N}"
+validation = "none: K and X are calibrated on observed floods of a reach (HEC-HMS TRM, Muskingum model; EM 1110-2-1417 ch. 9); the sources report no agreement of the scheme itself with observations"
+conventions = ["SI units: discharge in m3/s, time in min, storage in m3 (K in min times a discharge in m3/s times the 60 s of a minute of the units table)", "the weights are named by what they multiply: c_current I[t], c_previous I[t-1], c_outflow O[t-1]; NEH 630 and HEC-HMS call them C2, C1 and C3, the Iowa and NPTEL examples C1, C2 and C3", "continuity by the trapezoid rule, (S[t] - S[t-1]) / dt = (I[t] + I[t-1]) / 2 - (O[t] + O[t-1]) / 2, with S = k [X I + (1 - X) O] in each sub-reach", "N equal sub-reaches of K / N in series with the same X (HEC-HMS); every sub-reach starts at rest with O0, so at the first ordinate all but the first are fed by O0", "within the window's slack a weight that rounding puts below zero is set to zero and the others are divided by their sum (hydrolog.routing._kernels.nonnegative_coefficients)", "only the given ordinates are routed: MuskingumReach chooses N (K / dt rounded) and the sub-steps of a step without a window, interpolates the inflow linearly between them, and extends the time axis (Tier B, ADR-0008)"]
+assumptions = ["the storage of the reach is linear in a weighted discharge, S = K [X I + (1 - X) O], with K and X constant over the flood", "no backwater: the outflow does not depend on the water downstream"]
+notices = ["outside_applicability"]
+reference_cases = ["tests/fixtures/formulas/muskingum-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+symmetries = []
+
+[properties.monotonic]
+inflow_m3s = 1
+initial_outflow_m3s = 1
+
+[[properties.scalings]]
+name = "discharge"
+
+[properties.scalings.inputs]
+inflow_m3s = 1.0
+initial_outflow_m3s = 1.0
+
+[properties.scalings.outputs]
+outflow_m3s = 1.0
+storage_start_m3 = 1.0
+storage_end_m3 = 1.0
+storage_steady_m3 = 1.0
+
+[properties.scalings.tolerance]
+reason = "a power of two scales every product and sum of the recurrence exactly in binary, but for subnormal discharges, which round to fewer digits"
+abs = 1e-300
+rel = 0.0
+
+[[properties.scalings]]
+name = "time"
+
+[properties.scalings.inputs]
+timestep_min = 1.0
+k_min = 1.0
+
+[properties.scalings.outputs]
+storage_start_m3 = 1.0
+storage_end_m3 = 1.0
+storage_steady_m3 = 1.0
+
+[properties.scalings.tolerance]
+reason = "a power of two scales every product and sum of the recurrence exactly in binary, but for subnormal discharges, which round to fewer digits"
+abs = 1e-300
+rel = 0.0
+
+[[properties.limits]]
+name = "lag_of_one_step"
+text = "X = 0.5 and K = N dt with N = 1: c0 = c2 = 0 and c1 = 1, the outflow is the inflow one step later (HEC-HMS: Muskingum with X = 0.5 and K = dt is the lag of one step)"
+
+[[properties.limits]]
+name = "steady_state"
+text = "an inflow equal to the initial outflow passes unchanged: the weights sum to 1"
+
+[[properties.limits]]
+name = "exact_recurrence"
+text = "every outflow equals the recurrence of the sub-reaches in exact rational arithmetic"
+
+[[properties.limits]]
+name = "moments"
+text = "the impulse response has the mean delay K and the variance K^2 (1 - 2X) / N, whatever dt"
+
+[[properties.limits]]
+name = "bounded_by_its_inputs"
+text = "every outflow lies between the least and the largest of the inflow and the initial outflow"
+
+[[properties.conservation]]
+name = "volume"
+text = "the trapezoid continuity holds in every sub-reach: inflow volume - outflow volume = storage at the end - storage at the start"
+
+[properties.conservation.tolerance]
+reason = "relative to the largest volume or storage: the recurrence rounds at 1e-16 per step; a weight that rounding put below zero on a border of the window is set to zero, which moves the others by at most the window's slack of 1e-9"
+abs = 1e-09
+
+[[sources]]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum Model"
+access = "open"
+locator = "equations of the storage and of the weights; X from 0 to 0.5; sub-reaches whose travel time is about the time step"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-model"
+
+[[sources]]
+citation = "US Army Corps of Engineers (1994). Engineering and Design: Flood-Runoff Analysis, EM 1110-2-1417"
+access = "open"
+locator = "chapter 9, eqs. 9-15 to 9-19, pp. 9-12 to 9-15"
+url = "https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-1417.pdf"
+
+[[sources]]
+citation = "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)"
+access = "open"
+locator = "eqs. 17-6 to 17-11 and the Muskingum method, pp. 17-14 to 17-18"
+url = "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf"
+
+[[sources]]
+citation = "McCarthy, G.T. (1938). The unit hydrograph and flood routing, Conference of the North Atlantic Division, US Army Corps of Engineers, New London, Conn."
+access = "author-provided"
+
+[[variables]]
+name = "inflow_m3s"
+symbol = "I_t"
+unit = "m3/s"
+kind = "real_array"
+description = "Inflow at t = 0, dt, 2 dt, ...: the hydrograph that enters the reach, linear between its ordinates."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 2
+max_length = 1000000
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s"
+
+[[variables]]
+name = "timestep_min"
+symbol = "\\Delta t"
+unit = "min"
+kind = "real"
+description = "Time step of the inflow and of the outflow."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1440.0
+test_reason = "a day, the step of a series of daily discharges (IMGW-PIB)"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 720.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "steps of 5 min (Hydrograf's networks, tests/fixtures/handoff_hydrograf_network*.json) to 12 h (the Iowa example and NEH 630 ch. 17 example 17-2, 0.5 d)"
+
+[[variables]]
+name = "k_min"
+symbol = "K"
+unit = "min"
+kind = "real"
+description = "Travel time of the whole reach, the storage constant K."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 12000.0
+test_reason = "ten times the longest K of Hydrolog's routing tests, the Iowa example's 20 h (1,200 min)"
+
+[variables.typical]
+low = 10.0
+low_inclusive = true
+high = 1200.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "K of 10 to 60 min in the tests of the reach, 2.3 h (NPTEL) and 20 h (Iowa) in the published examples"
+
+[[variables]]
+name = "x"
+symbol = "X"
+unit = "-"
+kind = "real"
+description = "Weight of the inflow in the storage: 0 a linear reservoir, 0.5 a wave that does not attenuate."
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+high = 0.5
+high_inclusive = true
+
+[variables.physical.source]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum Model"
+access = "open"
+locator = "equations of the storage and of the weights; X from 0 to 0.5; sub-reaches whose travel time is about the time step"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-model"
+
+[variables.applicability]
+low = 0.0
+low_inclusive = true
+high = 0.5
+high_inclusive = true
+
+[variables.applicability.source]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum Model"
+access = "open"
+locator = "equations of the storage and of the weights; X from 0 to 0.5; sub-reaches whose travel time is about the time step"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-model"
+
+[variables.typical]
+low = 0.1
+low_inclusive = true
+high = 0.3
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "X of 0.2 in most tests of the reach, 0.15 (NPTEL) and 0.25 (Iowa) in the published examples; 0.1 to 0.3 for natural streams after Fread (1993), as Balaz, Danacova and Szolgay (2010, Slovak Journal of Civil Engineering 18(3)) cite it"
+
+[[variables]]
+name = "subreaches"
+symbol = "N"
+unit = "-"
+kind = "integer"
+description = "Number of equal sub-reaches of K / N in series."
+applicability = "unstated"
+
+[variables.physical]
+low = 1.0
+low_inclusive = true
+test_high = 1000.0
+test_reason = "K / dt of the test bound of K (12,000 min) on a step of 12 min, the rule of thumb of the sub-reaches"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 10.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "1 to 3 sub-reaches in the tests of the reach and in the published examples; K / dt rounded up to 10 in the network tests"
+
+[[variables]]
+name = "initial_outflow_m3s"
+symbol = "O_0"
+unit = "m3/s"
+kind = "real"
+description = "Outflow at the first ordinate; the reach starts at rest with it."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s"
+
+[[constraints]]
+name = "representable"
+class = "precondition"
+text = "dt, K / N and dt / (K / N) >= 2.2e-308, the smallest normal float64, and 2 K [s] and the water K max(I, O0) [m3] are finite: below, the weights round to fewer digits or those of the inflow underflow and the water that enters is lost; above, the weights are NaN"
+
+[constraints.source]
+citation = "IEEE 754 binary64, the float64 of NumPy: largest finite number 1.8e308, smallest normal 2.2e-308"
+access = "open"
+locator = "the ratio of the step to K / N in the weights, K in seconds in their denominator and the storage K max(I, O0)"
+
+[[constraints]]
+name = "nonnegative_weights"
+class = "precondition"
+text = "2 K X / N <= dt <= 2 K (1 - X) / N, each end to 1e-9 of itself: every weight is non-negative, so a non-negative inflow gives a non-negative outflow"
+
+[constraints.source]
+citation = "the signs of the numerators of the weights (Hydrolog ADR-0008); Ponce's form |C - D| <= 1 <= C + D"
+access = "open"
+locator = "c_current >= 0 iff dt >= 2KX/N, c_previous >= 0 iff dt >= -2KX/N, c_outflow >= 0 iff dt <= 2K(1 - X)/N"
+
+[[outputs]]
+name = "outflow_m3s"
+unit = "m3/s"
+kind = "real_array"
+symbol = "O_t"
+description = "Outflow at the ordinates of the inflow."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[[outputs]]
+name = "c_current"
+unit = "-"
+kind = "real"
+symbol = "c_0"
+description = "Weight of I[t] in one sub-reach."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "c_previous"
+unit = "-"
+kind = "real"
+symbol = "c_1"
+description = "Weight of I[t-1] in one sub-reach."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "c_outflow"
+unit = "-"
+kind = "real"
+symbol = "c_2"
+description = "Weight of O[t-1] in one sub-reach."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "storage_start_m3"
+unit = "m3"
+kind = "real"
+symbol = "S"
+description = "Water held by the sub-reaches at the first ordinate."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "storage_end_m3"
+unit = "m3"
+kind = "real"
+symbol = "S"
+description = "Water held by the sub-reaches at the last ordinate."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "storage_steady_m3"
+unit = "m3"
+kind = "real"
+symbol = "S"
+description = "Water they would hold at rest under the last inflow, K I[-1]."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "c_current = (dt - 2KX/N) / D vanishes on the window's lower end: limit lag_of_one_step gives it exactly 0; D = 2K(1 - X)/N + dt >= dt > 0 never vanishes"
+
+[[traps]]
+name = "stability_bound"
+description = "The stability bound of a numerical scheme (a Courant number, Muskingum's 2KX <= dt <= 2K(1-X))."
+test = "the window 2KX/N <= dt <= 2K(1 - X)/N: constraint nonnegative_weights with its satisfied, boundary and violated points, and test_a_border_of_the_window_rounds_to_zero_weights"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases inflow_m3s-nan_element and inflow_m3s-inf_element: a gap is refused, the recurrence would carry it to every later ordinate"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_a_long_steady_inflow_stays_steady: 200,000 ordinates of a constant inflow stay constant to 1e-14"
+
+[[oracles]]
+kind = "exact"
+description = "the recurrence of the sub-reaches and its weights in exact rational arithmetic (fractions), loop by loop"
+test = "tests/unit/test_formulas_muskingum.py (limit exact_recurrence)"
+conventions = []
+
+[[oracles]]
+kind = "exact"
+description = "the moments of the impulse response, mean K and variance K^2 (1 - 2X) / N, from the generating function (c0 + c1 s) / (1 - c2 s) of the scheme"
+test = "tests/unit/test_formulas_muskingum.py (limit moments)"
+conventions = []

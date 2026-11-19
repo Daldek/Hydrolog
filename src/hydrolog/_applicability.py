@@ -268,4 +268,17 @@ APPLICABILITY: Final[tuple[Applicability, ...]] = (
             "unit hydrograph model, p. 54: 0.4 to 0.8"
         ),
     ),
+    Applicability(
+        method="muskingum",
+        parameter="x",
+        minimum=0.0,
+        maximum=0.5,
+        unit="-",
+        source=(
+            "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS "
+            "Technical Reference Manual, Channel Flow: Muskingum Model, equations "
+            "of the storage and of the weights; X from 0 to 0.5; sub-reaches whose "
+            "travel time is about the time step"
+        ),
+    ),
 )

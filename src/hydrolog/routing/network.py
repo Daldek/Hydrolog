@@ -94,6 +94,7 @@ from hydrolog._serialization import JsonResultMixin
 from hydrolog._warnings import HydrologWarning
 from hydrolog.exceptions import CalculationError, InvalidParameterError
 from hydrolog.morphometry.watershed_params import WatershedParameters
+from hydrolog.nogat_formulas import FormulaSpec, Source, TierBSpec
 from hydrolog.precipitation.hietogram import HietogramResult
 from hydrolog.routing._checks import in_range, positive, shown
 from hydrolog.routing._order import ordered
@@ -120,6 +121,8 @@ if TYPE_CHECKING:
 
 __all__ = [
     "DEFAULT_TIMESTEP_MIN",
+    "SPECS",
+    "TIER_B",
     "MAX_DESCRIPTION_CHARS",
     "MAX_ID_CHARS",
     "MAX_POSITION",
@@ -2355,3 +2358,25 @@ class RoutingNetwork:
             rainfall=rainfall,
             nodes=summaries,
         )
+
+
+SPECS: Final[tuple[FormulaSpec, ...]] = ()
+"""The routing formulas are declared in :mod:`hydrolog.routing.formulas`."""
+
+TIER_B: Final = (
+    TierBSpec(
+        name="junction_sum",
+        function="hydrolog.routing.network._sum",
+        definition="the hydrograph of a junction: the sum of its inflows ordinate by "
+        "ordinate on the longest of their axes, a shorter one held at its last value",
+        convention="one time step and one start for every source of a network, no "
+        "resampling; holding a truncated outflow (tail_truncated) at a value above "
+        "zero adds volume downstream, which the upstream warning names",
+        source=Source(
+            citation="Hydrolog's computation paths, section 3.9.7, and ADR-0008",
+            locator="docs/COMPUTATION_PATHS.md, Time axes: a junction holds a shorter "
+            "hydrograph at its last value; one step, nothing resampled",
+        ),
+    ),
+)
+"""The convention of a junction of the routing network (CMP-2.2)."""

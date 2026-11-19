@@ -990,13 +990,13 @@ COMMANDS: tuple[Command, ...] = (
                 name="n",
                 type="number",
                 description_pl=(
-                    "Liczba zbiorników w szeregu; > 0, nie musi być całkowita. n = 1 "
-                    "to jeden zbiornik (największe tłumienie), duże n to samo "
+                    "Liczba zbiorników w szeregu; > 0, nie musi być całkowita. Przy "
+                    "tym samym n K mniejsze n tłumi silniej, duże n to samo "
                     "opóźnienie fali."
                 ),
                 description=(
-                    "Number of reservoirs in series; > 0, need not be whole. n = 1 "
-                    "is one reservoir (the most attenuation), a large n is a pure "
+                    "Number of reservoirs in series; > 0, need not be whole. At the "
+                    "same n K a smaller n attenuates more, a large n is a pure "
                     "delay of the wave."
                 ),
                 required=True,
@@ -1006,12 +1006,13 @@ COMMANDS: tuple[Command, ...] = (
                 name="k_min",
                 type="number",
                 description_pl=(
-                    "Stała retencji K jednego zbiornika [min]; > 0; odcinek opóźnia "
-                    "falę o n K. Zamiast `length_km` i `celerity_m_per_s`."
+                    "Stała retencji K jednego zbiornika [min]; > 0; środek ciężkości "
+                    "fali przesuwa się o n K. Zamiast `length_km` i `celerity_m_per_s`."
                 ),
                 description=(
-                    "Storage constant K of one reservoir [min]; > 0; the reach delays "
-                    "the wave by n K. Instead of `length_km` and `celerity_m_per_s`."
+                    "Storage constant K of one reservoir [min]; > 0; the centroid of "
+                    "the wave moves by n K. Instead of `length_km` and "
+                    "`celerity_m_per_s`."
                 ),
                 exclusive_minimum=0,
                 unit="min",
@@ -1137,15 +1138,15 @@ COMMANDS: tuple[Command, ...] = (
             "zbiornika lub odcinka z tabelą pojemność-odpływ: w treści (`storage_m3`, "
             "`outflow_m3s`, `stage_m`) albo `rating_file`; `subreaches` to "
             "pododcinki. "
-            "Krok dłuższy niż 2 min dS/dO jest dzielony. Zwraca szczyty, objętości, "
-            "bilans i szereg."
+            "Krok dłuższy niż 2·min(dS/dO)/subreaches jest dzielony. Zwraca "
+            "szczyty, objętości, bilans i szereg."
         ),
         description=(
             "Level-pool routing (modified Puls, NEH-630 ch. 17) through a reservoir or "
             "reach given by a storage-outflow table, inline (`storage_m3`, "
             "`outflow_m3s`, `stage_m`) or `rating_file`; `subreaches` sets "
             "sub-reaches. "
-            "A step above twice the shortest dS/dO is divided. Returns peaks, volumes, "
+            "A step above 2·min(dS/dO)/subreaches is divided. Returns peaks, volumes, "
             "balance and the series."
         ),
         function="hydrolog.operations.route_level_pool",
@@ -1155,12 +1156,12 @@ COMMANDS: tuple[Command, ...] = (
                 type="number_list",
                 description_pl=(
                     "Pojemność (woda w zbiorniku) w kolejnych wierszach tabeli [m3], "
-                    "niemalejąca, nieujemna; od stanu pustego. Razem z `outflow_m3s`, "
-                    "zamiast `rating_file`."
+                    "niemalejąca, nieujemna; od stanu najniższego. Razem z "
+                    "`outflow_m3s`, zamiast `rating_file`."
                 ),
                 description=(
                     "Storage of each row of the table [m3], not decreasing, not "
-                    "negative; from the empty state. With `outflow_m3s`, instead of "
+                    "negative; from the lowest state. With `outflow_m3s`, instead of "
                     "`rating_file`."
                 ),
                 minimum=0,
@@ -1202,7 +1203,7 @@ COMMANDS: tuple[Command, ...] = (
                 description_pl=(
                     "Plik CSV albo JSON z tabelą pojemność-odpływ: kolumny "
                     "`storage_m3`, `outflow_m3s` i opcjonalnie `stage_m`, wiersze od "
-                    "stanu pustego do pełnego. Zamiast tabeli w treści."
+                    "stanu najniższego do najwyższego. Zamiast tabeli w treści."
                 ),
                 description=(
                     "CSV or JSON file with the storage-outflow table: columns "
@@ -1249,14 +1250,14 @@ COMMANDS: tuple[Command, ...] = (
         result_schema="hydrolog-route-level-pool/1",
         cardinality="bounded",
         rules=(
-            "Give the table inline or as `rating_file`, rows rising from empty to "
-            "full.",
+            "Give the table inline or as `rating_file`, rows rising from the lowest "
+            "state.",
             "A flood beyond the table is `table_exceeded`, never an extrapolation.",
             "Read `notices`: `timestep_refined` is a divided time step.",
         ),
         rules_pl=(
             "Podaj tabelę w treści albo jako `rating_file`, wiersze rosnące od stanu "
-            "pustego do pełnego.",
+            "najniższego.",
             "Wezbranie poza tabelą to `table_exceeded`, nigdy ekstrapolacja.",
             "Czytaj `notices`: `timestep_refined` to podzielony krok czasu.",
         ),

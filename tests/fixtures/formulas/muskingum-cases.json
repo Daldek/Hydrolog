@@ -1,0 +1,162 @@
+[
+  {
+    "formula": "muskingum",
+    "case_id": "iowa_lesson_27",
+    "source": {
+      "citation": "University of Iowa, Hydrology course, Lesson 27 'Hydrologic Routing, Muskingum Method', worked example (solution handout)",
+      "locator": "handout p. 1, table of Q_j+1",
+      "access": "open",
+      "url": "https://user.engineering.uiowa.edu/~flood/handouts/EX-L27-Muskingum-soln.pdf"
+    },
+    "inputs": {
+      "inflow_m3s": [
+        100.0,
+        300.0,
+        680.0,
+        500.0,
+        400.0,
+        310.0,
+        230.0,
+        180.0,
+        100.0,
+        50.0
+      ],
+      "timestep_min": 720.0,
+      "k_min": 1200.0,
+      "x": 0.25,
+      "subreaches": 1,
+      "initial_outflow_m3s": 100.0
+    },
+    "expected": {
+      "outflow_m3s": [
+        100.0,
+        109.5,
+        236.5,
+        481.3,
+        487.2,
+        433.1,
+        358.9,
+        282.9,
+        220.3,
+        149.2
+      ],
+      "c_current": 0.0476,
+      "c_previous": 0.5238,
+      "c_outflow": 0.4286
+    },
+    "printed_precision": {
+      "outflow_m3s": 0.1,
+      "c_current": 0.0001,
+      "c_previous": 0.0001,
+      "c_outflow": 0.0001
+    },
+    "conventions": [
+      "flows in cfs as printed, entered as the discharges: the scheme is linear in the discharge (scaling discharge), so the outflow comes out in cfs",
+      "K = 20 h = 1,200 min and a step of 12 h = 720 min, one reach",
+      "C1 multiplies the current inflow I[j+1] (c_current), C2 the previous inflow I[j] (c_previous), C3 the previous outflow Q[j] (c_outflow)",
+      "the outflow at the first ordinate is the first inflow, 100 cfs",
+      "the outflow column follows unrounded arithmetic: the products printed to 0.1 cfs are not reused"
+    ],
+    "second_source": {
+      "citation": "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum Model",
+      "locator": "the storage and the weights of the trapezoid scheme",
+      "url": "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-model",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "muskingum",
+    "case_id": "nptel_k_2_3_h_x_0_15",
+    "source": {
+      "citation": "NPTEL (Indian Institute of Technology), course 105101002 Water Resources Engineering, Module 5 lecture 4 'Hydrologic routing', Example Problem",
+      "locator": "slides 'Example Problem' and 'Example Problem Contd.'",
+      "access": "open",
+      "url": "https://archive.nptel.ac.in/content/storage2/courses/105101002/downloads/module5/p&b-lec4.pdf"
+    },
+    "inputs": {
+      "inflow_m3s": [
+        93.0,
+        137.0,
+        208.0,
+        320.0,
+        442.0,
+        546.0,
+        630.0,
+        678.0,
+        691.0,
+        675.0,
+        634.0,
+        571.0,
+        477.0,
+        390.0,
+        329.0,
+        247.0,
+        184.0,
+        134.0,
+        108.0,
+        90.0
+      ],
+      "timestep_min": 60.0,
+      "k_min": 138.0,
+      "x": 0.15,
+      "subreaches": 1,
+      "initial_outflow_m3s": 90.0
+    },
+    "expected": {
+      "outflow_m3s": [
+        90.0,
+        94.343,
+        115.9171,
+        160.7041,
+        233.2493,
+        324.2469,
+        420.1811,
+        509.0413,
+        578.7088,
+        624.0007,
+        641.8452,
+        634.4217,
+        603.0217,
+        546.411,
+        478.8578,
+        412.819,
+        341.6778,
+        273.5124,
+        215.1108,
+        170.4962
+      ],
+      "c_current": 0.0631,
+      "c_previous": 0.3442,
+      "c_outflow": 0.5927
+    },
+    "printed_precision": {
+      "outflow_m3s": 0.0001,
+      "c_current": 0.0001,
+      "c_previous": 0.0001,
+      "c_outflow": 0.0001
+    },
+    "intermediate_rounding": [
+      {
+        "step": "C1 I[j+1] and C2 I[j] rounded to whole cfs before they are summed (0.0631 x 137 = 8.64 printed 9): at most 1 cfs per step, carried by C3 = 0.5927 with the gain 1 / (1 - 0.5927)",
+        "effect": {
+          "outflow_m3s": 2.455
+        }
+      },
+      {
+        "step": "the recurrence with the coefficients rounded to four decimals: at most 5e-5 times (2 x 691 + 642) cfs per step, with the same gain",
+        "effect": {
+          "outflow_m3s": 0.248
+        }
+      }
+    ],
+    "conventions": [
+      "flows in cfs as printed, entered as the discharges: the scheme is linear in the discharge (scaling discharge), so the outflow comes out in cfs",
+      "K = 2.3 h = 138 min, X = 0.15, a step of 1 h = 60 min, one reach",
+      "C1 multiplies the current inflow (c_current), C2 the previous inflow (c_previous), C3 the previous outflow (c_outflow)",
+      "the initial outflow is given, 90 cfs, not the first inflow, 93 cfs",
+      "the same data are said to be Chow, Maidment and Mays (1988), Applied Hydrology, example 8.4.1, not verified: no open copy"
+    ],
+    "status": "single_source"
+  }
+]

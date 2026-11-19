@@ -9,8 +9,12 @@ diffusion equals the physical diffusion of the flood wave. For a routing distanc
 with ``c`` the celerity of the flood wave, ``T`` the top width and ``S0`` the slope.
 The coefficients are constant for the whole run. The reach is divided into equal
 distance steps of at most ``dx_c = (c dt + Q / (T S0 c)) / 2`` (eq. 17-21), each
-routed as a Muskingum sub-reach (``route_muskingum_cascade``), so the volume is
-conserved. ``X`` may be negative.
+routed as a Muskingum sub-reach, so the volume is conserved. ``X`` may be negative.
+The scheme on the chosen grid is the formula
+:func:`~hydrolog.routing.formulas.cunge.muskingum_cunge_route` (spec
+``muskingum_cunge``), the celerity and the top width of a section those of
+:func:`~hydrolog.routing.formulas.manning.normal_flow` (spec ``manning_normal_flow``);
+the choice of the grid is this module's Tier B rules (ADR-0061).
 
 Two rules of NEH-630 are applied. The hydrograph must rise from 5 % of its peak to the
 peak in at least 10 time steps, otherwise the step is divided (``timestep_refined``).
@@ -32,25 +36,33 @@ the diffusion wave of the reach travels ``L / c`` on average with the variance
 a whole number of reservoirs can. The warning ``diffusion_dominated`` says so; the
 attenuation is approximate.
 
-Unlike NRCS WinTR-20, which takes the peak at the upstream end of each distance step
-as its reference, every step has the one reference of the reach (the inflow peak, or
-the discharge that the caller gives), as in HEC-HMS; for a reach of one step the two
-are the same.
+Every distance step and time step has the one reference of the reach (the inflow
+peak, or the discharge that the caller gives), so the coefficients are constant. NRCS
+WinTR-20 takes the peak at the upstream end of each distance step as its reference
+(for a reach of one step the two are the same), and HEC-HMS recomputes its
+coefficients at every time and distance step (a variable-coefficient method).
 """
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, replace
-from typing import Any, cast
+from typing import Any, Final, cast
 
 import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.nogat_formulas import FormulaSpec, Source, TierBSpec, convert
 from hydrolog.routing._checks import one_complete_group, positive
-from hydrolog.routing._kernels import route_muskingum_cascade
 from hydrolog.routing.cascade import CascadeReach
+from hydrolog.routing.formulas._shared import neh630_17
+from hydrolog.routing.formulas.cunge import (
+    accuracy_limit,
+    distance_step_window,
+    muskingum_cunge_route,
+)
+from hydrolog.routing.formulas.muskingum import WINDOW_ROUNDING
 from hydrolog.routing.hydrograph import Hydrograph
 from hydrolog.routing.muskingum import MAX_SUBSTEPS
 from hydrolog.routing.reach import (
@@ -62,17 +74,19 @@ from hydrolog.routing.reach import (
 )
 from hydrolog.routing.sections import TrapezoidalSection
 
-__all__ = ["MIN_RISE_STEPS", "MuskingumCungeReach", "rise_steps"]
+__all__ = [
+    "MIN_RISE_STEPS",
+    "SPECS",
+    "TIER_B",
+    "MuskingumCungeReach",
+    "rise_steps",
+]
 
 MIN_RISE_STEPS = 10
 """NRCS: at least this many time steps from 5 % of the peak to the peak."""
 
 _RISE_THRESHOLD = 0.05
 _MAIN_PEAK = 0.5
-_ROUNDING = 1e-9
-_SECONDS_PER_MINUTE = 60.0
-_METRES_PER_KM = 1000.0
-_MAX_EXPONENT = 700.0  # exp() overflows a float above about 709
 
 _SECTION = ("manning_n", "bottom_width_m")
 _WAVE = ("celerity_m_per_s", "top_width_m")
@@ -127,7 +141,9 @@ def _nrcs_steps(length: float, wave: float, diffusion: float) -> int:
     ``dx_c = (c dt + D) / 2`` (NEH-630 eq. 17-21) with ``wave = c dt`` and
     ``diffusion = D = Q / (T S0 c)`` in metres.
     """
-    return max(1, math.ceil(length / (0.5 * (wave + diffusion)) * (1.0 - _ROUNDING)))
+    return max(
+        1, math.ceil(length / (0.5 * (wave + diffusion)) * (1.0 - WINDOW_ROUNDING))
+    )
 
 
 @dataclass(frozen=True)
@@ -174,7 +190,7 @@ def _reservoirs(
     whole number does.
     """
     count = max(1, math.floor(length / diffusion + 0.5))
-    k_min = length / (count * celerity) / _SECONDS_PER_MINUTE
+    k_min = convert(length / (count * celerity), "s", "min")
     longer = (
         f", longer than the reach: X = (1 - D / L) / 2 = "
         f"{0.5 * (1.0 - diffusion / length):.3g} would be negative"
@@ -347,8 +363,7 @@ class MuskingumCungeReach(Reach):
             )
         celerity, top_width = self._hydraulics(reference)
         diffusion = reference / (top_width * self.slope_m_per_m * celerity)
-        length = self.length_km * _METRES_PER_KM
-        step_s = step_min * _SECONDS_PER_MINUTE
+        length = convert(self.length_km, "km", "m")
         notices: list[RoutingNotice] = []
 
         rise = rise_steps(inflow.discharge_m3s)
@@ -366,7 +381,7 @@ class MuskingumCungeReach(Reach):
                     "balance has a sampling error).",
                 )
             )
-        grid = self._grid(length, celerity, diffusion, step_s, first)
+        grid = self._grid(step_min, celerity, top_width, reference, diffusion, first)
         if grid is None:
             return _reservoirs(
                 reference, celerity, top_width, diffusion, length, step_min
@@ -390,9 +405,10 @@ class MuskingumCungeReach(Reach):
         # NEH-630 appendix B: Dg <= exp(2.3 Cg) on the grid of the NRCS rule. A grid
         # with non-negative weights always meets it, so a grid beyond the limit is one
         # that this planner has replaced.
-        nrcs_step = length / _nrcs_steps(length, celerity * step_s / first, diffusion)
-        nrcs_courant = celerity * step_s / first / nrcs_step
-        nrcs_limit = math.exp(min(2.3 * nrcs_courant, _MAX_EXPONENT))
+        nrcs_wave = celerity * convert(step_min / first, "min", "s")
+        nrcs_step = length / _nrcs_steps(length, nrcs_wave, diffusion)
+        nrcs_courant = nrcs_wave / nrcs_step
+        nrcs_limit = accuracy_limit(nrcs_courant)
         if diffusion / nrcs_step > nrcs_limit:
             notices.append(
                 RoutingNotice(
@@ -416,7 +432,8 @@ class MuskingumCungeReach(Reach):
                     "the volume balance has a sampling error).",
                 )
             )
-        reference_step = 0.5 * (celerity * step_s / substeps + diffusion)
+        wave = celerity * convert(step_min / substeps, "min", "s")
+        reference_step = 0.5 * (wave + diffusion)
         if steps != preferred:
             notices.append(
                 RoutingNotice(
@@ -439,74 +456,82 @@ class MuskingumCungeReach(Reach):
 
     def _grid(
         self,
-        length: float,
+        step_min: float,
         celerity: float,
+        top_width: float,
+        reference: float,
         diffusion: float,
-        step_s: float,
         first: int,
     ) -> tuple[int, int, int] | None:
         """Choose the distance steps and the sub-steps; also the NRCS number.
 
         The weights of a distance step ``dx`` on a step ``dt`` are non-negative when
-        ``|c dt - D| <= dx <= c dt + D``, ``D = Q / (T S0 c)``. The NRCS rule gives
-        ``ceil(L / dx_c)`` steps; it is kept unless it breaks the lower bound, then
-        the largest number that does not is taken. If there is none the step is
-        divided further; ``None`` when no division into at most ``MAX_SUBSTEPS``
-        parts gives one.
+        ``|c dt - D| <= dx <= c dt + D``, ``D = Q / (T S0 c)``: the window of
+        :func:`~hydrolog.routing.formulas.cunge.distance_step_window`, the
+        precondition of the formula. The NRCS rule gives ``ceil(L / dx_c)`` steps; it
+        is kept unless it breaks the lower bound, then the largest number that does
+        not is taken. If there is none the step is divided further; ``None`` when no
+        division into at most ``MAX_SUBSTEPS`` parts gives one.
         """
+        length = convert(self.length_km, "km", "m")
         for substeps in range(first, MAX_SUBSTEPS + 1):
-            wave = celerity * step_s / substeps
-            most = length / (wave + diffusion)
-            fewest = max(1, math.ceil(most * (1.0 - _ROUNDING)))
-            gap = abs(wave - diffusion)
-            largest = (
-                math.inf if gap == 0.0 else math.floor(length / gap * (1.0 + _ROUNDING))
+            fine_min = step_min / substeps
+            lowest, highest = distance_step_window(
+                fine_min,
+                self.length_km,
+                self.slope_m_per_m,
+                celerity,
+                top_width,
+                reference,
             )
-            if fewest > largest:
+            if not math.isfinite(lowest):
                 continue
+            fewest = max(1, math.ceil(lowest))
+            if fewest > highest:
+                continue
+            wave = celerity * convert(fine_min, "min", "s")
             preferred = _nrcs_steps(length, wave, diffusion)
-            return int(min(max(preferred, fewest), largest)), substeps, preferred
+            return int(min(max(preferred, fewest), highest)), substeps, preferred
         return None
 
     def _run(self, inflow: Hydrograph, initial_outflow_m3s: float) -> ReachRun:
         plan = self._plan(inflow)
         if isinstance(plan, _Reservoirs):
             return self._run_reservoirs(plan, inflow, initial_outflow_m3s)
-        fine = inflow.refined(plan.substeps)
-        step_min = fine.timestep_min
-        length = self.length_km * _METRES_PER_KM
-        step_m = length / plan.steps
-        k_step = step_m / plan.celerity_m_per_s / _SECONDS_PER_MINUTE
-        x = 0.5 * (1.0 - plan.diffusion_length_m / step_m)
-        run = route_muskingum_cascade(
-            fine.discharge_m3s, k_step, x, step_min, plan.steps, initial_outflow_m3s
+        run = muskingum_cunge_route(
+            inflow.refined(plan.substeps).discharge_m3s,
+            inflow.timestep_min / plan.substeps,
+            self.length_km,
+            self.slope_m_per_m,
+            plan.celerity_m_per_s,
+            plan.top_width_m,
+            plan.reference_m3s,
+            plan.steps,
+            initial_outflow_m3s,
         )
-        courant = plan.celerity_m_per_s * step_min * _SECONDS_PER_MINUTE / step_m
-        reynolds = 1.0 - 2.0 * x
-        limit = math.exp(min(2.3 * courant, _MAX_EXPONENT))
         return ReachRun(
-            outflow_m3s=run.outflow[:: plan.substeps],
-            storage_start_m3=run.storage_start * _SECONDS_PER_MINUTE,
-            storage_end_m3=run.storage_end * _SECONDS_PER_MINUTE,
-            storage_steady_m3=run.storage_steady * _SECONDS_PER_MINUTE,
+            outflow_m3s=run.outflow_m3s[:: plan.substeps],
+            storage_start_m3=run.storage_start_m3,
+            storage_end_m3=run.storage_end_m3,
+            storage_steady_m3=run.storage_steady_m3,
             parameters={
                 "length_km": self.length_km,
                 "slope_m_per_m": self.slope_m_per_m,
                 "reference_discharge_m3s": plan.reference_m3s,
                 "celerity_m_per_s": plan.celerity_m_per_s,
                 "top_width_m": plan.top_width_m,
-                "k_min": k_step * plan.steps,
-                "x": x,
+                "k_min": run.k_min,
+                "x": run.x,
                 "subreaches": plan.steps,
                 "substeps": plan.substeps,
-                "dx_m": step_m,
+                "dx_m": run.dx_m,
                 "dx_reference_m": plan.reference_step_m,
-                "c_current": run.weights[0],
-                "c_previous": run.weights[1],
-                "c_outflow": run.weights[2],
-                "courant_number": courant,
-                "grid_reynolds_number": reynolds,
-                "grid_reynolds_limit": limit,
+                "c_current": run.c_current,
+                "c_previous": run.c_previous,
+                "c_outflow": run.c_outflow,
+                "courant_number": run.courant_number,
+                "grid_reynolds_number": run.grid_reynolds_number,
+                "grid_reynolds_limit": run.grid_reynolds_limit,
             },
             notices=plan.notices,
         )
@@ -537,3 +562,66 @@ class MuskingumCungeReach(Reach):
             },
             notices=(plan.notice,),
         )
+
+
+SPECS: Final[tuple[FormulaSpec, ...]] = ()
+"""The module computes through the specs ``muskingum_cunge`` and
+``manning_normal_flow``; it declares none itself."""
+
+TIER_B: Final = (
+    TierBSpec(
+        name="muskingum_cunge_rise",
+        function="hydrolog.routing.cunge.rise_steps",
+        definition="the steps from the ordinate before the first one above 5 % of the "
+        "inflow peak to the first peak of at least half of it; a rise of 1 to 9 steps "
+        "divides each step of a grid into ceil(10 / rise) equal sub-steps (at most "
+        "100), the inflow linear between the ordinates (notice timestep_refined)",
+        convention="NEH 630 re-interpolates the hydrograph to exactly 10 intervals on "
+        "the rise; Hydrolog divides into whole sub-steps, 10 intervals or more, and "
+        "keeps the original ordinates; the reservoirs of a reach without a grid are "
+        "exact at any step and are not refined",
+        source=neh630_17(
+            "Muskingum-Cunge method, step 1: at least 10 time intervals from the "
+            "point of 5 percent of the peak on the rise to the peak, p. 17-32"
+        ),
+    ),
+    TierBSpec(
+        name="muskingum_cunge_grid",
+        function="hydrolog.routing.cunge.MuskingumCungeReach._grid",
+        definition="the reference discharge is the inflow peak unless one is given; "
+        "the NRCS distance step dx_c = (c dt + D) / 2 with D = Q / (T S0 c) gives "
+        "ceil(L / dx_c) steps, changed to the nearest number inside the window of "
+        "non-negative weights |c dt - D| <= L / N <= c dt + D, each end to 1e-9 of "
+        "itself (hydrolog.routing.formulas.cunge.distance_step_window); a step "
+        "without a whole number in the window is divided into the fewest of 2 to 100 "
+        "equal sub-steps that have one, the inflow linear between the ordinates "
+        "(notices subreaches_adjusted, substeps_added); the notice accuracy_limit "
+        "reports an NRCS grid whose Dg = D / dx exceeds exp(2.3 Cg)",
+        convention="one reference for every distance step, where WinTR-20 takes the "
+        "peak at the upstream end of each; a grid with a negative weight, which NEH "
+        "accepts (example 17-5), is replaced (ADR-0008); a grid that needs more than "
+        "a million ordinates is refused (unstable_timestep)",
+        source=neh630_17(
+            "steps 2 to 4 of the Muskingum-Cunge method and eqs. 17-21 and 17-36, "
+            "pp. 17-32 to 17-33"
+        ),
+    ),
+    TierBSpec(
+        name="muskingum_cunge_fallback",
+        function="hydrolog.routing.cunge._reservoirs",
+        definition="a reach without a grid within 100 sub-steps is routed as n = L / D "
+        "linear reservoirs (rounded a half up, at least 1) of K = L / (n c) through "
+        "the cascade of CascadeReach (notice diffusion_dominated)",
+        convention="the n reservoirs, of mean n K and variance n K^2, keep the mean "
+        "travel time L / c of the diffusion wave and, as nearly as a whole n can, its "
+        "variance D L / c^2 = 2 mu L / c^3 with mu = Q / (2 T S0) (HEC-HMS TRM, "
+        "Muskingum-Cunge model, eq. 5)",
+        source=Source(
+            citation="Hydrolog ADR-0026: a reach without a Muskingum-Cunge grid, "
+            "linear reservoirs with a warning, not a refusal",
+            locator="Decision, points 1 and 2 "
+            "(docs/decisions/0026-a-reach-without-a-muskingum-cunge-grid.md)",
+        ),
+    ),
+)
+"""The rules of the grid of a Muskingum-Cunge reach (CMP-2.2)."""

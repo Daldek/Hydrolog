@@ -94,7 +94,7 @@ export const routing = {
       { symbol: "<math><mi>Γ</mi></math>", text: "funkcja gamma", unit: "–" },
     ],
     note:
-      "<p>Przy tym samym opóźnieniu <i>n K</i> jeden zbiornik spłaszcza falę najbardziej, a duże <i>n</i> prawie tylko ją " +
+      "<p>Przy tym samym opóźnieniu <i>n K</i> im mniejsze <i>n</i>, tym silniej kaskada spłaszcza falę, a duże <i>n</i> prawie tylko ją " +
       "przesuwa. Odpływ jest liczony dokładnie przy każdym kroku czasowym, bez dzielenia kroku.</p>",
     guide: "metoda-routing-cascade",
     sources:

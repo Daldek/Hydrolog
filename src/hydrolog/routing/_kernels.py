@@ -14,6 +14,7 @@ rounding (a few units of 1e-16 relative) and does not loop in Python over long s
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -24,6 +25,7 @@ __all__ = [
     "CascadeRun",
     "linear_reservoir_coefficients",
     "muskingum_coefficients",
+    "nonnegative_coefficients",
     "route_linear_reservoir",
     "route_muskingum_cascade",
     "three_point",
@@ -39,7 +41,11 @@ def three_point(
 ) -> NDArray[np.float64]:
     """Run the three-point recurrence of a linear routing scheme.
 
-    ``O[t] = c_current I[t] + c_previous I[t-1] + c_outflow O[t-1]`` for ``t >= 1``.
+    ``O[t] = c_current I[t] + c_previous I[t-1] + c_outflow O[t-1]`` for ``t >= 1``,
+    ``O[0]`` the initial outflow itself. The filter starts after the first ordinate,
+    from ``c_previous I[0] + c_outflow O[0]``, so no difference of inputs is taken:
+    with weights that are not negative every outflow is a sum of terms that are not
+    negative, which rounding keeps non-negative and non-decreasing in every input.
 
     Parameters
     ----------
@@ -57,9 +63,14 @@ def three_point(
         ``O[0..n-1]``, ``float64``, the same length as ``inflow``.
     """
     values = np.asarray(inflow, dtype=np.float64)
-    state = np.array([initial_outflow - c_current * values[0]], dtype=np.float64)
-    outflow, _ = lfilter([c_current, c_previous], [1.0, -c_outflow], values, zi=state)
-    return np.asarray(outflow, dtype=np.float64)
+    outflow = np.empty_like(values)
+    outflow[0] = initial_outflow
+    if values.size > 1:
+        state = np.array([c_previous * values[0] + c_outflow * initial_outflow])
+        outflow[1:], _ = lfilter(
+            [c_current, c_previous], [1.0, -c_outflow], values[1:], zi=state
+        )
+    return outflow
 
 
 def muskingum_coefficients(k: float, x: float, dt: float) -> tuple[float, float, float]:
@@ -97,6 +108,39 @@ def muskingum_coefficients(k: float, x: float, dt: float) -> tuple[float, float,
         (dt + 2.0 * k * x) / total,
         (2.0 * k * (1.0 - x) - dt) / total,
     )
+
+
+def nonnegative_coefficients(
+    k: float, x: float, dt: float
+) -> tuple[float, float, float]:
+    """Muskingum weights with what rounding puts below zero set to zero.
+
+    On a border of the window ``|2KX| <= dt <= 2K(1 - X)`` one weight is zero, and
+    rounding of ``K`` (``K / N`` of a reach of ``N`` sub-reaches) or of the products
+    can make it a few units in the last place below zero, enough for a small negative
+    outflow. Such a weight is set to zero and the others are divided by their sum, so
+    the weights still sum to 1. Weights inside the window are returned unchanged.
+
+    Parameters
+    ----------
+    k : float
+        Storage constant ``K`` [same unit as ``dt``], > 0.
+    x : float
+        Weighting factor ``X``.
+    dt : float
+        Time step, > 0; the caller keeps ``(k, x, dt)`` inside the window, to rounding.
+
+    Returns
+    -------
+    tuple of float
+        ``(c_current, c_previous, c_outflow)``, none below zero.
+    """
+    weights = muskingum_coefficients(k, x, dt)
+    if min(weights) >= 0.0:
+        return weights
+    kept = [max(weight, 0.0) for weight in weights]
+    total = math.fsum(kept)
+    return (kept[0] / total, kept[1] / total, kept[2] / total)
 
 
 def linear_reservoir_coefficients(k: float, dt: float) -> tuple[float, float, float]:
@@ -185,7 +229,9 @@ def route_muskingum_cascade(
     Every sub-reach has the storage ``S = k [x I + (1 - x) O]`` with its own inflow
     ``I`` (the outflow of the one before it) and starts with ``initial_outflow``, so at
     the first ordinate all but the first are fed by it. The trapezoid continuity holds
-    in every sub-reach, so the volume balance of the whole closes to rounding.
+    in every sub-reach, so the volume balance of the whole closes to rounding. The
+    weights are those of :func:`nonnegative_coefficients`: the callers keep inside the
+    window, where only rounding can put a weight below zero.
 
     Parameters
     ----------
@@ -208,7 +254,7 @@ def route_muskingum_cascade(
         The outflow, the storage at both ends and at rest, and the weights used.
     """
     values = np.asarray(inflow, dtype=np.float64)
-    weights = muskingum_coefficients(k, x, dt)
+    weights = nonnegative_coefficients(k, x, dt)
     # junction[j] is the flow at the last ordinate entering sub-reach j + 1 (0: the
     # inflow itself), so sub-reach j + 1 holds k [x junction[j] + (1 - x) junction[j+1]]
     junction = np.empty(count + 1)

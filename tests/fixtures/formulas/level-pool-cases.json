@@ -1,0 +1,512 @@
+[
+  {
+    "formula": "level_pool",
+    "case_id": "levelpool_neh17_example17_1",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open",
+      "locator": "example 17-1, tables 17-4 (columns 1 and 10), 17-5 and 17-7 (columns 2 and 5), pp. 17-11 to 17-17"
+    },
+    "inputs": {
+      "inflow_m3s": [
+        0.0,
+        1250.0,
+        2500.0,
+        3750.0,
+        5000.0,
+        4375.0,
+        3750.0,
+        3125.0,
+        2500.0,
+        1875.0,
+        1250.0,
+        625.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "timestep_min": 30.0,
+      "table_storage_m3": [
+        0.0,
+        258480.0,
+        492840.0,
+        888840.0,
+        2342520.0,
+        4680000.0,
+        11890080.0,
+        16335000.0,
+        20199960.0,
+        25674840.0
+      ],
+      "table_outflow_m3s": [
+        0.0,
+        50.0,
+        150.0,
+        300.0,
+        800.0,
+        1500.0,
+        3500.0,
+        5000.0,
+        7000.0,
+        10000.0
+      ],
+      "subreaches": 1,
+      "initial_outflow_m3s": 0.0
+    },
+    "expected": {
+      "outflow_m3s": [
+        0.0,
+        290.0,
+        1016.0,
+        1887.0,
+        2881.0,
+        3620.0,
+        3827.0,
+        3645.0,
+        3292.0,
+        2851.0,
+        2336.0,
+        1778.0,
+        1173.0,
+        661.0,
+        348.0,
+        175.0,
+        80.0,
+        42.0,
+        30.0
+      ]
+    },
+    "printed_precision": {
+      "outflow_m3s": 1.0
+    },
+    "intermediate_rounding": [
+      {
+        "step": "the average inflows that end in .5 are printed and used rounded up (4,687.5 as 4,688; eight steps of Table 17-7, column 3)",
+        "effect": {
+          "outflow_m3s": 0.52
+        }
+      },
+      {
+        "step": "the outflow is printed to whole ft3/s and the printed value enters the next state (1,875 + 625 - 290 = 2,210, Table 17-6)",
+        "effect": {
+          "outflow_m3s": 0.26
+        }
+      },
+      {
+        "step": "the working curve of Table 17-5, column 5, printed to 0.1 ft3/s and read by interpolation; first-order worst case of its rows on their own",
+        "effect": {
+          "outflow_m3s": 0.043
+        }
+      },
+      {
+        "step": "the storage of Table 17-4, column 10, printed to 0.1 ft3/s-h (its working curve 348.9 for 2 x 136.9 + 75 = 348.8 shows unrounded storages); first-order worst case of its rows on their own (row 0, the empty reach, is exact); a datum common to all rows changes no outflow",
+        "effect": {
+          "outflow_m3s": 0.085
+        }
+      }
+    ],
+    "conventions": [
+      "flows in ft3/s as printed, entered as the discharges, and the storage in ft3 (ft3/s-h times the 3,600 s of an hour of the units table): the scheme is homogeneous in the discharge and the storage (scaling discharge), so the outflow comes out in ft3/s",
+      "the reach of Table 17-4 as one pool (N = 1), a step of 0.5 h = 30 min, the outflow at the first ordinate 0 (the reach empty)",
+      "the inflow of figure 17-6 at the ordinates of Table 17-7, column 2, exact",
+      "NEH reads the outflow from its working table by linear interpolation, as the scheme does"
+    ],
+    "second_source": {
+      "citation": "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model",
+      "locator": "eq. 3, the storage-indication equation (the same as NEH's eq. 17-3)",
+      "url": "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/modified-puls-model",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "level_pool",
+    "case_id": "levelpool_neh17_example17_2_reservoir_0_to_4_5_d",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open",
+      "locator": "example 17-2, tables 17-8, 17-11 and 17-12, text pp. 17-22 and 17-25"
+    },
+    "inputs": {
+      "inflow_m3s": [
+        0,
+        70,
+        79,
+        84,
+        88,
+        99,
+        110,
+        128,
+        156,
+        245
+      ],
+      "timestep_min": 720.0,
+      "table_storage_m3": [
+        0.0,
+        5572800.0,
+        10221120.0,
+        14869440.0,
+        19517760.0,
+        23232959.999999996,
+        36616320.0,
+        39960000.0,
+        43303680.0,
+        46647360.0,
+        56687040.0,
+        74606400.0,
+        101476800.0
+      ],
+      "table_outflow_m3s": [
+        0.0,
+        11.6,
+        32.8,
+        60.3,
+        92.8,
+        114.6,
+        149.0,
+        203.6,
+        289.0,
+        353.0,
+        365.0,
+        382.0,
+        401.0
+      ],
+      "subreaches": 1,
+      "initial_outflow_m3s": 0.0
+    },
+    "expected": {
+      "outflow_m3s": [
+        0.0,
+        3.0,
+        9.0,
+        19.0,
+        31.0,
+        45.0,
+        59.0,
+        74.0,
+        92.0,
+        115.0
+      ]
+    },
+    "printed_precision": {
+      "outflow_m3s": 1.0,
+      "inflow_m3s": 1.0
+    },
+    "intermediate_rounding": [
+      {
+        "step": "the average inflows printed to whole ft3/s, half to even (200.5 as 200, 93.5 as 94), and used (Table 17-12, column 3)",
+        "effect": {
+          "outflow_m3s": 0.12
+        }
+      },
+      {
+        "step": "the outflow printed to whole ft3/s and the printed value entering the next state (Table 17-12, column 6: 74 + 35 - 3 = 106)",
+        "effect": {
+          "outflow_m3s": 0.059
+        }
+      },
+      {
+        "step": "the working curve for a step of 0.5 d, Table 17-11 column 6, O2/2 and S2/dt rounded to whole ft3/s (step 3); the printed curve against the exact one",
+        "effect": {
+          "outflow_m3s": 0.073
+        }
+      },
+      {
+        "step": "the storage of Table 17-11, column 3, printed to 0.1 ft3/s-d; first-order worst case of its rows on their own (row 0, the crest, is exact)",
+        "effect": {
+          "outflow_m3s": 0.039
+        }
+      },
+      {
+        "step": "the discharge of Table 17-11, column 2, printed to 0.1 ft3/s; first-order worst case of its rows on their own (row 0, the crest, is exact)",
+        "effect": {
+          "outflow_m3s": 0.072
+        }
+      }
+    ],
+    "conventions": [
+      "flows in ft3/s as printed, entered as the discharges, and the storage in ft3 (ft3/s-d times the 86,400 s of a day of the units table): the scheme is homogeneous in the discharge and the storage (scaling discharge), so the outflow comes out in ft3/s",
+      "the reservoir as one pool (N = 1); the storage is measured above the crest of the first stage, 580 ft, so the table starts at 0 ft3/s and 0 ft3/s-d",
+      "NEH routes the flood on three steps, 0.5 d to 4.5 d, 0.1 d to 6.0 d and 0.5 d after; each is a case of its own on its step, the state carried by the outflow (the storage is a function of the outflow)"
+    ],
+    "second_source": {
+      "citation": "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model",
+      "locator": "eq. 3, the storage-indication equation (the same as NEH's eq. 17-3)",
+      "url": "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/modified-puls-model",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "level_pool",
+    "case_id": "levelpool_neh17_example17_2_reservoir_4_5_to_6_d",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open",
+      "locator": "example 17-2, tables 17-8, 17-11 and 17-12, text pp. 17-22 and 17-25"
+    },
+    "inputs": {
+      "inflow_m3s": [
+        245,
+        269,
+        308,
+        380,
+        522,
+        2002,
+        1049,
+        577,
+        393,
+        312,
+        267,
+        217,
+        200,
+        184,
+        174,
+        164
+      ],
+      "timestep_min": 144.0,
+      "table_storage_m3": [
+        0.0,
+        5572800.0,
+        10221120.0,
+        14869440.0,
+        19517760.0,
+        23232959.999999996,
+        36616320.0,
+        39960000.0,
+        43303680.0,
+        46647360.0,
+        56687040.0,
+        74606400.0,
+        101476800.0
+      ],
+      "table_outflow_m3s": [
+        0.0,
+        11.6,
+        32.8,
+        60.3,
+        92.8,
+        114.6,
+        149.0,
+        203.6,
+        289.0,
+        353.0,
+        365.0,
+        382.0,
+        401.0
+      ],
+      "subreaches": 1,
+      "initial_outflow_m3s": 115.43473818646231
+    },
+    "expected": {
+      "outflow_m3s": [
+        115.0,
+        119.0,
+        122.0,
+        127.0,
+        134.0,
+        212.0,
+        358.0,
+        363.0,
+        364.0,
+        364.0,
+        363.0,
+        362.0,
+        360.0,
+        359.0,
+        357.0,
+        355.0
+      ],
+      "storage_peak_m3": 55848960.0
+    },
+    "printed_precision": {
+      "outflow_m3s": 1.0,
+      "inflow_m3s": 1.0,
+      "initial_outflow_m3s": 0.021967,
+      "storage_peak_m3": 8640.0
+    },
+    "intermediate_rounding": [
+      {
+        "step": "the average inflows printed to whole ft3/s, half to even (200.5 as 200, 93.5 as 94), and used (Table 17-12, column 3)",
+        "effect": {
+          "outflow_m3s": 0.093,
+          "storage_peak_m3": 77808.0
+        }
+      },
+      {
+        "step": "the outflow printed to whole ft3/s and the printed value entering the next state (Table 17-12, column 6: 257 + 2,784 - 115 = 2,926)",
+        "effect": {
+          "outflow_m3s": 0.14,
+          "storage_peak_m3": 117130.0
+        }
+      },
+      {
+        "step": "the working curve for a step of 0.1 d, Table 17-11 column 8, O2/2 and S2/dt rounded to whole ft3/s (step 3); the printed curve against the exact one",
+        "effect": {
+          "outflow_m3s": 0.11,
+          "storage_peak_m3": 92031.0
+        }
+      },
+      {
+        "step": "the storage of Table 17-11, column 3, printed to 0.1 ft3/s-d; first-order worst case of its rows on their own (row 0, the crest, is exact)",
+        "effect": {
+          "outflow_m3s": 0.2,
+          "storage_peak_m3": 171648.0
+        }
+      },
+      {
+        "step": "the discharge of Table 17-11, column 2, printed to 0.1 ft3/s; first-order worst case of its rows on their own (row 0, the crest, is exact)",
+        "effect": {
+          "outflow_m3s": 0.5,
+          "storage_peak_m3": 418320.0
+        }
+      },
+      {
+        "step": "NEH reads the peak storage at the printed peak outflow, 364 ft3/s: half a unit of it times dS/dO of its segment, (656.1 - 539.9) / (365 - 353) ft3/s-d per ft3/s",
+        "effect": {
+          "storage_peak_m3": 418320.0
+        }
+      }
+    ],
+    "conventions": [
+      "flows in ft3/s as printed, entered as the discharges, and the storage in ft3 (ft3/s-d times the 86,400 s of a day of the units table): the scheme is homogeneous in the discharge and the storage (scaling discharge), so the outflow comes out in ft3/s",
+      "the reservoir as one pool (N = 1); the storage is measured above the crest of the first stage, 580 ft, so the table starts at 0 ft3/s and 0 ft3/s-d",
+      "NEH routes the flood on three steps, 0.5 d to 4.5 d, 0.1 d to 6.0 d and 0.5 d after; each is a case of its own on its step, the state carried by the outflow (the storage is a function of the outflow)",
+      "the initial outflow is the one the source's state at 4.5 d stands for: NEH enters the new working curve at 2,784 ft3/s (Table 17-12, column 4), the curve of Table 17-11 gives it the outflow 115.4347 ft3/s, printed 115; its printed precision is what 1 ft3/s of that state is worth in outflow",
+      "the peak storage is NEH's 646.4 ft3/s-d (1,282 acre-ft) in ft3, read from Table 17-11 at the peak outflow; the formula gives the largest storage of the ordinates, at 5.3 d"
+    ],
+    "second_source": {
+      "citation": "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model",
+      "locator": "eq. 3, the storage-indication equation (the same as NEH's eq. 17-3)",
+      "url": "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/modified-puls-model",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "level_pool",
+    "case_id": "levelpool_neh17_example17_2_reservoir_6_to_10_d",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open",
+      "locator": "example 17-2, tables 17-8, 17-11 and 17-12, text pp. 17-22 and 17-25"
+    },
+    "inputs": {
+      "inflow_m3s": [
+        164,
+        138,
+        118,
+        106,
+        94,
+        88,
+        82,
+        75,
+        67
+      ],
+      "timestep_min": 720.0,
+      "table_storage_m3": [
+        0.0,
+        5572800.0,
+        10221120.0,
+        14869440.0,
+        19517760.0,
+        23232959.999999996,
+        36616320.0,
+        39960000.0,
+        43303680.0,
+        46647360.0,
+        56687040.0,
+        74606400.0,
+        101476800.0
+      ],
+      "table_outflow_m3s": [
+        0.0,
+        11.6,
+        32.8,
+        60.3,
+        92.8,
+        114.6,
+        149.0,
+        203.6,
+        289.0,
+        353.0,
+        365.0,
+        382.0,
+        401.0
+      ],
+      "subreaches": 1,
+      "initial_outflow_m3s": 354.9581589958159
+    },
+    "expected": {
+      "outflow_m3s": [
+        355.0,
+        249.0,
+        174.0,
+        147.0,
+        142.0,
+        137.0,
+        132.0,
+        126.0,
+        120.0
+      ]
+    },
+    "printed_precision": {
+      "outflow_m3s": 1.0,
+      "inflow_m3s": 1.0,
+      "initial_outflow_m3s": 0.050209
+    },
+    "intermediate_rounding": [
+      {
+        "step": "the average inflows printed to whole ft3/s, half to even (200.5 as 200, 93.5 as 94), and used (Table 17-12, column 3)",
+        "effect": {
+          "outflow_m3s": 0.053
+        }
+      },
+      {
+        "step": "the outflow printed to whole ft3/s and the printed value entering the next state (Table 17-12, column 6: 151 + 1,295 - 355 = 1,091)",
+        "effect": {
+          "outflow_m3s": 0.2
+        }
+      },
+      {
+        "step": "the working curve for a step of 0.5 d, Table 17-11 column 6, O2/2 and S2/dt rounded to whole ft3/s (step 3); the printed curve against the exact one",
+        "effect": {
+          "outflow_m3s": 0.25
+        }
+      },
+      {
+        "step": "the storage of Table 17-11, column 3, printed to 0.1 ft3/s-d; first-order worst case of its rows on their own (row 0, the crest, is exact)",
+        "effect": {
+          "outflow_m3s": 0.15
+        }
+      },
+      {
+        "step": "the discharge of Table 17-11, column 2, printed to 0.1 ft3/s; first-order worst case of its rows on their own (row 0, the crest, is exact)",
+        "effect": {
+          "outflow_m3s": 0.73
+        }
+      }
+    ],
+    "conventions": [
+      "flows in ft3/s as printed, entered as the discharges, and the storage in ft3 (ft3/s-d times the 86,400 s of a day of the units table): the scheme is homogeneous in the discharge and the storage (scaling discharge), so the outflow comes out in ft3/s",
+      "the reservoir as one pool (N = 1); the storage is measured above the crest of the first stage, 580 ft, so the table starts at 0 ft3/s and 0 ft3/s-d",
+      "NEH routes the flood on three steps, 0.5 d to 4.5 d, 0.1 d to 6.0 d and 0.5 d after; each is a case of its own on its step, the state carried by the outflow (the storage is a function of the outflow)",
+      "the initial outflow is the one the source's state at 6.0 d stands for: NEH enters the new working curve at 1,295 ft3/s (Table 17-12, column 4), the curve of Table 17-11 gives it the outflow 354.9582 ft3/s, printed 355; its printed precision is what 1 ft3/s of that state is worth in outflow"
+    ],
+    "second_source": {
+      "citation": "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model",
+      "locator": "eq. 3, the storage-indication equation (the same as NEH's eq. 17-3)",
+      "url": "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/modified-puls-model",
+      "access": "open"
+    },
+    "status": "second_source"
+  }
+]

@@ -18,8 +18,8 @@ from scipy.stats import gamma
 
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.routing import CascadeReach, Hydrograph, cascade_weights
-from hydrolog.routing import cascade as cascade_module
 from hydrolog.routing._kernels import route_muskingum_cascade
+from hydrolog.routing.formulas import cascade as cascade_module
 from hydrolog.runoff import NashIUH
 
 
