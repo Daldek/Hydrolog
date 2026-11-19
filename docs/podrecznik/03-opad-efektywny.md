@@ -342,8 +342,8 @@ hydrolog scs effective --cn 75.54 --precipitation-mm 101.82
 | grupa C | 75,54 | 43,48 mm | 0,427 |
 
 Ta sama zlewnia i to samo pokrycie dają o 80 % więcej opadu efektywnego, gdy gleby zaliczy się do
-grupy C zamiast B. Dlatego przypisanie grupy glebom (podrozdział 3.8) waży w metodzie SCS-CN co
-najmniej tyle co mapa pokrycia terenu.
+grupy C zamiast B. Przypisanie grupy glebom (podrozdział 3.8) jest więc w metodzie SCS-CN równie
+ważne jak mapa pokrycia terenu.
 
 ## 3.7. Warunki wilgotnościowe poprzedzające opad (AMC)
 
@@ -410,9 +410,10 @@ hydrolog scs effective --cn 65 --precipitation-mm 101.82 --amc III
 | II (przeciętnie) | 65 | 136,77 | 27,35 | 26,25 | 0,258 |
 | III (mokro) | 81 | 59,58 | 11,92 | 54,07 | 0,531 |
 
-Ten sam opad stuletni daje po suchym okresie 4,5 mm odpływu, a po mokrym 54,1 mm: dwanaście razy
-więcej. Warunki wilgotnościowe zmieniają wynik bardziej niż jakikolwiek inny wybór w metodzie, a
-nie wynikają z żadnego wzoru; przyjęte warunki trzeba zawsze podać razem z wynikiem.
+Ten sam opad o prawdopodobieństwie przewyższenia 1 % daje po suchym okresie 4,5 mm odpływu, a po
+mokrym 54,1 mm: dwanaście razy więcej. W przykładach tego rozdziału warunki wilgotnościowe
+zmieniają wynik bardziej niż jakikolwiek inny wybór, a nie wynikają z żadnego wzoru; przyjęte
+warunki trzeba zawsze podać razem z wynikiem.
 
 ## 3.8. Grupy hydrologiczne gleb (HSG)
 
@@ -479,8 +480,9 @@ granicą włączoną albo wyłączoną tak, jak brzmi tekst podręcznika (ADR-00
 <!-- /spec-table:usda_texture -->
 
 Klasa zależy tylko od udziałów frakcji w ich sumie: zawartości można podać w procentach albo w
-g/kg (jak w SoilGrids), a suma nie musi wynosić 100, bo materia organiczna i szkielet leżą poza
-częściami ziemistymi. Trzy zera nie są glebą i Hydrolog je odrzuca.
+g/kg (jak w SoilGrids), a trzy zawartości nie muszą składać się na całą próbkę, bo materia
+organiczna i szkielet leżą poza częściami ziemistymi. Trzy zera nie są glebą i Hydrolog je
+odrzuca.
 
 **Typowe błędy.** Stare polskie mapy glebowo-rolnicze opisują uziarnienie według normy
 BN-78/9180-11 (inne granice frakcji i grup) albo kategoriami agronomicznymi; przed użyciem
