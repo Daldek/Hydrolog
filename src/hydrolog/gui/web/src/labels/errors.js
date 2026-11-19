@@ -20,9 +20,12 @@ const CURVE = "depth_duration_mm";
  * The option a refused constraint of a formula stands on, by `details.constraint`, when
  * the refusal names none: the input the constraint asks to change. Lutz's constraints name
  * theirs (`uh nash` and NashIUH.from_lutz), Kerby–Kirpich's condition between its inputs
- * does not.
+ * and the texture's positive total of clay, sand and silt (`soil texture`) do not.
  */
-const CONSTRAINT_OPTIONS = Object.freeze({ flow_path_longer_than_overland: "flow_path_length_km" });
+const CONSTRAINT_OPTIONS = Object.freeze({
+  flow_path_longer_than_overland: "flow_path_length_km",
+  positive_total: "clay",
+});
 
 export const errors = {
   reasons: {
@@ -84,6 +87,14 @@ export const errors = {
       "Długość do środka ciężkości Lc nie może być większa od długości cieku L: obie biegną wzdłuż cieku głównego od przekroju zamykającego, Lc do punktu najbliższego środka ciężkości zlewni, L do działu wodnego",
     shares_within_catchment:
       "Udział terenów zurbanizowanych i udział lasów razem nie mogą przekroczyć 100 % powierzchni zlewni",
+    within_reach:
+      "Powierzchnia zlewni nie może być większa od pola koła o promieniu równym długości zlewni L (A ≤ πL²): cała zlewnia leży nie dalej niż L od przekroju zamykającego",
+    isoperimetric:
+      "Obwód zlewni nie może być krótszy od obwodu koła o tej samej powierzchni (P² ≥ 4πA): powierzchnia i obwód pochodzą wtedy z różnych obrysów zlewni",
+    rises_above_outlet:
+      "Najwyższy punkt zlewni musi leżeć wyżej niż przekrój zamykający (Hmax > Hmin): woda spływa do przekroju",
+    positive_total:
+      "Zawartości iłu, piasku i pyłu nie mogą być wszystkie zerowe: klasa uziarnienia wynika z udziałów frakcji w ich sumie",
   },
   /** The sentences of the errors of Euler II's depth-duration curve, by `details.reason`. */
   curve: {

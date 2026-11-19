@@ -1096,11 +1096,18 @@ hydrolog hydrometrics rating-curve --input-file tests/fixtures/rating_curve_pair
 ### Hydrologic soil groups
 
 `soil texture` classifies one sample (clay, sand and silt in one common unit) into a USDA texture
-class and a hydrologic soil group. `soil hsg` classifies three rasters (clay, sand, silt; GeoTIFF
-with the same coordinate system, grid and size) into one HSG raster, a `uint8` GeoTIFF where 0 is
-no data and 1-4 are A-D; `soil hsg-stats` reports the area and share of each group. Both raster
-commands need the `raster` extra. `soil hsg` writes a file, so it takes `--output`, `--check` and
-`--force` ([Writing files](#3-writing-files)).
+class and a hydrologic soil group; three zeros have no texture and are refused. `soil hsg`
+classifies three rasters (clay, sand, silt; GeoTIFF with the same coordinate system, grid and size)
+into one HSG raster, a `uint8` GeoTIFF where 0 is no data and 1-4 are A-D; `soil hsg-stats`
+reports the area and share of each group. Both raster commands need the `raster` extra. `soil hsg`
+writes a file, so it takes `--output`, `--check` and `--force` ([Writing files](#3-writing-files)).
+
+The texture classes are those of the Soil Survey Manual (2017, spec `usda_texture`). The groups
+(spec `texture_hsg`) are TR-55's (1986, appendix A) except three classes, which take the group
+NEH 630 ch. 7 names them typical of: sandy loam is B (TR-55: A, a stricter group and a higher CN),
+clay loam and silty clay loam are C (TR-55: D, a milder group and a lower CN); silt, which TR-55
+does not list, is B like silt loam ([FORMULAS.md](FORMULAS.md#texture_hsg),
+[ADR-0066](decisions/0066-the-soil-texture-and-hsg-tables-as-data.md)).
 
 ```bash
 hydrolog soil texture --clay 200 --sand 400 --silt 400 --json

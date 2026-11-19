@@ -1,0 +1,142 @@
+schema = "nogat-formula-card/1"
+name = "length_ratio"
+title = "Horton's length ratio of the streams of two consecutive orders"
+function = "hydrolog.network.stream_order.length_ratio"
+family = "index"
+formula_version = 1
+status = "oracle only"
+equation = "Rl = mean L_(u+1) / mean L_u"
+latex = "R_l = \\frac{\\bar L_{u+1}}{\\bar L_u}"
+validation = "none: Horton's law of stream lengths makes Rl nearly constant across orders; its sources report no agreement with a quantity"
+conventions = ["mean lengths of Strahler streams: the total length of the segments of an order over the number of its streams (StreamNetwork.get_statistics), km", "Rl of the mean lengths, Horton's ratio; not the ratio of total lengths"]
+assumptions = []
+notices = []
+reference_cases = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+mean_length_lower_km = -1
+mean_length_higher_km = 1
+
+[[properties.scalings]]
+name = "units_of_length"
+
+[properties.scalings.inputs]
+mean_length_lower_km = 1.0
+mean_length_higher_km = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "both lengths doubled: the same quotient, exactly"
+abs = 0.0
+
+[[properties.limits]]
+name = "exact_rational"
+text = "Rl is the exact quotient of the mean lengths, rounded once"
+
+[[sources]]
+citation = "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34"
+access = "open"
+locator = "eqs. (1.2.18)-(1.2.22): the density of the river network sum(L) / A, the bifurcation ratio N_u / N_(u+1), N_u the number of streams of order u, the ratio of the mean lengths of the streams of consecutive orders and the frequency of streams, the number of streams of all orders over A"
+url = "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content"
+
+[[sources]]
+citation = "Strahler, A.N. (1957). Quantitative analysis of watershed geomorphology. Transactions, American Geophysical Union 38(6): 913-920"
+access = "open"
+locator = "stream orders, the numbers and mean lengths of the streams of each order and Horton's laws (not opened; the definitions as Baścik 2006 gives them)"
+url = "https://doi.org/10.1029/TR038i006p00913"
+
+[[variables]]
+name = "mean_length_lower_km"
+symbol = "\\bar L_u"
+unit = "km"
+kind = "real"
+description = "Mean length of the Strahler streams of order u."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 10000000.0
+test_reason = "ten million km: a drainage density of 10 km/km2 over a million km2, beyond any network a DEM of Poland gives"
+
+[variables.typical]
+low = 0.9
+low_inclusive = true
+high = 5.2
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2"
+access = "open"
+locator = "mean lengths of 0.92, 1.45 and 5.2 km of orders 1-3"
+
+[[variables]]
+name = "mean_length_higher_km"
+symbol = "\\bar L_{u+1}"
+unit = "km"
+kind = "real"
+description = "Mean length of the Strahler streams of order u + 1."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 10000000.0
+test_reason = "ten million km: a drainage density of 10 km/km2 over a million km2, beyond any network a DEM of Poland gives"
+
+[variables.typical]
+low = 0.9
+low_inclusive = true
+high = 5.2
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2"
+access = "open"
+locator = "mean lengths of 0.92, 1.45 and 5.2 km of orders 1-3"
+
+[[constraints]]
+name = "within_float64"
+class = "precondition"
+text = "mean L_(u+1) / mean L_u lies within float64"
+
+[constraints.source]
+citation = "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34"
+access = "open"
+locator = "eqs. (1.2.18)-(1.2.22): the density of the river network sum(L) / A, the bifurcation ratio N_u / N_(u+1), N_u the number of streams of order u, the ratio of the mean lengths of the streams of consecutive orders and the frequency of streams, the number of streams of all orders over A"
+url = "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content"
+
+[[outputs]]
+name = "length_ratio"
+unit = "-"
+kind = "real"
+symbol = "R_l"
+description = "Length ratio of orders u and u + 1."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "range cases mean_length_lower_km-physical_low_*: Rl grows as 1/mean L_u; a value beyond float64 is refused by the precondition within_float64"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases of every input with nan: a gap is refused"
+
+[[oracles]]
+kind = "exact"
+description = "mean L_(u+1) / mean L_u in exact rational arithmetic"
+test = "tests/unit/test_formulas_network.py (limit exact_rational)"
+conventions = []

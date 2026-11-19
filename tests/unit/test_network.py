@@ -184,16 +184,6 @@ class TestBifurcationRatio:
         rb = bifurcation_ratio(n_lower=15, n_higher=4)
         assert rb == pytest.approx(3.75)
 
-    def test_zero_higher(self):
-        """Test that zero higher order raises error."""
-        with pytest.raises(InvalidParameterError, match="cannot be zero"):
-            bifurcation_ratio(n_lower=5, n_higher=0)
-
-    def test_negative_counts(self):
-        """Test that negative counts raise error."""
-        with pytest.raises(InvalidParameterError, match="non-negative"):
-            bifurcation_ratio(n_lower=-1, n_higher=2)
-
 
 class TestDrainageDensity:
     """Tests for drainage_density function."""
@@ -215,16 +205,6 @@ class TestDrainageDensity:
         assert dd == pytest.approx(5.0)
         assert dd > 3  # High density
 
-    def test_zero_length(self):
-        """Test that zero length raises error."""
-        with pytest.raises(InvalidParameterError, match="must be positive"):
-            drainage_density(total_length_km=0, area_km2=10.0)
-
-    def test_zero_area(self):
-        """Test that zero area raises error."""
-        with pytest.raises(InvalidParameterError, match="must be positive"):
-            drainage_density(total_length_km=10.0, area_km2=0)
-
 
 class TestStreamFrequency:
     """Tests for stream_frequency function."""
@@ -238,16 +218,6 @@ class TestStreamFrequency:
         """Test with zero streams."""
         fs = stream_frequency(n_streams=0, area_km2=10.0)
         assert fs == pytest.approx(0.0)
-
-    def test_negative_streams(self):
-        """Test that negative stream count raises error."""
-        with pytest.raises(InvalidParameterError, match="non-negative"):
-            stream_frequency(n_streams=-5, area_km2=10.0)
-
-    def test_zero_area(self):
-        """Test that zero area raises error."""
-        with pytest.raises(InvalidParameterError, match="must be positive"):
-            stream_frequency(n_streams=10, area_km2=0)
 
 
 def _network(spec):

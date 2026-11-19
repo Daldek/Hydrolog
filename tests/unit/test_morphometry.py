@@ -325,12 +325,13 @@ class TestTerrainAnalysis:
 
     def test_invalid_elevation_order(self):
         """Test that max <= min raises error."""
-        with pytest.raises(InvalidParameterError, match="elevation_max_m"):
+        with pytest.raises(InvalidParameterError) as refused:
             TerrainAnalysis(
                 elevation_min_m=520.0,
                 elevation_max_m=150.0,
                 length_km=12.0,
             )
+        assert refused.value.details["constraint"] == "rises_above_outlet"
 
     def test_invalid_mean_elevation(self):
         """Test that mean outside range raises error."""

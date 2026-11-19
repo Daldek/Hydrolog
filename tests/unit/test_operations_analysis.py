@@ -354,7 +354,8 @@ class TestMorphometryWatershed:
         with pytest.raises(NotFoundError):
             run("morphometry watershed", watershed_file=str(tmp_path / "none.json"))
 
-    def test_absurd_magnitudes_are_a_calculation_error_not_a_crash(self):
+    def test_absurd_magnitudes_are_refused_not_a_crash(self):
+        """An area of 1e300 km2 cannot lie within 1e-300 km of its outlet."""
         absurd = {
             "area_km2": 1e300,
             "perimeter_km": 1e300,
@@ -362,9 +363,10 @@ class TestMorphometryWatershed:
             "elevation_min_m": 0,
             "elevation_max_m": 1,
         }
-        with pytest.raises(CalculationError) as caught:
+        with pytest.raises(InvalidParameterError) as caught:
             run("morphometry watershed", watershed=absurd)
-        assert caught.value.code == "calculation_error"
+        assert caught.value.details["reason"] == "outside_physical_range"
+        assert caught.value.details["constraint"] == "within_reach"
 
     def test_a_watershed_without_the_shape_fields_names_them(self, tmp_path):
         """Only the area is required to load; the shape indicators need more."""
@@ -2154,9 +2156,11 @@ class TestSoilTexture:
         }
 
     def test_no_soil_data_is_an_error_not_loam(self):
+        """ADR-0066: the spec usda_texture refuses a zero total (positive_total)."""
         with pytest.raises(InvalidParameterError) as caught:
             soil.soil_texture(clay=0, sand=0, silt=0)
-        assert caught.value.details["reason"] == "no_data"
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "positive_total"
 
     @pytest.mark.parametrize(
         "amounts",

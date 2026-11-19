@@ -1,0 +1,159 @@
+schema = "nogat-formula-card/1"
+name = "bifurcation_ratio"
+title = "Horton's bifurcation ratio of the streams of two consecutive orders"
+function = "hydrolog.network.stream_order.bifurcation_ratio"
+family = "index"
+formula_version = 1
+status = "oracle only"
+equation = "Rb = N_u / N_(u+1)"
+latex = "R_b = \\frac{N_u}{N_{u+1}}"
+validation = "none: Horton's law of stream numbers makes Rb nearly constant across orders; its sources report ranges of Rb, not its agreement with a quantity"
+conventions = ["N_u counts Strahler streams, a stream of order u running from where the order begins to its junction with a stream of an equal or higher order, not the links between junctions (StreamNetwork.get_statistics)", "Horton's ratios are defined on Strahler orders only: Shreve magnitudes get none"]
+assumptions = []
+notices = []
+reference_cases = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+n_lower = 1
+n_higher = -1
+
+[[properties.scalings]]
+name = "counts"
+
+[properties.scalings.inputs]
+n_lower = 1.0
+n_higher = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "both counts doubled: the same quotient, exactly"
+abs = 0.0
+
+[[properties.limits]]
+name = "exact_rational"
+text = "Rb is the exact quotient of the counts, rounded once"
+
+[[sources]]
+citation = "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34"
+access = "open"
+locator = "eqs. (1.2.18)-(1.2.22): the density of the river network sum(L) / A, the bifurcation ratio N_u / N_(u+1), N_u the number of streams of order u, the ratio of the mean lengths of the streams of consecutive orders and the frequency of streams, the number of streams of all orders over A"
+url = "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content"
+
+[[sources]]
+citation = "Strahler, A.N. (1957). Quantitative analysis of watershed geomorphology. Transactions, American Geophysical Union 38(6): 913-920"
+access = "open"
+locator = "stream orders, the numbers and mean lengths of the streams of each order and Horton's laws (not opened; the definitions as Baścik 2006 gives them)"
+url = "https://doi.org/10.1029/TR038i006p00913"
+
+[[variables]]
+name = "n_lower"
+symbol = "N_u"
+unit = "-"
+kind = "real"
+description = "Number of Strahler streams of order u."
+applicability = "unstated"
+
+[variables.physical]
+low = 2.0
+low_inclusive = true
+test_high = 10000000.0
+test_reason = "ten million streams: a D8 network on 10^8 cells, a 10 m DEM of 10,000 km2, has fewer sources than cells"
+
+[variables.typical]
+low = 2.0
+low_inclusive = true
+high = 5.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2"
+access = "open"
+locator = "5 and 2 streams of orders 1 and 2"
+
+[[variables]]
+name = "n_higher"
+symbol = "N_{u+1}"
+unit = "-"
+kind = "real"
+description = "Number of Strahler streams of order u + 1."
+applicability = "unstated"
+
+[variables.physical]
+low = 1.0
+low_inclusive = true
+test_high = 10000000.0
+test_reason = "ten million streams: a D8 network on 10^8 cells, a 10 m DEM of 10,000 km2, has fewer sources than cells"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 2.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2"
+access = "open"
+locator = "2 and 1 streams of orders 2 and 3"
+
+[[constraints]]
+name = "whole_numbers"
+class = "physical"
+text = "N_u and N_(u+1) are numbers of streams, whole numbers"
+
+[constraints.source]
+citation = "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34"
+access = "open"
+locator = "eqs. (1.2.18)-(1.2.22): the density of the river network sum(L) / A, the bifurcation ratio N_u / N_(u+1), N_u the number of streams of order u, the ratio of the mean lengths of the streams of consecutive orders and the frequency of streams, the number of streams of all orders over A"
+url = "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content"
+
+[[constraints]]
+name = "two_streams_per_junction"
+class = "physical"
+text = "N_u >= 2 N_(u+1): every stream of order u + 1 begins where at least two streams of order u end, and a stream ends once, so Rb >= 2"
+
+[constraints.source]
+citation = "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34"
+access = "open"
+locator = "p. 28: Strahler's orders: a source stream is of order 1, two streams of order u form one of order u + 1, and where streams of different orders join, the stream below keeps the higher order"
+url = "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content"
+
+[[outputs]]
+name = "bifurcation_ratio"
+unit = "-"
+kind = "real"
+symbol = "R_b"
+description = "Bifurcation ratio of orders u and u + 1."
+
+[outputs.physical]
+low = 2.0
+low_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "none of the denominator is a difference: N_(u+1) >= 1 by its physical range, so no division by zero"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases of every input with nan: a gap is refused"
+
+[[oracles]]
+kind = "exact"
+description = "N_u / N_(u+1) in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_network.py (limit exact_rational)"
+conventions = []
+
+[[oracles]]
+kind = "algorithm"
+description = "the streams of a network counted as the connected runs of links of one order (union-find), another algorithm than the code's rule"
+test = "tests/unit/test_formulas_network.py (test_streams_are_the_runs_of_links_of_one_order)"
+conventions = []

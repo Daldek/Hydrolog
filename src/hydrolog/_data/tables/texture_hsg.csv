@@ -1,0 +1,13 @@
+texture_class,hsg,source
+sand,A,"TR-55 (1986) appendix A, p. A-1"
+loamy_sand,A,"TR-55 (1986) appendix A, p. A-1"
+sandy_loam,B,"NEH 630 ch. 7 (2009), p. 7-2: group B typically loamy sand or sandy loam (TR-55: A)"
+loam,B,"TR-55 (1986) appendix A, p. A-1"
+silt_loam,B,"TR-55 (1986) appendix A, p. A-1"
+silt,B,"the group of silt loam (TR-55 has no silt; NEH 630 ch. 7, p. 7-2, puts well aggregated silt in B)"
+sandy_clay_loam,C,"TR-55 (1986) appendix A, p. A-1"
+clay_loam,C,"NEH 630 ch. 7 (2009), p. 7-2: group C typically clay loam (TR-55: D)"
+silty_clay_loam,C,"NEH 630 ch. 7 (2009), p. 7-2: group C typically silty clay loam (TR-55: D)"
+sandy_clay,D,"TR-55 (1986) appendix A, p. A-1"
+silty_clay,D,"TR-55 (1986) appendix A, p. A-1"
+clay,D,"TR-55 (1986) appendix A, p. A-1"

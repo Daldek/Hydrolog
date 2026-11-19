@@ -1,0 +1,115 @@
+schema = "nogat-formula-card/1"
+name = "strahler_order"
+title = "Strahler's order of a stream below a junction"
+function = "hydrolog.network.stream_order.strahler_order"
+family = "classification"
+formula_version = 1
+status = "referenced"
+equation = "u = 1 for a source; else u = max(upstream) + 1 if two or more upstream streams have the highest order, max(upstream) otherwise"
+latex = "u = \\begin{cases} 1 & \\text{no upstream stream} \\\\ \\max u_i + 1 & \\text{two or more } u_i = \\max u_i \\\\ \\max u_i & \\text{otherwise} \\end{cases}"
+validation = "none: a classification of the streams of a network"
+conventions = ["a junction of three or more streams raises the order when at least two of them have the highest order", "Shreve's magnitude, the sum of the upstream magnitudes, is another ordering"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/morphometry-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+upstream_orders = 1
+
+[[properties.limits]]
+name = "source"
+text = "a stream without upstream streams is of order 1"
+
+[[properties.limits]]
+name = "pass_through"
+text = "a single upstream stream keeps its order"
+
+[[properties.limits]]
+name = "three_highest"
+text = "three upstream streams of the highest order raise it by one, as two do"
+
+[[sources]]
+citation = "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34"
+access = "open"
+locator = "p. 28: Strahler's orders: a source stream is of order 1, two streams of order u form one of order u + 1, and where streams of different orders join, the stream below keeps the higher order"
+url = "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content"
+
+[[sources]]
+citation = "Strahler, A.N. (1957). Quantitative analysis of watershed geomorphology. Transactions, American Geophysical Union 38(6): 913-920"
+access = "open"
+locator = "stream orders, the numbers and mean lengths of the streams of each order and Horton's laws (not opened; the definitions as Baścik 2006 gives them)"
+url = "https://doi.org/10.1029/TR038i006p00913"
+
+[[variables]]
+name = "upstream_orders"
+symbol = "u_i"
+unit = "-"
+kind = "real_array"
+description = "Strahler orders of the streams that flow into the stream; empty for a source."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 0
+
+[variables.physical]
+low = 1.0
+low_inclusive = true
+test_high = 64.0
+test_reason = "an order of 64 needs 2^63 sources, more than the cells of any DEM"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 3.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2"
+access = "open"
+locator = "orders 1 to 3"
+
+[[constraints]]
+name = "whole_orders"
+class = "physical"
+text = "orders are whole numbers"
+
+[constraints.source]
+citation = "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34"
+access = "open"
+locator = "p. 28: Strahler's orders: a source stream is of order 1, two streams of order u form one of order u + 1, and where streams of different orders join, the stream below keeps the higher order"
+url = "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content"
+
+[[outputs]]
+name = "order"
+unit = "-"
+kind = "integer"
+symbol = "u"
+description = "Strahler order of the stream below the junction."
+
+[outputs.physical]
+low = 1.0
+low_inclusive = true
+
+[[traps]]
+name = "class_limit"
+description = "A value exactly at a limit of a published class or table."
+test = "reference cases strahler-* at the junctions of equal and unequal orders"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case upstream_orders-nan_element: a gap is refused"
+
+[[oracles]]
+kind = "algorithm"
+description = "the streams of a network counted as the connected runs of links of one order (union-find)"
+test = "tests/unit/test_formulas_network.py (test_streams_are_the_runs_of_links_of_one_order)"
+conventions = []

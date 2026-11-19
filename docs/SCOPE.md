@@ -119,11 +119,13 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - Catchment width [km]
 
 **Shape indices:**
-- Form factor Cf = A / L²
-- Compactness coefficient Cz = P / √A
-- Circularity ratio Ck
-- Elongation ratio Cw
-- Lemniscate ratio Cl
+- Form factor Cf (`form_factor`)
+- Compactness coefficient Cz (`compactness_coefficient`, Gravelius)
+- Circularity ratio Ck (`circularity_ratio`, Miller)
+- Elongation ratio Ce (`elongation_ratio`, Schumm; Polish Cw)
+- Lemniscate ratio k (`lemniscate_ratio`, Chorley; Polish Cl)
+
+Their equations, ranges and sources are those of the specs (`docs/FORMULAS.md`).
 
 **Morphometric parameters:**
 - Elevation: max, min, mean [m a.s.l.]
