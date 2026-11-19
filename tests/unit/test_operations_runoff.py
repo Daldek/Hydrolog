@@ -1706,12 +1706,12 @@ class TestUnitHydrographs:
             assert caught.value.details["reason"] == "one_of"
 
     def test_clark_refuses_a_step_above_twice_the_storage_constant(self):
-        """A step longer than 2 R is a validation error naming ``timestep_min``."""
+        """A step longer than 2 R fails the precondition step_stable on its option."""
         with pytest.raises(InvalidParameterError) as caught:
             ops.uh_clark(area_km2=45.3, tc_min=120.0, r_min=2.0, timestep_min=5.0)
         assert caught.value.details["option"] == "timestep_min"
-        assert caught.value.details["reason"] == "unstable_timestep"
-        assert caught.value.details["maximum"] == 4.0
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "step_stable"
 
         result, _ = unwrap(
             ops.uh_clark(area_km2=45.3, tc_min=120.0, r_min=2.0, timestep_min=4.0)
@@ -1725,10 +1725,10 @@ class TestUnitHydrographs:
     def test_clark_r_tc_outside_its_range_is_noticed_on_the_given_option(
         self, given, field
     ):
-        """R/tc outside 0.2-1.5 names the option that gave R."""
+        """R/tc outside 0.2-1.5, a range to be verified, names the option of R."""
         _, notices = unwrap(ops.uh_clark(area_km2=45.3, tc_min=120.0, **given))
         (notice,) = notices
-        assert notice.code == "outside_typical_range"
+        assert notice.code == "outside_unverified_range"
         assert notice.details["parameter"] == "r_tc_ratio"
         assert notice.details["field"] == field
 
@@ -2813,7 +2813,7 @@ class TestTypicalRangesOfTheModels:
             ("nash", "k_min", 200.01, 10.0, 200.0),
             # KZGW (2017), annex 2, p. 96: the Lutz method up to 236 km2
             ("lutz", "area_km2", 236.1, 0.0, 236.0),
-            # HEC-HMS Technical Reference Manual: R/tc 0.2-1.5
+            # Hydrolog's R/tc 0.2-1.5, no published source (outside_unverified_range)
             ("clark", "r_tc_ratio", 0.199, 0.2, 1.5),
             ("clark", "r_tc_ratio", 1.501, 0.2, 1.5),
             # Hawkins et al. (1985): the AMC formulas for CN 55-95

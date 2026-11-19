@@ -408,11 +408,14 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
         0.2,
         1.5,
         "-",
-        "0.2-0.4 steep, urban; 0.4-0.8 average natural; 0.8-1.5 flat, swampy "
-        "catchments (USACE, HEC-HMS Technical Reference Manual; engineering practice)",
-        "0,2–0,4 zlewnie strome, zurbanizowane; 0,4–0,8 przeciętne naturalne; "
-        "0,8–1,5 płaskie, podmokłe (USACE, HEC-HMS Technical Reference Manual; "
-        "praktyka inżynierska)",
+        "Hydrolog; no published source, to be verified: the HEC-HMS Technical "
+        "Reference Manual gives no R/tc, and the Polish calibrations of the Stobnica "
+        "give 1.7-2.3 (Wałęga and Cupak 2013, table 2)",
+        "Hydrolog; brak opublikowanego źródła, do weryfikacji: podręcznik techniczny "
+        "HEC-HMS nie podaje R/tc, a kalibracje Stobnicy dały 1,7–2,3 (Wałęga i Cupak "
+        "2013, tabl. 2)",
+        notice="outside_unverified_range",
+        verified=False,
     ),
     *_specified("snyder"),
     *(

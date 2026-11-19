@@ -222,8 +222,9 @@ export const uhInfo = {
     ],
     symbols: { r_tc_ratio: "R/tc" },
     note:
-      "<p>Większe R/t<sub>c</sub> daje szczyt niższy i późniejszy. Stosunek jest mały w zlewniach stromych " +
-      "i zurbanizowanych, duży w płaskich i podmokłych, które dłużej zatrzymują wodę.</p>",
+      "<p>Większe R/t<sub>c</sub> daje szczyt niższy i późniejszy. Zakres R/t<sub>c</sub> od 0,2 do 1,5, " +
+      "poza którym Hydrolog ostrzega, nie ma opublikowanego źródła (do weryfikacji): podręcznik HEC-HMS " +
+      "nie podaje R/t<sub>c</sub>, a kalibracje Stobnicy dały 1,7–2,3 (Wałęga i Cupak 2013).</p>",
     guide: "metoda-uh-clark",
     sources: "Clark 1945; USACE, HEC-HMS Technical Reference Manual",
   },

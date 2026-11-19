@@ -65,6 +65,7 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.runoff.cn_lookup",
     "hydrolog.runoff.unit_hydrograph",
     "hydrolog.runoff.snyder_uh",
+    "hydrolog.runoff.clark_iuh",
     "hydrolog.runoff.convolution",
 )
 """The modules whose ``SPECS`` (and ``TIER_B``) declare Hydrolog's formulas, in the
@@ -76,6 +77,7 @@ DELEGATED: Final[tuple[Delegated, ...]] = ()
 CONSTRAINT_OPTIONS: Final[Mapping[tuple[str, str], str]] = MappingProxyType(
     {
         ("snyder_shape", "root_bracketed"): "peak_discharge_m3s",
+        ("clark", "step_stable"): "timestep_min",
     }
 )
 """The input a precondition is about, by spec and constraint: its refusal names it in

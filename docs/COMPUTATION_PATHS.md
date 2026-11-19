@@ -479,7 +479,7 @@ hydrograph section, and a network node lists `nash_estimation` (given) and `nash
 | Kerby → Tc | ✅ OK¹ | Tc = translation time (sheet flow time) |
 | Kerby-Kirpich → Tc | ✅ OK | Tc = translation time (composite: overland + channel flow) |
 | Directly Tc, R | ✅ OK | When you have measured/calibrated values |
-| R/Tc ratio | ✅ OK | Typical values: 0.2-1.5 |
+| R/Tc ratio | ✅ OK | 0.2-1.5 without a notice; no published source (to be verified) |
 
 **Literature justification:**
 - In the Clark model, Tc represents the **translation time** - the time water takes to travel from the farthest point of the catchment to the outlet
@@ -489,11 +489,13 @@ hydrograph section, and a network node lists `nash_estimation` (given) and `nash
 
 #### 3.3.3 Choosing the R Coefficient
 
-| Catchment type | R/Tc ratio | Description |
-|----------------|------------|-------------|
-| Steep, urban | 0.2-0.4 | Little storage, fast runoff |
-| Natural, average | 0.4-0.8 | Typical conditions |
-| Flat, swampy | 0.8-1.5 | Large storage, slow runoff |
+R is best calibrated on measured floods. Outside R/Tc 0.2–1.5 Hydrolog warns with
+`outside_unverified_range` (`clark.r_tc_ratio`), but no source publishes that range: the
+HEC-HMS Technical Reference Manual gives no R/Tc, and the Polish calibrations of the
+Stobnica (335.84 km², Wałęga and Cupak 2013, table 2) give R/Tc 1.7–2.3. A larger R/Tc
+gives a lower and later peak. The classes of earlier versions (0.2–0.4 steep and urban,
+0.4–0.8 average, 0.8–1.5 flat and swampy) were credited to HEC-HMS, which does not
+contain them.
 
 #### 3.3.4 Formulas
 
@@ -522,7 +524,8 @@ The scheme is the Muskingum routing with X = 0. The weight of the previous outfl
 (2R - dt) / (2R + dt), is negative for dt > 2R and the hydrograph would oscillate, so
 `ClarkIUH` (and `uh clark`, `hydrograph generate` with `uh_model=clark`) accepts a time
 step of at most 2R; a longer one is a `validation_error` with
-`details.reason = "unstable_timestep"`.
+`details.reason = "precondition_failed"` (`details.constraint = "step_stable"`,
+`details.option = "timestep_min"`).
 
 #### 3.3.5 Code Example
 
@@ -1365,7 +1368,7 @@ print(round(float(beta.intensities_mm[0]), 4))   # 0.6372 = I_(1/12)(0.5, 5)
 | Nash IUH + from_urban_regression() | Rao, Delleur, Sarma (1972), Banasik (2009) | ✅ |
 | Nash IUH + directly n, K | Nash (1957) | ✅ |
 | Clark IUH + Tc (any method) | Clark (1945), HEC-HMS | ✅ |
-| Clark IUH + R/Tc ratio | HEC-HMS, engineering practice | ✅ |
+| Clark IUH + R/Tc ratio | Clark (1945), HEC-HMS; the range of R/Tc has no published source (to be verified) | ✅ |
 | Snyder UH + L, Lc, Ct, Cp | Snyder (1938) | ✅ |
 | Snyder UH in `HydrographGenerator` (D = time step: tLR, tpR, qpR) | Snyder (1938), HEC-HMS Technical Reference Manual, Chow, Maidment, Mays (1988) | ✅ |
 | Kirpich from a catchment (the longest flow path, `flow_path_length_km`, `flow_path_slope_m_per_m`) | Fang et al. (2005) eq. 3.14, Mota and Kobiyama (2015) | ✅ |

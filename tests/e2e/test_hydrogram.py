@@ -1304,12 +1304,13 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     field(page, "elevation_max_m").fill("475,1")
     shows(page, "57,88", "6:40", "1 046 713")
 
-    # An error of the server on its field: Clark's step above 2R
+    # An error of the server on its field: Clark's step above 2R, the precondition
+    # step_stable of the spec clark named by its option
     choose(page, "hg-uh-label", "Clark")
     choose(page, "hg-clark-label", "R [min]")
     field(page, "clark_r_min").fill("4")
     expect(message(page, "timestep_min")).to_have_text(
-        re.compile(r" · unstable_timestep$")
+        re.compile(r" · precondition_failed$")
     )
     expect(page.locator(BADGE)).to_have_text("Błąd danych")
     expect(page.locator('[data-stale="error"]').first).to_have_text(

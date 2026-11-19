@@ -349,15 +349,21 @@ def uh_clark(
     Raises
     ------
     InvalidParameterError
-        If both or neither of ``r_min`` and ``r_tc_ratio`` is given, or a value is
-        not positive.
+        If both or neither of ``r_min`` and ``r_tc_ratio`` is given, or the spec
+        ``clark`` refuses a value (``details.reason``; a step longer than 2 R is
+        ``precondition_failed`` on ``timestep_min``).
     """
     chosen = select_group(
         {"r_min": r_min, "r_tc_ratio": r_tc_ratio},
         {"r_min": ("r_min",), "r_tc_ratio": ("r_tc_ratio",)},
     )
-    # R/tc is checked by ClarkIUH: its field is the option that gave R
-    with capture_warnings() as notices, option_names({"r_tc_ratio": chosen}):
+    # the spec checks R, R/tc warns: both are named by the option that gave R
+    names = {
+        "r_min": chosen,
+        "r_tc_ratio": chosen,
+        "duration_min": "rainfall_duration_min",
+    }
+    with capture_warnings() as notices, option_names(names):
         if chosen == "r_min":
             assert r_min is not None
             reservoir = ClarkIUH(tc_min=tc_min, r_min=r_min)

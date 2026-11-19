@@ -20,7 +20,7 @@ from scipy.stats import gamma
 
 from hydrolog._formula_versions import recording
 from hydrolog._formulas import ERRORS
-from hydrolog._warnings import UhSubsteps
+from hydrolog._warnings import OutsideUnverifiedRange, UhSubsteps
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.nogat_formulas import (
     Case,
@@ -37,7 +37,8 @@ from hydrolog.nogat_formulas import (
     strategies,
     type_cases,
 )
-from hydrolog.runoff import SCSUnitHydrograph, SnyderUH
+from hydrolog.runoff import ClarkIUH, SCSUnitHydrograph, SnyderUH
+from hydrolog.runoff.clark_iuh import CLARK, clark_unit_hydrograph
 from hydrolog.runoff.convolution import CONVOLUTION, convolve_discrete
 from hydrolog.runoff.snyder_uh import (
     SNYDER,
@@ -62,6 +63,7 @@ FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
     (SCS, scs_unit_hydrograph),
     (SNYDER, snyder_parameters),
     (SNYDER_SHAPE, snyder_shape),
+    (CLARK, clark_unit_hydrograph),
     (CONVOLUTION, convolve_discrete),
 )
 
@@ -296,3 +298,66 @@ def test_the_snyder_wrapper_computes_through_the_specs():
     assert result.time_to_peak_min == found.time_to_peak_min
     assert result.time_base_min == found.time_base_min
     assert end <= result.times_min[-1] < end + 30.0
+
+
+# --- the traps of the spec clark (CMP-6.6) --------------------------------------------
+
+
+@given(inputs=strategies(CLARK))
+def test_clark_properties(inputs):
+    function = as_standard(clark_unit_hydrograph)
+    assert_property_contract(CLARK, function, inputs, ERRORS)
+    assert_properties(CLARK, function, inputs, ERRORS)
+
+
+def test_clark_steps_at_and_beyond_the_stability_bound():
+    """Trap stability_bound: dt = 2 R computes, dt beyond 2 R (1 + 1e-9) is refused.
+
+    At dt = 2 R the weight of the previous outflow, (2 R - dt) / (2 R + dt), is 0 and
+    every ordinate is the mean of two inflows; a hundredth more makes it negative.
+    """
+    on = clark_unit_hydrograph(90.0, 10.0, 45.3, 20.0, 20.0, 160.0)
+    assert on.ordinates_m3s.min() >= 0.0
+
+    for step in (20.0 * (1.0 + 2e-9), 20.2):
+        with pytest.raises(InvalidParameterError) as caught:
+            clark_unit_hydrograph(90.0, 10.0, 45.3, step, step, 160.0)
+        assert caught.value.details["constraint"] == "step_stable"
+        assert caught.value.details["option"] == "timestep_min"
+
+
+def test_clark_a_million_ordinates_hold_their_volume():
+    """Trap many_small_terms: a million ordinates of a 2^-10 min step.
+
+    The S-curve of D = 3 dt and the reservoir's volume are sums of a million terms;
+    the ordinates hold the 1 mm of the grid to the reservoir's tail beyond it.
+    """
+    step = 2.0**-10
+    result = clark_unit_hydrograph(120.0, 60.0, 45.3, step, 3.0 * step, 999_999 * step)
+
+    assert result.ordinates_m3s.size == 1_000_000
+    depth_mm = math.fsum(result.ordinates_m3s.tolist()) * step * 60.0 / (45.3 * 1000.0)
+    assert_within(
+        depth_mm,
+        1.0,
+        abs=1e-11,
+        reason="the reservoir's ordinates divided by their pairwise sum hold 1 mm; "
+        "the last D = 3 dt of the S-curve is short of 1 by 3 dt of the tail at 976 "
+        "min, below 1e-12",
+    )
+    with pytest.raises(InvalidParameterError) as caught:
+        clark_unit_hydrograph(120.0, 60.0, 45.3, step, step, 1_000_000 * step)
+    assert caught.value.details["constraint"] == "length_bounded"
+
+
+def test_the_clark_wrapper_computes_through_the_spec():
+    """ClarkIUH fills the length tc + 5 R + D and warns of R/tc outside its range."""
+    clark = ClarkIUH(tc_min=60.0, r_min=30.0)
+    with recording() as used:
+        result = clark.to_unit_hydrograph(area_km2=45.0, duration_min=30.0)
+    found = clark_unit_hydrograph(60.0, 30.0, 45.0, 5.0, 30.0, 60.0 + 150.0 + 30.0)
+
+    assert used == {"clark": CLARK.formula_version}
+    assert np.array_equal(result.ordinates_m3s, found.ordinates_m3s)
+    with pytest.warns(OutsideUnverifiedRange):
+        ClarkIUH(tc_min=60.0, r_min=6.0).generate_iuh(timestep_min=5.0)

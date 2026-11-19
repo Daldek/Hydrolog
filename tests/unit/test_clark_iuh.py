@@ -18,29 +18,26 @@ class TestClarkIUHInit:
         assert iuh.tc_min == 60.0
         assert iuh.r_min == 30.0
 
-    def test_init_zero_tc_raises(self):
-        """Test that zero tc raises error."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            ClarkIUH(tc_min=0.0, r_min=30.0)
-        assert "tc_min must be positive" in str(exc_info.value)
+    @pytest.mark.parametrize(
+        ("changed", "option"),
+        [
+            ({"tc_min": 0.0}, "tc_min"),
+            ({"tc_min": -10.0}, "tc_min"),
+            ({"r_min": 0.0}, "r_min"),
+            ({"r_min": -10.0}, "r_min"),
+        ],
+    )
+    def test_a_value_outside_its_physical_range_is_refused_by_the_spec(
+        self, changed, option
+    ):
+        """The constructor keeps the values; the spec clark refuses them."""
+        iuh = ClarkIUH(**{"tc_min": 60.0, "r_min": 30.0, **changed})
 
-    def test_init_negative_tc_raises(self):
-        """Test that negative tc raises error."""
         with pytest.raises(InvalidParameterError) as exc_info:
-            ClarkIUH(tc_min=-10.0, r_min=30.0)
-        assert "tc_min must be positive" in str(exc_info.value)
+            iuh.generate_iuh()
 
-    def test_init_zero_r_raises(self):
-        """Test that zero r raises error."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            ClarkIUH(tc_min=60.0, r_min=0.0)
-        assert "r_min must be positive" in str(exc_info.value)
-
-    def test_init_negative_r_raises(self):
-        """Test that negative r raises error."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            ClarkIUH(tc_min=60.0, r_min=-10.0)
-        assert "r_min must be positive" in str(exc_info.value)
+        assert exc_info.value.details["reason"] == "outside_physical_range"
+        assert exc_info.value.details["option"] == option
 
 
 class TestClarkIUHProperties:
@@ -240,7 +237,8 @@ class TestClarkIUHGenerate:
 
         with pytest.raises(InvalidParameterError) as exc_info:
             iuh.generate(timestep_min=0.0)
-        assert "timestep_min must be positive" in str(exc_info.value)
+        assert exc_info.value.details["reason"] == "outside_physical_range"
+        assert exc_info.value.details["option"] == "timestep_min"
 
     def test_generate_custom_duration(self):
         """Test generation with custom duration."""
@@ -304,7 +302,7 @@ class TestClarkIUHToUnitHydrograph:
 
         with pytest.raises(InvalidParameterError) as exc_info:
             iuh.to_unit_hydrograph(area_km2=0.0, duration_min=30.0)
-        assert "area_km2 must be positive" in str(exc_info.value)
+        assert exc_info.value.details["option"] == "area_km2"
 
     def test_to_unit_hydrograph_invalid_duration_raises(self):
         """Test that invalid duration raises error."""
@@ -312,7 +310,7 @@ class TestClarkIUHToUnitHydrograph:
 
         with pytest.raises(InvalidParameterError) as exc_info:
             iuh.to_unit_hydrograph(area_km2=45.0, duration_min=0.0)
-        assert "duration_min must be positive" in str(exc_info.value)
+        assert exc_info.value.details["option"] == "duration_min"
 
     def test_to_unit_hydrograph_peak_discharge_positive(self):
         """Test peak discharge is positive."""
@@ -350,17 +348,19 @@ class TestClarkIUHFactoryMethods:
         assert iuh.tc_min == 100.0
         assert iuh.r_min == 50.0  # 0.5 * 100
 
-    def test_from_tc_r_ratio_invalid_tc_raises(self):
-        """Test from_tc_r_ratio with invalid tc."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            ClarkIUH.from_tc_r_ratio(tc_min=-10.0)
-        assert "tc_min must be positive" in str(exc_info.value)
+    @pytest.mark.parametrize(
+        ("given", "option"),
+        [({"tc_min": -10.0}, "tc_min"), ({"tc_min": 60.0, "r_tc_ratio": 0.0}, "r_min")],
+    )
+    def test_from_tc_r_ratio_invalid_values_are_refused_by_the_spec(
+        self, given, option
+    ):
+        """The factory multiplies; the spec clark refuses tc or R = ratio * tc."""
+        iuh = ClarkIUH.from_tc_r_ratio(**given)
 
-    def test_from_tc_r_ratio_invalid_ratio_raises(self):
-        """Test from_tc_r_ratio with invalid ratio."""
         with pytest.raises(InvalidParameterError) as exc_info:
-            ClarkIUH.from_tc_r_ratio(tc_min=60.0, r_tc_ratio=0.0)
-        assert "r_tc_ratio must be positive" in str(exc_info.value)
+            iuh.generate_iuh()
+        assert exc_info.value.details["option"] == option
 
 
 class TestClarkIUHBehavior:
@@ -425,15 +425,14 @@ class TestClarkIUHWithArea:
 
         assert iuh.area_km2 is None
 
-    def test_init_zero_area_raises(self):
-        """Test that area_km2=0 raises InvalidParameterError."""
-        with pytest.raises(InvalidParameterError, match="area_km2 must be positive"):
-            ClarkIUH(tc_min=60.0, r_min=30.0, area_km2=0)
+    @pytest.mark.parametrize("area", [0, -10.0])
+    def test_an_area_not_above_zero_is_refused_by_the_spec(self, area):
+        """The constructor keeps the area; the spec clark refuses it."""
+        clark = ClarkIUH(tc_min=60.0, r_min=30.0, area_km2=area)
 
-    def test_init_negative_area_raises(self):
-        """Test that negative area_km2 raises InvalidParameterError."""
-        with pytest.raises(InvalidParameterError, match="area_km2 must be positive"):
-            ClarkIUH(tc_min=60.0, r_min=30.0, area_km2=-10.0)
+        with pytest.raises(InvalidParameterError) as exc_info:
+            clark.generate()
+        assert exc_info.value.details["option"] == "area_km2"
 
     def test_generate_with_area_returns_clark_uh_result(self):
         """Test that generate() returns ClarkUHResult when area_km2 is set."""
@@ -646,10 +645,12 @@ class TestClarkUHDurationNotWholeSteps:
         """A non-positive or non-finite D or step is a validation error."""
         clark = ClarkIUH(tc_min=60.0, r_min=30.0)
 
-        with pytest.raises(InvalidParameterError, match="duration_min"):
+        with pytest.raises(InvalidParameterError) as caught:
             clark.to_unit_hydrograph(area_km2=45.0, duration_min=bad)
-        with pytest.raises(InvalidParameterError, match="timestep_min"):
+        assert caught.value.details["option"] == "duration_min"
+        with pytest.raises(InvalidParameterError) as caught:
             clark.to_unit_hydrograph(area_km2=45.0, duration_min=30.0, timestep_min=bad)
+        assert caught.value.details["option"] == "timestep_min"
 
 
 class TestClarkStepGuard:
@@ -673,18 +674,14 @@ class TestClarkStepGuard:
         with pytest.raises(InvalidParameterError) as caught:
             getattr(clark, method)(**arguments)
 
-        assert caught.value.details == {
-            "option": "timestep_min",
-            "reason": "unstable_timestep",
-            "maximum": 4.0,
-            "value": 5.0,
-        }
-        assert "2 * r_min = 4" in str(caught.value)
-        assert caught.value.hint is not None and "4" in caught.value.hint
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "step_stable"
+        assert caught.value.details["option"] == "timestep_min"
 
     def test_generate_refuses_it_too(self):
-        with pytest.raises(InvalidParameterError, match="unstable|exceed"):
+        with pytest.raises(InvalidParameterError) as caught:
             ClarkIUH(tc_min=60.0, r_min=2.0, area_km2=45.0).generate(timestep_min=5.0)
+        assert caught.value.details["constraint"] == "step_stable"
 
     @pytest.mark.parametrize(
         ("tc_min", "r_min"), [(60.0, 2.5), (60.0, 1.0), (20.0, 0.5), (90.0, 30.0)]

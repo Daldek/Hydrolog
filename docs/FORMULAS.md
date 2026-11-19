@@ -13,6 +13,7 @@
 | [SCS (NRCS) dimensionless unit hydrograph of a unit duration](#scs) | `hydrolog.runoff.unit_hydrograph.scs_unit_hydrograph` | referenced | 1 | not measured |
 | [Snyder's synthetic unit hydrograph: lag, peak, time base and widths](#snyder) | `hydrolog.runoff.snyder_uh.snyder_parameters` | referenced | 1 | not measured |
 | [Snyder's unit hydrograph as the gamma curve of 1 mm through its peak](#snyder_shape) | `hydrolog.runoff.snyder_uh.snyder_shape` | oracle only | 1 | not measured |
+| [Clark's unit hydrograph of a duration: time-area curve and linear reservoir](#clark) | `hydrolog.runoff.clark_iuh.clark_unit_hydrograph` | oracle only | 1 | not measured |
 | [Direct runoff of excess rainfall by discrete convolution with a unit hydrograph](#uh_convolution) | `hydrolog.runoff.convolution.convolve_discrete` | referenced | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
@@ -592,6 +593,100 @@ Plain text: `q(t) = qpR [(t / tpR) exp(1 - t / tpR)]^K with K > 0 the root of qp
 - established: SciPy's gamma distribution (scipy.stats.gamma, SciPy of Nogat's release set): its density of the shape K + 1 and the scale tpR / K is proportional to the curve (`tests/unit/test_formulas_unit_hydrographs.py (limit gamma_density)`)
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="clark"></a>
+### Clark's unit hydrograph of a duration: time-area curve and linear reservoir
+
+`hydrolog.runoff.clark_iuh.clark_unit_hydrograph` · family `scheme` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+\frac{A_t}{A} = 1.414\left(\frac{t}{t_c}\right)^{1.5},\ t \le \frac{t_c}{2};\quad O_i = O_{i-1} + \frac{\Delta t}{2R + \Delta t}\,(I_i + I_{i-1} - 2\,O_{i-1});\quad U_D(t) = \frac{S(t) - S(t - D)}{D}
+$$
+
+Plain text: `A(t) / A = 1.414 (t / tc)^1.5 for t <= tc / 2 and 1 - 1.414 (1 - t / tc)^1.5 for tc / 2 < t < tc, 1 from tc; I_i = A(i dt) / A - A((i - 1) dt) / A; O_i = O_i-1 + C (I_i + I_i-1 - 2 O_i-1), C = dt / (2 R + dt), O and I 0 before the grid; u_i = O_i / (dt sum O); S(t) the S-curve of u, U_D(t) = (S(t) - S(t - D)) / D with S between grid points linear; q_i = U_D(i dt) A x 1 mm per s; i = 0 to max(1, ceil(T / dt))`
+
+**Sources**
+
+- USACE-HEC (2000). Hydrologic Modeling System HEC-HMS, Technical Reference Manual (CPD-74B, March 2000), Clark's unit hydrograph model, eqs. 47-50, pp. 58-59 (open) <https://www.hec.usace.army.mil/software/hec-hms/documentation/HEC-HMS_Technical%20Reference%20Manual_%28CPD-74B%29.pdf>
+- USACE-HEC. HEC-HMS Technical Reference Manual (online, read 2026-11-19), chapter Transform, Clark Unit Hydrograph Model: the time-area curve of an elliptical watershed, O_t = CA I_t + CB O_t-1, CA = dt / (R + 0.5 dt), the unit hydrograph the mean of two outflows (open) <https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/transform/clark-unit-hydrograph-model>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `tc_min` | $t_c$ | min | real | (0.0, inf), test bound high 4500.0 (ten times the longest time of concentration of the hand-offs (450 min)) | unstated | [1.0, 450.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: Kirpich's tc of the flow paths of the 27 watersheds, the default method of hydrograph generate, 1.04 to 450 min |
+| `r_min` | $R$ | min | real | (0.0, inf), test bound high 10440.0 (ten times the longest R of the Polish calibrations, 17.4 h (Wałęga and Cupak 2013)) | unstated | [0.2, 1050.0]: Wałęga, A. and Cupak, A. (2013). In Węglarczyk, S. (ed.), Problemy obliczania przepływów ekstremalnych, Monografie Komitetu Gospodarki Wodnej PAN 35, pp. 145-151, table 2, p. 148: R of 12.14 and 17.4 h calibrated for the Stobnica (335.84 km2); and Hydrolog's R/tc of 0.2 to 1.5 times the typical tc of 1 to 450 min, R from 0.2 min |
+| `area_km2` | $A$ | km2 | real | (0.0, inf), test bound high 1000000.0 (a million km2, five times the basin of the Vistula (194,000 km2) and four thousand times the largest watershed Hydrograf hands over) | unstated | [0.0003, 250.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 135 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py) |
+| `timestep_min` | $\Delta t$ | min | real | (0.0, inf), test bound high 1440.0 (a day, the step of a daily rainfall series (E5b-07: tc 90.7 min at a step of 1440 min)) | unstated | [5.0, 60.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2); and KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: 5 min; KZGW 2017, annex 2, ex. 6.1 and 6.2 (1 h) and 6.4 (0.5 h), pp. 92-110 |
+| `duration_min` | $D$ | min | real | (0.0, inf), test bound high 1440.0 (a day, the step of a daily rainfall series (E5b-07: tc 90.7 min at a step of 1440 min)) | unstated | [5.0, 60.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2); and KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: 5 min; KZGW 2017, annex 2, ex. 6.1 and 6.2 (1 h) and 6.4 (0.5 h), pp. 92-110 |
+| `total_duration_min` | $T$ | min | real | (0.0, inf), test bound high 57600.0 (ten times the longest default length of the typical ranges) | unstated | [7.0, 5760.0]: Hydrolog: the default length tc + 5 R + D over the typical ranges of tc, R and D, 1 + 5 x 0.2 + 5 = 7 to 450 + 5 x 1050 + 60 = 5,760 min |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `step_stable` | precondition | the time step is at most twice the storage constant, dt <= 2 R (to 1e-9 of 2 R for its rounding): beyond it the previous outflow has the negative weight (2 R - dt) / (2 R + dt) and the ordinates oscillate below 0 | Hydrolog ADR-0008, the conventions of routing: the window of non-negative weights of the Muskingum scheme, dt <= 2 K (1 - X), here X = 0 and K = R |
+| `length_bounded` | precondition | the grid has at most a million ordinates | Hydrolog's bound of a hydrograph's length (hydrolog.routing.reach.MAX_ORDINATES), a million ordinates: the routing of a hydrograph refuses a longer one |
+| `representable` | precondition | float64 holds the first outflow of the reservoir, C A(dt) / A, as a normal number and 1 mm over the watershed per second of D, A x 1 mm / D | IEEE 754 double precision (float64), normal numbers from 2.2e-308 to 1.8e308 |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `time_area_factor` | $1.414$ | 1.414 | - | USACE-HEC (2000). Hydrologic Modeling System HEC-HMS, Technical Reference Manual (CPD-74B, March 2000), Clark's unit hydrograph model, eq. 50, p. 59: At / A = 1.414 (t / tc)^1.5 for t <= tc / 2 and 1 - 1.414 (1 - t / tc)^1.5 for t >= tc / 2 |
+| `time_area_exponent` | $1.5$ | 1.5 | - | USACE-HEC (2000). Hydrologic Modeling System HEC-HMS, Technical Reference Manual (CPD-74B, March 2000), Clark's unit hydrograph model, eq. 50, p. 59: At / A = 1.414 (t / tc)^1.5 for t <= tc / 2 and 1 - 1.414 (1 - t / tc)^1.5 for t >= tc / 2 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `times_min` | min | real_array | [0.0, inf) | 4 ulp of the bound |
+| `ordinates_m3s` | m3/s per mm | real_array | [0.0, inf) | 4 ulp of the bound |
+| `time_to_peak_min` | min | real | [0.0, inf) | 4 ulp of the bound |
+| `peak_discharge_m3s` | m3/s per mm | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- times in min from the beginning of the rainfall; ordinates in m3/s per mm
+- the time-area curve of HEC-HMS's elliptical watershed, 1.414 for the square root of 2 (the halves meet at 0.49992 and 0.50008, a step of 1.6e-4)
+- the reservoir on the trapezoid rule, O_i = O_i-1 + C (I_i + I_i-1 - 2 O_i-1) with C = dt / (2 R + dt): HEC-HMS's O_t = CA I_t + CB O_t-1 and its mean of two outflows, the averaging moved from the outflow to the inflow, the same for a reservoir at rest
+- the grid ends at T (ClarkIUH: tc + 5 R + D), where HEC-HMS stops at 0.995 of the volume; both divide the routed ordinates by their volume, one unit
+- the unit hydrograph of D from the S-curve, S(t - D) read linearly between the grid points: D need not be a whole number of steps, and a D shorter than dt gives the hydrograph of D = dt
+- R/tc outside 0.2 to 1.5 gives the notice outside_unverified_range of ClarkIUH (clark.r_tc_ratio): no source publishes that range, and the Polish calibrations of the Stobnica give 1.7 to 2.3 (Wałęga and Cupak 2013)
+
+**Assumptions**
+
+- tc is the translation time from the farthest point of the watershed; the time-area curve is that of an elliptical watershed unless one is known
+- excess rainfall uniform over the watershed and in time over D
+
+**Validation:** none: Clark (1945) and HEC-HMS give the model; its parameters tc and R are calibrated on gauged floods (HEC-HMS), and the sources give no error statistic
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `stability_bound`: test_clark_steps_at_and_beyond_the_stability_bound: dt = 2 R computes without a negative ordinate, dt beyond 2 R (1 + 1e-9) is refused by the precondition step_stable
+- `many_small_terms`: test_clark_a_million_ordinates_hold_their_volume: the volume of up to a million ordinates by NumPy's pairwise sum and cumulative sums
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `time`: inputs times 2^e (`tc_min` e = 1.0, `r_min` e = 1.0, `duration_min` e = 1.0, `timestep_min` e = 1.0, `total_duration_min` e = 1.0) give outputs times 2^e (`times_min` e = 1.0, `ordinates_m3s` e = -1.0, `time_to_peak_min` e = 1.0, `peak_discharge_m3s` e = -1.0)
+- scaling `area`: inputs times 2^e (`area_km2` e = 1.0) give outputs times 2^e (`ordinates_m3s` e = 1.0, `peak_discharge_m3s` e = 1.0)
+- limit `hec_form`: the ordinates of D = dt are HEC-HMS's recursion of the reservoir with the mean of two outflows, on the same grid
+- limit `hec_truncation`: HEC-HMS's end of the hydrograph at 0.995 of its volume gives the same time to peak and the peak within 0.5 %
+- limit `unit_volume`: to the default length tc + 5 R + D the ordinates hold 1 mm over the watershed
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: HEC-HMS's recursion of the reservoir, O_t = CA I_t + CB O_t-1 with the mean of two outflows (HEC-HMS 2000 eqs. 47-49), on the formula's grid and time-area curve (`tests/unit/test_formulas_unit_hydrographs.py (limit hec_form)`)
+- algorithm: the same recursion ended at 0.995 of the volume as HEC-HMS ends it and rescaled to one unit: the research case clark-hec-hms-trm-oracle (tc 120 min, R 60 min, dt 10 min, A 45.3 km2), the peak within 0.5 % (`tests/unit/test_formulas_unit_hydrographs.py (limit hec_truncation)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
 <a id="uh_convolution"></a>
 ### Direct runoff of excess rainfall by discrete convolution with a unit hydrograph

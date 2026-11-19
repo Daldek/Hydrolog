@@ -80,11 +80,11 @@ _MODEL_OPTIONS: dict[str, dict[str, str]] = {
 
 
 def _model_options(model: str, clark_r_tc_ratio: float | None) -> dict[str, str]:
-    """Argument of the unit hydrograph of ``model`` to the option it comes from."""
+    """Input of the unit hydrograph of ``model`` to the option it comes from."""
     if model == "clark":
-        # R/tc is checked from R: the option that gave R
+        # R and R/tc are named by the option that gave R; D is the time step
         given = "clark_r_min" if clark_r_tc_ratio is None else "clark_r_tc_ratio"
-        return {"r_tc_ratio": given}
+        return {"r_tc_ratio": given, "r_min": given, "duration_min": "timestep_min"}
     return _MODEL_OPTIONS.get(model, {})
 
 
