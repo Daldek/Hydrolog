@@ -2156,9 +2156,11 @@ class TestSoilTexture:
         }
 
     def test_no_soil_data_is_an_error_not_loam(self):
+        """ADR-0066: the spec usda_texture refuses a zero total (positive_total)."""
         with pytest.raises(InvalidParameterError) as caught:
             soil.soil_texture(clay=0, sand=0, silt=0)
-        assert caught.value.details["reason"] == "no_data"
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "positive_total"
 
     @pytest.mark.parametrize(
         "amounts",

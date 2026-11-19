@@ -21,17 +21,19 @@ and the areas per group of :func:`hsg_statistics_array` are the weights of
 """
 
 from dataclasses import dataclass
+from typing import Final
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.nogat_formulas import FormulaSpec, Source, TierBSpec
 from hydrolog.soil.texture import (
     HSG_CODES,
     _amounts,
     _reject_negative,
-    _texture_codes,
+    classify_usda_texture_array,
     texture_to_hsg_array,
 )
 
@@ -203,8 +205,33 @@ def classify_hsg(
     for name, values in zip(("clay", "sand", "silt"), amounts, strict=True):
         _reject_negative(name, values)
 
-    hsg = texture_to_hsg_array(_texture_codes(amounts[0], amounts[1], amounts[2]))
-    return np.where(no_data, _NODATA_CODE, hsg).astype(np.uint8)
+    texture = classify_usda_texture_array(amounts[0], amounts[1], amounts[2])
+    return np.where(no_data, _NODATA_CODE, texture_to_hsg_array(texture)).astype(
+        np.uint8
+    )
+
+
+SPECS: Final[tuple[FormulaSpec, ...]] = ()
+"""No Tier A formula of its own: classify_hsg computes through the specs of
+:mod:`hydrolog.soil.texture`."""
+
+TIER_B: Final = (
+    TierBSpec(
+        name="hsg_of_amounts",
+        function="hydrolog.soil.hsg.classify_hsg",
+        definition="the group of spec texture_hsg of the class of spec usda_texture, "
+        "cell by cell, as the raster code 1-4 for A-D",
+        convention="0 (no data) for a cell with a NaN or infinite amount, an amount "
+        "equal to its input's nodata tag, or all three amounts zero (the SoilGrids "
+        "gap); a negative amount in a cell with data is refused",
+        source=Source(
+            citation="Kartograf ADR-025 (HSG from SoilGrids clay, sand and silt), "
+            "ported to Hydrolog 0.8.0",
+            locator="raster codes uint8, 0 no data, 1-4 the groups A-D",
+        ),
+    ),
+)
+"""The Tier B formula of the module (CMP-2.2)."""
 
 
 def _cell_areas(

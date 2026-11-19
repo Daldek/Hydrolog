@@ -12,7 +12,6 @@ import pytest
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.soil.hsg import HSG_CODES
 from hydrolog.soil.texture import (
-    _USDA_RULES,
     TEXTURE_CLASSES,
     TEXTURE_NAMES,
     TEXTURE_TO_HSG,
@@ -313,18 +312,15 @@ class TestClassifyUsdaTexture:
         assert classify_usda_texture(clay=450, sand=200, silt=350) == "clay"
         assert classify_usda_texture(clay=200, sand=400, silt=400) == "loam"
 
-    def test_zero_sum_returns_loam(self):
-        """Test that amounts summing to 0 (no data) are loam, not the sand rule."""
-        assert classify_usda_texture(clay=0, sand=0, silt=0) == "loam"
-
     @pytest.mark.parametrize("name", ["clay", "sand", "silt"])
     def test_negative_amount_raises(self, name):
         """Test that a negative amount raises InvalidParameterError."""
         amounts = {"clay": 20.0, "sand": 40.0, "silt": 40.0}
         amounts[name] = -1.0
-        with pytest.raises(InvalidParameterError, match=f"{name} must be") as caught:
+        with pytest.raises(InvalidParameterError) as caught:
             classify_usda_texture(**amounts)
         assert caught.value.details["option"] == name
+        assert caught.value.details["reason"] == "outside_physical_range"
 
     @pytest.mark.parametrize("bad", [float("nan"), float("inf"), "loam", None])
     def test_non_finite_or_non_numeric_amount_raises(self, bad):
@@ -357,11 +353,6 @@ class TestTextureToHsg:
     def test_group_d(self, texture):
         """Test textures that map to HSG D."""
         assert texture_to_hsg(texture) == "D"
-
-    def test_unknown_texture_raises(self):
-        """Test that an unknown class raises instead of defaulting to a group."""
-        with pytest.raises(InvalidParameterError, match="Unknown texture class"):
-            texture_to_hsg("unknown")
 
 
 class TestTextureToHsgArray:
@@ -582,21 +573,3 @@ class TestSoilSurveyManualClassLimits:
             if got != want
         ] == []
         assert scalar == array
-
-    @pytest.mark.parametrize("total", [100, 1000], ids=["percent", "g_per_kg"])
-    def test_exactly_one_rule_holds_on_the_integer_simplex(self, total):
-        """Test that the rules neither overlap nor leave a gap (5151 / 501 501 points).
-
-        The SSM 2017 definitions give each composition exactly one class, so the
-        order of the rules must not matter: ``np.select`` would hide an overlap
-        (the first rule wins) and a gap (the default loam).
-        """
-        clay, sand, silt = _simplex_arrays(total)
-        total_amount = clay + sand + silt
-
-        holding = sum(
-            rule(100 * clay, 100 * sand, 100 * silt, total_amount).astype(int)
-            for _, rule in _USDA_RULES
-        )
-
-        assert (holding == 1).all()

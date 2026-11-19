@@ -67,6 +67,8 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.morphometry.terrain",
     "hydrolog.morphometry.hypsometry",
     "hydrolog.network.stream_order",
+    "hydrolog.soil.texture",
+    "hydrolog.soil.hsg",
 )
 """The modules whose ``SPECS`` (and ``TIER_B``) declare Hydrolog's formulas, in the
 order of ``docs/FORMULAS.md``."""

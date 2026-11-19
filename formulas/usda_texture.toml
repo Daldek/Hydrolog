@@ -1,0 +1,176 @@
+schema = "nogat-formula-card/1"
+name = "usda_texture"
+title = "USDA soil texture class of clay, sand and silt amounts"
+function = "hydrolog.soil.texture.classify_usda_texture"
+family = "classification"
+formula_version = 1
+status = "referenced"
+equation = "class = the class C of the table usda_texture_classes.csv for which every row (a, b, c, relation, k) of one alternative holds: 100 (a clay + b sand + c silt) relation k (clay + sand + silt)"
+latex = "\\mathrm{class} = C \\iff \\exists j\\ \\forall (a, b, c, \\sim, k) \\in T_{C,j}:\\ 100\\,(a\\,m_\\mathrm{clay} + b\\,m_\\mathrm{sand} + c\\,m_\\mathrm{silt}) \\sim k\\,(m_\\mathrm{clay} + m_\\mathrm{sand} + m_\\mathrm{silt})"
+validation = "none: the classes are defined by the Manual, not fitted to observations"
+conventions = ["amounts in any unit the three share (percent, g/kg), compared with their total: the class depends on the shares of clay + sand + silt only, which need not be 100 % (organic matter and gravel are outside the fine earth)", "USDA separates: sand 0.05 to 2 mm, silt 0.002 to 0.05 mm, clay below 0.002 mm (the PTG 2008 Polish classes use the same limits); the twelve classes cover every composition of the triangle, so no amount has an applicability range (unstated)", "'X to less than Y percent' is X <= share < Y, 'more than X' is > X, 'X or more' is >= X, 'X or less' is <= X, 'more than 20 to 45 percent sand' (clay loam) is 20 < sand <= 45, as the Manual words each class", "the sand ranges the Manual also gives in words, sands 'more than 85 percent sand' and loamy sands 'between 70 and 90 percent sand', are implied by their other inequalities (silt + 1.5 clay < 15 gives sand > 85; silt + 1.5 clay >= 15 and silt + 2 clay < 30 give 70 < sand <= 90) and are not rows of the table", "float64 throughout, the amounts scaled by one power of two first; exact for integer amounts (total below 10**13); other amounts within a few units in the last place of a class limit may fall on either side of it, and where rounding lets two classes hold the first in the table's order is taken", "a zero total has no texture and is refused (precondition positive_total); the array variant pins it to loam as no data (Tier B usda_texture_codes)"]
+assumptions = ["the amounts are of the fine earth (< 2 mm) of a mineral soil; the Manual's subclasses by sand size (coarse sand, fine sandy loam, ...) are not given"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/texture-cases.json"]
+constants = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "shared_unit"
+
+[properties.scalings.inputs]
+clay = 1.0
+sand = 1.0
+silt = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "a class is not a number: the limit unit_free asserts the same class"
+abs = 0.0
+
+[[properties.limits]]
+name = "unit_free"
+text = "multiplying the three amounts by one positive factor (10 from percent to g/kg, 1000, 3, a power of two) leaves the class unchanged, also on the limits of the classes"
+
+[[sources]]
+citation = "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC"
+access = "open"
+locator = "ch. 3, 'Definitions of Soil Texture Classes and Subclasses', pp. 122-124 (sands and loamy sands p. 122, sandy loams p. 123, loam to clay p. 124); the textural triangle, Fig. 3-7, p. 125"
+url = "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf"
+
+[[variables]]
+name = "clay"
+symbol = "m_\\mathrm{clay}"
+unit = "shared unit"
+kind = "real"
+description = "Amount of clay (< 0.002 mm) of the fine earth, in any unit the three amounts share (percent, g/kg); they need not sum to 100."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 10000.0
+test_reason = "ten times the largest amount of the ecosystem's data, 1000 g/kg of SoilGrids; the class depends on the shares only"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 1000.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "ISRIC - World Soil Information (2026). SoilGrids FAQ, 'Which soil properties are predicted': clay, sand and silt of the fine earth in g/kg"
+access = "open"
+locator = "the data Kartograf downloads for Hydrolog's soil hsg: integers 0 to 1000 g/kg; soil texture takes percent (0 to 100) or g/kg"
+url = "https://www.isric.org/explore/soilgrids/faq-soilgrids"
+
+[[variables]]
+name = "sand"
+symbol = "m_\\mathrm{sand}"
+unit = "shared unit"
+kind = "real"
+description = "Amount of sand (0.05 to 2 mm) of the fine earth, in any unit the three amounts share (percent, g/kg); they need not sum to 100."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 10000.0
+test_reason = "ten times the largest amount of the ecosystem's data, 1000 g/kg of SoilGrids; the class depends on the shares only"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 1000.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "ISRIC - World Soil Information (2026). SoilGrids FAQ, 'Which soil properties are predicted': clay, sand and silt of the fine earth in g/kg"
+access = "open"
+locator = "the data Kartograf downloads for Hydrolog's soil hsg: integers 0 to 1000 g/kg; soil texture takes percent (0 to 100) or g/kg"
+url = "https://www.isric.org/explore/soilgrids/faq-soilgrids"
+
+[[variables]]
+name = "silt"
+symbol = "m_\\mathrm{silt}"
+unit = "shared unit"
+kind = "real"
+description = "Amount of silt (0.002 to 0.05 mm) of the fine earth, in any unit the three amounts share (percent, g/kg); they need not sum to 100."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 10000.0
+test_reason = "ten times the largest amount of the ecosystem's data, 1000 g/kg of SoilGrids; the class depends on the shares only"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 1000.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "ISRIC - World Soil Information (2026). SoilGrids FAQ, 'Which soil properties are predicted': clay, sand and silt of the fine earth in g/kg"
+access = "open"
+locator = "the data Kartograf downloads for Hydrolog's soil hsg: integers 0 to 1000 g/kg; soil texture takes percent (0 to 100) or g/kg"
+url = "https://www.isric.org/explore/soilgrids/faq-soilgrids"
+
+[[constraints]]
+name = "positive_total"
+class = "precondition"
+text = "clay + sand + silt > 0"
+
+[constraints.source]
+citation = "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC"
+access = "open"
+locator = "ch. 3, 'Definitions of Soil Texture Classes and Subclasses', pp. 122-124 (sands and loamy sands p. 122, sandy loams p. 123, loam to clay p. 124); the textural triangle, Fig. 3-7, p. 125"
+url = "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf"
+
+[[outputs]]
+name = "texture_class"
+unit = "-"
+kind = "choice"
+symbol = "\\mathrm{class}"
+description = "USDA texture class, one of the twelve of the Soil Survey Manual."
+choices = ["sand", "loamy_sand", "sandy_loam", "loam", "silt_loam", "silt", "sandy_clay_loam", "clay_loam", "silty_clay_loam", "sandy_clay", "silty_clay", "clay"]
+
+[[traps]]
+name = "class_limit"
+description = "A value exactly at a limit of a published class or table."
+test = "tests/unit/test_formulas_texture.py::test_every_row_of_the_table_at_its_limit_and_just_beyond: each row's limit on the integer percent and g/kg grids and one g/kg beyond, against the Manual's inclusive or exclusive wording; clay 20 and 27 % moved by math.nextafter"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "tests/unit/test_formulas_texture.py::test_a_gap_is_refused_or_kept_as_no_data: NaN is refused (outside_physical_range); a NaN or infinite amount of the array variant gives its cell the loam placeholder and classify_hsg masks it as no data"
+
+[[oracles]]
+kind = "frozen"
+description = "Kartograf 0.8.2, kartograf.hydrology.hsg.classify_usda_texture_array (its own copy of the rules), on all 5,151 integer percent and 501,501 integer g/kg compositions"
+test = "tests/oracles/kartograf_0_8_2_texture_percent.csv and tests/oracles/kartograf_0_8_2_texture_gkg.csv (written once by tests/oracles/kartograf_texture_oracle.py), compared by tests/unit/test_formulas_texture.py"
+conventions = ["both: amounts compared with their total in float64, no division", "both classify a composition, not a share; the grids have no zero total"]
+
+[[oracles]]
+kind = "exact"
+description = "the package table evaluated in exact rationals (fractions.Fraction) on both integer grids and on drawn integer compositions"
+test = "tests/unit/test_formulas_texture.py::test_the_table_in_rationals_agrees"
+conventions = []
+
+[[tables]]
+path = "src/hydrolog/_data/tables/usda_texture_classes.csv"
+sha256 = "b957a339f36ec7c0ee82ec1f25e286e401f26afeffa85dcccca24f9a4e61c381"
+comparison = "tests/oracles/usda_texture_classes_first.csv (typed from the Manual's text by the author of the spec) against tests/oracles/usda_texture_classes_second.csv (typed independently by a second agent from the same pages), compared with the data file by tests/unit/test_formulas_texture.py"
+
+[tables.source]
+citation = "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC"
+access = "open"
+locator = "ch. 3, 'Definitions of Soil Texture Classes and Subclasses', pp. 122-124 (sands and loamy sands p. 122, sandy loams p. 123, loam to clay p. 124); the textural triangle, Fig. 3-7, p. 125"
+url = "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf"

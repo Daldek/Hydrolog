@@ -20,9 +20,12 @@ const CURVE = "depth_duration_mm";
  * The option a refused constraint of a formula stands on, by `details.constraint`, when
  * the refusal names none: the input the constraint asks to change. Lutz's constraints name
  * theirs (`uh nash` and NashIUH.from_lutz), Kerby–Kirpich's condition between its inputs
- * does not.
+ * and the texture's positive total of clay, sand and silt (`soil texture`) do not.
  */
-const CONSTRAINT_OPTIONS = Object.freeze({ flow_path_longer_than_overland: "flow_path_length_km" });
+const CONSTRAINT_OPTIONS = Object.freeze({
+  flow_path_longer_than_overland: "flow_path_length_km",
+  positive_total: "clay",
+});
 
 export const errors = {
   reasons: {
@@ -90,6 +93,8 @@ export const errors = {
       "Obwód zlewni nie może być krótszy od obwodu koła o tej samej powierzchni (P² ≥ 4πA): powierzchnia i obwód pochodzą wtedy z różnych obrysów zlewni",
     rises_above_outlet:
       "Najwyższy punkt zlewni musi leżeć wyżej niż przekrój zamykający (Hmax > Hmin): woda spływa do przekroju",
+    positive_total:
+      "Zawartości iłu, piasku i pyłu nie mogą być wszystkie zerowe: klasa uziarnienia wynika z udziałów frakcji w ich sumie",
   },
   /** The sentences of the errors of Euler II's depth-duration curve, by `details.reason`. */
   curve: {

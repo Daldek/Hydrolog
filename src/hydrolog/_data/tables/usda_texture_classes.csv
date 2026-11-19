@@ -1,0 +1,42 @@
+texture_class,alternative,clay,sand,silt,relation,percent,page,wording
+sand,1,1.5,0,1,<,15,122,the percentage of silt plus 1.5 times the percentage of clay is less than 15
+loamy_sand,1,1.5,0,1,>=,15,122,the percentage of silt plus 1.5 times the percentage of clay is 15 or more
+loamy_sand,1,2,0,1,<,30,122,the percentage of silt plus twice the percentage of clay is less than 30
+sandy_loam,1,1,0,0,>=,7,123,7 to less than 20 percent clay
+sandy_loam,1,1,0,0,<,20,123,7 to less than 20 percent clay
+sandy_loam,1,0,1,0,>,52,123,more than 52 percent sand
+sandy_loam,1,2,0,1,>=,30,123,the percentage of silt plus twice the percentage of clay is 30 or more
+sandy_loam,2,1,0,0,<,7,123,less than 7 percent clay
+sandy_loam,2,0,0,1,<,50,123,less than 50 percent silt
+sandy_loam,2,2,0,1,>=,30,123,the percentage of silt plus twice the percentage of clay is 30 or more
+loam,1,1,0,0,>=,7,124,7 to less than 27 percent clay
+loam,1,1,0,0,<,27,124,7 to less than 27 percent clay
+loam,1,0,0,1,>=,28,124,28 to less than 50 percent silt
+loam,1,0,0,1,<,50,124,28 to less than 50 percent silt
+loam,1,0,1,0,<=,52,124,52 percent or less sand
+silt_loam,1,0,0,1,>=,50,124,50 percent or more silt
+silt_loam,1,1,0,0,>=,12,124,12 to less than 27 percent clay
+silt_loam,1,1,0,0,<,27,124,12 to less than 27 percent clay
+silt_loam,2,0,0,1,>=,50,124,50 to less than 80 percent silt
+silt_loam,2,0,0,1,<,80,124,50 to less than 80 percent silt
+silt_loam,2,1,0,0,<,12,124,less than 12 percent clay
+silt,1,0,0,1,>=,80,124,80 percent or more silt
+silt,1,1,0,0,<,12,124,less than 12 percent clay
+sandy_clay_loam,1,1,0,0,>=,20,124,20 to less than 35 percent clay
+sandy_clay_loam,1,1,0,0,<,35,124,20 to less than 35 percent clay
+sandy_clay_loam,1,0,0,1,<,28,124,less than 28 percent silt
+sandy_clay_loam,1,0,1,0,>,45,124,more than 45 percent sand
+clay_loam,1,1,0,0,>=,27,124,27 to less than 40 percent clay
+clay_loam,1,1,0,0,<,40,124,27 to less than 40 percent clay
+clay_loam,1,0,1,0,>,20,124,more than 20 to 45 percent sand
+clay_loam,1,0,1,0,<=,45,124,more than 20 to 45 percent sand
+silty_clay_loam,1,1,0,0,>=,27,124,27 to less than 40 percent clay
+silty_clay_loam,1,1,0,0,<,40,124,27 to less than 40 percent clay
+silty_clay_loam,1,0,1,0,<=,20,124,20 percent or less sand
+sandy_clay,1,1,0,0,>=,35,124,35 percent or more clay
+sandy_clay,1,0,1,0,>,45,124,more than 45 percent sand
+silty_clay,1,1,0,0,>=,40,124,40 percent or more clay
+silty_clay,1,0,0,1,>=,40,124,40 percent or more silt
+clay,1,1,0,0,>=,40,124,40 percent or more clay
+clay,1,0,1,0,<=,45,124,45 percent or less sand
+clay,1,0,0,1,<,40,124,less than 40 percent silt
