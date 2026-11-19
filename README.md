@@ -95,7 +95,7 @@ hydrolog hydrograph generate --area-km2 45.3 --cn 72 --tc-min 86 --hietogram-typ
   "command": "hydrograph generate",
   "result": {
     "schema": "hydrolog-hydrograph-generate/1",
-    "peak_discharge_m3s": 30.326278160165238,
+    "peak_discharge_m3s": 30.31385082875513,
     "time_to_peak_min": 80.0,
     "total_volume_m3": 135467.47576859492,
     "times_min": [0.0, 5.0, 10.0, "..."],

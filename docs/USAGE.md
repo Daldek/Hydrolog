@@ -274,7 +274,7 @@ hydrolog hydrograph generate --watershed-file tests/fixtures/watershed_example.j
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 47.02725674740998, "time_to_peak_min": 110.0, "total_volume_m3": 321254.9494884561, "runoff_coefficient": 0.1417936234546637, "cn": 72.0, "tc_method": "kirpich", "uh_model": "scs"}}
+{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 47.0297763952486, "time_to_peak_min": 110.0, "total_volume_m3": 321254.9494884561, "runoff_coefficient": 0.1417936234546637, "cn": 72.0, "tc_method": "kirpich", "uh_model": "scs"}}
 ```
 
 ```python
@@ -308,7 +308,7 @@ hydrolog hydrograph generate --watershed-file tests/fixtures/kamiennik.json --uh
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 35.02598914549678, "time_to_peak_min": 550.0, "uh_model": "nash", "nash_estimation": "lutz", "uh_parameters": {"n": 3.609988774159906, "k_min": 92.13086997441953}}}
+{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 35.024890171959335, "time_to_peak_min": 550.0, "uh_model": "nash", "nash_estimation": "lutz", "uh_parameters": {"n": 3.609988774159906, "k_min": 92.13086997441953}}}
 ```
 
 ### Flood routing
@@ -1139,7 +1139,7 @@ hydrolog report generate --output report.md --watershed-file tests/fixtures/wate
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-report-generate/1", "peak_discharge_m3s": 47.02725674740998, "files": [{"path": "...", "status": "written"}]}}
+{"result": {"schema": "hydrolog-report-generate/1", "peak_discharge_m3s": 47.0297763952486, "files": [{"path": "...", "status": "written"}]}}
 ```
 
 ## 3. Writing files
