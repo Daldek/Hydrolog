@@ -15,7 +15,8 @@ Kod Hydrologa pozostaje na licencji MIT.
   zmiennych i jednostek, zakres stosowalności, typowe zastosowania i błędy, a kończy przykładem.
 - Wzory, stałe i zakresy w ramkach oznaczonych jako generowane pochodzą wprost ze specyfikacji
   formuł w kodzie Hydrologa (standard Nogat CMP); nie są przepisywane ręcznie, więc zawsze
-  odpowiadają temu, co program liczy.
+  odpowiadają temu, co program liczy. Jak czytać ramkę, wyjaśnia dodatek D
+  ([D.7](D-weryfikacja.md#d7-jak-czytać-ramkę-wygenerowaną-ze-specyfikacji)).
 - Przykład przewodni: zlewnia Kamiennika po przekrój w Świerzawie (dorzecze Kaczawy),
   37,22 km². Prowadzi przez cały łańcuch obliczeń: od charakterystyk zlewni do hydrogramu
   projektowego.
