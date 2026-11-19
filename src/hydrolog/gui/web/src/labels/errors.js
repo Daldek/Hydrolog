@@ -82,6 +82,8 @@ export const errors = {
       "Długość najdłuższej drogi spływu musi być większa od długości spływu po stoku: Kerby–Kirpich liczy resztę drogi jako przepływ korytem",
     centroid_within_length:
       "Długość do środka ciężkości Lc nie może być większa od długości cieku L: obie biegną wzdłuż cieku głównego od przekroju zamykającego, Lc do punktu najbliższego środka ciężkości zlewni, L do działu wodnego",
+    shares_within_catchment:
+      "Udział terenów zurbanizowanych i udział lasów razem nie mogą przekroczyć 100 % powierzchni zlewni",
   },
   /** The sentences of the errors of Euler II's depth-duration curve, by `details.reason`. */
   curve: {
