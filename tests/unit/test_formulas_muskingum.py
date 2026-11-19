@@ -13,7 +13,7 @@ from pathlib import Path
 import hypothesis.strategies as st
 import numpy as np
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 from hypothesis.extra.numpy import arrays
 
 from hydrolog._formula_versions import recording
@@ -61,6 +61,18 @@ def test_limits_and_oracles():
 
 
 @given(inputs=strategies(MUSKINGUM))
+@example(
+    inputs={
+        "inflow_m3s": np.array(
+            [2.22507386e-313, 2.22507386e-313, 0.0, 2.22507386e-313]
+        ),
+        "timestep_min": 60.0,
+        "k_min": 120.0,
+        "x": 0.2,
+        "subreaches": 2,
+        "initial_outflow_m3s": 0.0,
+    }
+).via("found by the nightly profile: subnormal volumes broke the volume balance")
 def test_properties(inputs):
     assert_property_contract(MUSKINGUM, ROUTE, inputs, ERRORS)
     assert_properties(MUSKINGUM, ROUTE, inputs, ERRORS)
@@ -120,6 +132,22 @@ def test_a_step_outside_the_window_is_refused():
 
     assert caught.value.details["reason"] == "precondition_failed"
     assert caught.value.details["constraint"] == "nonnegative_weights"
+
+
+@pytest.mark.parametrize(
+    ("step", "k_min"),
+    [(5e-324, 10.0), (5e-324, 5e-324), (60.0, 1.0e307)],
+    ids=["underflow", "subnormal", "overflow"],
+)
+def test_weights_beyond_float64_are_refused(step, k_min):
+    """A step so short against K / N that the weights of the inflow underflow, and a K
+    whose 2 K in seconds overflows, are failed preconditions, not a lost volume or NaN
+    weights (found by the ci profile of Hypothesis)."""
+    with pytest.raises(InvalidParameterError) as caught:
+        muskingum_route([1.0, 1.0], step, k_min, 0.0, 1, 1.0)
+
+    assert caught.value.details["reason"] == "precondition_failed"
+    assert caught.value.details["constraint"] == "representable"
 
 
 def test_a_long_steady_inflow_stays_steady():

@@ -280,6 +280,16 @@ access = "open"
 locator = "floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s"
 
 [[constraints]]
+name = "representable"
+class = "precondition"
+text = "dt, K / N and dt / (K / N) >= 2.2e-308, the smallest normal float64, and 2 K [s] and the water K max(I, O0) [m3] are finite: below, the weights round to fewer digits or those of the inflow underflow and the water that enters is lost; above, the weights are NaN"
+
+[constraints.source]
+citation = "IEEE 754 binary64, the float64 of NumPy: largest finite number 1.8e308, smallest normal 2.2e-308"
+access = "open"
+locator = "the ratio of the step to K / N in the weights, K in seconds in their denominator and the storage K max(I, O0)"
+
+[[constraints]]
 name = "nonnegative_weights"
 class = "precondition"
 text = "2 K X / N <= dt <= 2 K (1 - X) / N, each end to 1e-9 of itself: every weight is non-negative, so a non-negative inflow gives a non-negative outflow"

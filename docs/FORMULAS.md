@@ -1001,6 +1001,7 @@ Plain text: `in each of N sub-reaches of k = K / N in series: O[t] = c0 I[t] + c
 
 | Constraint | Class | Condition | Source |
 |---|---|---|---|
+| `representable` | precondition | dt, K / N and dt / (K / N) >= 2.2e-308, the smallest normal float64, and 2 K [s] and the water K max(I, O0) [m3] are finite: below, the weights round to fewer digits or those of the inflow underflow and the water that enters is lost; above, the weights are NaN | IEEE 754 binary64, the float64 of NumPy: largest finite number 1.8e308, smallest normal 2.2e-308, the ratio of the step to K / N in the weights, K in seconds in their denominator and the storage K max(I, O0) |
 | `nonnegative_weights` | precondition | 2 K X / N <= dt <= 2 K (1 - X) / N, each end to 1e-9 of itself: every weight is non-negative, so a non-negative inflow gives a non-negative outflow | the signs of the numerators of the weights (Hydrolog ADR-0008); Ponce's form \|C - D\| <= 1 <= C + D, c_current >= 0 iff dt >= 2KX/N, c_previous >= 0 iff dt >= -2KX/N, c_outflow >= 0 iff dt <= 2K(1 - X)/N |
 
 **Outputs**

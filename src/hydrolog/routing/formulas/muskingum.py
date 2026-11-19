@@ -112,6 +112,28 @@ def _in_window(x: Values) -> bool:
     return lowest <= count <= highest
 
 
+_SMALLEST_NORMAL: Final = float(np.finfo(np.float64).smallest_normal)
+
+
+def _representable(x: Values) -> bool:
+    """Whether float64 holds the weights and the water of the scheme.
+
+    ``dt``, ``K / N`` and ``dt / (K / N)`` must be normal numbers, or the terms of the
+    weights round to fewer digits and the weights of the inflow underflow to zero, so
+    the water that enters is lost; ``2 K`` in seconds and the water ``K max(I, O0)``
+    must be finite, or the weights are NaN and the storage infinite.
+    """
+    k, step = x.real("k_min"), x.real("timestep_min")
+    count = x.integer("subreaches")
+    peak = max(float(np.max(x.array("inflow_m3s"))), x.real("initial_outflow_m3s"))
+    seconds = k * SECONDS_PER_MINUTE
+    return (
+        min(step, k / count, step * count / k) >= _SMALLEST_NORMAL
+        and np.isfinite(2.0 * seconds)
+        and np.isfinite(seconds * peak)
+    )
+
+
 def _route(x: Values) -> dict[str, object]:
     count = x.integer("subreaches")
     run = route_muskingum_cascade(
@@ -134,13 +156,19 @@ def _route(x: Values) -> dict[str, object]:
 
 
 def _volume_kept(x: Values, out: Values) -> float:
-    """Return inflow volume - outflow volume - storage change over the largest."""
+    """Return inflow volume - outflow volume - storage change over the largest.
+
+    The scale is at least the volume of a hydrograph of the smallest normal float64
+    discharge: below it the volumes are subnormal and carry fewer digits.
+    """
     step = x.real("timestep_min")
-    entered = volume_m3(x.array("inflow_m3s"), step)
+    flows = x.array("inflow_m3s")
+    entered = volume_m3(flows, step)
     left = volume_m3(out.array("outflow_m3s"), step)
     start, end = out.real("storage_start_m3"), out.real("storage_end_m3")
-    scale = max(entered, left, start, end)
-    return (entered - left - (end - start)) / scale if scale > 0.0 else 0.0
+    floor = _SMALLEST_NORMAL * step * SECONDS_PER_MINUTE * flows.size
+    scale = max(entered, left, start, end, floor)
+    return (entered - left - (end - start)) / scale
 
 
 # --- oracles and limits (CMP-6.2, CMP-6.5) -------------------------------------------
@@ -404,6 +432,23 @@ MUSKINGUM: Final = FormulaSpec(
     ),
     sources=(_HEC_HMS, _EM, _NEH, _MCCARTHY),
     constraints=(
+        Constraint(
+            name="representable",
+            cls="precondition",
+            check=_representable,
+            text="dt, K / N and dt / (K / N) >= 2.2e-308, the smallest normal "
+            "float64, and 2 K [s] and the water K max(I, O0) [m3] are finite: below, "
+            "the weights round to fewer digits or those of the inflow underflow and "
+            "the water that enters is lost; above, the weights are NaN",
+            source=Source(
+                citation="IEEE 754 binary64, the float64 of NumPy: largest finite "
+                "number 1.8e308, smallest normal 2.2e-308",
+                locator="the ratio of the step to K / N in the weights, K in seconds "
+                "in their denominator and the storage K max(I, O0)",
+            ),
+            satisfied={"timestep_min": 60.0},
+            violated={"timestep_min": 5e-324, "x": 0.0},
+        ),
         Constraint(
             name="nonnegative_weights",
             cls="precondition",
