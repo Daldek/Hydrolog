@@ -55,7 +55,7 @@ from hydrolog.statistics._types import (
     compute_plotting_positions,
 )
 from hydrolog.statistics.events import threshold_runs
-from hydrolog.statistics.high_flows import _maximum_likelihood, _NoParameters
+from hydrolog.statistics.frequency import _maximum_likelihood, _NoParameters
 
 _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0])
 _MIN_RELIABLE_YEARS = 10  # below it the estimates may be unreliable

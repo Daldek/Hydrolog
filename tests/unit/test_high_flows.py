@@ -256,7 +256,7 @@ class TestFitMethods:
         )
 
     def test_sample_l_moments_of_a_case_checked_by_hand(self):
-        from hydrolog.statistics.high_flows import _sample_l_moments
+        from hydrolog.statistics.frequency import _sample_l_moments
 
         # 1, 2, 3, 4, 10: l1 is the mean, 4; l2 is half the mean difference of the
         # 10 pairs, 40 / (2 * 10) = 2; l3 is the mean of (x_k - 2 x_j + x_i) / 3 over
