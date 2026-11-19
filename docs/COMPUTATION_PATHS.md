@@ -798,28 +798,15 @@ The same steps in the CLI: `soil hsg`, `soil hsg-stats`, `cn weighted`; the text
 
 #### 3.5.2 Texture Classification (USDA Triangle)
 
-Class definitions of the USDA Soil Survey Manual (Soil Science Division Staff, 2017, ch. 3, pp. 122–124), with c - clay, s - sand, si - silt in % of the sum of the three fractions. "X to less than Y percent" includes X and excludes Y (sandy loams: "7 to less than 20 percent clay", 7 ≤ c < 20); the sand ranges the Manual also gives for sands (more than 85 %) and loamy sands (70 to 90 %) follow from the inequalities. The twelve definitions do not overlap and leave no gap, so every composition belongs to exactly one class: there are no ties on the boundaries, and the order of the rules does not matter.
+Class definitions of the USDA Soil Survey Manual (Soil Science Division Staff, 2017, ch. 3, pp. 122–124), declared by the spec `usda_texture` (`hydrolog.soil.texture.USDA_TEXTURE`, card in [FORMULAS.md](FORMULAS.md#usda_texture), [ADR-0066](decisions/0066-the-soil-texture-and-hsg-tables-as-data.md)). The definitions are the data file `src/hydrolog/_data/tables/usda_texture_classes.csv`: one row per inequality `a·clay + b·sand + c·silt <relation> k` percent of the sum of the three fractions, with the class, its alternative (sandy loam and silt loam have two), the page and the Manual's words; a class holds where every row of one of its alternatives holds. "X to less than Y percent" includes X and excludes Y (sandy loams: "7 to less than 20 percent clay"); the sand ranges the Manual also gives for sands and loamy sands follow from their inequalities. The twelve definitions do not overlap and leave no gap, so every composition belongs to exactly one class: there are no ties on the boundaries, and the order of the rows does not matter.
 
-| # | Class | Condition |
-|---|-------|-----------|
-| 1 | `sand` | si + 1.5·c < 15 |
-| 2 | `loamy_sand` | si + 1.5·c ≥ 15 and si + 2·c < 30 |
-| 3 | `sandy_loam` | (7 ≤ c < 20, s > 52, si + 2·c ≥ 30) or (c < 7, si < 50, si + 2·c ≥ 30) |
-| 4 | `silt` | si ≥ 80, c < 12 |
-| 5 | `silt_loam` | (si ≥ 50, 12 ≤ c < 27) or (50 ≤ si < 80, c < 12) |
-| 6 | `loam` | 7 ≤ c < 27, 28 ≤ si < 50, s ≤ 52 |
-| 7 | `sandy_clay_loam` | 20 ≤ c < 35, si < 28, s > 45 |
-| 8 | `clay_loam` | 27 ≤ c < 40, 20 < s ≤ 45 |
-| 9 | `silty_clay_loam` | 27 ≤ c < 40, s ≤ 20 |
-| 10 | `sandy_clay` | c ≥ 35, s > 45 |
-| 11 | `silty_clay` | c ≥ 40, si ≥ 40 |
-| 12 | `clay` | c ≥ 40, s ≤ 45, si < 40 |
-
-- The rules compare the **amounts** of the fractions with their sum (without division, in `float64`), so the result does not depend on the unit (%, g/kg) as long as it is common to the three rasters, and values on the triangle boundaries are classified exactly.
-- A sum equal to zero gives `loam` in the texture classifier; in `classify_hsg` such a cell (all three fractions equal to 0, the SoilGrids convention for gaps) is no data.
+- The rows compare the **amounts** of the fractions with their sum (without division, in `float64`, after scaling the three by one power of two), so the result does not depend on the unit (%, g/kg) as long as it is common to the three rasters, and integer amounts on the class limits are classified exactly. Kartograf 0.8.2's own copy of the rules gives the same class on all 5,151 integer percent and 501,501 integer g/kg compositions (frozen oracles in `tests/oracles/`).
+- A sum equal to zero has no texture: `classify_usda_texture` and `soil texture` refuse it (`precondition_failed`, constraint `positive_total`). The array classifier gives such a cell, and a cell with a NaN or infinite amount, the code of `loam` as a placeholder (Tier B `usda_texture_codes`); in `classify_hsg` such a cell (all three fractions equal to 0 is the SoilGrids convention for gaps) is no data.
 - No data (code 0) is also NaN/±Inf and a value equal to the `nodata` marker of any of the three rasters. A negative amount in a cell with data is an error.
 
 #### 3.5.3 Texture → HSG
+
+Declared by the spec `texture_hsg` (`hydrolog.soil.texture.TEXTURE_HSG`, card in [FORMULAS.md](FORMULAS.md#texture_hsg)); the table is the data file `src/hydrolog/_data/tables/texture_hsg.csv`, each row with the source it follows.
 
 | HSG | Texture classes |
 |-----|-----------------|
@@ -828,7 +815,7 @@ Class definitions of the USDA Soil Survey Manual (Soil Science Division Staff, 2
 | C | `sandy_clay_loam`, `clay_loam`, `silty_clay_loam` |
 | D | `sandy_clay`, `silty_clay`, `clay` |
 
-The mapping is **more lenient than the TR-55 table** (USDA-NRCS NEH Part 630, ch. 7) for three transitional classes: `sandy_loam` = B (TR-55: A), `clay_loam` and `silty_clay_loam` = C (TR-55: D). Their actual group also depends on soil structure, and the middle group is conservative for the SCS-CN method (Kartograf ADR-025, decision b). Changing the `TEXTURE_TO_HSG` table changes CN for every user.
+The table is TR-55's (USDA-SCS 1986, appendix A, p. A-1, for disturbed soil profiles) for eight classes. Three follow the textures NEH 630 ch. 7 (2009, p. 7-2) names as typical of a group instead: `sandy_loam` = B, **stricter** than TR-55's A (a higher CN), and `clay_loam` and `silty_clay_loam` = C, **milder** than TR-55's D (a lower CN); `silt`, which TR-55 does not list, takes the B of `silt_loam` (Kartograf ADR-025, decision b). NEH 630 ch. 7 would also put `loam` and `silt_loam` in C and `loamy_sand` in B; the table keeps TR-55's groups for them (an open question of ADR-0066). Changing the `TEXTURE_TO_HSG` table changes CN for every user.
 
 #### 3.5.4 Area Statistics
 
