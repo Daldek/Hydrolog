@@ -71,7 +71,10 @@ class UhResult(JsonResultMixin):
     time_to_peak_min : float
         Time to peak [min].
     peak_discharge_m3s_per_mm : float
-        Peak ordinate [m3/s per mm of effective precipitation].
+        Peak [m3/s per mm of effective precipitation]: the largest ordinate (Nash,
+        Clark, Snyder) or, for SCS, the formula's qp of the duration D (spec
+        ``scs``), a little above the largest ordinate when tp falls between two
+        step times and well above it when the step was computed on sub-steps.
     time_base_min : float or None
         Time base [min] for the models that define one (SCS, Snyder), else ``None``.
     parameters : dict of str to float
@@ -108,29 +111,29 @@ class UhResult(JsonResultMixin):
 def uh_scs(
     *, area_km2: float, tc_min: float, timestep_min: float = 5.0
 ) -> OperationOutput:
-    """SCS (NRCS) unit hydrograph (``uh scs``).
+    """SCS (NRCS) unit hydrograph (``uh scs``, spec ``scs``).
 
     Parameters
     ----------
     area_km2 : float
-        Catchment area [km2], > 0.
+        Catchment area [km2].
     tc_min : float
-        Time of concentration [min], > 0.
+        Time of concentration [min].
     timestep_min : float, optional
-        Time step and unit rainfall duration D [min], > 0, by default 5.
+        Time step and unit rainfall duration D [min], by default 5.
 
     Returns
     -------
     OperationOutput
-        :class:`UhResult` (``tlag = 0.6 tc``, ``tp = D / 2 + tlag``,
-        ``qp = 0.208 A / tp``, ``tb = 5 tp`` and the ordinates) with an
-        ``outside_typical_range`` notice for an area larger than the watersheds the
-        unit hydrograph is applied to without dividing them.
+        :class:`UhResult` (the lag, tp, qp and tb of the formula and the ordinates;
+        ``docs/FORMULAS.md``) with an ``outside_typical_range`` notice for an area
+        larger than the subareas of NEH 630, and ``uh_substeps`` when the step was
+        computed on sub-steps.
 
     Raises
     ------
     InvalidParameterError
-        If a parameter is not positive.
+        If the spec refuses an input (``details.reason``).
     """
     with capture_warnings() as notices:
         shape = SCSUnitHydrograph(area_km2=area_km2, tc_min=tc_min).generate(

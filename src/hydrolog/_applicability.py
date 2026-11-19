@@ -46,4 +46,17 @@ APPLICABILITY: Final[tuple[Applicability, ...]] = (
             "15: eqs. 15-16 applicable in the range 55 <= CN <= 95"
         ),
     ),
+    Applicability(
+        method="scs",
+        parameter="area_km2",
+        minimum=0.0,
+        maximum=51.8,
+        unit="km2",
+        source=(
+            "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, "
+            "Chapter 16: Hydrographs (210-VI-NEH, March 2007), p. 16-4: no subarea "
+            "to exceed 20 square miles (51.8 km2), the largest no more than 10 "
+            "times the smallest"
+        ),
+    ),
 )

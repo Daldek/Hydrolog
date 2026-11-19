@@ -211,8 +211,10 @@ class HydrographGenerateResult(JsonResultMixin):
         Time to peak of the unit hydrograph [min]. For the ``snyder`` model it is
         tpR of the unit hydrograph for the duration of the time step.
     uh_peak_discharge_m3s_per_mm : float
-        Peak ordinate of the unit hydrograph [m3/s per mm]. For the ``snyder``
-        model the unit hydrograph is the one for the duration of the time step.
+        Peak of the unit hydrograph [m3/s per mm]: its largest ordinate for
+        ``nash``, ``clark`` and ``snyder`` (for ``snyder`` the unit hydrograph is the
+        one for the duration of the time step), and for ``scs`` the formula's qp of
+        the duration of the time step (spec ``scs``).
     timestep_min : float
         Time step [min].
     duration_min : float
@@ -232,9 +234,12 @@ class HydrographGenerateResult(JsonResultMixin):
     uh_discharge_m3s_per_mm : numpy.ndarray
         Ordinates of that unit hydrograph [m3/s per mm]: ``discharge_m3s`` is the
         discrete convolution of ``effective_precipitation_mm`` with them. Their
-        largest value is ``uh_peak_discharge_m3s_per_mm`` at
-        ``uh_time_to_peak_min`` for ``nash`` and ``clark``; the ``scs`` and
-        ``snyder`` peak is the analytic one, which may fall between two ordinates.
+        largest value is ``uh_peak_discharge_m3s_per_mm`` for ``nash``, ``clark``
+        and ``snyder``, at ``uh_time_to_peak_min`` for ``nash`` and ``clark``; the
+        ``snyder`` time to peak tpR and the ``scs`` time to peak and peak are the
+        formulas' values, which may fall between two ordinates (the ``scs`` qp then
+        exceeds the largest ordinate by up to 1.7 %, and by much more when the
+        step was computed on sub-steps, notice ``uh_substeps``).
     """
 
     peak_discharge_m3s: float

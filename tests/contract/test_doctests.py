@@ -8,8 +8,7 @@ examples fail (2026-11-18): ``hydrometrics.rating_curve``,
 ``morphometry.geometric``, ``morphometry.hypsometry``,
 ``network.stream_order``, ``operations.config``, ``precipitation.interpolation``,
 ``reports``, ``runoff.clark_iuh``, ``runoff.convolution``, ``runoff.generator``,
-``runoff.nash_iuh``, ``runoff.snyder_uh``, ``runoff.unit_hydrograph`` and the
-``visualization`` modules.
+``runoff.nash_iuh``, ``runoff.snyder_uh`` and the ``visualization`` modules.
 """
 
 import doctest
@@ -53,6 +52,7 @@ MODULES = (
     "hydrolog.routing.sections",
     "hydrolog.runoff.cn_lookup",
     "hydrolog.runoff.scs_cn",
+    "hydrolog.runoff.unit_hydrograph",
     "hydrolog.soil",
     "hydrolog.soil.hsg",
     "hydrolog.soil.texture",

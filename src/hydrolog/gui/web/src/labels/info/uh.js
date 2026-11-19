@@ -64,7 +64,7 @@ export const uhInfo = {
       "50&nbsp;m³/s z 10&nbsp;mm w jednym kroku. Dłuższy t<sub>c</sub> opóźnia i obniża szczyt, bo objętość " +
       "zostaje ta sama.</p>",
     guide: "metoda-uh-scs",
-    sources: "Mockus 1957 (za NEH 630-16); USDA-SCS 1986 (TR-55); USDA-NRCS 2007 (NEH 630-16)",
+    sources: "Mockus 1957 (za NEH 630-16); USDA-NRCS 2007 (NEH 630-16); USACE-HEC 2000 (HEC-HMS)",
   },
 
   "uh-nash": {

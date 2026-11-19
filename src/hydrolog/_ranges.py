@@ -192,6 +192,10 @@ _SOURCE_PL: Final[Mapping[tuple[str, str], str]] = {
         "Ponce i Hawkins (1996), s. 15: wzory 15-16 Hawkinsa i in. (1985) obowiązują "
         "dla 55 ≤ CN ≤ 95"
     ),
+    ("scs", "area_km2"): (
+        "USDA-NRCS (2007), NEH 630, rozdz. 16, s. 16-4: zlewnia cząstkowa nie większa "
+        "niż 20 mil kw. (51,8 km²), największa najwyżej 10 razy większa od najmniejszej"
+    ),
 }
 """The Polish text of the source of each range of a formula with a spec."""
 
@@ -354,17 +358,7 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
     *_specified("scs_cn_runoff"),
     *_specified("scs_cn_amc"),
     # --- unit hydrographs --------------------------------------------------------
-    TypicalRange(
-        "scs",
-        "area_km2",
-        0.0,
-        52.0,
-        "km2",
-        "Sorrell (2010), Michigan DNRE: the NRCS unit hydrograph for watersheds up to "
-        "about 20 mi², over which the rainfall is uniform; a larger one is divided",
-        "Sorrell (2010), Michigan DNRE: hydrogram jednostkowy NRCS dla zlewni do ok. "
-        "20 mi², na których opad jest równomierny; większą się dzieli",
-    ),
+    *_specified("scs"),
     TypicalRange(
         "nash",
         "n",

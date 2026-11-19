@@ -1,0 +1,259 @@
+[
+ {
+  "formula": "scs",
+  "case_id": "neh630-ex16-1-area-a",
+  "source": {
+   "citation": "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)",
+   "url": "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf",
+   "access": "open",
+   "locator": "example 16-1, step 1, p. 16-8: Tp 1.53 h, qp 1,455 ft3/s for 1 in of runoff; figure 16-2(a), area A, p. 16-5"
+  },
+  "inputs": {
+   "area_km2": 11.9139453075456,
+   "tc_min": 138.0,
+   "timestep_min": 18.0
+  },
+  "expected": {
+   "time_to_peak_min": 91.8,
+   "peak_discharge_m3s": 1.6220870784
+  },
+  "printed_precision": {
+   "time_to_peak_min": 0.6,
+   "peak_discharge_m3s": 0.00111483648
+  },
+  "tolerance": {
+   "rel": 0.0016,
+   "reason": "the formula's C = 2.08 m3/s per km2 cm/h (HEC-HMS 2000 eq. 36) is the peak rate factor 483.23 in foot-pound units, 0.159 % below the 484 the source computes with"
+  },
+  "conventions": [
+   "the sources' foot-pound units converted exactly: 1 mi = 1.609344 km, 1 ft3/s = 0.028316846592 m3/s, 1 in = 25.4 mm (a peak per inch of runoff is the peak per 25.4 mm)",
+   "D = 0.3 h, the example's rounding of 0.133 tc = 0.306 h (eq. 16A-13)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "USDA-SCS (1972). National Engineering Handbook, Section 4 Hydrology, Chapter 16: Hydrographs (NEH Notice 4-102, August 1972; amendment 6, March 1985)",
+   "url": "https://archive.org/details/CAT71334647003",
+   "access": "open",
+   "locator": "example 1, step 1, p. 16.10: Tp = 0.30/2 + 0.6 x 2.3 = 1.53 h, qp = 484 x 4.6 x 1 / 1.53 = 1,450 cfs printed to three figures; step 3: 2,968 cfs h"
+  }
+ },
+ {
+  "formula": "scs",
+  "case_id": "neh630-fig16-2-area-b",
+  "source": {
+   "citation": "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)",
+   "url": "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf",
+   "access": "open",
+   "locator": "figure 16-2, area B, pp. 16-5 to 16-6: D.A. 4.6 mi2, Tc 6.0 h, dD 0.8 h, qp 557 ft3/s, Tp 4.0 h"
+  },
+  "inputs": {
+   "area_km2": 11.9139453075456,
+   "tc_min": 360.0,
+   "timestep_min": 48.0
+  },
+  "expected": {
+   "time_to_peak_min": 240.0,
+   "peak_discharge_m3s": 0.62096391936
+  },
+  "printed_precision": {
+   "time_to_peak_min": 6.0,
+   "peak_discharge_m3s": 0.00111483648
+  },
+  "tolerance": {
+   "rel": 0.0016,
+   "reason": "the formula's C = 2.08 m3/s per km2 cm/h (HEC-HMS 2000 eq. 36) is the peak rate factor 483.23 in foot-pound units, 0.159 % below the 484 the source computes with"
+  },
+  "conventions": [
+   "the sources' foot-pound units converted exactly: 1 mi = 1.609344 km, 1 ft3/s = 0.028316846592 m3/s, 1 in = 25.4 mm (a peak per inch of runoff is the peak per 25.4 mm)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "scs",
+  "case_id": "neh630-fig16-2-area-c1",
+  "source": {
+   "citation": "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)",
+   "url": "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf",
+   "access": "open",
+   "locator": "figure 16-2, area C1, pp. 16-5 to 16-6: D.A. 2.6 mi2, Tc 6.0 h, dD 0.8 h, qp 315 ft3/s, Tp 4.0 h"
+  },
+  "inputs": {
+   "area_km2": 6.7339690868736,
+   "tc_min": 360.0,
+   "timestep_min": 48.0
+  },
+  "expected": {
+   "time_to_peak_min": 240.0,
+   "peak_discharge_m3s": 0.3511734912
+  },
+  "printed_precision": {
+   "time_to_peak_min": 6.0,
+   "peak_discharge_m3s": 0.00111483648
+  },
+  "tolerance": {
+   "rel": 0.0016,
+   "reason": "the formula's C = 2.08 m3/s per km2 cm/h (HEC-HMS 2000 eq. 36) is the peak rate factor 483.23 in foot-pound units, 0.159 % below the 484 the source computes with"
+  },
+  "conventions": [
+   "the sources' foot-pound units converted exactly: 1 mi = 1.609344 km, 1 ft3/s = 0.028316846592 m3/s, 1 in = 25.4 mm (a peak per inch of runoff is the peak per 25.4 mm)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "scs",
+  "case_id": "neh630-fig16-2-area-c2",
+  "source": {
+   "citation": "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)",
+   "url": "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf",
+   "access": "open",
+   "locator": "figure 16-2(b), area C2, p. 16-6: D.A. 2.0 mi2, Tc 1.5 h, dD 0.2 h, qp 988 ft3/s, Tp 1.0 h"
+  },
+  "inputs": {
+   "area_km2": 5.179976220672,
+   "tc_min": 90.0,
+   "timestep_min": 12.0
+  },
+  "expected": {
+   "time_to_peak_min": 60.0,
+   "peak_discharge_m3s": 1.10145844224
+  },
+  "printed_precision": {
+   "time_to_peak_min": 6.0,
+   "peak_discharge_m3s": 0.00111483648
+  },
+  "tolerance": {
+   "rel": 0.0016,
+   "reason": "the formula's C = 2.08 m3/s per km2 cm/h (HEC-HMS 2000 eq. 36) is the peak rate factor 483.23 in foot-pound units, 0.159 % below the 484 the source computes with"
+  },
+  "conventions": [
+   "the sources' foot-pound units converted exactly: 1 mi = 1.609344 km, 1 ft3/s = 0.028316846592 m3/s, 1 in = 25.4 mm (a peak per inch of runoff is the peak per 25.4 mm)"
+  ],
+  "status": "discrepancy",
+  "second_source": {
+   "citation": "USDA-SCS (1972). National Engineering Handbook, Section 4 Hydrology, Chapter 16: Hydrographs (NEH Notice 4-102, August 1972; amendment 6, March 1985)",
+   "url": "https://archive.org/details/CAT71334647003",
+   "access": "open",
+   "locator": "example 4, location 1, step 2, p. 16.22: the same watershed (2 mi2, Tc 1.5 h, dD 0.2 h), qp = 484 x 2 x 1 / 1.0 = 968 ft3/s"
+  },
+  "discrepancy": "a misprint of the figure: eq. 16A-6 gives 484 x 2.0 / 1.0 = 968 ft3/s, as NEH-4 computes for the same watershed and as the figure's other three areas follow"
+ },
+ {
+  "formula": "scs",
+  "case_id": "neh4-1972-ex4-location-1",
+  "source": {
+   "citation": "USDA-SCS (1972). National Engineering Handbook, Section 4 Hydrology, Chapter 16: Hydrographs (NEH Notice 4-102, August 1972; amendment 6, March 1985)",
+   "url": "https://archive.org/details/CAT71334647003",
+   "access": "open",
+   "locator": "example 4, location 1, steps 1-2, p. 16.22: 2 mi2, Tc 1.5 h, dD = 0.133 x 1.5 = 0.2 h, qp = 484 x 2 x 1 / (0.1 + 0.9) = 968 ft3/s"
+  },
+  "inputs": {
+   "area_km2": 5.179976220672,
+   "tc_min": 90.0,
+   "timestep_min": 12.0
+  },
+  "expected": {
+   "peak_discharge_m3s": 1.07916171264
+  },
+  "printed_precision": {
+   "peak_discharge_m3s": 0.00111483648
+  },
+  "tolerance": {
+   "rel": 0.0016,
+   "reason": "the formula's C = 2.08 m3/s per km2 cm/h (HEC-HMS 2000 eq. 36) is the peak rate factor 483.23 in foot-pound units, 0.159 % below the 484 the source computes with"
+  },
+  "conventions": [
+   "the sources' foot-pound units converted exactly: 1 mi = 1.609344 km, 1 ft3/s = 0.028316846592 m3/s, 1 in = 25.4 mm (a peak per inch of runoff is the peak per 25.4 mm)",
+   "D as the example rounds 0.133 tc"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "scs",
+  "case_id": "neh4-1972-ex4-location-2",
+  "source": {
+   "citation": "USDA-SCS (1972). National Engineering Handbook, Section 4 Hydrology, Chapter 16: Hydrographs (NEH Notice 4-102, August 1972; amendment 6, March 1985)",
+   "url": "https://archive.org/details/CAT71334647003",
+   "access": "open",
+   "locator": "example 4, location 2, steps 1-2, p. 16.23: 20 mi2, Tc 6 h, dD = 0.133 x 6 = 0.8 h, qp = 484 x 20 x 1 / (0.4 + 3.6) = 2,420 ft3/s"
+  },
+  "inputs": {
+   "area_km2": 51.79976220672,
+   "tc_min": 360.0,
+   "timestep_min": 48.0
+  },
+  "expected": {
+   "peak_discharge_m3s": 2.6979042816
+  },
+  "printed_precision": {
+   "peak_discharge_m3s": 0.00111483648
+  },
+  "tolerance": {
+   "rel": 0.0016,
+   "reason": "the formula's C = 2.08 m3/s per km2 cm/h (HEC-HMS 2000 eq. 36) is the peak rate factor 483.23 in foot-pound units, 0.159 % below the 484 the source computes with"
+  },
+  "conventions": [
+   "the sources' foot-pound units converted exactly: 1 mi = 1.609344 km, 1 ft3/s = 0.028316846592 m3/s, 1 in = 25.4 mm (a peak per inch of runoff is the peak per 25.4 mm)",
+   "D as the example rounds 0.133 tc"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "scs",
+  "case_id": "neh630-ex16-1-ordinates",
+  "source": {
+   "citation": "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)",
+   "url": "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf",
+   "access": "open",
+   "locator": "example 16-1, step 2 and table 16-4(a), column 2, pp. 16-8 and 16-12: the ordinates at 0.3 h read from figure 16-4"
+  },
+  "inputs": {
+   "area_km2": 11.9139453075456,
+   "tc_min": 138.0,
+   "timestep_min": 18.0
+  },
+  "expected": {
+   "ordinates_m3s": [
+    0.0,
+    0.1560771072,
+    0.48941321472,
+    1.02899407104,
+    1.48496219136,
+    1.6220870784,
+    1.53624466944,
+    1.29989933568,
+    0.97325224704,
+    0.67001672448,
+    0.48606870528,
+    0.36120701952,
+    0.2619865728,
+    0.19063703808,
+    0.13823972352,
+    0.1003352832,
+    0.0724643712,
+    0.05239731456,
+    0.0390192768,
+    0.027870912,
+    0.02006705664,
+    0.01560771072,
+    0.01226320128,
+    0.00780385536,
+    0.00445934592,
+    0.00111483648,
+    0.0
+   ]
+  },
+  "printed_precision": {
+   "ordinates_m3s": 0.00111483648
+  },
+  "tolerance": {
+   "abs": 0.00891869184,
+   "rel": 0.0016,
+   "reason": "the ordinates were read from the plotted curve (step 2), whose sum NEH checks within 0.17 % of the volume (2,974 against 2,969 ft3/s h): 8 ft3/s, 0.55 % of qp; and C = 2.08 against 484, 0.159 %"
+  },
+  "conventions": [
+   "the sources' foot-pound units converted exactly: 1 mi = 1.609344 km, 1 ft3/s = 0.028316846592 m3/s, 1 in = 25.4 mm (a peak per inch of runoff is the peak per 25.4 mm)",
+   "the ordinates at k dD, dD = 0.3 h, from t = 0"
+  ],
+  "status": "single_source"
+ }
+]

@@ -91,14 +91,14 @@ COMMANDS: tuple[Command, ...] = (
             "concentration."
         ),
         description_pl=(
-            "Bezwymiarowy hydrogram jednostkowy SCS (NRCS, TR-55) w m3/s na mm. "
-            "Stosuj, gdy znany jest czas koncentracji tc (z komendy `tc`). Nie do "
-            "hydrogramu odpływu (`hydrograph generate`). Kształt z tablicy; krok jest "
-            "zarazem czasem trwania opadu jednostkowego."
+            "Bezwymiarowy hydrogram jednostkowy SCS (NRCS, NEH 630 rozdz. 16) w m3/s "
+            "na mm. Stosuj, gdy znany jest czas koncentracji tc (z komendy `tc`). Nie "
+            "do hydrogramu odpływu (`hydrograph generate`). Kształt z tablicy; krok "
+            "jest zarazem czasem trwania opadu jednostkowego."
         ),
         description=(
-            "Dimensionless SCS (NRCS, TR-55) unit hydrograph in m3/s per mm. Use when "
-            "tc is known (from a `tc` command). Not for a runoff hydrograph "
+            "Dimensionless SCS (NRCS, NEH 630 ch. 16) unit hydrograph in m3/s per mm. "
+            "Use when tc is known (from a `tc` command). Not for a runoff hydrograph "
             "(`hydrograph generate`). Fixed table shape; the step is also the unit "
             "rainfall duration."
         ),

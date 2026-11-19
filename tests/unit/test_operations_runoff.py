@@ -2393,7 +2393,7 @@ class TestHydrographGenerate:
             ),
             # The area of the watershed against the 24 watersheds of the NRCS lag
             ({"watershed": WATERSHED, "tc_method": "nrcs"}, "area_km2", "area_km2"),
-            # The SCS unit hydrograph of more than 52 km2
+            # The SCS unit hydrograph of more than 20 mi2 (51.8 km2)
             ({"tc_min": 90.0, "area_km2": 60.0}, "area_km2", "area_km2"),
         ],
     )
@@ -2795,8 +2795,8 @@ class TestTypicalRangesOfTheModels:
     @pytest.mark.parametrize(
         "method, option, value, minimum, maximum",
         [
-            # Sorrell (2010): the NRCS unit hydrograph up to about 20 mi2
-            ("scs", "area_km2", 52.1, 0.0, 52.0),
+            # NEH 630 ch. 16, p. 16-4: subareas of at most 20 mi2 (51.8 km2)
+            ("scs", "area_km2", 51.9, 0.0, 51.8),
             # Snyder (1938): 10-10 000 mi2 of the Appalachian Highlands
             ("snyder", "area_km2", 25.9, 26.0, 26000.0),
             ("snyder", "area_km2", 26000.1, 26.0, 26000.0),
@@ -2837,7 +2837,7 @@ class TestTypicalRangesOfTheModels:
     @pytest.mark.parametrize(
         "method, option, value",
         [
-            ("scs", "area_km2", 52.0),
+            ("scs", "area_km2", 51.8),
             ("snyder", "area_km2", 26.0),
             ("snyder", "area_km2", 26000.0),
             ("snyder", "ct", 1.35),
