@@ -501,6 +501,10 @@ minucie, objętość 1,0000 mm. Wpływ $R$ na hydrogram projektowy pokazuje tab
 - czas koncentracji (modele SCS i Clarka): Kerby–Kirpich, 208,63 min (rozdz. 4);
 - hydrogram jednostkowy: cztery modele z poprzednich punktów.
 
+Wysokość opadu pochodzi z PMAXTP: „Źródłem pochodzenia danych jest Instytut Meteorologii i
+Gospodarki Wodnej – Państwowy Instytut Badawczy. Dane Instytutu Meteorologii i Gospodarki Wodnej –
+Państwowego Instytutu Badawczego zostały przetworzone”.
+
 Polecenie dla modelu SCS (pozostałe różnią się opcjami modelu podanymi w tabeli):
 
 ```sh
