@@ -4,7 +4,9 @@
  * server sends; the English `message` is the fallback, marked „(EN)”. The checks of the
  * forms word their messages with the same functions, so a field says the same before and
  * after a run. An error of the depth-duration curve of Euler II (`depth_duration_mm`, also
- * a rainfall's field of a network document) is worded as the curve's.
+ * a rainfall's field of a network document) is worded as the curve's. A refused constraint
+ * of a formula (`details.constraint`) names no option: the GUI words the ones it knows and
+ * puts them on the input the constraint asks to change (CONSTRAINT_OPTIONS).
  */
 
 import { bytes, inputText, num } from "../format.js";
@@ -12,6 +14,13 @@ import { common, t } from "./common.js";
 
 /** The option, and the field of a rainfall of a network, of Euler II's depth-duration curve. */
 const CURVE = "depth_duration_mm";
+
+/**
+ * The option a refused constraint of a formula stands on, by `details.constraint`: the
+ * input the constraint asks to change, since the library names none for a condition
+ * between inputs.
+ */
+const CONSTRAINT_OPTIONS = Object.freeze({ flow_path_longer_than_overland: "flow_path_length_km" });
 
 export const errors = {
   reasons: {
@@ -64,6 +73,11 @@ export const errors = {
     http_status: "{source} odpowiedział błędem HTTP {status}: spróbuj ponownie później",
     not_multiple: "Czas trwania musi być wielokrotnością kroku Δt = {timestep} min: hietogram składa się z całych kroków",
     total_mismatch: "Euler II ma sumę równą wysokości krzywej wysokość–czas trwania dla {duration} min: {depth} mm",
+  },
+  /** The sentences of the refused constraints of the formulas, by `details.constraint`. */
+  constraints: {
+    flow_path_longer_than_overland:
+      "Długość najdłuższej drogi spływu musi być większa od długości spływu po stoku: Kerby–Kirpich liczy resztę drogi jako przepływ korytem",
   },
   /** The sentences of the errors of Euler II's depth-duration curve, by `details.reason`. */
   curve: {
@@ -151,6 +165,20 @@ function listed(items) {
 }
 
 /**
+ * The Polish sentence of a refused constraint of a formula: its own (errors.constraints),
+ * else `template` with the library's statement of the condition.
+ *
+ * @param {object} details the error's details: `constraint` and its `text`
+ * @param {string} template the sentence of the reason, with {text}
+ * @returns {string} the sentence
+ */
+function constraintText(details, template) {
+  const name = details.constraint;
+  if (typeof name === "string" && Object.hasOwn(errors.constraints, name)) return errors.constraints[name];
+  return t(template, { text: String(details.text || details.constraint || "–") });
+}
+
+/**
  * The Polish sentence of a validation reason (the catalog's `details.reason`).
  *
  * @param {string} reason e.g. "maximum"
@@ -205,14 +233,14 @@ export function reasonText(reason, details = {}) {
     case "outside_physical_range":
       text =
         typeof details.constraint === "string"
-          ? t(r.outside_physical_constraint, { text: String(details.text || details.constraint) })
+          ? constraintText(details, r.outside_physical_constraint)
           : t(r.outside_physical_range, {
               value: typeof details.value === "number" ? shown(details.value) : String(details.value ?? "–"),
               range: physicalRange(details.range),
             });
       break;
     case "precondition_failed":
-      text = t(r.precondition_failed, { text: String(details.text || details.constraint || "–") });
+      text = constraintText(details, r.precondition_failed);
       break;
     case "type": {
       const expected = String(details.expected || "");
@@ -260,6 +288,19 @@ export function reasonText(reason, details = {}) {
 export function isCurveError(details) {
   const field = typeof details.field === "string" ? details.field : "";
   return details.option === CURVE || field === CURVE || field.endsWith(`.${CURVE}`);
+}
+
+/**
+ * The option an error belongs to: the one it names, else the input a refused constraint of
+ * a formula asks to change (CONSTRAINT_OPTIONS).
+ *
+ * @param {object} details the error's details
+ * @returns {string|null} the option, null for an error of no option (it stands above the form)
+ */
+export function errorOptionOf(details) {
+  if (typeof details.option === "string") return details.option;
+  const name = details.constraint;
+  return typeof name === "string" && Object.hasOwn(CONSTRAINT_OPTIONS, name) ? CONSTRAINT_OPTIONS[name] : null;
 }
 
 /**
@@ -315,7 +356,7 @@ function curveText(reason, details) {
  */
 export function describeError(doc) {
   const details = (doc && doc.details) || {};
-  const option = typeof details.option === "string" ? details.option : null;
+  const option = errorOptionOf(details);
   const reason = typeof details.reason === "string" ? details.reason : null;
   let text = null;
   if (reason) text = isCurveError(details) ? curveText(reason, details) : reasonText(reason, details);

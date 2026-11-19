@@ -1353,13 +1353,18 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     shows(page, "57,90", "6:40", "1 046 738")
 
     # Kerby–Kirpich's channel is the flow path minus the overland segment: a flow path
-    # not longer than the overland one is the server's error on its field
+    # not longer than the overland one breaks the spec's constraint, which names no
+    # option; the page words it and puts it on the flow path's field, not above the
+    # steps
     field(page, "tc_method").select_option("kerby_kirpich")
     shows(page, *MOCKUP[("scs", "kerby_kirpich", "II")])
     field(page, "flow_path_length_km").fill("0,2")
     expect(message(page, "flow_path_length_km")).to_have_text(
-        "Musi być większa od 0,3 (podano 0,2) · exclusive_minimum"
+        "Długość najdłuższej drogi spływu musi być większa od długości spływu po stoku:"
+        " Kerby–Kirpich liczy resztę drogi jako przepływ korytem"
+        " · outside_physical_range"
     )
+    expect(page.locator(f"{LEFT} [data-form-error]")).to_have_count(0)
     expect(page.locator(BADGE)).to_have_text("Błąd danych")
     field(page, "flow_path_length_km").fill("15,88")
     shows(page, *MOCKUP[("scs", "kerby_kirpich", "II")])

@@ -45,6 +45,7 @@ import { NO_LINES, hasLines, linesFields, linesOf, providerLines } from "../../a
 import { inputText, parseNumber } from "../../format.js";
 import { commandEntry, fieldModel, parseSeries, validate, withReason } from "../../forms/model.js";
 import { t } from "../../labels/common.js";
+import { errorOptionOf } from "../../labels/errors.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
 import { describeNotice, isRangeNotice, noticeValue } from "../../labels/notices.js";
 
@@ -523,7 +524,8 @@ export function optionField(inputs, option) {
 }
 
 /**
- * The option an error of a run of `hydrograph generate` belongs to: the one it names, but a
+ * The option an error of a run of `hydrograph generate` belongs to: the one it names (a
+ * refused constraint of a formula the input it asks to change, errorOptionOf), but a
  * depth-duration curve that does not reach down to the time step (`not_covered` below its
  * first duration: nothing is extrapolated) is the time step's error, and one that does not
  * reach the duration the duration's.
@@ -532,7 +534,7 @@ export function optionField(inputs, option) {
  * @returns {string|null} the option, null when the error names none
  */
 export function errorOption(details) {
-  const option = typeof details.option === "string" ? details.option : null;
+  const option = errorOptionOf(details);
   if (option !== CURVE || details.reason !== "not_covered") return option;
   const first = Array.isArray(details.durations_min) ? details.durations_min[0] : null;
   return typeof first === "number" && typeof details.duration_min === "number" && details.duration_min < first ? "timestep_min" : "duration_min";

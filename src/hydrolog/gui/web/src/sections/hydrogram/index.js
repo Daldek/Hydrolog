@@ -127,8 +127,10 @@ function useModels() {
 
 /**
  * Word an error of a run: on its field when the panel shows it (every field a tc method
- * or a model misses on its own; Euler II's depth-duration curve under PMAXTP on the fetched
- * depth, or on the time step it does not reach down to: errorOption), else above the steps.
+ * or a model misses on its own; a refused constraint of a formula on the input it asks to
+ * change, e.g. Kerby–Kirpich's flow path not longer than its overland segment on the flow
+ * path; Euler II's depth-duration curve under PMAXTP on the fetched depth, or on the time
+ * step it does not reach down to: errorOption), else above the steps.
  *
  * @param {object} doc the hydrolog-error/1 document
  * @param {object|null} inputs the inputs of the run
