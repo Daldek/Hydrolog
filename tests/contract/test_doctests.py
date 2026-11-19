@@ -4,8 +4,7 @@
 ``src/``; this test runs the examples of the modules listed below. A module joins
 the list once its examples pass; those of the visualisation modules and of
 ``reports.generator`` write files and stay out. Not listed, because some of their
-examples fail (2026-11-18): ``hydrometrics.rating_curve``,
-``morphometry.geometric``, ``network.stream_order``, ``operations.config``,
+examples fail (2026-11-18): ``hydrometrics.rating_curve``, ``operations.config``,
 ``precipitation.interpolation``, ``reports``, ``runoff.clark_iuh``,
 ``runoff.convolution``, ``runoff.generator``, ``runoff.snyder_uh``,
 ``runoff.unit_hydrograph`` and the ``visualization`` modules.
@@ -28,6 +27,7 @@ MODULES = (
     "hydrolog.catalog.notices",
     "hydrolog.cli.values",
     "hydrolog.exceptions",
+    "hydrolog.morphometry.geometric",
     "hydrolog.morphometry.hypsometry",
     "hydrolog.morphometry.terrain",
     "hydrolog.morphometry.watershed_params",

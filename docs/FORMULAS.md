@@ -18,6 +18,13 @@
 | [Time of concentration by the Kerby-Kirpich method (Roussel et al. 2005)](#kerby_kirpich) | `hydrolog.time.concentration.ConcentrationTime.kerby_kirpich` | referenced | 1 | not measured |
 | [Equal-area slope of a longitudinal profile (the line through the outlet with equal areas above and below it)](#equal_area_slope) | `hydrolog.morphometry.profile.equal_area_slope` | oracle only | 1 | not measured |
 | [Nash's n and K of an ungauged watershed by Lutz's method (KZGW 2017)](#lutz) | `hydrolog.runoff.nash_iuh.lutz_parameters` | referenced | 1 | not measured |
+| [Horton's form factor of a watershed](#form_factor) | `hydrolog.morphometry.geometric.form_factor` | oracle only | 1 | not measured |
+| [Gravelius's compactness coefficient of a watershed](#compactness_coefficient) | `hydrolog.morphometry.geometric.compactness_coefficient` | oracle only | 1 | not measured |
+| [Miller's circularity ratio of a watershed](#circularity_ratio) | `hydrolog.morphometry.geometric.circularity_ratio` | oracle only | 1 | not measured |
+| [Schumm's elongation ratio of a watershed](#elongation_ratio) | `hydrolog.morphometry.geometric.elongation_ratio` | oracle only | 1 | not measured |
+| [Chorley's lemniscate ratio k of a watershed](#lemniscate_ratio) | `hydrolog.morphometry.geometric.lemniscate_ratio` | oracle only | 1 | not measured |
+| [Relief ratio: the relief of a watershed over a length (Schumm)](#relief_ratio) | `hydrolog.morphometry.terrain.relief_ratio` | referenced | 1 | not measured |
+| [Hypsometric integral of a watershed by the trapezoid of its curve (Strahler)](#hypsometric_integral) | `hydrolog.morphometry.hypsometry.hypsometric_integral` | oracle only | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
 ### Potential maximum retention S of the SCS curve number
@@ -965,11 +972,538 @@ Plain text: `tp = P1 * (L * Lc / Jg**1.5)**0.26 * exp(-0.016 * U) * exp(0.004 * 
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
+<a id="form_factor"></a>
+### Horton's form factor of a watershed
+
+`hydrolog.morphometry.geometric.form_factor` · family `index` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+C_f = \frac{A}{L^2}
+$$
+
+Plain text: `Cf = A / L**2`
+
+**Sources**
+
+- Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, p. 929: Horton's (1932) form factor, the area of the basin over the square of its length (open) <https://doi.org/10.1080/02626660209493000>
+- Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material, section 2: wskaźnik formy Cf = A / L^2 = B / L (open) <https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `area_km2` | $A$ | km2 | real | (0.0, inf), test bound high 149000000.0 (the land area of the Earth, 148.94 million km2 (CIA, The World Factbook, 2025, field Area: land): no watershed is larger) | unstated | [0.0003, 250.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py) |
+| `length_km` | $L$ | km | real | (0.0, inf), test bound high 20000.0 (20,000 km, half the circumference of the Earth (40,075 km at the equator): no two points of a watershed lie farther apart) | unstated | [0.05, 30.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: lengths (longest flow paths) of 0.0566 to 28.88 km |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `within_reach` | physical | A <= pi L^2: the watershed lies within the circle of radius L about its outlet, L being the straight line to the farthest point of the divide or the longest flow path, which is not shorter | Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, p. 21: the length of the watershed L is the straight line from the outlet to the farthest point of the divide; the maximum length Lm runs along the valley of the main river |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `form_factor` | - | real | [0.0, 3.141592653589793] | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- L the straight line from the outlet to the farthest point of the divide (Baścik 2006, p. 21), as WatershedGeometry describes length_km; Hydrograf hands over the longest flow path, which is not shorter, so with it the index of elongation is smaller (k larger) than with the straight line; Schumm's (1956) L, the longest dimension parallel to the main drainage line, and Baścik's Lm, the valley length, are other conventions
+- A within the circle of radius L about the outlet bounds Cf by pi; with L the longest dimension of the watershed (the isodiametric inequality) by pi/4, the circle's value
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a geometric index, which its sources compare with no observations
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: range cases length_km-physical_low_*: Cf grows as L^-2, which the constraint within_reach bounds by pi; a length too short for the area is refused
+- `gap_propagation`: type cases area_km2-nan and the other inputs': a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `area_km2` increasing, `length_km` decreasing
+- scaling `units_of_length`: inputs times 2^e (`area_km2` e = 2.0, `length_km` e = 1.0) give outputs times 2^e (none)
+- scaling `area`: inputs times 2^e (`area_km2` e = 1.0) give outputs times 2^e (`form_factor` e = 1.0)
+- limit `decimal`: Cf equals A / L^2 evaluated in decimal arithmetic at 50 digits
+- limit `shapes`: a circle with L its diameter gives pi/4, a square with L its diagonal 1/2, a semicircle with L its radius pi/2
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: A / L^2 of the float inputs in decimal arithmetic at 50 digits, and the exact values of a circle, a square and a semicircle with pi summed by the decimal module's series (`tests/unit/test_formulas_shape.py (limits decimal and shapes)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="compactness_coefficient"></a>
+### Gravelius's compactness coefficient of a watershed
+
+`hydrolog.morphometry.geometric.compactness_coefficient` · family `index` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+C_z = \frac{P}{2\sqrt{\pi A}}
+$$
+
+Plain text: `Cz = P / (2 * sqrt(pi * A))`
+
+**Sources**
+
+- Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, eq. (1), p. 922: K = P / (2 sqrt(pi A)) = 0.28 P / sqrt(A) (open) <https://doi.org/10.1080/02626660209493000>
+- Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material, section 2: wskaźnik zwartości (Graveliusa) K = Oz / (2 sqrt(pi A)) (open) <https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `area_km2` | $A$ | km2 | real | (0.0, inf), test bound high 149000000.0 (the land area of the Earth, 148.94 million km2 (CIA, The World Factbook, 2025, field Area: land): no watershed is larger) | unstated | [0.0003, 250.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py) |
+| `perimeter_km` | $P$ | km | real | (0.0, inf), test bound high 1000000.0 (a million km, 25 times the circumference of the Earth (40,075 km at the equator): no divide traced on a map is longer) | unstated | [0.17, 90.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: perimeters of 0.1756 to 84.46 km |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `isoperimetric` | physical | P^2 >= 4 pi A: no perimeter is shorter than the circle's of the same area (the isoperimetric inequality); a shorter one means A and P measured on different outlines | Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, pp. 921-922: the perimeter of any basin exceeds that of the circle of the same area, so K = P / (2 sqrt(pi A)) is at least 1, 1 for a circle |
+| `within_float64` | precondition | P / (2 sqrt(pi A)) lies within float64: no watershed has a divide 10^150 times its width | Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, pp. 921-922: the perimeter of any basin exceeds that of the circle of the same area, so K = P / (2 sqrt(pi A)) is at least 1, 1 for a circle |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `compactness_coefficient` | - | real | [1.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- P the length of the divide as traced: it grows with the resolution of the map or DEM, as a divide is irregular at every scale, so the index does too (Bendjoudi and Hubert 2002, pp. 924-928)
+- A and P of the same outline: Hydrograf takes A from the cells and P from the smoothed boundary, so a value near 1 is to be read with care
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a geometric index, which its sources compare with no observations
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: range cases area_km2-physical_low_*: the root of A in the denominator tends to 0 with A; the index stays finite down to the smallest positive float, or a value beyond float64 is refused by the precondition within_float64
+- `gap_propagation`: type cases area_km2-nan and the other inputs': a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `area_km2` decreasing, `perimeter_km` increasing
+- scaling `units_of_length`: inputs times 2^e (`area_km2` e = 2.0, `perimeter_km` e = 1.0) give outputs times 2^e (none)
+- scaling `perimeter`: inputs times 2^e (`perimeter_km` e = 1.0) give outputs times 2^e (`compactness_coefficient` e = 1.0)
+- limit `decimal`: Cz equals P / (2 sqrt(pi A)) evaluated in decimal arithmetic at 50 digits
+- limit `shapes`: a circle gives 1, a square 2/sqrt(pi), a semicircle (pi + 2) / (pi sqrt(2))
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: P / (2 sqrt(pi A)) of the float inputs in decimal arithmetic at 50 digits, and the exact values of a circle, a square and a semicircle (`tests/unit/test_formulas_shape.py (limits decimal and shapes)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="circularity_ratio"></a>
+### Miller's circularity ratio of a watershed
+
+`hydrolog.morphometry.geometric.circularity_ratio` · family `index` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+C_k = \frac{4\pi A}{P^2}
+$$
+
+Plain text: `Ck = 4 * pi * A / P**2`
+
+**Sources**
+
+- Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, eq. (2), p. 922: Miller's (1953) C = 4 pi A / P^2 (open) <https://doi.org/10.1080/02626660209493000>
+- Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eq. (1.2.3): Ck = A / Ak = 4 pi A / P^2 (open) <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+- Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material, section 2: wskaźnik kolistości Ck = 4 pi A / Oz^2 (open) <https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `area_km2` | $A$ | km2 | real | (0.0, inf), test bound high 149000000.0 (the land area of the Earth, 148.94 million km2 (CIA, The World Factbook, 2025, field Area: land): no watershed is larger) | unstated | [0.0003, 250.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py) |
+| `perimeter_km` | $P$ | km | real | (0.0, inf), test bound high 1000000.0 (a million km, 25 times the circumference of the Earth (40,075 km at the equator): no divide traced on a map is longer) | unstated | [0.17, 90.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: perimeters of 0.1756 to 84.46 km |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `isoperimetric` | physical | P^2 >= 4 pi A: no perimeter is shorter than the circle's of the same area (the isoperimetric inequality); a shorter one means A and P measured on different outlines | Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, pp. 921-922: the perimeter of any basin exceeds that of the circle of the same area, so K = P / (2 sqrt(pi A)) is at least 1, 1 for a circle |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `circularity_ratio` | - | real | [0.0, 1.0] | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- P the length of the divide as traced: it grows with the resolution of the map or DEM, as a divide is irregular at every scale, so the index does too (Bendjoudi and Hubert 2002, pp. 924-928)
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a geometric index, which its sources compare with no observations
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `gap_propagation`: type cases area_km2-nan and the other inputs': a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `area_km2` increasing, `perimeter_km` decreasing
+- scaling `units_of_length`: inputs times 2^e (`area_km2` e = 2.0, `perimeter_km` e = 1.0) give outputs times 2^e (none)
+- limit `decimal`: Ck equals 4 pi A / P^2 evaluated in decimal arithmetic at 50 digits
+- limit `shapes`: a circle gives 1, a square pi/4, a semicircle 2 pi^2 / (pi + 2)^2
+- limit `gravelius`: Ck Cz^2 = 1: Miller's ratio is Gravelius's coefficient to the power -2
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: 4 pi A / P^2 of the float inputs in decimal arithmetic at 50 digits, and the exact values of a circle, a square and a semicircle (`tests/unit/test_formulas_shape.py (limits decimal and shapes)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="elongation_ratio"></a>
+### Schumm's elongation ratio of a watershed
+
+`hydrolog.morphometry.geometric.elongation_ratio` · family `index` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+C_e = \frac{2}{L}\sqrt{\frac{A}{\pi}}
+$$
+
+Plain text: `Ce = (2 / L) * sqrt(A / pi)`
+
+**Sources**
+
+- Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eq. (1.2.2): Cw = (2 / Lm) sqrt(A / pi), after Schumm (1956) (open) <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+- Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material, section 2: wskaźnik wydłużenia Cw = (2 / L) (A / pi)^0.5 (open) <https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `area_km2` | $A$ | km2 | real | (0.0, inf), test bound high 149000000.0 (the land area of the Earth, 148.94 million km2 (CIA, The World Factbook, 2025, field Area: land): no watershed is larger) | unstated | [0.0003, 250.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py) |
+| `length_km` | $L$ | km | real | (0.0, inf), test bound high 20000.0 (20,000 km, half the circumference of the Earth (40,075 km at the equator): no two points of a watershed lie farther apart) | unstated | [0.05, 30.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: lengths (longest flow paths) of 0.0566 to 28.88 km |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `within_reach` | physical | A <= pi L^2: the watershed lies within the circle of radius L about its outlet, L being the straight line to the farthest point of the divide or the longest flow path, which is not shorter | Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, p. 21: the length of the watershed L is the straight line from the outlet to the farthest point of the divide; the maximum length Lm runs along the valley of the main river |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `elongation_ratio` | - | real | [0.0, 2.0] | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- L the straight line from the outlet to the farthest point of the divide (Baścik 2006, p. 21), as WatershedGeometry describes length_km; Hydrograf hands over the longest flow path, which is not shorter, so with it the index of elongation is smaller (k larger) than with the straight line; Schumm's (1956) L, the longest dimension parallel to the main drainage line, and Baścik's Lm, the valley length, are other conventions
+- A within the circle of radius L about the outlet bounds Ce by 2; with L the longest dimension of the watershed by 1, the circle's value
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a geometric index, which its sources compare with no observations
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `gap_propagation`: type cases area_km2-nan and the other inputs': a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `area_km2` increasing, `length_km` decreasing
+- scaling `units_of_length`: inputs times 2^e (`area_km2` e = 2.0, `length_km` e = 1.0) give outputs times 2^e (none)
+- scaling `length`: inputs times 2^e (`length_km` e = 1.0) give outputs times 2^e (`elongation_ratio` e = -1.0)
+- limit `decimal`: Ce equals (2 / L) sqrt(A / pi) evaluated in decimal arithmetic at 50 digits
+- limit `shapes`: a circle with L its diameter gives 1, a square with L its diagonal sqrt(2/pi), a semicircle with L its radius sqrt(2)
+- limit `form_factor`: Cf = pi Ce^2 / 4 for the same A and L
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: (2 / L) sqrt(A / pi) of the float inputs in decimal arithmetic at 50 digits, and the exact values of a circle, a square and a semicircle (`tests/unit/test_formulas_shape.py (limits decimal and shapes)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="lemniscate_ratio"></a>
+### Chorley's lemniscate ratio k of a watershed
+
+`hydrolog.morphometry.geometric.lemniscate_ratio` · family `index` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+k = \frac{\pi L^2}{4A}
+$$
+
+Plain text: `k = pi * L**2 / (4 * A)`
+
+**Sources**
+
+- Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, eqs. (3)-(5), pp. 922-923: Chorley et al. (1957) compare the basin with one loop of the lemniscate rho = l cos(k theta), of area pi l^2 / (4k), so k = pi l^2 / (4A) (open) <https://doi.org/10.1080/02626660209493000>
+- Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material, section 2: wskaźnik lemniskaty Cl = pi L^2 / (4A) (open) <https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `area_km2` | $A$ | km2 | real | (0.0, inf), test bound high 149000000.0 (the land area of the Earth, 148.94 million km2 (CIA, The World Factbook, 2025, field Area: land): no watershed is larger) | unstated | [0.0003, 250.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py) |
+| `length_km` | $L$ | km | real | (0.0, inf), test bound high 20000.0 (20,000 km, half the circumference of the Earth (40,075 km at the equator): no two points of a watershed lie farther apart) | unstated | [0.05, 30.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: lengths (longest flow paths) of 0.0566 to 28.88 km |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `within_reach` | physical | A <= pi L^2: the watershed lies within the circle of radius L about its outlet, L being the straight line to the farthest point of the divide or the longest flow path, which is not shorter | Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, p. 21: the length of the watershed L is the straight line from the outlet to the farthest point of the divide; the maximum length Lm runs along the valley of the main river |
+| `within_float64` | precondition | pi L^2 / (4A) lies within float64: no watershed is 10^150 times longer than wide | Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, eq. (5), p. 923 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `lemniscate_ratio` | - | real | [0.25, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- L the straight line from the outlet to the farthest point of the divide (Baścik 2006, p. 21), as WatershedGeometry describes length_km; Hydrograf hands over the longest flow path, which is not shorter, so with it the index of elongation is smaller (k larger) than with the straight line; Schumm's (1956) L, the longest dimension parallel to the main drainage line, and Baścik's Lm, the valley length, are other conventions
+- Chorley's k with pi (the loop of the lemniscate), not the variant L^2 / (4A) of some secondary texts, which Hydrolog computed up to 0.8.1
+- A within the circle of radius L about the outlet bounds k below by 1/4; with L the longest dimension of the watershed by 1, the circle's value
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a geometric index, which its sources compare with no observations
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: range cases area_km2-physical_low_*: k grows as 1/A; a value beyond float64 is refused by the precondition within_float64
+- `gap_propagation`: type cases area_km2-nan and the other inputs': a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `area_km2` decreasing, `length_km` increasing
+- scaling `units_of_length`: inputs times 2^e (`area_km2` e = 2.0, `length_km` e = 1.0) give outputs times 2^e (none)
+- scaling `length`: inputs times 2^e (`length_km` e = 1.0) give outputs times 2^e (`lemniscate_ratio` e = 2.0)
+- limit `decimal`: k equals pi L^2 / (4A) evaluated in decimal arithmetic at 50 digits
+- limit `shapes`: a circle with L its diameter gives 1, a square with L its diagonal pi/2, a semicircle with L its radius 1/2
+- limit `form_factor`: k Cf = pi/4 for the same A and L
+- limit `elongation_ratio`: k Ce^2 = 1 for the same A and L
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: pi L^2 / (4A) of the float inputs in decimal arithmetic at 50 digits, the exact values of a circle, a square and a semicircle, and the identities with Cf and Ce (`tests/unit/test_formulas_shape.py (limits decimal, shapes, form_factor and elongation_ratio)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="relief_ratio"></a>
+### Relief ratio: the relief of a watershed over a length (Schumm)
+
+`hydrolog.morphometry.terrain.relief_ratio` · family `index` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+R_h = \frac{H_{max} - H_{min}}{L}
+$$
+
+Plain text: `Rh = (Hmax - Hmin) / L, L in m [m/m]`
+
+**Sources**
+
+- Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eq. (1.2.12): wskaźnik rzeźby Cs = (Hmax - Hmin) / Lm; eq. (1.2.15): the slope of a river, the drop from its source to its mouth over its length (open) <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+- Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material, section 2.3: wskaźnik rzeźby zlewni Strahlera Jd = dH / L (open) <https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `elevation_min_m` | $H_{min}$ | m | real | (-inf, inf), test bound low -431.0 and high 8849.0 (the lowest and the highest land on Earth: the shore of the Dead Sea at -431 m and Mount Everest at 8,849 m (CIA, The World Factbook, 2025, field Elevation of Jordan and Nepal)) | unstated | [100.0, 750.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: elevations of 100.0 to 722.68 m |
+| `elevation_max_m` | $H_{max}$ | m | real | (-inf, inf), test bound low -431.0 and high 8849.0 (the lowest and the highest land on Earth: the shore of the Dead Sea at -431 m and Mount Everest at 8,849 m (CIA, The World Factbook, 2025, field Elevation of Jordan and Nepal)) | unstated | [100.0, 750.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: elevations of 100.0 to 722.68 m |
+| `length_km` | $L$ | km | real | (0.0, inf), test bound high 20000.0 (20,000 km, half the circumference of the Earth (40,075 km at the equator): no two points of a watershed lie farther apart) | unstated | [0.05, 30.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: lengths (longest flow paths) of 0.0566 to 28.88 km |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `rises_above_outlet` | physical | Hmax > Hmin: a watershed drains to its outlet, so it rises above it | Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eq. (1.2.12): wskaźnik rzeźby Cs = (Hmax - Hmin) / Lm; eq. (1.2.15): the slope of a river, the drop from its source to its mouth over its length |
+| `within_float64` | precondition | (Hmax - Hmin) / L lies within float64: no relief is 10^300 times its length | Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eq. (1.2.12): wskaźnik rzeźby Cs = (Hmax - Hmin) / Lm; eq. (1.2.15): the slope of a river, the drop from its source to its mouth over its length |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `percent` | $100$ | 100.0 | % per m/m | BIPM (2019). The International System of Units (SI), 9th edition, version 4.01, section 5.4.7: the symbol % (percent) is the number 0.01; the slopes of TerrainAnalysis in percent |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `relief_ratio` | m/m | real | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- Rh in m/m (dimensionless), the relief in m over L converted from km to m by the units table; Baścik (2006) and Wartalska print it in m/km (per mille)
+- the relief of the whole watershed, its highest point minus its outlet; Baścik (2006, p. 23) notes that hydrological practice may take the water level at the outlet
+- L the length_km of the watershed for the relief ratio (Schumm's L is the longest dimension parallel to the main drainage line, Baścik's Lm the valley length); TerrainAnalysis gives the same ratio as the watershed slope, which is not the mean slope of the land, and over the channel length as the slope of the main channel, whose drop is then the watershed's relief, not the channel's head minus its mouth
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a ratio of measured quantities, which its sources compare with no observations
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `difference_denominator`: the relief Hmax - Hmin is a difference of inputs in the numerator: equal elevations are refused by the constraint rises_above_outlet (its boundary case)
+- `singular_at_bound`: range cases length_km-physical_low_*: Rh grows as 1/L; a value beyond float64 is refused by the precondition within_float64
+- `gap_propagation`: type cases elevation_min_m-nan and the other inputs': a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `elevation_min_m` decreasing, `elevation_max_m` increasing, `length_km` decreasing
+- scaling `units_of_length`: inputs times 2^e (`elevation_min_m` e = 1.0, `elevation_max_m` e = 1.0, `length_km` e = 1.0) give outputs times 2^e (none)
+- limit `exact_rational`: Rh equals (Hmax - Hmin) / (1000 L) of the float inputs in exact rational arithmetic
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/morphometry-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: (Hmax - Hmin) / (1000 L) of the float inputs in exact rational arithmetic (fractions), rounded once (`tests/unit/test_formulas_relief.py (limit exact_rational)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="hypsometric_integral"></a>
+### Hypsometric integral of a watershed by the trapezoid of its curve (Strahler)
+
+`hydrolog.morphometry.hypsometry.hypsometric_integral` · family `index` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+HI = \sum_{i=0}^{n-2} \frac{a_i + a_{i+1}}{2\,(n-1)},\quad a_i = \frac{\sum_{z_j \ge t_i} A_j}{\sum_j A_j},\quad t_i = z_{min} + \frac{i}{n-1}(z_{max} - z_{min})
+$$
+
+Plain text: `HI = sum((a[i] + a[i+1]) / 2) / (n - 1), a[i] the share of the area at or above z_min + i (z_max - z_min) / (n - 1), i = 0 .. n-1`
+
+**Sources**
+
+- Strahler, A.N. (1952). Hypsometric (area-altitude) analysis of erosional topography. Geological Society of America Bulletin 63: 1117-1142, Fig. 3 and 'Integration of the hypsometric function': the integral is the area under the percentage hypsometric curve, relative area a/A above relative height h/H, over the unit square; the stages in the text with Fig. 7 (a copy of the article) (open) <https://pdfcoffee.com/strahler-1952-hypsometry-pdf-pdf-free.html>
+- Pike, R.J. & Wilson, S.E. (1971). Elevation-relief ratio, hypsometric integral, and geomorphic area-altitude analysis. Geological Society of America Bulletin 82: 1079-1084, the elevation-relief ratio E = (mean - min) / (max - min) equals the hypsometric integral (not opened; the identity of the exceedance integral, integral of P(h >= x) dx over [0, 1] = E[h], is exact) (open)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `elevations_m` | $z$ | m | real_array | (-inf, inf), test bound low -431.0 and high 8849.0 (the lowest and the highest land on Earth: the shore of the Dead Sea at -431 m and Mount Everest at 8,849 m (CIA, The World Factbook, 2025, field Elevation of Jordan and Nepal)) | unstated | [100.0, 750.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: elevations of 100.0 to 722.68 m |
+| `cell_areas` | $A_j$ | - | real_array | (0.0, inf), test bound high 149000000.0 (the land area of the Earth in km2 (CIA, The World Factbook, 2025, field Area: land): no cell is larger) | unstated | [1.0, 1.0]: Hydrolog's HypsometricCurve: cells of equal area unless cell_areas is given, as in every example and test of the project, src/hydrolog/morphometry/hypsometry.py; examples/04_morfometria.ipynb |
+| `n_points` | $n$ | - | integer | [2.0, inf), test bound high 10001.0 (a hundred times the default 101: the trapezoid's bound 1/(2(n-1)) is then 5e-5) | unstated | [101.0, 101.0]: Hydrolog's HypsometricCurve: cells of equal area unless cell_areas is given, as in every example and test of the project, src/hydrolog/morphometry/hypsometry.py; examples/04_morfometria.ipynb |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `same_length` | physical | one area per elevation | Strahler, A.N. (1952). Hypsometric (area-altitude) analysis of erosional topography. Geological Society of America Bulletin 63: 1117-1142, Fig. 3 and 'Integration of the hypsometric function': the integral is the area under the percentage hypsometric curve, relative area a/A above relative height h/H, over the unit square; the stages in the text with Fig. 7 (a copy of the article) |
+| `positive_relief` | precondition | max(z) > min(z): the relative height h/H divides by the relief | Strahler, A.N. (1952). Hypsometric (area-altitude) analysis of erosional topography. Geological Society of America Bulletin 63: 1117-1142, Fig. 3 and 'Integration of the hypsometric function': the integral is the area under the percentage hypsometric curve, relative area a/A above relative height h/H, over the unit square; the stages in the text with Fig. 7 (a copy of the article) |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `hypsometric_integral` | - | real | [0.0, 1.0] | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the curve of the relative area a/A at or above the relative height h/H (exceedance), Strahler's percentage hypsometric curve, sampled at n equally spaced heights from the lowest to the highest cell, h/H = 0 to 1
+- HI by the trapezoid rule over the n points of the curve, n = 101 by default; the exact integral of the step curve of the cells is (mean - min) / (max - min) (Pike and Wilson 1971), from which the trapezoid departs by at most (a(0) - a(1)) / (2 (n - 1)), 0.005 for n = 101, most where much of the area lies at the outlet's elevation
+- Strahler's stages (1952, text with Fig. 7): about 0.60 and above the inequilibrium (youthful) stage, 0.35 to 0.60 the equilibrium (mature) stage, below 0.35 the monadnock phase; Strahler gives them as rough limits and replaces old age by the monadnock phase
+- cell areas in any one unit: only their shares count
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: the integral describes a surface; Strahler (1952) relates its values to stages of erosion, not to observations of a quantity
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `difference_denominator`: the relief max - min divides the heights: equal elevations are refused by the precondition positive_relief (its boundary case and test_a_flat_surface_is_refused)
+- `gap_propagation`: type cases elevations_m-nan_element and cell_areas-nan_element: a gap is refused, the spec allows none
+- `many_small_terms`: test_many_cells_match_their_exact_sums: the shares of 200,001 cells against math.fsum
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `elevations`: inputs times 2^e (`elevations_m` e = 1.0) give outputs times 2^e (none)
+- scaling `cell_areas`: inputs times 2^e (`cell_areas` e = 1.0) give outputs times 2^e (none)
+- limit `exact_rational`: HI equals the trapezoid of the curve in exact rational arithmetic
+- limit `mean_based`: HI lies within (a(0) - a(1)) / (2 (n - 1)) of the exact integral (mean - min) / (max - min)
+- limit `two_points`: with two thresholds HI is (1 + the highest cells' share) / 2
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the trapezoid of the curve in exact rational arithmetic (fractions), with exact thresholds (`tests/unit/test_formulas_hypsometry.py (limit exact_rational)`)
+- exact: the exact integral (mean - min) / (max - min) in rational arithmetic, with the trapezoid's error bound (`tests/unit/test_formulas_hypsometry.py (limit mean_based)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
 ## Tier B
 
 | Formula | Function | Definition | Constants | Convention | Source |
 |---|---|---|---|---|---|
 | `weighted_cn` | `hydrolog.runoff.cn_lookup.calculate_weighted_cn` | CN_w = sum(A_j CN_j) / sum(A_j), the area-weighted mean CN of the parts | – | areas or shares in any one unit; a part of zero area counts nothing | USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10, example 10-4, p. 10-12 (also KZGW 2017 eq. 6.3) |
+| `mean_width` | `hydrolog.morphometry.geometric.WatershedGeometry.width_km` | W = A / L, the mean width of the watershed [km] | – | L as length_km of WatershedGeometry (the straight line or the longest flow path); Baścik's B divides by the valley length Lm | Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, p. 21: średnia szerokość zlewni B = A / Lm |
+| `midpoint_elevation` | `hydrolog.morphometry.terrain.TerrainAnalysis` | H_mean = (Hmin + Hmax) / 2, the mean elevation TerrainAnalysis assumes when none is given [m a.s.l.] | – | an approximation, with the notice mean_elevation_approximated where Hydrolog reports it; the area-weighted mean of the DEM (Baścik 2006, eq. 1.2.8, HypsometricCurve.mean_elevation) is to be preferred | Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eq. (1.2.5): the mean elevation approximated by the mean of the highest and the lowest |
+| `hypsometric_curve` | `hydrolog.morphometry.hypsometry.HypsometricCurve.generate_curve` | relative heights h/H = (t - min) / (max - min) at n equally spaced thresholds t and the relative areas a/A of the cells at or above each | – | exceedance (area above), Strahler's percentage hypsometric curve; the first relative area is 1 | Strahler, A.N. (1952). Hypsometric (area-altitude) analysis of erosional topography. Geological Society of America Bulletin 63: 1117-1142, Fig. 3 and 'Integration of the hypsometric function': the integral is the area under the percentage hypsometric curve, relative area a/A above relative height h/H, over the unit square; the stages in the text with Fig. 7 (a copy of the article) |
+| `area_weighted_mean_elevation` | `hydrolog.morphometry.hypsometry.HypsometricCurve.mean_elevation` | the mean elevation of the cells weighted by their areas [m a.s.l.] | – | numpy.average with the cell areas as weights | Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eq. (1.2.8): the mean elevation weighted by the areas between contours |
+| `elevation_above_share` | `hydrolog.morphometry.hypsometry.HypsometricCurve.elevation_at_percentile` | the elevation of the first cell, from the highest down, at which the cumulative share of the area reaches the given percent [m a.s.l.] | – | the median elevation is the one with half of the area above it; no interpolation between cells | Strahler, A.N. (1952). Hypsometric (area-altitude) analysis of erosional topography. Geological Society of America Bulletin 63: 1117-1142, Fig. 3 and 'Integration of the hypsometric function': the integral is the area under the percentage hypsometric curve, relative area a/A above relative height h/H, over the unit square; the stages in the text with Fig. 7 (a copy of the article) |
 
 ## Delegated computations (CMP-1.2)
 

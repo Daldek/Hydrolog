@@ -1,0 +1,212 @@
+schema = "nogat-formula-card/1"
+name = "hypsometric_integral"
+title = "Hypsometric integral of a watershed by the trapezoid of its curve (Strahler)"
+function = "hydrolog.morphometry.hypsometry.hypsometric_integral"
+family = "index"
+formula_version = 1
+status = "oracle only"
+equation = "HI = sum((a[i] + a[i+1]) / 2) / (n - 1), a[i] the share of the area at or above z_min + i (z_max - z_min) / (n - 1), i = 0 .. n-1"
+latex = "HI = \\sum_{i=0}^{n-2} \\frac{a_i + a_{i+1}}{2\\,(n-1)},\\quad a_i = \\frac{\\sum_{z_j \\ge t_i} A_j}{\\sum_j A_j},\\quad t_i = z_{min} + \\frac{i}{n-1}(z_{max} - z_{min})"
+validation = "none: the integral describes a surface; Strahler (1952) relates its values to stages of erosion, not to observations of a quantity"
+conventions = ["the curve of the relative area a/A at or above the relative height h/H (exceedance), Strahler's percentage hypsometric curve, sampled at n equally spaced heights from the lowest to the highest cell, h/H = 0 to 1", "HI by the trapezoid rule over the n points of the curve, n = 101 by default; the exact integral of the step curve of the cells is (mean - min) / (max - min) (Pike and Wilson 1971), from which the trapezoid departs by at most (a(0) - a(1)) / (2 (n - 1)), 0.005 for n = 101, most where much of the area lies at the outlet's elevation", "Strahler's stages (1952, text with Fig. 7): about 0.60 and above the inequilibrium (youthful) stage, 0.35 to 0.60 the equilibrium (mature) stage, below 0.35 the monadnock phase; Strahler gives them as rough limits and replaces old age by the monadnock phase", "cell areas in any one unit: only their shares count"]
+assumptions = []
+notices = []
+reference_cases = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "elevations"
+
+[properties.scalings.inputs]
+elevations_m = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "elevations or cell areas scaled by 2 are exact in binary and scale the thresholds and sums exactly, so every relative height and area is the same"
+abs = 0.0
+
+[[properties.scalings]]
+name = "cell_areas"
+
+[properties.scalings.inputs]
+cell_areas = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "elevations or cell areas scaled by 2 are exact in binary and scale the thresholds and sums exactly, so every relative height and area is the same"
+abs = 0.0
+
+[[properties.limits]]
+name = "exact_rational"
+text = "HI equals the trapezoid of the curve in exact rational arithmetic"
+
+[[properties.limits]]
+name = "mean_based"
+text = "HI lies within (a(0) - a(1)) / (2 (n - 1)) of the exact integral (mean - min) / (max - min)"
+
+[[properties.limits]]
+name = "two_points"
+text = "with two thresholds HI is (1 + the highest cells' share) / 2"
+
+[[sources]]
+citation = "Strahler, A.N. (1952). Hypsometric (area-altitude) analysis of erosional topography. Geological Society of America Bulletin 63: 1117-1142"
+access = "open"
+locator = "Fig. 3 and 'Integration of the hypsometric function': the integral is the area under the percentage hypsometric curve, relative area a/A above relative height h/H, over the unit square; the stages in the text with Fig. 7 (a copy of the article)"
+url = "https://pdfcoffee.com/strahler-1952-hypsometry-pdf-pdf-free.html"
+
+[[sources]]
+citation = "Pike, R.J. & Wilson, S.E. (1971). Elevation-relief ratio, hypsometric integral, and geomorphic area-altitude analysis. Geological Society of America Bulletin 82: 1079-1084"
+access = "open"
+locator = "the elevation-relief ratio E = (mean - min) / (max - min) equals the hypsometric integral (not opened; the identity of the exceedance integral, integral of P(h >= x) dx over [0, 1] = E[h], is exact)"
+
+[[variables]]
+name = "elevations_m"
+symbol = "z"
+unit = "m"
+kind = "real_array"
+description = "Elevation of each cell of the watershed's DEM [m a.s.l.]."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -431.0
+test_high = 8849.0
+test_reason = "the lowest and the highest land on Earth: the shore of the Dead Sea at -431 m and Mount Everest at 8,849 m (CIA, The World Factbook, 2025, field Elevation of Jordan and Nepal)"
+
+[variables.typical]
+low = 100.0
+low_inclusive = true
+high = 750.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: elevations of 100.0 to 722.68 m"
+
+[[variables]]
+name = "cell_areas"
+symbol = "A_j"
+unit = "-"
+kind = "real_array"
+description = "Area of each cell, in any one unit (only the shares count)."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 149000000.0
+test_reason = "the land area of the Earth in km2 (CIA, The World Factbook, 2025, field Area: land): no cell is larger"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's HypsometricCurve: cells of equal area unless cell_areas is given, as in every example and test of the project"
+access = "open"
+locator = "src/hydrolog/morphometry/hypsometry.py; examples/04_morfometria.ipynb"
+
+[[variables]]
+name = "n_points"
+symbol = "n"
+unit = "-"
+kind = "integer"
+description = "Number of equally spaced relative heights of the curve."
+applicability = "unstated"
+
+[variables.physical]
+low = 2.0
+low_inclusive = true
+test_high = 10001.0
+test_reason = "a hundred times the default 101: the trapezoid's bound 1/(2(n-1)) is then 5e-5"
+
+[variables.typical]
+low = 101.0
+low_inclusive = true
+high = 101.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's HypsometricCurve: cells of equal area unless cell_areas is given, as in every example and test of the project"
+access = "open"
+locator = "src/hydrolog/morphometry/hypsometry.py; examples/04_morfometria.ipynb"
+
+[[constraints]]
+name = "same_length"
+class = "physical"
+text = "one area per elevation"
+
+[constraints.source]
+citation = "Strahler, A.N. (1952). Hypsometric (area-altitude) analysis of erosional topography. Geological Society of America Bulletin 63: 1117-1142"
+access = "open"
+locator = "Fig. 3 and 'Integration of the hypsometric function': the integral is the area under the percentage hypsometric curve, relative area a/A above relative height h/H, over the unit square; the stages in the text with Fig. 7 (a copy of the article)"
+url = "https://pdfcoffee.com/strahler-1952-hypsometry-pdf-pdf-free.html"
+
+[[constraints]]
+name = "positive_relief"
+class = "precondition"
+text = "max(z) > min(z): the relative height h/H divides by the relief"
+
+[constraints.source]
+citation = "Strahler, A.N. (1952). Hypsometric (area-altitude) analysis of erosional topography. Geological Society of America Bulletin 63: 1117-1142"
+access = "open"
+locator = "Fig. 3 and 'Integration of the hypsometric function': the integral is the area under the percentage hypsometric curve, relative area a/A above relative height h/H, over the unit square; the stages in the text with Fig. 7 (a copy of the article)"
+url = "https://pdfcoffee.com/strahler-1952-hypsometry-pdf-pdf-free.html"
+
+[[outputs]]
+name = "hypsometric_integral"
+unit = "-"
+kind = "real"
+symbol = "HI"
+description = "Area under the percentage hypsometric curve in the unit square."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "the relief max - min divides the heights: equal elevations are refused by the precondition positive_relief (its boundary case and test_a_flat_surface_is_refused)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases elevations_m-nan_element and cell_areas-nan_element: a gap is refused, the spec allows none"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_many_cells_match_their_exact_sums: the shares of 200,001 cells against math.fsum"
+
+[[oracles]]
+kind = "exact"
+description = "the trapezoid of the curve in exact rational arithmetic (fractions), with exact thresholds"
+test = "tests/unit/test_formulas_hypsometry.py (limit exact_rational)"
+conventions = []
+
+[[oracles]]
+kind = "exact"
+description = "the exact integral (mean - min) / (max - min) in rational arithmetic, with the trapezoid's error bound"
+test = "tests/unit/test_formulas_hypsometry.py (limit mean_based)"
+conventions = []

@@ -1,0 +1,161 @@
+schema = "nogat-formula-card/1"
+name = "form_factor"
+title = "Horton's form factor of a watershed"
+function = "hydrolog.morphometry.geometric.form_factor"
+family = "index"
+formula_version = 1
+status = "oracle only"
+equation = "Cf = A / L**2"
+latex = "C_f = \\frac{A}{L^2}"
+validation = "none: a geometric index, which its sources compare with no observations"
+conventions = ["L the straight line from the outlet to the farthest point of the divide (Baścik 2006, p. 21), as WatershedGeometry describes length_km; Hydrograf hands over the longest flow path, which is not shorter, so with it the index of elongation is smaller (k larger) than with the straight line; Schumm's (1956) L, the longest dimension parallel to the main drainage line, and Baścik's Lm, the valley length, are other conventions", "A within the circle of radius L about the outlet bounds Cf by pi; with L the longest dimension of the watershed (the isodiametric inequality) by pi/4, the circle's value"]
+assumptions = []
+notices = []
+reference_cases = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+area_km2 = 1
+length_km = -1
+
+[[properties.scalings]]
+name = "units_of_length"
+
+[properties.scalings.inputs]
+area_km2 = 2.0
+length_km = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "lengths scaled by 2 and areas by 4 are exact in binary, and so is every quotient of them, unless a result underflows"
+abs = 0.0
+
+[[properties.scalings]]
+name = "area"
+
+[properties.scalings.inputs]
+area_km2 = 1.0
+
+[properties.scalings.outputs]
+form_factor = 1.0
+
+[properties.scalings.tolerance]
+reason = "lengths scaled by 2 and areas by 4 are exact in binary, and so is every quotient of them, unless a result underflows"
+abs = 0.0
+
+[[properties.limits]]
+name = "decimal"
+text = "Cf equals A / L^2 evaluated in decimal arithmetic at 50 digits"
+
+[[properties.limits]]
+name = "shapes"
+text = "a circle with L its diameter gives pi/4, a square with L its diagonal 1/2, a semicircle with L its radius pi/2"
+
+[[sources]]
+citation = "Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930"
+access = "open"
+locator = "p. 929: Horton's (1932) form factor, the area of the basin over the square of its length"
+url = "https://doi.org/10.1080/02626660209493000"
+
+[[sources]]
+citation = "Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material"
+access = "open"
+locator = "section 2: wskaźnik formy Cf = A / L^2 = B / L"
+url = "https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf"
+
+[[variables]]
+name = "area_km2"
+symbol = "A"
+unit = "km2"
+kind = "real"
+description = "Planimetric area of the watershed."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 149000000.0
+test_reason = "the land area of the Earth, 148.94 million km2 (CIA, The World Factbook, 2025, field Area: land): no watershed is larger"
+
+[variables.typical]
+low = 0.0003
+low_inclusive = true
+high = 250.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)"
+
+[[variables]]
+name = "length_km"
+symbol = "L"
+unit = "km"
+kind = "real"
+description = "Length of the watershed: the straight line from the outlet to the farthest point of the divide, or the longest flow path Hydrograf hands over."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 20000.0
+test_reason = "20,000 km, half the circumference of the Earth (40,075 km at the equator): no two points of a watershed lie farther apart"
+
+[variables.typical]
+low = 0.05
+low_inclusive = true
+high = 30.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: lengths (longest flow paths) of 0.0566 to 28.88 km"
+
+[[constraints]]
+name = "within_reach"
+class = "physical"
+text = "A <= pi L^2: the watershed lies within the circle of radius L about its outlet, L being the straight line to the farthest point of the divide or the longest flow path, which is not shorter"
+
+[constraints.source]
+citation = "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34"
+access = "open"
+locator = "p. 21: the length of the watershed L is the straight line from the outlet to the farthest point of the divide; the maximum length Lm runs along the valley of the main river"
+url = "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content"
+
+[[outputs]]
+name = "form_factor"
+unit = "-"
+kind = "real"
+symbol = "C_f"
+description = "Form factor: the area over the square of the length; pi/4 for a circle whose diameter is L."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 3.141592653589793
+high_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "range cases length_km-physical_low_*: Cf grows as L^-2, which the constraint within_reach bounds by pi; a length too short for the area is refused"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases area_km2-nan and the other inputs': a gap is refused"
+
+[[oracles]]
+kind = "exact"
+description = "A / L^2 of the float inputs in decimal arithmetic at 50 digits, and the exact values of a circle, a square and a semicircle with pi summed by the decimal module's series"
+test = "tests/unit/test_formulas_shape.py (limits decimal and shapes)"
+conventions = []
