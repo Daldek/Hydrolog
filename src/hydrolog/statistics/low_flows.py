@@ -34,6 +34,7 @@ from __future__ import annotations
 import math
 import warnings
 from dataclasses import dataclass, field
+from typing import cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -55,7 +56,7 @@ from hydrolog.statistics._types import (
     compute_plotting_positions,
 )
 from hydrolog.statistics.events import threshold_runs
-from hydrolog.statistics.frequency import _maximum_likelihood, _NoParameters
+from hydrolog.statistics.frequency import _maximum_likelihood
 
 _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0])
 _MIN_RELIABLE_YEARS = 10  # below it the estimates may be unreliable
@@ -638,20 +639,27 @@ def _fisher_tippett(
     """Return the maximum-likelihood fit of :func:`fit_fisher_tippett_minima`."""
     # min(x) = -max(-x): the minima-type GEV is the maxima-type GEV of -x.
     negated = -np.asarray(minima, dtype=np.float64)
-    try:
-        c, loc_negated, scale = _maximum_likelihood("gev", negated)
-    except _NoParameters as exc:
+    reason, details = "", {}
+    if negated.size < 4:
+        reason, details = "too_few_values", {"count": int(negated.size), "minimum": 4}
+    elif negated.min() == negated.max():
+        reason = "constant_values"
+    else:
+        search = _maximum_likelihood("gev", negated)
+        reason = search.failure
+    if reason:
         raise CalculationError(
             "The method of maximum likelihood cannot fit the Fisher-Tippett "
-            f"distribution to these annual minima: {exc}",
+            f"distribution to these annual minima ({reason})",
             details={
                 "distribution": "fisher_tippett",
                 "fit_method": "mle",
-                "reason": exc.reason,
-                **exc.details,
+                "reason": reason,
+                **details,
             },
             hint="Check the smallest annual minima or provide a longer series.",
-        ) from None
+        )
+    c, loc_negated, scale = cast("tuple[float, float, float]", search.parameters)
     fitted = genextreme(c, loc=loc_negated, scale=scale)
 
     # ``0.0 - x`` instead of ``-x``: a location of 0 must give 0.0, not -0.0.

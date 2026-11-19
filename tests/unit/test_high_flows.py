@@ -303,32 +303,43 @@ class TestFitMethods:
             assert np.all(np.isfinite(result.quantiles))
 
     @pytest.mark.parametrize(
-        ("distribution", "fit_method", "sample", "reason"),
+        ("distribution", "fit_method", "sample", "constraint"),
         [
-            ("weibull", "moments", [0.0, *[10.0] * 8, 10.5], "out_of_range"),
-            ("weibull", "l_moments", [0.0, *[10.0] * 8, 10.5], "out_of_range"),
+            (
+                "weibull",
+                "moments",
+                [0.0, *[10.0] * 8, 10.5],
+                "skewness_within_distribution",
+            ),
+            (
+                "weibull",
+                "l_moments",
+                [0.0, *[10.0] * 8, 10.5],
+                "l_moments_within_distribution",
+            ),
             (
                 "weibull",
                 "least_squares",
                 [0.0, *[10.0] * 8, 10.5],
-                "out_of_range",
+                "skewness_within_distribution",
             ),
-            ("log_normal", "l_moments", [0.0, 5.0, 6.0, 7.0], "non_positive_values"),
-            ("gev", "moments", [5.0, 5.0, 5.0, 5.0], "constant_values"),
-            ("pearson3", "l_moments", [1.0, 2.0], "too_few_values"),
+            ("log_normal", "l_moments", [0.0, 5.0, 6.0, 7.0], "positive_values"),
+            ("gev", "moments", [5.0, 5.0, 5.0, 5.0], "values_not_all_equal"),
+            ("pearson3", "l_moments", [1.0, 2.0], "enough_values"),
         ],
     )
-    def test_no_parameters_is_a_calculation_error(
-        self, distribution, fit_method, sample, reason
+    def test_a_failed_precondition_is_refused(
+        self, distribution, fit_method, sample, constraint
     ):
-        from hydrolog.exceptions import CalculationError
+        from hydrolog.exceptions import InvalidParameterError
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
         analysis = FloodFrequencyAnalysis(np.array(sample))
 
-        with pytest.raises(CalculationError) as caught:
+        with pytest.raises(InvalidParameterError) as caught:
             _fit(analysis, distribution, fit_method)
-        assert caught.value.details["reason"] == reason
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == constraint
         assert caught.value.details["distribution"] == distribution
         assert caught.value.details["fit_method"] == fit_method
 
@@ -413,9 +424,12 @@ class TestEveryFitMethod:
             "weibull/least_squares": "out_of_range",
             "gev/mle": "unbounded_likelihood",
             "pearson3/mle": "unbounded_likelihood",
+            # the Weibull likelihood grows as its shape does (the reversed Gumbel's)
+            "weibull/mle": "unbounded_likelihood",
+            # the least squares of Pearson III lie beyond the skewness of -9
+            "pearson3/least_squares": "not_converged",
         }
-        assert len(ranked) == 11
-        assert "weibull/mle" in ranked
+        assert len(ranked) == 9
         assert set(reasons).isdisjoint(ranked)
         notices = [
             w.message for w in caught if isinstance(w.message, DistributionLeftOut)
@@ -465,15 +479,15 @@ class TestEveryFitMethod:
 
     def test_one_combination_raises_its_own_error(self):
         from hydrolog._warnings import DistributionLeftOut
-        from hydrolog.exceptions import CalculationError
+        from hydrolog.exceptions import InvalidParameterError
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
         analysis = FloodFrequencyAnalysis(np.array([1.0, *[10.0] * 8, 10.5]))
         with warnings.catch_warnings(record=True) as seen:
             warnings.simplefilter("always")
-            with pytest.raises(CalculationError) as caught:
+            with pytest.raises(InvalidParameterError) as caught:
                 analysis.fit_all(fit_method="moments", distribution="weibull")
-        assert caught.value.details["reason"] == "out_of_range"
+        assert caught.value.details["constraint"] == "skewness_within_distribution"
         assert caught.value.details["distribution"] == "weibull"
         assert not [w for w in seen if isinstance(w.message, DistributionLeftOut)]
 

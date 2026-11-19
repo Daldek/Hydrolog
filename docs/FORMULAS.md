@@ -16,6 +16,10 @@
 | [Quantiles of the log-normal distribution for return periods](#log_normal_quantiles) | `hydrolog.statistics.frequency.log_normal_quantiles` | referenced | 1 | not measured |
 | [Quantiles of the Pearson type III distribution for return periods](#pearson3_quantiles) | `hydrolog.statistics.frequency.pearson3_quantiles` | referenced | 1 | not measured |
 | [Quantiles of the three-parameter Weibull distribution for return periods](#weibull_quantiles) | `hydrolog.statistics.frequency.weibull_quantiles` | referenced | 1 | not measured |
+| [Parameters of a distribution of annual maxima by the method of L-moments](#fit_l_moments) | `hydrolog.statistics.frequency.fit_l_moments` | oracle only | 1 | not measured |
+| [Parameters of a distribution of annual maxima by the method of moments](#fit_moments) | `hydrolog.statistics.frequency.fit_moments` | referenced | 1 | not measured |
+| [Parameters of a distribution of annual maxima by maximum likelihood](#fit_maximum_likelihood) | `hydrolog.statistics.frequency.fit_maximum_likelihood` | referenced | 1 | not measured |
+| [Parameters of a distribution of annual maxima by least squares on the plotting positions](#fit_least_squares) | `hydrolog.statistics.frequency.fit_least_squares` | oracle only | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
 ### Potential maximum retention S of the SCS curve number
@@ -759,6 +763,350 @@ None stated.
 - frozen: lmom 3.3 quawei at the parameters of pelwei on seven samples, R 4.5.3, 2026-11-18 (`tests/oracles/frequency_lmom_r.csv`)
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="fit_l_moments"></a>
+### Parameters of a distribution of annual maxima by the method of L-moments
+
+`hydrolog.statistics.frequency.fit_l_moments` · family `statistic` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+\tau_3 = \frac{2(1 - 3^{-c})}{1 - 2^{-c}} - 3,\quad \alpha = \frac{\lambda_2 c}{(1 - 2^{-c})\Gamma(1 + c)},\quad \xi = \lambda_1 - \alpha\frac{1 - \Gamma(1 + c)}{c};\qquad s = 2\,\mathrm{erf}^{-1}\frac{\lambda_2}{\lambda_1};\qquad \sigma = \lambda_2\sqrt{\pi a}\,\frac{\Gamma(a)}{\Gamma(a + 1/2)},\ G = \frac{2\,\mathrm{sign}\,\tau_3}{\sqrt{a}}
+$$
+
+Plain text: `the distribution whose L-moments are the sample's l1, l2 and t3: log-normal (loc 0) s = 2 erfinv(l2 / l1), scale = l1 exp(-s**2 / 2); GEV: c solves t3 = 2 (1 - 3**-c) / (1 - 2**-c) - 3, scale = l2 c / ((1 - 2**-c) Gamma(1 + c)), loc = l1 - scale (1 - Gamma(1 + c)) / c; Pearson III: alpha = 4 / G**2 from |t3| (rational approximations), G = 2 sign(t3) / sqrt(alpha), scale = l2 sqrt(pi alpha) Gamma(alpha) / Gamma(alpha + 1/2), loc = l1; Weibull: the GEV (c, xi, a) of (-l1, l2, -t3), shape = 1/c, loc = -xi - a/c, scale = a/c`
+
+**Sources**
+
+- Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from |t3| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments (open) <https://cran.r-project.org/package=lmom>
+- Hosking, J.R.M. and Wallis, J.R. (1997). Regional Frequency Analysis: An Approach Based on L-Moments. Cambridge University Press, appendix A.5 (GEV), A.8 (log-normal), A.9 (Pearson type III, the rational approximations of alpha from |t3|) (author-provided)
+- Hosking, J.R.M. (1990). L-moments: analysis and estimation of distributions using linear combinations of order statistics. Journal of the Royal Statistical Society, Series B 52(1), 105-124, sect. 2: probability-weighted moments and the sample L-moments of their unbiased estimators (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `annual_maxima` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+| `distribution` | $F$ | - | choice of log_normal, gev, pearson3, weibull | – | – | – |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 3 | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), samlmu: t3 needs 3 values |
+| `values_not_all_equal` | precondition | min(x) < max(x) | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelgev, pelpe3: l2 must be positive |
+| `positive_values` | precondition | min(x) > 0 for the log-normal (location 0) | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0 |
+| `l_moments_within_distribution` | precondition | l2 < l1 (log-normal); -1 < t3 < 1 (GEV, Pearson III); -0.1699 < t3 < 1 (Weibull) | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `a1` | $A_1$ | 0.2906 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `a2` | $A_2$ | 0.1882 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `a3` | $A_3$ | 0.0442 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `b1` | $B_1$ | 0.36067 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `b2` | $B_2$ | -0.59567 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `b3` | $B_3$ | 0.25361 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `b4` | $C_1$ | -2.78861 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `b5` | $C_2$ | 2.56096 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `b6` | $C_3$ | -0.77045 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `normal_below` | $\tau_{3,0}$ | 1e-06 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `gumbel_l_skewness` | $\tau_{3,G}$ | 0.1699250014423126 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelwei: the GEV of the negated L-moments, which needs -t3 below the Gumbel's L-skewness 2 ln 3 / ln 2 - 3 = 0.1699 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `shape` | - | real | (-inf, inf) | 4 ulp of the bound |
+| `loc` | m3/s | real | (-inf, inf) | 4 ulp of the bound |
+| `scale` | m3/s | real | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the unbiased sample L-moments of sample_l_moments
+- scipy's parameters: the GEV shape c is Hosking's k and -xi of Coles; Pearson III (loc, scale, shape) are its mean, standard deviation and skewness; the log-normal has location 0
+- the GEV shape solved exactly by brentq in -1 < c <= 50 (lmom's pelgev uses Donaldson's approximation, within 2e-7 of it); a t3 beyond the L-skewness of an end of that bracket gives the end
+- Weibull as the GEV of the negated L-moments, as lmom's pelwei
+
+**Assumptions**
+
+- the annual maxima are independent and identically distributed
+
+**Validation:** none: the estimator gives the distribution of the sample's L-moments; Hosking and Wallis (1997) report its efficiency on simulated samples
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case l_moments_within_distribution-violated and test_l_skewness_near_one_clamps_the_gev_shape: |t3| = 1 is refused, a t3 within rounding of it gives the end of the bracket
+- `unbounded_iteration`: test_l_skewness_near_one_clamps_the_gev_shape: brentq runs in a bracket, its ends clamped (at most 100 iterations)
+- `gap_propagation`: type case annual_maxima-nan_element: a gap is refused
+- `moment_cancellation`: test_a_large_mean_shifts_the_fits: a mean of 1e9 with the spread of the Polana maxima over 1000
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_sample`: inputs times 2^e (`annual_maxima` e = 1.0) give outputs times 2^e (`loc` e = 1.0, `scale` e = 1.0)
+- limit `l_moments_of_the_fit`: the fitted distribution has the sample's l1, l2 and t3 (l1 and l2 for the log-normal), by quadrature of its quantile function
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the L-moments of the fitted distribution by quadrature of its quantile function (`tests/unit/test_formulas_flood_frequency.py (limit l_moments_of_the_fit)`)
+- frozen: lmom 3.3 pelgev, pelpe3, pelwei, pelln3 (bound 0) and lmomco 2.5.8 pargev (useHosking=FALSE) on seven samples, R 4.5.3, 2026-11-18 (`tests/oracles/frequency_lmom_r.csv`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="fit_moments"></a>
+### Parameters of a distribution of annual maxima by the method of moments
+
+`hydrolog.statistics.frequency.fit_moments` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\sigma_l = \sqrt{\ln(1 + C_v^2)},\ e^{\mu} = \frac{\bar{x}}{\sqrt{1 + C_v^2}};\qquad (\gamma, \mu, \sigma) = (G, \bar{x}, s);\qquad \gamma_{GEV}(c) = G,\ \alpha = \frac{s}{\sigma_{GEV}(c)},\ \xi = \bar{x} - \alpha\,\mu_{GEV}(c)
+$$
+
+Plain text: `the distribution whose mean, standard deviation and skewness are the sample's mean, s and G: log-normal (loc 0) s_l = sqrt(ln(1 + Cv**2)), scale = mean / sqrt(1 + Cv**2), Cv = s / mean; Pearson III (G, mean, s); GEV: c solves G(c) = G, G(c) the skewness of the GEV, scale = s / sd(c), loc = mean - scale m(c), m(c) and sd(c) the mean and standard deviation of the GEV(c, 0, 1); Weibull: the GEV (c, xi, a) of (-mean, s, -G), shape = 1/c, loc = -xi - a/c, scale = a/c`
+
+**Sources**
+
+- Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, pp. 9-10 and appendix 12, example 1: the log-Pearson type III distribution of the mean, standard deviation and skewness of the logarithms (eqs. 2, 3a, 4a) (open) <https://pubs.usgs.gov/unnumbered/70275162/report.pdf>
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.5 and table II.5.2, pp. II.5-5 to II.5-12: the method of moments and the moments of the GEV, log-normal, Pearson type III and Weibull distributions (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+- Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.genextreme, lognorm, pearson3 and weibull_min: isf, the inverse of the survival function (open) <https://docs.scipy.org/doc/scipy/reference/stats.html>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `annual_maxima` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+| `distribution` | $F$ | - | choice of log_normal, gev, pearson3, weibull | – | – | – |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 3 | Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 4a: the skewness divides by (N - 1)(N - 2) |
+| `values_not_all_equal` | precondition | min(x) < max(x) | Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 4a: the skewness divides by S cubed, 0 for equal values |
+| `positive_values` | precondition | min(x) > 0 for the log-normal (location 0) | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0 |
+| `skewness_within_distribution` | precondition | G > -1.1395 for the Weibull distribution, the skewness of the reversed Gumbel distribution | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.2, p. II.5-5: the Gumbel (EV1) distribution, of skewness 1.1396, 12 sqrt(6) zeta(3) / pi**3 |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `gumbel_skewness` | $\gamma_G$ | 1.1395470994046488 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.2, p. II.5-5: the Gumbel (EV1) distribution, of skewness 1.1396, 12 sqrt(6) zeta(3) / pi**3 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `shape` | - | real | (-inf, inf) | 4 ulp of the bound |
+| `loc` | m3/s | real | (-inf, inf) | 4 ulp of the bound |
+| `scale` | m3/s | real | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the sample moments of sample_moments: s with the divisor n - 1, G the adjusted Fisher-Pearson coefficient
+- the log-normal of location 0 from the mean and Cv of the values, not of their logarithms
+- scipy's parameters: the GEV shape c is Hosking's k and -xi of Coles; Pearson III (loc, scale, shape) are its mean, standard deviation and skewness
+- the GEV shape solved by brentq in -1/3 < c <= 50 (the skewness exists above -1/3); Weibull as the GEV of the negated moments, its c in 0 < c <= 50
+
+**Assumptions**
+
+- the annual maxima are independent and identically distributed
+
+**Validation:** none: the estimator gives the distribution of the sample's moments
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case skewness_within_distribution-violated: the Weibull shape 1/c grows without limit as G falls to -1.1395
+- `unbounded_iteration`: test_a_skewness_beyond_the_bracket_clamps: brentq runs in a bracket, its ends clamped (at most 100 iterations)
+- `gap_propagation`: type case annual_maxima-nan_element: a gap is refused
+- `moment_cancellation`: test_a_large_mean_shifts_the_fits: a mean of 1e9 with the spread of the Polana maxima over 1000
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_sample`: inputs times 2^e (`annual_maxima` e = 1.0) give outputs times 2^e (`loc` e = 1.0, `scale` e = 1.0)
+- limit `moments_of_the_fit`: the fitted distribution has the sample's mean, standard deviation and skewness (the mean and s for the log-normal), by scipy's stats
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the mean, variance and skewness of the fitted distribution by scipy.stats (`tests/unit/test_formulas_flood_frequency.py (limit moments_of_the_fit)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="fit_maximum_likelihood"></a>
+### Parameters of a distribution of annual maxima by maximum likelihood
+
+`hydrolog.statistics.frequency.fit_maximum_likelihood` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+(\hat{k}, \hat{\xi}, \hat{\alpha}) = \arg\max \sum_i \ln f(x_i; k, \xi, \alpha);\qquad \hat{\mu} = \frac{1}{n}\sum_i \ln x_i,\ \hat{s}^2 = \frac{1}{n}\sum_i (\ln x_i - \hat{\mu})^2
+$$
+
+Plain text: `the parameters that maximise the log-likelihood sum_i ln f(x_i; shape, loc, scale) of the distribution's density f; for the log-normal of location 0 in closed form: ln scale = mean(ln x), s = sqrt(mean((ln x - ln scale)**2))`
+
+**Sources**
+
+- Coles, S. (2001). An Introduction to Statistical Modeling of Extreme Values. Springer, sect. 3.3.2 (the likelihood of the GEV) and 3.4.1 (Port Pirie) (author-provided)
+- Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, the likelihood of a three-parameter distribution has no maximum where its density is infinite at the bound of its support (author-provided)
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.5, p. II.5-11: the method of maximum likelihood; sect. 5.3.2.3: the Weibull density goes to infinity at its bound for k < 1 (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `annual_maxima` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+| `distribution` | $F$ | - | choice of log_normal, gev, pearson3, weibull | – | – | – |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n > p, the number of parameters: n >= 3 for the log-normal, n >= 4 for the others | Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, n values fit n parameters exactly, where the likelihood has no maximum |
+| `values_not_all_equal` | precondition | min(x) < max(x) | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.5: the likelihood of values all equal grows without limit as the scale falls to 0 |
+| `positive_values` | precondition | min(x) > 0 for the log-normal (location 0) | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0 |
+| `likelihood_has_a_maximum` | precondition | the likelihood has a maximum inside the shapes searched: the search ends neither within 1e-3 of the shapes whose density is infinite at a bound of the support (GEV c >= 1, Pearson III \|G\| >= 2, Weibull shape <= 1), nor of GEV c = -1 (no mean) or Weibull shape 50, nor at a scale of a millionth of the standard deviation; a GEV has at most half the values tied at the smallest; and the search settles | Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, the bound placed at the closest value makes the likelihood grow without limit |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `shape` | - | real | (-inf, inf) | 4 ulp of the bound |
+| `loc` | m3/s | real | (-inf, inf) | 4 ulp of the bound |
+| `scale` | m3/s | real | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- scipy's densities and parameters: the GEV shape c is -xi of Coles (evd, extRemes, ismev)
+- the search runs on the standardised sample (x / 2**e - mean) / sd, from the L-moments' estimate; Nelder-Mead (xatol 1e-10, fatol 1e-12) is run again from its end until a run gains at most 1e-9 of log-likelihood, at most 21 runs
+- the log-normal of location 0 in closed form (scipy's lognorm.fit with floc=0)
+
+**Assumptions**
+
+- the annual maxima are independent and identically distributed
+
+**Validation:** none: the estimator gives the most likely distribution of the sample
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case likelihood_has_a_maximum-violated: the density infinite at a bound placed on a value
+- `unbounded_iteration`: test_a_search_that_does_not_settle_is_refused: a search that does not settle in its bounded count of runs fails the precondition likelihood_has_a_maximum
+- `gap_propagation`: type case annual_maxima-nan_element: a gap is refused
+- `moment_cancellation`: test_a_large_mean_shifts_the_fits: a mean of 1e9 with the spread of the Polana maxima over 1000
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_sample`: inputs times 2^e (`annual_maxima` e = 1.0) give outputs times 2^e (`loc` e = 1.0, `scale` e = 1.0)
+- limit `local_maximum`: no point a step of 1e-4 from the estimate is more likely
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- frozen: evd 2.3.7.1 fgev, extRemes 2.2.1 fevd, ismev 1.43 gev.fit and lmomco 2.5.8 mle2par on seven samples, R 4.5.3, 2026-11-18: Hydrolog's log-likelihood is not lower (`tests/oracles/frequency_ml_r.csv (tests/unit/test_maximum_likelihood.py)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="fit_least_squares"></a>
+### Parameters of a distribution of annual maxima by least squares on the plotting positions
+
+`hydrolog.statistics.frequency.fit_least_squares` · family `statistic` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+(\hat{k}, \hat{\xi}, \hat{\alpha}) = \arg\min \sum_{j=1}^{n}\left(x_{(j)} - Q\left(\frac{j}{n + 1}; k, \xi, \alpha\right)\right)^2
+$$
+
+Plain text: `the parameters that minimise sum_j (x(j) - Q(j / (n + 1)))**2 over the ascending sample x(1) <= ... <= x(n), Q the quantile function of the distribution: the quantiles at the Weibull plotting positions`
+
+**Sources**
+
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the Weibull plotting position i / (n + 1) of the graphical fit of a distribution to the ordered sample (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+- KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eq. 3.7: the empirical probability m / (N + 1) of the ordered annual maxima (open) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `annual_maxima` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+| `distribution` | $F$ | - | choice of log_normal, gev, pearson3, weibull | – | – | – |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 3 | Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 4a: the moments of the start divide by (N - 1)(N - 2) |
+| `values_not_all_equal` | precondition | min(x) < max(x) | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1: values all equal have no spread to fit |
+| `positive_values` | precondition | min(x) > 0 for the log-normal (location 0) | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0 |
+| `skewness_within_distribution` | precondition | G > -1.1395 for the Weibull distribution: the search starts from the moments' estimate | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.2, p. II.5-5: the Gumbel (EV1) distribution, of skewness 1.1396, 12 sqrt(6) zeta(3) / pi**3 |
+| `squares_have_a_minimum` | precondition | the sum of squares has a minimum inside the shapes searched (log-normal s < 5, GEV -1 < c < 50, Pearson III \|G\| < 9, Weibull shape < 50) on which the search settles | Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, appendix 3: the frequency factors of Pearson type III, tabulated for skews of -9 to 9 |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `gumbel_skewness` | $\gamma_G$ | 1.1395470994046488 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.2, p. II.5-5: the Gumbel (EV1) distribution, of skewness 1.1396, 12 sqrt(6) zeta(3) / pi**3 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `shape` | - | real | (-inf, inf) | 4 ulp of the bound |
+| `loc` | m3/s | real | (-inf, inf) | 4 ulp of the bound |
+| `scale` | m3/s | real | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the Weibull plotting positions j / (n + 1) of the ascending sample, unweighted residuals in the unit of the sample
+- scipy's parameters, as fit_moments
+- the search runs on the standardised sample (the log-normal, of location 0, only divided by its standard deviation) from the moments' estimate; Nelder-Mead (xatol 1e-10, fatol 1e-12) is run again from its end until a run gains at most 1e-9, at most 21 runs
+
+**Assumptions**
+
+- the annual maxima are independent and identically distributed
+
+**Validation:** none: the estimator gives the distribution closest to the plotted sample
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case skewness_within_distribution-violated: the Weibull start of a skewness below the reversed Gumbel's
+- `unbounded_iteration`: test_a_search_that_does_not_settle_is_refused: a search that does not settle in its bounded count of runs fails the precondition squares_have_a_minimum
+- `gap_propagation`: type case annual_maxima-nan_element: a gap is refused
+- `moment_cancellation`: test_a_large_mean_shifts_the_fits: a mean of 1e9 with the spread of the Polana maxima over 1000
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_sample`: inputs times 2^e (`annual_maxima` e = 1.0) give outputs times 2^e (`loc` e = 1.0, `scale` e = 1.0)
+- limit `local_minimum`: no point a step of 1e-4 from the estimate has a smaller sum of squares
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the sum of squares at points a step of 1e-4 from the estimate, by math.fsum (`tests/unit/test_formulas_flood_frequency.py (limit local_minimum)`)
+- algorithm: Powell's method from the estimate finds no smaller sum of squares (`tests/unit/test_formulas_flood_frequency.py (test_powell_finds_no_smaller_squares)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
 
 ## Tier B
 

@@ -40,10 +40,12 @@ from hydrolog.statistics._types import EmpiricalFrequency, compute_plotting_posi
 from hydrolog.statistics.frequency import (
     _DISTRIBUTIONS,
     _by_l_moments,
-    _by_least_squares,
-    _by_maximum_likelihood,
-    _by_moments,
-    _NoParameters,
+    _maximum_likelihood,
+    _within_l_moments,
+    fit_l_moments,
+    fit_least_squares,
+    fit_maximum_likelihood,
+    fit_moments,
     gev_quantiles,
     log_normal_quantiles,
     pearson3_quantiles,
@@ -78,6 +80,16 @@ _METHOD_NAMES: Final = {
     "l_moments": "method of L-moments",
     "least_squares": "method of least squares",
 }
+_LEFT_OUT: Final = {
+    "enough_values": "too_few_values",
+    "values_not_all_equal": "constant_values",
+    "positive_values": "non_positive_values",
+    "l_moments_within_distribution": "out_of_range",
+    "skewness_within_distribution": "out_of_range",
+    "squares_have_a_minimum": "not_converged",
+}
+"""``reason`` of :class:`~hydrolog._warnings.DistributionLeftOut` (the codes of
+version 0.9.0) by the precondition of the estimator's spec that failed."""
 
 
 @dataclass
@@ -199,16 +211,14 @@ def _ad_critical_values(
         distribution.rvs(*parameters, size=(_AD_REPLICATES, size), random_state=rng),
         axis=1,
     )
-    kept: list[int] = []
-    refits: list[tuple[float, float, float]] = []
-    for row, sample in enumerate(samples):
-        try:
-            refits.append(_by_l_moments(name, sample))
-        except _NoParameters:
-            continue
-        kept.append(row)
-    if not refits:
+    # Drawn from a continuous distribution, the samples have distinct values (and
+    # those of the log-normal positive ones): only their L-moments can fail.
+    kept = [
+        row for row, sample in enumerate(samples) if _within_l_moments(name, sample)
+    ]
+    if not kept:
         return None
+    refits = [_by_l_moments(name, samples[row]) for row in kept]
     columns = zip(*refits, strict=True)
     shape, loc, scale = (np.array(column)[:, None] for column in columns)
     with np.errstate(all="ignore"):
@@ -220,10 +230,10 @@ def _ad_critical_values(
 
 
 _ESTIMATORS: Final = {
-    "mle": _by_maximum_likelihood,
-    "moments": _by_moments,
-    "l_moments": _by_l_moments,
-    "least_squares": _by_least_squares,
+    "mle": fit_maximum_likelihood,
+    "moments": fit_moments,
+    "l_moments": fit_l_moments,
+    "least_squares": fit_least_squares,
 }
 
 
@@ -285,21 +295,26 @@ class FloodFrequencyAnalysis:
     not all equal: 3 for the moments, the L-moments and least squares (which starts
     from the moments and needs what they need), and one more than the distribution
     has parameters for maximum likelihood (3 for the log-normal, 4 for the others).
-    A method that gives no parameters raises :class:`CalculationError` with
-    ``details.reason``: ``too_few_values``, ``constant_values``, ``out_of_range``
-    (the sample skewness or L-skewness outside the range of the distribution),
-    ``non_positive_values`` (the log-normal with location 0 needs values above 0)
-    or, by maximum likelihood, ``unbounded_likelihood`` and ``not_converged``. The
-    likelihood of a three-parameter distribution has no maximum where its density is
-    infinite at a bound of the support, which then sits at the closest annual
-    maximum (Smith 1985): the GEV with c >= 1, Pearson III with a skewness of 2 or
-    more (or -2 or less), Weibull with a shape of 1 or less; a search that ends
-    there is ``unbounded_likelihood``, and one that does not settle (or ends less
-    likely than its start) ``not_converged``. The other methods may give a
-    distribution whose support leaves out an annual maximum, most often a lower
-    bound of Pearson III or Weibull above the smallest one: the result keeps its
-    quantiles and its AIC is infinite, so it ranks after every fit with a finite
-    AIC.
+    Each method is a formula with a spec (``fit_l_moments``, ``fit_moments``,
+    ``fit_maximum_likelihood``, ``fit_least_squares`` of
+    :mod:`hydrolog.statistics.frequency`): a sample that fails one of its
+    preconditions is refused with :class:`InvalidParameterError`, ``details.reason``
+    ``precondition_failed`` and ``details.constraint`` the condition:
+    ``enough_values``, ``values_not_all_equal``, ``positive_values`` (the log-normal
+    with location 0 needs values above 0), ``l_moments_within_distribution`` or
+    ``skewness_within_distribution`` (the sample L-skewness or skewness outside the
+    range of the distribution) or, by maximum likelihood,
+    ``likelihood_has_a_maximum``. The likelihood of a three-parameter distribution
+    has no maximum where its density is infinite at a bound of the support, which
+    then sits at the closest annual maximum (Smith 1985): the GEV with c >= 1,
+    Pearson III with a skewness of 2 or more (or -2 or less), Weibull with a shape of
+    1 or less; a search that ends there fails ``likelihood_has_a_maximum``. A search
+    of maximum likelihood or least squares that does not settle raises
+    :class:`CalculationError` (``details.reason`` ``not_converged``). The other
+    methods may give a distribution whose support leaves out an annual maximum, most
+    often a lower bound of Pearson III or Weibull above the smallest one: the result
+    keeps its quantiles and its AIC is infinite, so it ranks after every fit with a
+    finite AIC.
 
     Examples
     --------
@@ -365,9 +380,10 @@ class FloodFrequencyAnalysis:
         Raises
         ------
         InvalidParameterError
-            If ``fit_method`` is not one of :data:`FIT_METHODS`.
+            If ``fit_method`` is not one of :data:`FIT_METHODS`, or the sample fails a
+            precondition of the method (see the class notes).
         CalculationError
-            If the method gives no parameters (see the class notes).
+            If the search of the method does not settle (see the class notes).
 
         Notes
         -----
@@ -410,9 +426,10 @@ class FloodFrequencyAnalysis:
         Raises
         ------
         InvalidParameterError
-            If ``fit_method`` is not one of :data:`FIT_METHODS`.
+            If ``fit_method`` is not one of :data:`FIT_METHODS`, or the sample fails a
+            precondition of the method (see the class notes).
         CalculationError
-            If the method gives no parameters (see the class notes).
+            If the search of the method does not settle (see the class notes).
 
         Notes
         -----
@@ -453,9 +470,10 @@ class FloodFrequencyAnalysis:
         Raises
         ------
         InvalidParameterError
-            If ``fit_method`` is not one of :data:`FIT_METHODS`.
+            If ``fit_method`` is not one of :data:`FIT_METHODS`, or the sample fails a
+            precondition of the method (see the class notes).
         CalculationError
-            If the method gives no parameters (see the class notes).
+            If the search of the method does not settle (see the class notes).
         """
         skew, loc, scale = self._estimate("pearson3", fit_method)
         params = {"skew": skew, "loc": loc, "scale": scale}
@@ -492,9 +510,10 @@ class FloodFrequencyAnalysis:
         Raises
         ------
         InvalidParameterError
-            If ``fit_method`` is not one of :data:`FIT_METHODS`.
+            If ``fit_method`` is not one of :data:`FIT_METHODS`, or the sample fails a
+            precondition of the method (see the class notes).
         CalculationError
-            If the method gives no parameters (see the class notes).
+            If the search of the method does not settle (see the class notes).
         """
         shape, loc, scale = self._estimate("weibull", fit_method)
         params = {"shape": shape, "loc": loc, "scale": scale}
@@ -557,11 +576,13 @@ class FloodFrequencyAnalysis:
         ------
         InvalidParameterError
             If ``fit_method`` is neither ``"all"`` nor one of :data:`FIT_METHODS`, or
-            ``distribution`` is neither ``"all"`` nor one of the four.
+            ``distribution`` is neither ``"all"`` nor one of the four, or the one
+            combination asked for fails a precondition of its method (its own error,
+            as of ``fit_<distribution>``).
         CalculationError
-            If the one combination asked for gives no parameters (its own error, as
-            of ``fit_<distribution>``), or the method gives parameters of none of the
-            distributions.
+            If the search of the one combination asked for does not settle, or the
+            method gives parameters of none of the distributions (``details.reasons``
+            by combination).
 
         Warns
         -----
@@ -569,6 +590,9 @@ class FloodFrequencyAnalysis:
             For each combination of several asked for whose method gives no
             parameters (see the class notes), maximum likelihood without a maximum
             included; that combination is not in the result, so it is never ranked.
+            Its ``reason`` is ``too_few_values``, ``constant_values``,
+            ``non_positive_values``, ``out_of_range``, ``unbounded_likelihood`` (the
+            failed precondition of the method) or ``not_converged``.
         """
         if distribution != "all" and distribution not in _DISTRIBUTIONS:
             allowed = ", ".join(repr(name) for name in ("all", *_DISTRIBUTIONS))
@@ -590,10 +614,17 @@ class FloodFrequencyAnalysis:
             key = f"{name}/{method}" if fit_method == "all" else name
             try:
                 results[key] = getattr(self, f"fit_{name}")(fit_method=method)
-            except CalculationError as exc:
-                if len(combinations) == 1:
+            except (CalculationError, InvalidParameterError) as exc:
+                constraint = exc.details.get("constraint")
+                if len(combinations) == 1 or (
+                    isinstance(exc, InvalidParameterError) and constraint is None
+                ):
                     raise
-                reasons[key] = exc.details["reason"]
+                reasons[key] = _LEFT_OUT.get(str(constraint), str(constraint))
+                if constraint == "likelihood_has_a_maximum":  # no maximum, or no end
+                    reasons[key] = _maximum_likelihood(name, self._data).failure
+                if isinstance(exc, CalculationError):
+                    reasons[key] = str(exc.details["reason"])
                 warnings.warn(
                     DistributionLeftOut(
                         distribution=name,
@@ -636,10 +667,10 @@ class FloodFrequencyAnalysis:
         Raises
         ------
         InvalidParameterError
-            If ``fit_method`` is not one of :data:`FIT_METHODS`.
+            If ``fit_method`` is not one of :data:`FIT_METHODS`, or the sample fails a
+            precondition of the method (``details.constraint``; the class notes).
         CalculationError
-            If the method gives no parameters (see the class notes for
-            ``details.reason``).
+            If the search of the method does not settle (``not_converged``).
         """
         if fit_method not in FIT_METHODS:
             allowed = ", ".join(repr(method) for method in FIT_METHODS)
@@ -653,20 +684,26 @@ class FloodFrequencyAnalysis:
                 },
             )
         estimate = _ESTIMATORS[fit_method]
+        what = (
+            f"The {_METHOD_NAMES[fit_method]} cannot fit the "
+            f"{_DISTRIBUTION_NAMES[name]} distribution to these annual maxima"
+        )
+        hint = "Choose another fit method or distribution."
+        context = {"distribution": name, "fit_method": fit_method}
         try:
-            parameters = estimate(name, self._data)
-        except _NoParameters as exc:
+            parameters = estimate(self._data, name)
+        except InvalidParameterError as exc:
+            if exc.details.get("reason") != "precondition_failed":
+                raise
+            raise InvalidParameterError(
+                f"{what}: its precondition {exc.details['constraint']} fails "
+                f"({exc.details['text']})",
+                details={**exc.details, **context},
+                hint=hint,
+            ) from None
+        except CalculationError as exc:
             raise CalculationError(
-                f"The {_METHOD_NAMES[fit_method]} cannot fit the "
-                f"{_DISTRIBUTION_NAMES[name]} distribution to these annual maxima: "
-                f"{exc}",
-                details={
-                    "distribution": name,
-                    "fit_method": fit_method,
-                    "reason": exc.reason,
-                    **exc.details,
-                },
-                hint="Choose another fit method or distribution.",
+                f"{what}: {exc}", details={**exc.details, **context}, hint=hint
             ) from None
         return parameters
 

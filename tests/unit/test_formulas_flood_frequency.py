@@ -16,10 +16,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 from hypothesis import example, given
+from scipy.optimize import minimize
 from scipy.stats import skew
 
 from hydrolog._formula_versions import recording
 from hydrolog._formulas import ERRORS
+from hydrolog.exceptions import InvalidParameterError
 from hydrolog.nogat_formulas import (
     Case,
     FormulaSpec,
@@ -36,13 +38,22 @@ from hydrolog.nogat_formulas import (
     strategies,
     type_cases,
 )
+from hydrolog.statistics import frequency
 from hydrolog.statistics.frequency import (
+    FIT_L_MOMENTS,
+    FIT_LEAST_SQUARES,
+    FIT_MAXIMUM_LIKELIHOOD,
+    FIT_MOMENTS,
     GEV_QUANTILES,
     L_MOMENTS,
     LOG_NORMAL_QUANTILES,
     MOMENTS,
     PEARSON3_QUANTILES,
     WEIBULL_QUANTILES,
+    fit_l_moments,
+    fit_least_squares,
+    fit_maximum_likelihood,
+    fit_moments,
     gev_quantiles,
     log_normal_quantiles,
     pearson3_quantiles,
@@ -65,7 +76,13 @@ FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
     (LOG_NORMAL_QUANTILES, log_normal_quantiles),
     (PEARSON3_QUANTILES, pearson3_quantiles),
     (WEIBULL_QUANTILES, weibull_quantiles),
+    (FIT_L_MOMENTS, fit_l_moments),
+    (FIT_MOMENTS, fit_moments),
+    (FIT_MAXIMUM_LIKELIHOOD, fit_maximum_likelihood),
+    (FIT_LEAST_SQUARES, fit_least_squares),
 )
+DISTRIBUTIONS = ("log_normal", "gev", "pearson3", "weibull")
+POLANA = list(frequency._POLANA)
 RETURN_PERIODS = [2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0]
 """The return periods of the frozen oracles' quantiles."""
 
@@ -277,5 +294,188 @@ def test_the_formulas_record_their_versions():
         log_normal_quantiles(0.5, 0.0, 10.0, [100.0])
         pearson3_quantiles(1.0, 10.0, 2.0, [100.0])
         weibull_quantiles(1.5, 1.0, 10.0, [100.0])
+        for fit in (fit_l_moments, fit_moments, fit_maximum_likelihood):
+            fit(POLANA, "gev")
+        fit_least_squares(POLANA, "gev")
 
     assert used == {spec.name: spec.formula_version for spec, _ in FAMILY}
+
+
+@given(inputs=strategies(FIT_L_MOMENTS))
+def test_fit_l_moments_properties(inputs):
+    assert_property_contract(FIT_L_MOMENTS, as_standard(fit_l_moments), inputs, ERRORS)
+    assert_properties(FIT_L_MOMENTS, as_standard(fit_l_moments), inputs, ERRORS)
+
+
+@given(inputs=strategies(FIT_MOMENTS))
+def test_fit_moments_properties(inputs):
+    assert_property_contract(FIT_MOMENTS, as_standard(fit_moments), inputs, ERRORS)
+    assert_properties(FIT_MOMENTS, as_standard(fit_moments), inputs, ERRORS)
+
+
+@given(inputs=strategies(FIT_MAXIMUM_LIKELIHOOD))
+def test_fit_maximum_likelihood_properties(inputs):
+    function = as_standard(fit_maximum_likelihood)
+    assert_property_contract(FIT_MAXIMUM_LIKELIHOOD, function, inputs, ERRORS)
+    assert_properties(FIT_MAXIMUM_LIKELIHOOD, function, inputs, ERRORS)
+
+
+@given(inputs=strategies(FIT_LEAST_SQUARES))
+def test_fit_least_squares_properties(inputs):
+    function = as_standard(fit_least_squares)
+    assert_property_contract(FIT_LEAST_SQUARES, function, inputs, ERRORS)
+    assert_properties(FIT_LEAST_SQUARES, function, inputs, ERRORS)
+
+
+@pytest.mark.parametrize("dataset", sorted(SAMPLES))
+@pytest.mark.parametrize(
+    ("distribution", "function", "names", "rel"),
+    [
+        ("gev", "lmomco::pargev(useHosking=FALSE)", ("k", "xi", "alpha"), 1e-7),
+        ("gev", "lmom::pelgev", ("k", "xi", "alpha"), 1e-5),
+        ("pearson3", "lmom::pelpe3", ("gamma", "mu", "sigma"), 1e-7),
+        ("weibull", "lmom::pelwei", ("delta", "zeta", "beta"), 1e-5),
+    ],
+)
+def test_the_l_moment_fits_are_those_of_r(dataset, distribution, function, names, rel):
+    """CMP-6.4: Hosking's pel* and Asquith's pargev (frozen, R 4.5.3)."""
+    oracle = _lmom(dataset, function)
+
+    found = fit_l_moments(SAMPLES[dataset], distribution)
+
+    assert_within(
+        list(found),
+        [oracle[name] for name in names],
+        rel=rel,
+        abs=1e-6,
+        reason="pargev solves the GEV shape exactly, as Hydrolog; pelgev and pelwei "
+        "take it from Donaldson's approximation, within 2e-7 of it; pelpe3 uses the "
+        "same rational approximations of alpha, but its Gamma(alpha) / Gamma(alpha + "
+        "1/2) of sigma agrees with scipy's gammaln within 3e-8; R prints 15 digits",
+    )
+
+
+@pytest.mark.parametrize("dataset", sorted(SAMPLES))
+def test_the_log_normal_l_moment_fit_is_lmoms(dataset):
+    """CMP-6.4: pelln3 with bound 0 is the log-normal of location 0 (frozen)."""
+    oracle = _lmom(dataset, "lmom::pelln3(bound=0)")
+
+    found = fit_l_moments(SAMPLES[dataset], "log_normal")
+
+    assert_within(
+        list(found),
+        [oracle["sigma"], oracle["zeta"], math.exp(oracle["mu"])],
+        rel=1e-12,
+        abs=1e-300,
+        reason="sigma = sqrt(2) Phi^-1((1 + l2 / l1) / 2) in lmom and 2 erfinv(l2 / "
+        "l1) in Hydrolog, the same number; R prints 15 significant digits",
+    )
+
+
+@pytest.mark.parametrize("distribution", DISTRIBUTIONS)
+@pytest.mark.parametrize("sample", [POLANA, list(frequency._FLOODS11)])
+def test_powell_finds_no_smaller_squares(sample, distribution):
+    """Oracle of fit_least_squares: Powell's method from the estimate gains nothing."""
+    found = fit_least_squares(sample, distribution)
+    ascending = np.sort(sample)
+    positions = np.arange(1, ascending.size + 1) / (ascending.size + 1)
+    law = frequency._DISTRIBUTIONS[distribution]
+    fixed = distribution == "log_normal"
+
+    def squares(point):
+        shape, loc, log_scale = point
+        with np.errstate(all="ignore"):
+            quantiles = law.ppf(
+                positions, shape, 0.0 if fixed else loc, np.exp(log_scale)
+            )
+        total = math.fsum((ascending - quantiles) ** 2)
+        return total if math.isfinite(total) else math.inf
+
+    start = [found.shape, found.loc, math.log(found.scale)]
+    least = squares(start)
+    powell = minimize(
+        squares, start, method="Powell", options={"xtol": 1e-10, "ftol": 1e-15}
+    )
+
+    assert_within(
+        max(least - powell.fun, 0.0),
+        0.0,
+        abs=1e-8 * least,
+        reason="the search settles when a run of Nelder-Mead gains at most 1e-9 of "
+        "the sum of squares of the standardised sample",
+    )
+
+
+def test_l_skewness_near_one_clamps_the_gev_shape():
+    """Traps singular_at_bound, unbounded_iteration: t3 beyond the bracket's end."""
+    low = frequency._GEV_SHAPES_BY_L_SKEWNESS[0]
+    sample = [0.0] * 40 + [1e-12, 1.0]
+    t3 = sample_l_moments(sample).t3
+    assert frequency._gev_l_skewness(low) < t3 < 1.0
+
+    found = fit_l_moments(sample, "gev")
+
+    assert found.shape == low
+    assert all(math.isfinite(value) for value in found)
+
+
+def test_a_skewness_beyond_the_bracket_clamps():
+    """Trap unbounded_iteration of fit_moments: brentq needs a change of sign."""
+    bracket = frequency._GEV_SHAPES_BY_SKEWNESS
+
+    found = frequency._gev_from_moments(0.0, 1.0, 1e9, bracket)
+
+    assert found[0] == bracket[0]
+    assert all(math.isfinite(value) for value in found)
+
+
+@pytest.mark.parametrize(
+    ("fit", "constraint"),
+    [
+        (fit_maximum_likelihood, "likelihood_has_a_maximum"),
+        (fit_least_squares, "squares_have_a_minimum"),
+    ],
+)
+def test_a_search_that_does_not_settle_is_refused(fit, constraint, monkeypatch):
+    """Trap unbounded_iteration: no run after the first, so no search settles."""
+    monkeypatch.setattr(frequency, "_SEARCH_RUNS", 0)
+    frequency._likelihood_search.cache_clear()
+    frequency._squares_search.cache_clear()
+    try:
+        with pytest.raises(InvalidParameterError) as caught:
+            fit(POLANA, "gev")
+    finally:
+        frequency._likelihood_search.cache_clear()
+        frequency._squares_search.cache_clear()
+
+    assert caught.value.details["constraint"] == constraint
+
+
+@pytest.mark.parametrize("distribution", ["gev", "pearson3", "weibull"])
+@pytest.mark.parametrize(
+    ("fit", "rel"),
+    [
+        (fit_l_moments, 1e-9),
+        (fit_moments, 1e-9),
+        (fit_maximum_likelihood, 1e-4),
+        (fit_least_squares, 1e-4),
+    ],
+)
+def test_a_large_mean_shifts_the_fits(fit, rel, distribution):
+    """Trap moment_cancellation: a mean of 1e9 and a spread of 0.1 m3/s."""
+    shifted = 1.0e9 + np.array(POLANA) / 1000.0
+    exact = shifted - 1.0e9  # the spread the floats hold, without rounding
+
+    far = fit(shifted, distribution)
+    near = fit(exact, distribution)
+
+    assert_within(
+        [far.shape, far.loc - 1.0e9, far.scale],
+        [near.shape, near.loc, near.scale],
+        rel=rel,
+        abs=1e-6,
+        reason="the statistics of the shifted sample keep the digits of its spread "
+        "(double centring on the sample divided by a power of two); loc + 1e9 rounds "
+        "to 1.2e-7; a search settles within 1e-9 of its objective, so its parameters "
+        "within about 1e-4",
+    )

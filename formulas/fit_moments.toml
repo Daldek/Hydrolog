@@ -1,0 +1,206 @@
+schema = "nogat-formula-card/1"
+name = "fit_moments"
+title = "Parameters of a distribution of annual maxima by the method of moments"
+function = "hydrolog.statistics.frequency.fit_moments"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "the distribution whose mean, standard deviation and skewness are the sample's mean, s and G: log-normal (loc 0) s_l = sqrt(ln(1 + Cv**2)), scale = mean / sqrt(1 + Cv**2), Cv = s / mean; Pearson III (G, mean, s); GEV: c solves G(c) = G, G(c) the skewness of the GEV, scale = s / sd(c), loc = mean - scale m(c), m(c) and sd(c) the mean and standard deviation of the GEV(c, 0, 1); Weibull: the GEV (c, xi, a) of (-mean, s, -G), shape = 1/c, loc = -xi - a/c, scale = a/c"
+latex = "\\sigma_l = \\sqrt{\\ln(1 + C_v^2)},\\ e^{\\mu} = \\frac{\\bar{x}}{\\sqrt{1 + C_v^2}};\\qquad (\\gamma, \\mu, \\sigma) = (G, \\bar{x}, s);\\qquad \\gamma_{GEV}(c) = G,\\ \\alpha = \\frac{s}{\\sigma_{GEV}(c)},\\ \\xi = \\bar{x} - \\alpha\\,\\mu_{GEV}(c)"
+validation = "none: the estimator gives the distribution of the sample's moments"
+conventions = ["the sample moments of sample_moments: s with the divisor n - 1, G the adjusted Fisher-Pearson coefficient", "the log-normal of location 0 from the mean and Cv of the values, not of their logarithms", "scipy's parameters: the GEV shape c is Hosking's k and -xi of Coles; Pearson III (loc, scale, shape) are its mean, standard deviation and skewness", "the GEV shape solved by brentq in -1/3 < c <= 50 (the skewness exists above -1/3); Weibull as the GEV of the negated moments, its c in 0 < c <= 50"]
+assumptions = ["the annual maxima are independent and identically distributed"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/flood-frequency-cases.json"]
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_sample"
+
+[properties.scalings.inputs]
+annual_maxima = 1.0
+
+[properties.scalings.outputs]
+loc = 1.0
+scale = 1.0
+
+[properties.scalings.tolerance]
+reason = "the estimators run on the sample divided by a power of two, so doubling it changes no rounding: the shape is the same and loc and scale double exactly; a scale below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[properties.limits]]
+name = "moments_of_the_fit"
+text = "the fitted distribution has the sample's mean, standard deviation and skewness (the mean and s for the log-normal), by scipy's stats"
+
+[[sources]]
+citation = "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia"
+access = "open"
+locator = "pp. 9-10 and appendix 12, example 1: the log-Pearson type III distribution of the mean, standard deviation and skewness of the logarithms (eqs. 2, 3a, 4a)"
+url = "https://pubs.usgs.gov/unnumbered/70275162/report.pdf"
+
+[[sources]]
+citation = "WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168"
+access = "open"
+locator = "sect. 5.5 and table II.5.2, pp. II.5-5 to II.5-12: the method of moments and the moments of the GEV, log-normal, Pearson type III and Weibull distributions"
+url = "https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf"
+
+[[sources]]
+citation = "Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272"
+access = "open"
+locator = "scipy.stats.genextreme, lognorm, pearson3 and weibull_min: isf, the inverse of the survival function"
+url = "https://docs.scipy.org/doc/scipy/reference/stats.html"
+
+[[variables]]
+name = "annual_maxima"
+symbol = "x_i"
+unit = "m3/s"
+kind = "real_array"
+description = "The sample: annual maxima, or any sample of the distribution."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0"
+
+[variables.typical]
+low = 0.81
+low_inclusive = true
+high = 111.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "distribution"
+symbol = "F"
+unit = "-"
+kind = "choice"
+description = "The distribution: the log-normal of location 0, the GEV, Pearson type III or the three-parameter Weibull distribution of scipy.stats."
+choices = ["log_normal", "gev", "pearson3", "weibull"]
+
+[[constraints]]
+name = "enough_values"
+class = "precondition"
+text = "n >= 3"
+
+[constraints.source]
+citation = "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia"
+access = "open"
+locator = "eq. 4a: the skewness divides by (N - 1)(N - 2)"
+url = "https://pubs.usgs.gov/unnumbered/70275162/report.pdf"
+
+[[constraints]]
+name = "values_not_all_equal"
+class = "precondition"
+text = "min(x) < max(x)"
+
+[constraints.source]
+citation = "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia"
+access = "open"
+locator = "eq. 4a: the skewness divides by S cubed, 0 for equal values"
+url = "https://pubs.usgs.gov/unnumbered/70275162/report.pdf"
+
+[[constraints]]
+name = "positive_values"
+class = "precondition"
+text = "min(x) > 0 for the log-normal (location 0)"
+
+[constraints.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constraints]]
+name = "skewness_within_distribution"
+class = "precondition"
+text = "G > -1.1395 for the Weibull distribution, the skewness of the reversed Gumbel distribution"
+
+[constraints.source]
+citation = "WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168"
+access = "open"
+locator = "table II.5.2, p. II.5-5: the Gumbel (EV1) distribution, of skewness 1.1396, 12 sqrt(6) zeta(3) / pi**3"
+url = "https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf"
+
+[[constants]]
+name = "gumbel_skewness"
+value = 1.1395470994046488
+unit = "-"
+symbol = "\\gamma_G"
+
+[constants.source]
+citation = "WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168"
+access = "open"
+locator = "table II.5.2, p. II.5-5: the Gumbel (EV1) distribution, of skewness 1.1396, 12 sqrt(6) zeta(3) / pi**3"
+url = "https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf"
+
+[[outputs]]
+name = "shape"
+unit = "-"
+kind = "real"
+symbol = "k"
+description = "Shape: s of the log-normal, c of the GEV (scipy's sign, k of Hosking, -xi of Coles), the skewness of Pearson III, the Weibull shape."
+
+[outputs.physical]
+
+[[outputs]]
+name = "loc"
+unit = "m3/s"
+kind = "real"
+symbol = "\\xi"
+description = "Location: 0 for the log-normal, the mean of Pearson III, the lower bound of Weibull."
+
+[outputs.physical]
+
+[[outputs]]
+name = "scale"
+unit = "m3/s"
+kind = "real"
+symbol = "\\alpha"
+description = "Scale; one that would underflow is the smallest float64 (its boundary tolerance)."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "constraint case skewness_within_distribution-violated: the Weibull shape 1/c grows without limit as G falls to -1.1395"
+
+[[traps]]
+name = "unbounded_iteration"
+description = "An iteration without a bounded count (root finding, fit)."
+test = "test_a_skewness_beyond_the_bracket_clamps: brentq runs in a bracket, its ends clamped (at most 100 iterations)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case annual_maxima-nan_element: a gap is refused"
+
+[[traps]]
+name = "moment_cancellation"
+description = "Cancellation in moments computed as E[x^2] - E[x]^2."
+test = "test_a_large_mean_shifts_the_fits: a mean of 1e9 with the spread of the Polana maxima over 1000"
+
+[[oracles]]
+kind = "algorithm"
+description = "the mean, variance and skewness of the fitted distribution by scipy.stats"
+test = "tests/unit/test_formulas_flood_frequency.py (limit moments_of_the_fit)"
+conventions = ["scipy's skewness of the distribution is the population skewness, set equal to the sample's G"]

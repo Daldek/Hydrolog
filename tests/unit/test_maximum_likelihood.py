@@ -203,11 +203,12 @@ def test_a_singular_maximum_of_lmomco_is_refused(row):
     """
     sample = SAMPLES[row["dataset"]]
 
-    with pytest.raises(CalculationError) as caught:
+    with pytest.raises(InvalidParameterError) as caught:
         _fit(row["distribution"], sample)
 
-    assert caught.value.code == "calculation_error"
-    assert caught.value.details["reason"] == "unbounded_likelihood"
+    assert caught.value.code == "validation_error"
+    assert caught.value.details["reason"] == "precondition_failed"
+    assert caught.value.details["constraint"] == "likelihood_has_a_maximum"
     assert caught.value.details["fit_method"] == "mle"
 
 
@@ -375,32 +376,32 @@ def test_maximum_likelihood_needs_more_values_than_parameters(
     distribution, count, minimum
 ):
     """Up to 0.8.1 three maxima [95, 150, 290] gave a GEV with Q100 = 1.7e21 m³/s."""
-    with pytest.raises(CalculationError) as caught:
+    with pytest.raises(InvalidParameterError) as caught:
         _fit(distribution, np.array([95.0, 150.0, 290.0])[:count])
 
-    assert caught.value.details == {
-        "distribution": distribution,
-        "fit_method": "mle",
-        "reason": "too_few_values",
-        "count": count,
-        "minimum": minimum,
-    }
+    details = caught.value.details
+    assert (details["reason"], details["constraint"]) == (
+        "precondition_failed",
+        "enough_values",
+    )
+    assert (details["distribution"], details["fit_method"]) == (distribution, "mle")
+    assert f">= {minimum}" in details["text"]
 
 
 @pytest.mark.parametrize("distribution", ["log_normal", "gev", "pearson3", "weibull"])
 def test_maximum_likelihood_needs_values_not_all_equal(distribution):
     """Up to 0.8.1 [100] * 4 gave a GEV of scale 1e-24 and a Weibull Q100 of 7e30."""
-    with pytest.raises(CalculationError) as caught:
+    with pytest.raises(InvalidParameterError) as caught:
         _fit(distribution, np.full(4, 100.0))
 
-    assert caught.value.details["reason"] == "constant_values"
+    assert caught.value.details["constraint"] == "values_not_all_equal"
 
 
 def test_the_log_normal_by_maximum_likelihood_needs_values_above_zero():
-    with pytest.raises(CalculationError) as caught:
+    with pytest.raises(InvalidParameterError) as caught:
         _fit("log_normal", np.array([0.0, 95.0, 150.0, 290.0]))
 
-    assert caught.value.details["reason"] == "non_positive_values"
+    assert caught.value.details["constraint"] == "positive_values"
 
 
 def test_stats_flood_frequency_fits_what_three_maxima_allow():

@@ -25,6 +25,7 @@ import math
 from collections.abc import Callable
 from decimal import Decimal, localcontext
 from fractions import Fraction
+from functools import lru_cache
 from statistics import NormalDist
 from typing import Any, Final, NamedTuple
 
@@ -34,8 +35,9 @@ from scipy.optimize import brentq, minimize
 from scipy.special import erfinv, gamma, gammaln, zeta
 from scipy.stats import genextreme, lognorm, pearson3, weibull_min
 
-from hydrolog._formulas import checked_inputs, checked_outputs
+from hydrolog._formulas import ERRORS, checked_inputs, checked_outputs
 from hydrolog.nogat_formulas import (
+    Constant,
     Constraint,
     FormulaSpec,
     Limit,
@@ -53,6 +55,10 @@ from hydrolog.nogat_formulas import (
 )
 
 __all__ = [
+    "FIT_LEAST_SQUARES",
+    "FIT_L_MOMENTS",
+    "FIT_MAXIMUM_LIKELIHOOD",
+    "FIT_MOMENTS",
     "GEV_QUANTILES",
     "LOG_NORMAL_QUANTILES",
     "L_MOMENTS",
@@ -60,8 +66,13 @@ __all__ = [
     "PEARSON3_QUANTILES",
     "SPECS",
     "WEIBULL_QUANTILES",
+    "FittedParameters",
     "SampleLMoments",
     "SampleMoments",
+    "fit_l_moments",
+    "fit_least_squares",
+    "fit_maximum_likelihood",
+    "fit_moments",
     "gev_quantiles",
     "log_normal_quantiles",
     "pearson3_quantiles",
@@ -84,29 +95,41 @@ _PARAMETER_COUNTS: Final = {"log_normal": 2, "gev": 3, "pearson3": 3, "weibull":
 # likelihood grow without limit (Smith 1985). That happens for the GEV with scipy's
 # shape c >= 1 (xi <= -1), Pearson III with |skewness| >= 2 (gamma shape <= 1) and
 # Weibull with shape <= 1, so the estimate is the maximum in the shapes short of these
-# limits (named here for an error message), if there is one.
-_UNBOUNDED_LIKELIHOOD: Final = {
-    "gev": "the shape c of 1",
-    "pearson3": "the skewness of 2 or -2",
-    "weibull": "the shape of 1",
+# limits, if there is one. The search also stays within the GEVs that have a mean,
+# c > -1 (xi < 1), and the Weibull shapes up to _ML_WEIBULL_SHAPE, beyond which the
+# Weibull distribution is the reversed Gumbel's within a few per cent: a search that
+# runs to one of these ends finds no maximum inside them.
+_ML_WEIBULL_SHAPE: Final = 50.0
+# Least squares searches the log-normal ln s below ln 5, the GEV c in (-1, 50),
+# Pearson III's skewness in (-9, 9) and the Weibull ln k below ln 50: the shapes of
+# the quantile functions' test bounds, beyond which the fit is a limit of the family.
+_LS_SHAPES: Final = {
+    "log_normal": (-math.inf, math.log(5.0)),
+    "gev": (-1.0, 50.0),
+    "pearson3": (-9.0, 9.0),
+    "weibull": (-math.inf, math.log(50.0)),
 }
-# The search for the maximum likelihood (Nelder-Mead on the standardised sample) and
-# its check: it is run again from the point found until a run gains no more than
-# _ML_GAIN of log-likelihood, at most _ML_RUNS times. Its start has a shape at least
-# _ML_INSIDE short of the limit and a bound _ML_MARGIN standard deviations beyond the
-# sample; an end closer to the limit than _ML_EDGE is the limit, where there is no
-# maximum.
-_ML_NELDER_MEAD: Final = {
+# The searches for the maximum likelihood and the least squares (Nelder-Mead on the
+# standardised sample): each is run again from the point found until a run gains no
+# more than _SEARCH_GAIN, at most _SEARCH_RUNS times. The likelihood's start has a
+# shape at least _ML_INSIDE short of the limit and a bound _ML_MARGIN standard
+# deviations beyond the sample; an end closer to the limit than _ML_EDGE is the
+# limit, where there is no maximum. Nor is there one where the search runs to a
+# scale below exp(_ML_LEAST_LOG_SCALE) standard deviations: values tied at the
+# smallest make the likelihood grow without limit as the scale falls to 0 (a heavy
+# upper tail keeps the density of the others).
+_NELDER_MEAD: Final = {
     "xatol": 1e-10,
     "fatol": 1e-12,
     "maxiter": 10_000,
     "maxfev": 20_000,
 }
-_ML_RUNS: Final = 20
-_ML_GAIN: Final = 1e-9
+_SEARCH_RUNS: Final = 20
+_SEARCH_GAIN: Final = 1e-9
 _ML_INSIDE: Final = 0.1
 _ML_MARGIN: Final = 0.05
 _ML_EDGE: Final = 1e-3
+_ML_LEAST_LOG_SCALE: Final = math.log(1e-6)
 # The skewness and the L-skewness of the Gumbel distribution (the GEV with shape 0):
 # the Weibull distribution of the moments and L-moments needs a sample statistic above
 # minus these, the limit of its skewness and L-skewness as its shape grows.
@@ -114,88 +137,13 @@ _GUMBEL_SKEWNESS: Final = float(12.0 * np.sqrt(6.0) * zeta(3.0) / np.pi**3)  # 1
 _GUMBEL_L_SKEWNESS: Final = float(2.0 * np.log(3.0) / np.log(2.0) - 3.0)  # 0.1699
 # Brackets of the GEV shape c (scipy's sign; Hosking's k, -ξ of Coles 2001): the
 # skewness exists above c = -1/3 and the mean (so the L-moments) above c = -1; the
-# gamma functions of the skewness overflow above c of about 56.
+# gamma functions of the skewness overflow above c of about 56. The Weibull
+# distribution is the GEV of the negated sample with c > 0 (its shape 1 / c at most
+# a billion). Below |c| = _GUMBEL_SHAPE the GEV of the L-moments is the Gumbel's.
 _GEV_SHAPES_BY_SKEWNESS: Final = (-1.0 / 3.0 + 1e-6, 50.0)
 _GEV_SHAPES_BY_L_SKEWNESS: Final = (-1.0 + 1e-9, 50.0)
-
-
-class _NoParameters(Exception):
-    """A fit method gives no parameters of a distribution for the sample.
-
-    :meth:`~hydrolog.statistics.FloodFrequencyAnalysis._estimate` turns it into a
-    :class:`~hydrolog.exceptions.CalculationError` that names the method and the
-    distribution.
-
-    Parameters
-    ----------
-    reason : str
-        ``details.reason`` of that error.
-    message : str
-        Why, in words that follow a colon.
-    **details : object
-        Further JSON-compatible details.
-    """
-
-    def __init__(self, reason: str, message: str, **details: object) -> None:
-        super().__init__(message)
-        self.reason = reason
-        self.details = details
-
-
-def _require_spread(data: NDArray[np.float64], minimum: int = _MIN_VALUES) -> None:
-    """Require ``minimum`` values, not all equal.
-
-    By default the 3 values of the skewness and the L-skewness; maximum likelihood asks
-    for one more than the distribution's parameters.
-    """
-    if data.size < minimum:
-        raise _NoParameters(
-            "too_few_values",
-            f"it needs at least {minimum} values, got {data.size}",
-            count=int(data.size),
-            minimum=minimum,
-        )
-    if data.min() == data.max():
-        raise _NoParameters("constant_values", "all values are equal")
-
-
-def _require_range(
-    statistic: str, value: float, minimum: float, maximum: float | None = None
-) -> None:
-    """Require a sample ``statistic`` inside the open range a distribution can take.
-
-    ``statistic`` is ``"skewness"`` or ``"l_skewness"``; ``maximum`` ``None`` is no
-    upper limit.
-    """
-    if minimum < value and (maximum is None or value < maximum):
-        return
-    name = "L-skewness" if statistic == "l_skewness" else statistic
-    limits = (
-        f"above {minimum:.4g}"
-        if maximum is None
-        else f"between {minimum:.4g} and {maximum:.4g}"
-    )
-    raise _NoParameters(
-        "out_of_range",
-        f"the sample {name} {value:.4g} is not {limits}",
-        statistic=statistic,
-        value=value,
-        minimum=minimum,
-        maximum=maximum,
-    )
-
-
-def _require_positive(data: NDArray[np.float64]) -> None:
-    """Require values above 0, the support of the log-normal with location 0."""
-    smallest = float(data.min())
-    if smallest > 0.0:
-        return
-    raise _NoParameters(
-        "non_positive_values",
-        f"it needs values above 0, the smallest is {smallest:.6g}",
-        count=int(np.count_nonzero(data <= 0.0)),
-        smallest=smallest,
-    )
+_WEIBULL_SHAPES: Final = (1e-9, 50.0)
+_GUMBEL_SHAPE: Final = 1e-8
 
 
 # --- sources ---------------------------------------------------------------------
@@ -301,30 +249,34 @@ def _sample_variable(description: str) -> Variable:
     )
 
 
-def _count(least: int, source: Source) -> Constraint:
-    """Return the precondition of at least ``least`` values."""
+def _count(least: int, source: Source, name: str = "values") -> Constraint:
+    """Return the precondition of at least ``least`` values of input ``name``."""
     return Constraint(
         name="enough_values",
         cls="precondition",
-        check=lambda x: x.array("values").size >= least,
+        check=lambda x: x.array(name).size >= least,
         text=f"n >= {least}",
         source=source,
-        satisfied={"values": [1.0, 2.0, 4.0, 8.0, 16.0][: least + 1]},
-        violated={"values": [1.0, 2.0, 4.0, 8.0][: least - 1]},
-        boundary={"values": [1.0, 2.0, 4.0, 8.0][:least]},
+        satisfied={name: [1.0, 2.0, 4.0, 8.0, 16.0][: least + 1]},
+        violated={name: [1.0, 2.0, 4.0, 8.0][: least - 1]},
+        boundary={name: [1.0, 2.0, 4.0, 8.0][:least]},
     )
 
 
-def _not_constant(source: Source) -> Constraint:
-    """Return the precondition of values not all equal."""
+def _not_constant(
+    source: Source,
+    name: str = "values",
+    satisfied: tuple[float, ...] = (5.0, 5.0, 5.0, 6.0),
+) -> Constraint:
+    """Return the precondition of values of input ``name`` not all equal."""
     return Constraint(
         name="values_not_all_equal",
         cls="precondition",
-        check=lambda x: bool(np.ptp(x.array("values")) > 0.0),
+        check=lambda x: bool(np.ptp(x.array(name)) > 0.0),
         text="min(x) < max(x)",
         source=source,
-        satisfied={"values": [5.0, 5.0, 5.0, 6.0]},
-        violated={"values": [5.0, 5.0, 5.0, 5.0]},
+        satisfied={name: list(satisfied)},
+        violated={name: [5.0, 5.0, 5.0, 5.0]},
     )
 
 
@@ -370,15 +322,6 @@ def _moments(data: NDArray[np.float64]) -> SampleMoments:
     return SampleMoments(
         math.ldexp(centre + residual, exponent), math.ldexp(std, exponent), skewness
     )
-
-
-def _sample_moments(data: NDArray[np.float64]) -> SampleMoments:
-    """Mean, standard deviation and skewness of a sample (:data:`MOMENTS`).
-
-    Raises ``_NoParameters`` for fewer than 3 values or values all equal.
-    """
-    _require_spread(data)
-    return _moments(data)
 
 
 def _exact_moments(values: list[float]) -> tuple[float, float, float]:
@@ -654,15 +597,6 @@ def _l_moments(data: NDArray[np.float64]) -> SampleLMoments:
         math.ldexp(l2, exponent),
         float(weights_3 @ ascending) / l2,
     )
-
-
-def _sample_l_moments(data: NDArray[np.float64]) -> SampleLMoments:
-    """L-moments λ1 and λ2 and L-skewness τ3 of a sample (:data:`L_MOMENTS`).
-
-    Raises ``_NoParameters`` for fewer than 3 values or values all equal.
-    """
-    _require_spread(data)
-    return _l_moments(data)
 
 
 def _exact_l_moments(values: list[float]) -> tuple[float, float, float]:
@@ -1693,11 +1627,49 @@ def weibull_quantiles(
     )
 
 
+# --- estimators of the parameters ---------------------------------------------------
+
+
+class FittedParameters(NamedTuple):
+    """Parameters of a distribution fitted to a sample (the specs ``fit_*``).
+
+    Those of :mod:`scipy.stats`: ``lognorm`` (location 0), ``genextreme``,
+    ``pearson3`` (whose shape is the skewness) or ``weibull_min``.
+    """
+
+    shape: float
+    loc: float
+    scale: float
+
+
+class _Search(NamedTuple):
+    """The end of a search for the parameters ``(shape, loc, scale)`` of a sample.
+
+    ``failure`` is ``""`` with parameters, else ``"unbounded_likelihood"`` (the search
+    of the likelihood ends at an end of the shapes of :func:`_limit_distance`, or at
+    a vanishing scale) or ``"not_converged"`` (no run settles, or it ends worse than
+    it started).
+    """
+
+    parameters: tuple[float, float, float] | None
+    failure: str
+
+
 def _shape(
     statistic: Callable[[float], float], value: float, bracket: tuple[float, float]
 ) -> float:
-    """Return the shape in ``bracket`` whose ``statistic`` (decreasing) is ``value``."""
-    return float(brentq(lambda shape: statistic(shape) - value, *bracket))
+    """Return the shape in ``bracket`` whose ``statistic`` (decreasing) is ``value``.
+
+    A value at or beyond the statistic of an end of the bracket gives that end: the
+    L-skewness of values all equal but one lies within rounding of 1 or -1, beyond
+    the shapes the bracket holds, where ``brentq`` finds no change of sign.
+    """
+    low, high = bracket
+    if value >= statistic(low):
+        return low
+    if value <= statistic(high):
+        return high
+    return float(brentq(lambda shape: statistic(shape) - value, low, high))
 
 
 def _gev_skewness(c: float) -> float:
@@ -1707,10 +1679,10 @@ def _gev_skewness(c: float) -> float:
 
 
 def _gev_from_moments(
-    mean: float, std: float, skewness: float
+    mean: float, std: float, skewness: float, bracket: tuple[float, float]
 ) -> tuple[float, float, float]:
     """GEV ``(c, loc, scale)`` with the given mean, standard deviation and skewness."""
-    c = _shape(_gev_skewness, skewness, _GEV_SHAPES_BY_SKEWNESS)
+    c = _shape(_gev_skewness, skewness, bracket)
     with np.errstate(all="ignore"):
         mean_1, variance_1 = genextreme.stats(c, moments="mv")
     scale = std / float(np.sqrt(variance_1))
@@ -1724,16 +1696,18 @@ def _gev_l_skewness(c: float) -> float:
     return float(2.0 * np.expm1(-c * np.log(3.0)) / np.expm1(-c * np.log(2.0)) - 3.0)
 
 
-def _gev_from_l_moments(l1: float, l2: float, t3: float) -> tuple[float, float, float]:
+def _gev_from_l_moments(
+    l1: float, l2: float, t3: float, bracket: tuple[float, float]
+) -> tuple[float, float, float]:
     """GEV ``(c, loc, scale)`` with the given L-moments (Hosking and Wallis 1997).
 
     The shape c solves τ3 = 2 (1 - 3^-c) / (1 - 2^-c) - 3; then
     α = λ2 c / ((1 - 2^-c) Γ(1 + c)) and ξ = λ1 - α (1 - Γ(1 + c)) / c, with the
-    limits α = λ2 / ln 2 and ξ = λ1 - 0.5772 α (Euler's constant) of the Gumbel
-    distribution (c = 0).
+    limits α = λ2 / ln 2 and ξ = λ1 - γ α (Euler's γ) of the Gumbel distribution
+    (c = 0).
     """
-    c = _shape(_gev_l_skewness, t3, _GEV_SHAPES_BY_L_SKEWNESS)
-    if abs(c) < 1e-8:
+    c = _shape(_gev_l_skewness, t3, bracket)
+    if abs(c) < _GUMBEL_SHAPE:
         scale = l2 / float(np.log(2.0))
         return c, l1 - float(np.euler_gamma) * scale, scale
     gamma_1 = float(gamma(1.0 + c))
@@ -1747,21 +1721,22 @@ def _pearson3_from_l_moments(
     """Pearson III ``(skew, loc, scale)`` with the given L-moments.
 
     Hosking and Wallis (1997): α = 4 / γ² from |τ3| by their rational approximations
-    (α within 3e-5, relative, of the exact τ3 = 6 I(1/3; α, 2α) - 3), then
-    γ = 2 sign(τ3) / √α, σ = λ2 √(π α) Γ(α) / Γ(α + 1/2) and μ = λ1; below
-    |τ3| = 1e-6 the normal distribution, σ = λ2 √π.
+    (:data:`_PE3_APPROXIMATION`), then γ = 2 sign(τ3) / √α,
+    σ = λ2 √(π α) Γ(α) / Γ(α + 1/2) and μ = λ1; at a small |τ3| the normal
+    distribution, σ = λ2 √π.
     """
+    a = _PE3
     t = abs(t3)
-    if t < 1e-6:
+    if t < a["normal_below"]:
         return 0.0, l1, l2 * float(np.sqrt(np.pi))
     if t >= 1.0 / 3.0:
         z = 1.0 - t
-        alpha = (z * (0.36067 + z * (-0.59567 + z * 0.25361))) / (
-            1.0 + z * (-2.78861 + z * (2.56096 + z * -0.77045))
+        alpha = (z * (a["b1"] + z * (a["b2"] + z * a["b3"]))) / (
+            1.0 + z * (a["b4"] + z * (a["b5"] + z * a["b6"]))
         )
     else:
         z = 3.0 * np.pi * t * t
-        alpha = (1.0 + 0.2906 * z) / (z * (1.0 + z * (0.1882 + z * 0.0442)))
+        alpha = (1.0 + a["a1"] * z) / (z * (1.0 + z * (a["a2"] + z * a["a3"])))
     ratio = float(np.exp(gammaln(alpha) - gammaln(alpha + 0.5)))
     scale = l2 * float(np.sqrt(np.pi * alpha)) * ratio
     return float(np.copysign(2.0 / np.sqrt(alpha), t3)), l1, scale
@@ -1778,11 +1753,35 @@ def _weibull_from_reversed_gev(
     return 1.0 / c, -loc - scale / c, scale / c
 
 
-def _by_moments(name: str, data: NDArray[np.float64]) -> tuple[float, float, float]:
-    """Parameters ``(shape, loc, scale)`` of distribution ``name`` by moments."""
+def _within_moments(name: str, data: NDArray[np.float64]) -> bool:
+    """Whether the sample skewness lies inside the skewnesses ``name`` can take.
+
+    Only the Weibull distribution has a limit: the skewness of the reversed Gumbel
+    distribution, which its skewness approaches as its shape grows.
+    """
+    return name != "weibull" or _moments(data).skewness > -_GUMBEL_SKEWNESS
+
+
+def _within_l_moments(name: str, data: NDArray[np.float64]) -> bool:
+    """Whether the sample L-moments lie inside those ``name`` can take.
+
+    The log-normal of location 0 has λ2 / λ1 = erf(s / 2) below 1; the GEV and
+    Pearson III have |τ3| below 1, the Weibull distribution τ3 above that of the
+    reversed Gumbel distribution.
+    """
+    l1, l2, t3 = _l_moments(data)
     if name == "log_normal":
-        _require_positive(data)
-    mean, std, skewness = _sample_moments(data)
+        return l2 < l1
+    lowest = -_GUMBEL_L_SKEWNESS if name == "weibull" else -1.0
+    return lowest < t3 < 1.0
+
+
+def _by_moments(name: str, data: NDArray[np.float64]) -> tuple[float, float, float]:
+    """Parameters ``(shape, loc, scale)`` of distribution ``name`` by moments.
+
+    The sample meets the preconditions of :data:`FIT_MOMENTS`.
+    """
+    mean, std, skewness = _moments(data)
     if name == "log_normal":
         # mean = scale exp(s²/2) and Cv² = exp(s²) - 1
         cv2 = (std / mean) ** 2
@@ -1790,67 +1789,83 @@ def _by_moments(name: str, data: NDArray[np.float64]) -> tuple[float, float, flo
     if name == "pearson3":
         return skewness, mean, std  # scipy's parameters are these moments
     if name == "gev":
-        return _gev_from_moments(mean, std, skewness)
-    _require_range("skewness", skewness, -_GUMBEL_SKEWNESS)
-    return _weibull_from_reversed_gev(*_gev_from_moments(-mean, std, -skewness))
+        return _gev_from_moments(mean, std, skewness, _GEV_SHAPES_BY_SKEWNESS)
+    reversed_gev = _gev_from_moments(-mean, std, -skewness, _WEIBULL_SHAPES)
+    return _weibull_from_reversed_gev(*reversed_gev)
 
 
 def _by_l_moments(name: str, data: NDArray[np.float64]) -> tuple[float, float, float]:
-    """Parameters ``(shape, loc, scale)`` of distribution ``name`` by L-moments."""
-    if name == "log_normal":
-        _require_positive(data)
-    l1, l2, t3 = _sample_l_moments(data)
+    """Parameters ``(shape, loc, scale)`` of distribution ``name`` by L-moments.
+
+    The sample meets the preconditions of :data:`FIT_L_MOMENTS`.
+    """
+    l1, l2, t3 = _l_moments(data)
     if name == "log_normal":
         # λ1 = scale exp(s²/2) and λ2 = λ1 erf(s/2)
         shape = 2.0 * float(erfinv(l2 / l1))
         return shape, 0.0, l1 * float(np.exp(-0.5 * shape**2))
     if name == "weibull":
-        _require_range("l_skewness", t3, -_GUMBEL_L_SKEWNESS, 1.0)
-        return _weibull_from_reversed_gev(*_gev_from_l_moments(-l1, l2, -t3))
-    _require_range("l_skewness", t3, -1.0, 1.0)
+        reversed_gev = _gev_from_l_moments(-l1, l2, -t3, _WEIBULL_SHAPES)
+        return _weibull_from_reversed_gev(*reversed_gev)
     if name == "gev":
-        return _gev_from_l_moments(l1, l2, t3)
+        return _gev_from_l_moments(l1, l2, t3, _GEV_SHAPES_BY_L_SKEWNESS)
     return _pearson3_from_l_moments(l1, l2, t3)
 
 
-def _by_least_squares(
-    name: str, data: NDArray[np.float64]
-) -> tuple[float, float, float]:
-    """Parameters ``(shape, loc, scale)`` of distribution ``name`` by least squares.
+def _settle(
+    objective: Callable[[NDArray[np.float64]], float],
+    start: NDArray[np.float64],
+    step: float | None = None,
+    stop: Callable[[NDArray[np.float64]], bool] | None = None,
+) -> tuple[Any, bool]:
+    """Minimise ``objective`` by Nelder-Mead from ``start`` until a run gains nothing.
 
-    They minimise Σ (x(j) - Q(j / (n + 1)))² over the ascending sample x(j), Q the
-    quantile function of the distribution: the quantiles at the Weibull plotting
-    positions of the empirical frequency of
-    :class:`~hydrolog.statistics.FloodFrequencyAnalysis`. Nelder-Mead starts from the
-    moments; it searches the logarithm of the scale and of the log-normal and Weibull
-    shapes, which stay positive.
+    Each run starts where the last ended; the search settles when a run gains no
+    more than ``_SEARCH_GAIN``, within ``_SEARCH_RUNS`` runs after the first, or ends
+    where ``stop`` holds (a limit where no run would settle). scipy's first simplex
+    moves each coordinate by 5 % of itself; with ``step`` by at least ``step``, so
+    that a coordinate that starts near 0 (the location of a standardised sample) is
+    searched too. Returns the best end (scipy's ``OptimizeResult``) and whether it
+    settled.
     """
-    shape, loc, scale = _by_moments(name, data)
-    ascending = np.sort(data)
-    probabilities = np.arange(1, data.size + 1) / (data.size + 1)
-    distribution = _DISTRIBUTIONS[name]
-    positive_shape = name in ("log_normal", "weibull")
 
-    def parameters(point: NDArray[np.float64]) -> tuple[float, float, float]:
-        first = float(np.exp(point[0])) if positive_shape else float(point[0])
-        if name == "log_normal":
-            return first, 0.0, float(np.exp(point[1]))
-        return first, float(point[1]), float(np.exp(point[2]))
+    def run(point: NDArray[np.float64]) -> Any:
+        options: dict[str, object] = dict(_NELDER_MEAD)
+        if step is not None:
+            moves = np.maximum(0.05 * np.abs(point), step)
+            options["initial_simplex"] = np.vstack([point, point + np.diag(moves)])
+        return minimize(objective, point, method="Nelder-Mead", options=options)
 
-    def squares(point: NDArray[np.float64]) -> float:
-        with np.errstate(all="ignore"):
-            quantiles = distribution.ppf(probabilities, *parameters(point))
-            total = float(np.sum((ascending - quantiles) ** 2))
-        return total if np.isfinite(total) else np.inf
+    found = run(start)
+    for _ in range(_SEARCH_RUNS):
+        if not np.isfinite(found.fun):
+            break
+        if stop is not None and stop(found.x):
+            return found, True
+        again = run(found.x)
+        gain = found.fun - again.fun
+        if gain > 0.0:
+            found = again
+        if gain <= _SEARCH_GAIN:
+            return found, True
+    return found, False
 
-    first = float(np.log(shape)) if positive_shape else shape
-    start = (
-        [first, float(np.log(scale))]
-        if name == "log_normal"
-        else [first, loc, float(np.log(scale))]
-    )
-    found = minimize(squares, start, method="Nelder-Mead")
-    return parameters(found.x)
+
+def _standardised(
+    data: NDArray[np.float64], centred: bool = True
+) -> tuple[NDArray[np.float64], float, float, int]:
+    """Return the sample standardised, with its centre, spread and binary exponent.
+
+    The sample is divided by the power of two of :func:`_normalised` (exactly, so
+    that its unit changes no digit of the search), then centred on its mean unless
+    ``centred`` is false and divided by its standard deviation (divisor n): z = (x /
+    2**e - centre) / spread. A location and a scale of z give those of x as
+    2**e (centre + spread loc) and 2**e spread scale.
+    """
+    scaled, exponent = _normalised(data)
+    centre = float(np.mean(scaled)) if centred else 0.0
+    spread = float(np.std(scaled))
+    return (scaled - centre) / spread, centre, spread, exponent
 
 
 def _support(name: str, shape: float, scale: float) -> tuple[float, float]:
@@ -1872,16 +1887,17 @@ def _support(name: str, shape: float, scale: float) -> tuple[float, float]:
 
 
 def _limit_distance(name: str, shape: float) -> float:
-    """How far ``shape`` lies short of the limit of ``_UNBOUNDED_LIKELIHOOD``.
+    """How far ``shape`` lies inside the shapes the likelihood is searched over.
 
-    Positive where the likelihood of ``name`` can have a maximum, 0 or less where the
-    density is infinite at a bound of the support.
+    Positive inside them, 0 or less at or beyond an end: the GEV's -1 < c < 1,
+    Pearson III's |skewness| < 2 and the Weibull distribution's 1 < shape <
+    ``_ML_WEIBULL_SHAPE``.
     """
     if name == "gev":
-        return 1.0 - shape
+        return 1.0 - abs(shape)
     if name == "pearson3":
         return 2.0 - abs(shape)
-    return shape - 1.0
+    return min(shape - 1.0, _ML_WEIBULL_SHAPE - shape)
 
 
 def _ml_start(name: str, sample: NDArray[np.float64]) -> tuple[float, float, float]:
@@ -1893,117 +1909,1139 @@ def _ml_start(name: str, sample: NDArray[np.float64]) -> tuple[float, float, flo
     moved, if needed, so that a bound of the support lies ``_ML_MARGIN`` beyond the
     sample: a value without density leaves no likelihood to improve.
     """
-    for estimate in (_by_l_moments, _by_moments):
-        try:
-            shape, loc, scale = estimate(name, sample)
-            break
-        except _NoParameters:
-            continue
+    if _within_l_moments(name, sample):
+        shape, loc, scale = _by_l_moments(name, sample)
+    elif _within_moments(name, sample):
+        shape, loc, scale = _by_moments(name, sample)
     else:  # only Weibull: a sample skewness below that of every Weibull distribution
         shape, loc, scale = _weibull_from_reversed_gev(
-            *_gev_from_moments(0.0, 1.0, 0.0)
+            *_gev_from_moments(0.0, 1.0, 0.0, _GEV_SHAPES_BY_SKEWNESS)
         )
     if name == "gev":
-        shape = min(shape, 1.0 - _ML_INSIDE)
+        shape = min(max(shape, _ML_INSIDE - 1.0), 1.0 - _ML_INSIDE)
     elif name == "pearson3":
         shape = min(max(shape, _ML_INSIDE - 2.0), 2.0 - _ML_INSIDE)
     else:
-        shape = max(shape, 1.0 + _ML_INSIDE)
+        shape = min(max(shape, 1.0 + _ML_INSIDE), _ML_WEIBULL_SHAPE - _ML_INSIDE)
     lower, upper = _support(name, shape, scale)
     lowest = float(sample.max()) - upper + _ML_MARGIN
     highest = float(sample.min()) - lower - _ML_MARGIN
     return shape, min(max(loc, lowest), highest), scale
 
 
-def _maximum_likelihood(
-    name: str, data: NDArray[np.float64]
-) -> tuple[float, float, float]:
-    """Maximum-likelihood ``(shape, loc, scale)`` of a three-parameter distribution.
-
-    ``name`` is ``"gev"``, ``"pearson3"`` or ``"weibull"``. The search runs on the
-    standardised sample z = (x - mean) / sd, whose scale is of the order of 1 in any
-    unit of x (scipy's own ``fit`` starts from the scale 1 and may stop far from the
-    maximum on annual maxima of hundreds of m³/s): Nelder-Mead on the shape, the
-    location and the logarithm of the scale from :func:`_ml_start`, over the shapes
-    short of the limit of ``_UNBOUNDED_LIKELIHOOD``, run again from the point it found
-    until a run gains no more than ``_ML_GAIN`` of log-likelihood. The parameters of x
-    are the shape, mean + sd · loc and sd · scale.
-
-    Raises
-    ------
-    _NoParameters
-        ``too_few_values`` (fewer values than 4), ``constant_values``,
-        ``unbounded_likelihood`` (the search ends at the limit: the likelihood has no
-        maximum) or ``not_converged`` (no run settles, or the end is less likely than
-        the start).
-    """
-    _require_spread(data, _PARAMETER_COUNTS[name] + 1)
+@lru_cache(maxsize=64)
+def _likelihood_search(name: str, sample: bytes) -> _Search:
+    """Run the search of :func:`_maximum_likelihood` on a float64 sample's bytes."""
+    data = np.frombuffer(sample, dtype=np.float64)
     distribution = _DISTRIBUTIONS[name]
-    mean = float(np.mean(data))
-    spread = float(np.std(data))
-    sample = (data - mean) / spread
+    if name == "gev" and 2 * np.count_nonzero(data == data.min()) > data.size:
+        # k values tied at the smallest and m others: as the scale falls to 0 the
+        # log-likelihood grows as (k - m / xi) ln(1 / scale), without limit for the
+        # xi of m / k to 1 that the search covers, so for k > m
+        return _Search(None, "unbounded_likelihood")
+    standard, centre, spread, exponent = _standardised(data)
 
     def minus_log_likelihood(point: NDArray[np.float64]) -> float:
-        if _limit_distance(name, point[0]) <= 0.0:
+        if _limit_distance(name, point[0]) <= 0.0 or point[2] < _ML_LEAST_LOG_SCALE:
             return np.inf
         with np.errstate(all="ignore"):
             log_densities = distribution.logpdf(
-                sample, point[0], loc=point[1], scale=np.exp(point[2])
+                standard, point[0], loc=point[1], scale=np.exp(point[2])
             )
             total = -float(np.sum(log_densities))
         return np.inf if np.isnan(total) else total
 
-    shape, loc, scale = _ml_start(name, sample)
+    shape, loc, scale = _ml_start(name, standard)
     start = np.array([shape, loc, np.log(scale)])
-    found = minimize(
-        minus_log_likelihood, start, method="Nelder-Mead", options=_ML_NELDER_MEAD
-    )
-    settled = False
-    for _ in range(_ML_RUNS):
-        if not np.isfinite(found.fun):
-            break
-        again = minimize(
-            minus_log_likelihood, found.x, method="Nelder-Mead", options=_ML_NELDER_MEAD
+
+    def at_a_limit(point: NDArray[np.float64]) -> bool:
+        return bool(
+            _limit_distance(name, point[0]) < _ML_EDGE
+            or point[2] < _ML_LEAST_LOG_SCALE + _ML_EDGE
         )
-        gain = found.fun - again.fun
-        if gain > 0.0:
-            found = again
-        if gain <= _ML_GAIN:
-            settled = True
-            break
+
+    found, settled = _settle(minus_log_likelihood, start, stop=at_a_limit)
     shape = float(found.x[0])
-    if _limit_distance(name, shape) < _ML_EDGE:
-        raise _NoParameters(
-            "unbounded_likelihood",
-            "its likelihood has no maximum: the search ends at "
-            f"{_UNBOUNDED_LIKELIHOOD[name]}, with a bound of the distribution at the "
-            "closest value, beyond which the likelihood grows without limit",
-            shape=shape,
-        )
+    if at_a_limit(found.x):
+        return _Search(None, "unbounded_likelihood")
     if not settled or found.fun > minus_log_likelihood(start):
-        raise _NoParameters(
-            "not_converged",
-            f"the search for the maximum of the likelihood did not settle in {_ML_RUNS}"
-            " runs",
-        )
-    return shape, mean + spread * float(found.x[1]), spread * float(np.exp(found.x[2]))
+        return _Search(None, "not_converged")
+    loc = math.ldexp(centre + spread * float(found.x[1]), exponent)
+    return _Search(
+        (shape, loc, math.ldexp(spread * float(np.exp(found.x[2])), exponent)), ""
+    )
 
 
-def _by_maximum_likelihood(
-    name: str, data: NDArray[np.float64]
-) -> tuple[float, float, float]:
-    """Parameters ``(shape, loc, scale)`` of distribution ``name``, maximum likelihood.
+def _maximum_likelihood(name: str, data: NDArray[np.float64]) -> _Search:
+    """Maximum-likelihood ``(shape, loc, scale)`` of a three-parameter distribution.
 
-    The log-normal with location 0 in closed form (``scipy.stats.lognorm.fit`` with
-    ``floc=0``: the mean and the standard deviation, divisor n, of ln x), from 3 values
-    above 0, not all equal; the others by :func:`_maximum_likelihood`.
+    ``name`` is ``"gev"``, ``"pearson3"`` or ``"weibull"``; the sample has more values
+    than the distribution has parameters, not all equal. The search runs on the
+    standardised sample (:func:`_standardised`), whose scale is of the order of 1 in
+    any unit of x (scipy's own ``fit`` starts from the scale 1 and may stop far from
+    the maximum on annual maxima of hundreds of m³/s): Nelder-Mead on the shape, the
+    location and the logarithm of the scale from :func:`_ml_start`, over the shapes
+    inside the ends of :func:`_limit_distance`, run again until a run gains nothing
+    (:func:`_settle`). A search that ends at an end of the shapes or at a vanishing
+    scale finds no maximum (``unbounded_likelihood``), as does a GEV with more than
+    half the values tied at the smallest; one that does not settle or ends less
+    likely than its start none either (``not_converged``). Cached by the sample's
+    bytes: the precondition ``likelihood_has_a_maximum`` and the fit run one search.
     """
-    if name != "log_normal":
-        return _maximum_likelihood(name, data)
-    _require_positive(data)
-    _require_spread(data, _PARAMETER_COUNTS[name] + 1)
-    shape, _, scale = lognorm.fit(data, floc=0)
-    return float(shape), 0.0, float(scale)
+    contiguous = np.ascontiguousarray(data, dtype=np.float64)
+    return _likelihood_search(name, contiguous.tobytes())
+
+
+@lru_cache(maxsize=64)
+def _squares_search(name: str, sample: bytes) -> _Search:
+    """Run the search of :func:`_least_squares` on a float64 sample's bytes."""
+    data = np.frombuffer(sample, dtype=np.float64)
+    log_normal = name == "log_normal"
+    standard, centre, spread, exponent = _standardised(data, centred=not log_normal)
+    ascending = np.sort(standard)
+    probabilities = np.arange(1, data.size + 1) / (data.size + 1)
+    distribution = _DISTRIBUTIONS[name]
+    positive_shape = name in ("log_normal", "weibull")
+
+    def parameters(point: NDArray[np.float64]) -> tuple[float, float, float]:
+        first = float(np.exp(point[0])) if positive_shape else float(point[0])
+        if log_normal:
+            return first, 0.0, float(np.exp(point[1]))
+        return first, float(point[1]), float(np.exp(point[2]))
+
+    low, high = _LS_SHAPES[name]
+
+    def at_an_end(point: NDArray[np.float64]) -> bool:
+        return bool(min(point[0] - low, high - point[0]) < _ML_EDGE)
+
+    def squares(point: NDArray[np.float64]) -> float:
+        if not low < point[0] < high:
+            return np.inf
+        with np.errstate(all="ignore"):
+            quantiles = distribution.ppf(probabilities, *parameters(point))
+            total = float(np.sum((ascending - quantiles) ** 2))
+        return total if np.isfinite(total) else np.inf
+
+    shape, loc, scale = _by_moments(name, ascending)
+    first = float(np.log(shape)) if positive_shape else shape
+    first = min(max(first, low + _ML_INSIDE), high - _ML_INSIDE)
+    start = [first, np.log(scale)] if log_normal else [first, loc, np.log(scale)]
+    found, settled = _settle(
+        squares, np.array(start, dtype=np.float64), step=0.05, stop=at_an_end
+    )
+    if not settled or at_an_end(found.x):
+        return _Search(None, "not_converged")
+    shape, loc, scale = parameters(found.x)
+    return _Search(
+        (
+            shape,
+            math.ldexp(centre + spread * loc, exponent),
+            math.ldexp(spread * scale, exponent),
+        ),
+        "",
+    )
+
+
+def _least_squares(name: str, data: NDArray[np.float64]) -> _Search:
+    """Least-squares ``(shape, loc, scale)`` of distribution ``name``.
+
+    They minimise Σ (x(j) - Q(j / (n + 1)))² over the ascending sample x(j), Q the
+    quantile function of the distribution: the quantiles at the Weibull plotting
+    positions of the empirical frequency of
+    :class:`~hydrolog.statistics.FloodFrequencyAnalysis`. The search runs on the
+    standardised sample (:func:`_standardised`; the log-normal, of location 0, only
+    divided by its spread) from the moments' estimate: Nelder-Mead on the logarithm
+    of the scale and of the log-normal and Weibull shapes, which stay positive, run
+    again until a run gains nothing (:func:`_settle`), over the shapes of
+    ``_LS_SHAPES``: a search that ends at one of their ends or does not settle finds
+    no minimum (``not_converged``). Cached by the sample's bytes: the precondition
+    ``squares_have_a_minimum`` and the fit run one search.
+    """
+    contiguous = np.ascontiguousarray(data, dtype=np.float64)
+    return _squares_search(name, contiguous.tobytes())
+
+
+def _settled(spec: FormulaSpec, search: _Search) -> tuple[float, float, float]:
+    """Return the parameters a search found; ``calculation_error`` if it did not settle.
+
+    The trap ``unbounded_iteration``: the search ran its bounded count of runs.
+    """
+    if search.parameters is None:
+        runs = _SEARCH_RUNS + 1
+        raise ERRORS.calculation(
+            f"{spec.name}: the search for the parameters did not settle in {runs} "
+            "runs of Nelder-Mead",
+            {"reason": "not_converged", "formula": spec.name, "runs": runs},
+        )
+    return search.parameters
+
+
+def _fitted(
+    spec: FormulaSpec, parameters: tuple[float, float, float]
+) -> FittedParameters:
+    """Check the parameters as the outputs of ``spec`` and return them."""
+    shape, loc, scale = parameters
+    out = checked_outputs(spec, {"shape": shape, "loc": loc, "scale": scale})
+    return FittedParameters(out.real("shape"), out.real("loc"), out.real("scale"))
+
+
+# --- the specs of the estimators -------------------------------------------------
+
+_HOSKING_WALLIS: Final = Source(
+    citation="Hosking, J.R.M. and Wallis, J.R. (1997). Regional Frequency Analysis: "
+    "An Approach Based on L-Moments. Cambridge University Press",
+    locator="appendix A.5 (GEV), A.8 (log-normal), A.9 (Pearson type III, the "
+    "rational approximations of alpha from |t3|)",
+    access="author-provided",
+)
+_LMOM_FORTRAN: Final = Source(
+    citation=_LMOM,
+    locator="lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson "
+    "III: alpha from |t3| by rational approximations, relative accuracy better than "
+    "3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the "
+    "negated L-moments",
+    url=_LMOM_URL,
+)
+_SMITH_1985: Final = (
+    "Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular "
+    "cases. Biometrika 72(1), 67-90"
+)
+_PE3_APPROXIMATION: Final = tuple(
+    Constant(name=name, value=value, unit="-", source=_LMOM_FORTRAN, symbol=symbol)
+    for name, value, symbol in (
+        ("a1", 0.2906, "A_1"),
+        ("a2", 0.1882, "A_2"),
+        ("a3", 0.0442, "A_3"),
+        ("b1", 0.36067, "B_1"),
+        ("b2", -0.59567, "B_2"),
+        ("b3", 0.25361, "B_3"),
+        ("b4", -2.78861, "C_1"),
+        ("b5", 2.56096, "C_2"),
+        ("b6", -0.77045, "C_3"),
+        ("normal_below", 1e-6, r"\tau_{3,0}"),
+    )
+)
+"""Hosking's rational approximations of Pearson III's alpha = 4 / G**2 from |t3|:
+z = 3 pi t3**2 below |t3| = 1/3, z = 1 - |t3| above, and the |t3| below which the
+distribution is the normal one (PELPE3)."""
+_PE3: Final = {constant.name: float(constant.value) for constant in _PE3_APPROXIMATION}
+
+_GUMBEL_CONSTANTS: Final = (
+    Constant(
+        name="gumbel_skewness",
+        value=_GUMBEL_SKEWNESS,
+        unit="-",
+        symbol=r"\gamma_G",
+        source=Source(
+            citation=_WMO_168,
+            locator="table II.5.2, p. II.5-5: the Gumbel (EV1) distribution, of "
+            "skewness 1.1396, 12 sqrt(6) zeta(3) / pi**3",
+            url=_WMO_168_URL,
+        ),
+    ),
+)
+_GUMBEL_L_CONSTANTS: Final = (
+    Constant(
+        name="gumbel_l_skewness",
+        value=_GUMBEL_L_SKEWNESS,
+        unit="-",
+        symbol=r"\tau_{3,G}",
+        source=Source(
+            citation=_LMOM,
+            locator="pelwei: the GEV of the negated L-moments, which needs -t3 below "
+            "the Gumbel's L-skewness 2 ln 3 / ln 2 - 3 = 0.1699",
+            url=_LMOM_URL,
+        ),
+    ),
+)
+
+_DISTRIBUTION_CHOICE: Final = Variable(
+    name="distribution",
+    symbol="F",
+    unit="-",
+    kind="choice",
+    description="The distribution: the log-normal of location 0, the GEV, Pearson "
+    "type III or the three-parameter Weibull distribution of scipy.stats.",
+    choices=tuple(_DISTRIBUTIONS),
+)
+_FLOODS11: Final = (
+    95.0, 102.0, 110.0, 118.0, 125.0, 133.0, 140.0, 152.0, 170.0, 215.0, 290.0,
+)  # fmt: skip
+"""Eleven annual maxima [m3/s] of Hydrolog's tests (``floods11`` of the frozen
+oracles): Pearson III and Weibull by maximum likelihood have no maximum."""
+_NEGATIVE_SKEW: Final = (0.0, 9.0, 10.0, 10.0)
+"""A sample whose skewness and L-skewness lie below those of every Weibull
+distribution."""
+
+
+def _maxima_variable() -> Variable:
+    return Variable(
+        name="annual_maxima",
+        symbol="x_i",
+        unit=_UNIT,
+        kind="real_array",
+        description="The sample: annual maxima, or any sample of the distribution.",
+        physical=_ANY_VALUE,
+        applicability="unstated",
+        typical=_MAXIMA,
+    )
+
+
+_FITTED_OUTPUTS: Final = (
+    Output(
+        name="shape",
+        unit="-",
+        symbol="k",
+        description="Shape: s of the log-normal, c of the GEV (scipy's sign, k of "
+        "Hosking, -xi of Coles), the skewness of Pearson III, the Weibull shape.",
+        physical=Range(),
+    ),
+    Output(
+        name="loc",
+        unit=_UNIT,
+        symbol=r"\xi",
+        description="Location: 0 for the log-normal, the mean of Pearson III, the "
+        "lower bound of Weibull.",
+        physical=Range(),
+    ),
+    Output(
+        name="scale",
+        unit=_UNIT,
+        symbol=r"\alpha",
+        description="Scale; one that would underflow is the smallest float64 (its "
+        "boundary tolerance).",
+        physical=Range(low=0.0, low_inclusive=False),
+    ),
+)
+
+
+def _enough(least: int, source: Source) -> Constraint:
+    return _count(least, source, "annual_maxima")
+
+
+def _different(
+    source: Source, satisfied: tuple[float, ...] = (5.0, 5.0, 5.0, 6.0)
+) -> Constraint:
+    return _not_constant(source, "annual_maxima", satisfied)
+
+
+_POSITIVE_FOR_LOG_NORMAL: Final = Constraint(
+    name="positive_values",
+    cls="precondition",
+    check=lambda x: (
+        x.choice("distribution") != "log_normal"
+        or bool(np.min(x.array("annual_maxima")) > 0.0)
+    ),
+    text="min(x) > 0 for the log-normal (location 0)",
+    source=Source(
+        citation=_LMOM,
+        locator="pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0",
+        url=_LMOM_URL,
+    ),
+    satisfied={"distribution": "log_normal", "annual_maxima": [0.81, 2.0, 4.0, 8.0]},
+    violated={"distribution": "log_normal", "annual_maxima": [-0.81, 2.0, 4.0, 8.0]},
+    boundary={"distribution": "log_normal", "annual_maxima": [0.0, 2.0, 4.0, 8.0]},
+    boundary_holds=False,
+)
+
+
+def _scaled_parameters(tolerance: Tolerance) -> Scaling:
+    return Scaling(
+        name="unit_of_the_sample",
+        inputs={"annual_maxima": 1.0},
+        outputs={"loc": 1.0, "scale": 1.0},
+        tolerance=tolerance,
+    )
+
+
+_EXACT_PARAMETERS: Final = Tolerance(
+    abs=1e-300,
+    rel=4.5e-16,
+    reason="the estimators run on the sample divided by a power of two, so doubling "
+    "it changes no rounding: the shape is the same and loc and scale double exactly; "
+    "a scale below the normal floats keeps fewer bits",
+)
+_FIT_SAMPLES: Final = (_POLANA, _FLOODS11, (1.0, 2.0, 3.0, 4.0, 10.0))
+"""Samples of the oracles of the fits: Polana, eleven maxima and five integers."""
+_REVERSED_GUMBEL: Final = tuple(math.log(-math.log1p(-j / 21.0)) for j in range(1, 21))
+"""The quantiles of the reversed Gumbel distribution at the 20 plotting positions
+j / 21: least squares fits it with the Weibull shape growing without limit."""
+_LOG_EXP_PARAMETERS: Final = Tolerance(
+    abs=1e-300,
+    rel=2e-13,
+    reason="the searches run on the sample divided by a power of two, so doubling it "
+    "changes no rounding; the log-normal's closed form takes exp of the mean of ln x, "
+    "whose rounding of up to an ulp of |ln x| < 745 is a relative error of the scale "
+    "of up to 745 ulp",
+)
+
+
+def _distribution_l_moments(quantile: Callable[[float], float]) -> list[float]:
+    """λ1, λ2 and τ3 of a distribution from its quantile function, by quadrature."""
+    from scipy.integrate import quad
+
+    weights: tuple[Callable[[float], float], ...] = (
+        lambda f: 1.0,
+        lambda f: 2.0 * f - 1.0,
+        lambda f: 6.0 * f * f - 6.0 * f + 1.0,
+    )
+    lambdas = [
+        quad(lambda f, w=w: float(quantile(f)) * w(f), 0.0, 1.0, limit=200)[0]
+        for w in weights
+    ]
+    return [lambdas[0], lambdas[1], lambdas[2] / lambdas[1]]
+
+
+def _fitted_l_moments(run: Callable[..., Values]) -> None:
+    """Assert that the fitted distributions have the sample's L-moments (quadrature)."""
+    for name in _DISTRIBUTIONS:
+        for sample in _FIT_SAMPLES:
+            out = run(annual_maxima=list(sample), distribution=name)
+            fitted = _DISTRIBUTIONS[name](
+                out.real("shape"), loc=out.real("loc"), scale=out.real("scale")
+            )
+            count = 2 if name == "log_normal" else 3  # two parameters: l1 and l2
+            assert_within(
+                _distribution_l_moments(fitted.ppf)[:count],
+                list(_l_moments(np.array(sample)))[:count],
+                rel=3e-5 if name == "pearson3" else 1e-7,
+                abs=1e-9,
+                reason="lambda_r = integral of Q(F) P*_{r-1}(F) dF by adaptive "
+                "quadrature; Pearson III's alpha comes from Hosking's rational "
+                "approximations, within 3e-5 relative",
+            )
+
+
+def _fitted_moments(run: Callable[..., Values]) -> None:
+    """Assert that the fitted distributions have the sample's moments (scipy)."""
+    for name in _DISTRIBUTIONS:
+        for sample in _FIT_SAMPLES:
+            out = run(annual_maxima=list(sample), distribution=name)
+            with np.errstate(all="ignore"):
+                mean, variance, skewness = _DISTRIBUTIONS[name].stats(
+                    out.real("shape"),
+                    loc=out.real("loc"),
+                    scale=out.real("scale"),
+                    moments="mvs",
+                )
+            got = [float(mean), math.sqrt(float(variance)), float(skewness)]
+            count = 2 if name == "log_normal" else 3  # two parameters: mean and s
+            assert_within(
+                got[:count],
+                list(_moments(np.array(sample)))[:count],
+                rel=1e-9,
+                abs=1e-9,
+                reason="scipy's mean, variance and skewness of the fitted "
+                "distribution; the GEV shape solves its skewness by brentq (xtol "
+                "2e-12)",
+            )
+
+
+FIT_L_MOMENTS: Final = FormulaSpec(
+    name="fit_l_moments",
+    title="Parameters of a distribution of annual maxima by the method of L-moments",
+    function="hydrolog.statistics.frequency.fit_l_moments",
+    family="statistic",
+    equation=(
+        "the distribution whose L-moments are the sample's l1, l2 and t3: log-normal "
+        "(loc 0) s = 2 erfinv(l2 / l1), scale = l1 exp(-s**2 / 2); GEV: c solves t3 "
+        "= 2 (1 - 3**-c) / (1 - 2**-c) - 3, scale = l2 c / ((1 - 2**-c) Gamma(1 + "
+        "c)), loc = l1 - scale (1 - Gamma(1 + c)) / c; Pearson III: alpha = 4 / G**2 "
+        "from |t3| (rational approximations), G = 2 sign(t3) / sqrt(alpha), scale = "
+        "l2 sqrt(pi alpha) Gamma(alpha) / Gamma(alpha + 1/2), loc = l1; Weibull: the "
+        "GEV (c, xi, a) of (-l1, l2, -t3), shape = 1/c, loc = -xi - a/c, scale = a/c"
+    ),
+    latex=(
+        r"\tau_3 = \frac{2(1 - 3^{-c})}{1 - 2^{-c}} - 3,\quad \alpha = "
+        r"\frac{\lambda_2 c}{(1 - 2^{-c})\Gamma(1 + c)},\quad \xi = \lambda_1 - "
+        r"\alpha\frac{1 - \Gamma(1 + c)}{c};\qquad s = 2\,\mathrm{erf}^{-1}"
+        r"\frac{\lambda_2}{\lambda_1};\qquad \sigma = \lambda_2\sqrt{\pi a}\,"
+        r"\frac{\Gamma(a)}{\Gamma(a + 1/2)},\ G = \frac{2\,\mathrm{sign}\,\tau_3}"
+        r"{\sqrt{a}}"
+    ),
+    variables=(_maxima_variable(), _DISTRIBUTION_CHOICE),
+    outputs=_FITTED_OUTPUTS,
+    sources=(_LMOM_FORTRAN, _HOSKING_WALLIS, _HOSKING_1990),
+    constraints=(
+        _enough(
+            3,
+            Source(citation=_LMOM, locator="samlmu: t3 needs 3 values", url=_LMOM_URL),
+        ),
+        _different(
+            Source(
+                citation=_LMOM,
+                locator="pelgev, pelpe3: l2 must be positive",
+                url=_LMOM_URL,
+            )
+        ),
+        _POSITIVE_FOR_LOG_NORMAL,
+        Constraint(
+            name="l_moments_within_distribution",
+            cls="precondition",
+            check=lambda x: _within_l_moments(
+                x.choice("distribution"), x.array("annual_maxima")
+            ),
+            text="l2 < l1 (log-normal); -1 < t3 < 1 (GEV, Pearson III); -0.1699 < t3 "
+            "< 1 (Weibull)",
+            source=_LMOM_FORTRAN,
+            satisfied={"distribution": "weibull"},
+            violated={"distribution": "weibull", "annual_maxima": list(_NEGATIVE_SKEW)},
+        ),
+    ),
+    constants=_PE3_APPROXIMATION + _GUMBEL_L_CONSTANTS,
+    properties=Properties(
+        units="homogeneous",
+        scalings=(_scaled_parameters(_EXACT_PARAMETERS),),
+        limits=(
+            Limit(
+                name="l_moments_of_the_fit",
+                text="the fitted distribution has the sample's l1, l2 and t3 (l1 "
+                "and l2 for the log-normal), by quadrature of its quantile function",
+                check=_fitted_l_moments,
+            ),
+        ),
+    ),
+    validation="none: the estimator gives the distribution of the sample's "
+    "L-moments; Hosking and Wallis (1997) report its efficiency on simulated samples",
+    formula_version=1,
+    status="oracle only",
+    conventions=(
+        "the unbiased sample L-moments of sample_l_moments",
+        "scipy's parameters: the GEV shape c is Hosking's k and -xi of Coles; Pearson "
+        "III (loc, scale, shape) are its mean, standard deviation and skewness; the "
+        "log-normal has location 0",
+        "the GEV shape solved exactly by brentq in -1 < c <= 50 (lmom's pelgev uses "
+        "Donaldson's approximation, within 2e-7 of it); a t3 beyond the L-skewness "
+        "of an end of that bracket gives the end",
+        "Weibull as the GEV of the negated L-moments, as lmom's pelwei",
+    ),
+    assumptions=("the annual maxima are independent and identically distributed",),
+    traps={
+        "singular_at_bound": "constraint case l_moments_within_distribution-violated "
+        "and test_l_skewness_near_one_clamps_the_gev_shape: |t3| = 1 is refused, a "
+        "t3 within rounding of it gives the end of the bracket",
+        "unbounded_iteration": "test_l_skewness_near_one_clamps_the_gev_shape: "
+        "brentq runs in a bracket, its ends clamped (at most 100 iterations)",
+        "gap_propagation": "type case annual_maxima-nan_element: a gap is refused",
+        "moment_cancellation": "test_a_large_mean_shifts_the_fits: a mean of 1e9 "
+        "with the spread of the Polana maxima over 1000",
+    },
+    oracles=(
+        Oracle(
+            kind="algorithm",
+            description="the L-moments of the fitted distribution by quadrature of "
+            "its quantile function",
+            test="tests/unit/test_formulas_flood_frequency.py (limit "
+            "l_moments_of_the_fit)",
+        ),
+        Oracle(
+            kind="frozen",
+            description="lmom 3.3 pelgev, pelpe3, pelwei, pelln3 (bound 0) and "
+            "lmomco 2.5.8 pargev (useHosking=FALSE) on seven samples, R 4.5.3, "
+            "2026-11-18",
+            test="tests/oracles/frequency_lmom_r.csv",
+            conventions=(
+                "GEV (xi, alpha, k) of Hosking is scipy's (loc, scale, c)",
+                "Pearson III (mu, sigma, gamma) is scipy's (loc, scale, skew)",
+                "LN3 (zeta 0, mu, sigma) is scipy's lognorm(s = sigma, scale = "
+                "exp(mu))",
+                "Weibull (zeta, beta, delta) is scipy's weibull_min(delta, loc = "
+                "zeta, scale = beta)",
+            ),
+        ),
+    ),
+    base={"annual_maxima": list(_POLANA), "distribution": "gev"},
+)
+
+
+def fit_l_moments(
+    annual_maxima: NDArray[np.float64] | list[float] | tuple[float, ...],
+    distribution: str,
+) -> FittedParameters:
+    """Return the parameters of a distribution by L-moments, spec fit_l_moments.
+
+    Parameters
+    ----------
+    annual_maxima : array_like of float
+        The sample.
+    distribution : str
+        The distribution: ``"log_normal"``, ``"gev"``, Pearson III or ``"weibull"``.
+
+    Returns
+    -------
+    FittedParameters
+        Its ``(shape, loc, scale)`` of :mod:`scipy.stats`.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the inputs are refused by the spec (``precondition_failed`` names the
+        condition).
+    """
+    x = checked_inputs(
+        FIT_L_MOMENTS, annual_maxima=annual_maxima, distribution=distribution
+    )
+    found = _by_l_moments(x.choice("distribution"), x.array("annual_maxima"))
+    return _fitted(FIT_L_MOMENTS, found)
+
+
+FIT_MOMENTS: Final = FormulaSpec(
+    name="fit_moments",
+    title="Parameters of a distribution of annual maxima by the method of moments",
+    function="hydrolog.statistics.frequency.fit_moments",
+    family="statistic",
+    equation=(
+        "the distribution whose mean, standard deviation and skewness are the "
+        "sample's mean, s and G: log-normal (loc 0) s_l = sqrt(ln(1 + Cv**2)), scale "
+        "= mean / sqrt(1 + Cv**2), Cv = s / mean; Pearson III (G, mean, s); GEV: c "
+        "solves G(c) = G, G(c) the skewness of the GEV, scale = s / sd(c), loc = "
+        "mean - scale m(c), m(c) and sd(c) the mean and standard deviation of the "
+        "GEV(c, 0, 1); Weibull: the GEV (c, xi, a) of (-mean, s, -G), shape = 1/c, "
+        "loc = -xi - a/c, scale = a/c"
+    ),
+    latex=(
+        r"\sigma_l = \sqrt{\ln(1 + C_v^2)},\ e^{\mu} = \frac{\bar{x}}{\sqrt{1 + "
+        r"C_v^2}};\qquad (\gamma, \mu, \sigma) = (G, \bar{x}, s);\qquad "
+        r"\gamma_{GEV}(c) = G,\ \alpha = \frac{s}{\sigma_{GEV}(c)},\ \xi = \bar{x} "
+        r"- \alpha\,\mu_{GEV}(c)"
+    ),
+    variables=(_maxima_variable(), _DISTRIBUTION_CHOICE),
+    outputs=_FITTED_OUTPUTS,
+    sources=(
+        Source(
+            citation=_B17B,
+            locator="pp. 9-10 and appendix 12, example 1: the log-Pearson type III "
+            "distribution of the mean, standard deviation and skewness of the "
+            "logarithms (eqs. 2, 3a, 4a)",
+            url=_B17B_URL,
+        ),
+        Source(
+            citation=_WMO_168,
+            locator="sect. 5.5 and table II.5.2, pp. II.5-5 to II.5-12: the method "
+            "of moments and the moments of the GEV, log-normal, Pearson type III and "
+            "Weibull distributions",
+            url=_WMO_168_URL,
+        ),
+        _SCIPY_STATS,
+    ),
+    constraints=(
+        _enough(
+            3,
+            Source(
+                citation=_B17B,
+                locator="eq. 4a: the skewness divides by (N - 1)(N - 2)",
+                url=_B17B_URL,
+            ),
+        ),
+        _different(
+            Source(
+                citation=_B17B,
+                locator="eq. 4a: the skewness divides by S cubed, 0 for equal values",
+                url=_B17B_URL,
+            )
+        ),
+        _POSITIVE_FOR_LOG_NORMAL,
+        Constraint(
+            name="skewness_within_distribution",
+            cls="precondition",
+            check=lambda x: _within_moments(
+                x.choice("distribution"), x.array("annual_maxima")
+            ),
+            text="G > -1.1395 for the Weibull distribution, the skewness of the "
+            "reversed Gumbel distribution",
+            source=_GUMBEL_CONSTANTS[0].source,
+            satisfied={"distribution": "weibull"},
+            violated={"distribution": "weibull", "annual_maxima": list(_NEGATIVE_SKEW)},
+        ),
+    ),
+    constants=_GUMBEL_CONSTANTS,
+    properties=Properties(
+        units="homogeneous",
+        scalings=(_scaled_parameters(_EXACT_PARAMETERS),),
+        limits=(
+            Limit(
+                name="moments_of_the_fit",
+                text="the fitted distribution has the sample's mean, standard "
+                "deviation and skewness (the mean and s for the log-normal), by "
+                "scipy's stats",
+                check=_fitted_moments,
+            ),
+        ),
+    ),
+    validation="none: the estimator gives the distribution of the sample's moments",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "the sample moments of sample_moments: s with the divisor n - 1, G the "
+        "adjusted Fisher-Pearson coefficient",
+        "the log-normal of location 0 from the mean and Cv of the values, not of "
+        "their logarithms",
+        "scipy's parameters: the GEV shape c is Hosking's k and -xi of Coles; Pearson "
+        "III (loc, scale, shape) are its mean, standard deviation and skewness",
+        "the GEV shape solved by brentq in -1/3 < c <= 50 (the skewness exists above "
+        "-1/3); Weibull as the GEV of the negated moments, its c in 0 < c <= 50",
+    ),
+    assumptions=("the annual maxima are independent and identically distributed",),
+    traps={
+        "singular_at_bound": "constraint case skewness_within_distribution-violated: "
+        "the Weibull shape 1/c grows without limit as G falls to -1.1395",
+        "unbounded_iteration": "test_a_skewness_beyond_the_bracket_clamps: brentq "
+        "runs in a bracket, its ends clamped (at most 100 iterations)",
+        "gap_propagation": "type case annual_maxima-nan_element: a gap is refused",
+        "moment_cancellation": "test_a_large_mean_shifts_the_fits: a mean of 1e9 "
+        "with the spread of the Polana maxima over 1000",
+    },
+    reference_cases=("tests/fixtures/formulas/flood-frequency-cases.json",),
+    oracles=(
+        Oracle(
+            kind="algorithm",
+            description="the mean, variance and skewness of the fitted distribution "
+            "by scipy.stats",
+            test="tests/unit/test_formulas_flood_frequency.py (limit "
+            "moments_of_the_fit)",
+            conventions=(
+                "scipy's skewness of the distribution is the population skewness, "
+                "set equal to the sample's G",
+            ),
+        ),
+    ),
+    base={"annual_maxima": list(_POLANA), "distribution": "gev"},
+)
+
+
+def fit_moments(
+    annual_maxima: NDArray[np.float64] | list[float] | tuple[float, ...],
+    distribution: str,
+) -> FittedParameters:
+    """Return the parameters of a distribution by moments, spec fit_moments.
+
+    Parameters
+    ----------
+    annual_maxima : array_like of float
+        The sample.
+    distribution : str
+        The distribution: ``"log_normal"``, ``"gev"``, Pearson III or ``"weibull"``.
+
+    Returns
+    -------
+    FittedParameters
+        Its ``(shape, loc, scale)`` of :mod:`scipy.stats`.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the inputs are refused by the spec (``precondition_failed`` names the
+        condition).
+    """
+    x = checked_inputs(
+        FIT_MOMENTS, annual_maxima=annual_maxima, distribution=distribution
+    )
+    found = _by_moments(x.choice("distribution"), x.array("annual_maxima"))
+    return _fitted(FIT_MOMENTS, found)
+
+
+def _likelihood_maximum(run: Callable[..., Values]) -> None:
+    """No point near the estimate is more likely (a local maximum)."""
+    sample = np.array(_POLANA)
+    for name in _DISTRIBUTIONS:
+        out = run(annual_maxima=list(_POLANA), distribution=name)
+        best = [out.real("shape"), out.real("loc"), out.real("scale")]
+        top = math.fsum(_DISTRIBUTIONS[name].logpdf(sample, *best))
+        for index in (0, 1, 2) if name != "log_normal" else (0, 2):
+            for step in (-1e-4, 1e-4):
+                moved = list(best)
+                moved[index] += step * max(abs(best[index]), best[2])
+                there = math.fsum(_DISTRIBUTIONS[name].logpdf(sample, *moved))
+                assert_within(
+                    max(there - top, 0.0),
+                    0.0,
+                    abs=1e-9,
+                    reason="the log-likelihood a step of 1e-4 away is not higher, "
+                    "within the gain at which the search settles",
+                )
+
+
+FIT_MAXIMUM_LIKELIHOOD: Final = FormulaSpec(
+    name="fit_maximum_likelihood",
+    title="Parameters of a distribution of annual maxima by maximum likelihood",
+    function="hydrolog.statistics.frequency.fit_maximum_likelihood",
+    family="statistic",
+    equation=(
+        "the parameters that maximise the log-likelihood sum_i ln f(x_i; shape, loc, "
+        "scale) of the distribution's density f; for the log-normal of location 0 "
+        "in closed form: ln scale = mean(ln x), s = sqrt(mean((ln x - ln scale)**2))"
+    ),
+    latex=(
+        r"(\hat{k}, \hat{\xi}, \hat{\alpha}) = \arg\max \sum_i \ln f(x_i; k, \xi, "
+        r"\alpha);\qquad \hat{\mu} = \frac{1}{n}\sum_i \ln x_i,\ \hat{s}^2 = "
+        r"\frac{1}{n}\sum_i (\ln x_i - \hat{\mu})^2"
+    ),
+    variables=(_maxima_variable(), _DISTRIBUTION_CHOICE),
+    outputs=_FITTED_OUTPUTS,
+    sources=(
+        Source(
+            citation="Coles, S. (2001). An Introduction to Statistical Modeling of "
+            "Extreme Values. Springer",
+            locator="sect. 3.3.2 (the likelihood of the GEV) and 3.4.1 (Port Pirie)",
+            access="author-provided",
+        ),
+        Source(
+            citation=_SMITH_1985,
+            locator="the likelihood of a three-parameter distribution has no "
+            "maximum where its density is infinite at the bound of its support",
+            access="author-provided",
+        ),
+        Source(
+            citation=_WMO_168,
+            locator="sect. 5.5, p. II.5-11: the method of maximum likelihood; sect. "
+            "5.3.2.3: the Weibull density goes to infinity at its bound for k < 1",
+            url=_WMO_168_URL,
+        ),
+    ),
+    constraints=(
+        Constraint(
+            name="enough_values",
+            cls="precondition",
+            check=lambda x: (
+                x.array("annual_maxima").size
+                > _PARAMETER_COUNTS[x.choice("distribution")]
+            ),
+            text="n > p, the number of parameters: n >= 3 for the log-normal, n >= 4 "
+            "for the others",
+            source=Source(
+                citation=_SMITH_1985,
+                locator="n values fit n parameters exactly, where the likelihood "
+                "has no maximum",
+                access="author-provided",
+            ),
+            satisfied={"annual_maxima": [1.0, 2.0, 4.0, 8.0, 16.0]},
+            violated={"annual_maxima": [1.0, 2.0, 4.0]},
+            boundary={"annual_maxima": [1.0, 2.0, 4.0, 8.0]},
+        ),
+        _different(
+            Source(
+                citation=_WMO_168,
+                locator="sect. 5.5: the likelihood of values all equal grows without "
+                "limit as the scale falls to 0",
+                url=_WMO_168_URL,
+            ),
+            # three values tied at the smallest have no maximum of the likelihood
+            satisfied=(5.0, 6.0, 6.0, 7.0),
+        ),
+        _POSITIVE_FOR_LOG_NORMAL,
+        Constraint(
+            name="likelihood_has_a_maximum",
+            cls="precondition",
+            check=lambda x: (
+                x.choice("distribution") == "log_normal"
+                or _maximum_likelihood(
+                    x.choice("distribution"), x.array("annual_maxima")
+                ).parameters
+                is not None
+            ),
+            text="the likelihood has a maximum inside the shapes searched: the "
+            "search ends neither within 1e-3 of the shapes whose density is "
+            "infinite at a bound of the support (GEV c >= 1, Pearson III |G| >= 2, "
+            "Weibull shape <= 1), nor of GEV c = -1 (no mean) or Weibull shape 50, "
+            "nor at a scale of a millionth of the standard deviation; a GEV has at "
+            "most half the values tied at the smallest; and the search settles",
+            source=Source(
+                citation=_SMITH_1985,
+                locator="the bound placed at the closest value makes the likelihood "
+                "grow without limit",
+                access="author-provided",
+            ),
+            satisfied={"distribution": "gev"},
+            violated={"distribution": "pearson3", "annual_maxima": list(_FLOODS11)},
+        ),
+    ),
+    properties=Properties(
+        units="homogeneous",
+        scalings=(_scaled_parameters(_LOG_EXP_PARAMETERS),),
+        limits=(
+            Limit(
+                name="local_maximum",
+                text="no point a step of 1e-4 from the estimate is more likely",
+                check=_likelihood_maximum,
+            ),
+        ),
+    ),
+    validation="none: the estimator gives the most likely distribution of the sample",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "scipy's densities and parameters: the GEV shape c is -xi of Coles (evd, "
+        "extRemes, ismev)",
+        "the search runs on the standardised sample (x / 2**e - mean) / sd, from "
+        "the L-moments' estimate; Nelder-Mead (xatol 1e-10, fatol 1e-12) is run "
+        "again from its end until a run gains at most 1e-9 of log-likelihood, at "
+        "most 21 runs",
+        "the log-normal of location 0 in closed form (scipy's lognorm.fit with floc=0)",
+    ),
+    assumptions=("the annual maxima are independent and identically distributed",),
+    traps={
+        "singular_at_bound": "constraint case likelihood_has_a_maximum-violated: "
+        "the density infinite at a bound placed on a value",
+        "unbounded_iteration": "test_a_search_that_does_not_settle_is_refused: a "
+        "search that does not settle in its bounded count of runs fails the "
+        "precondition likelihood_has_a_maximum",
+        "gap_propagation": "type case annual_maxima-nan_element: a gap is refused",
+        "moment_cancellation": "test_a_large_mean_shifts_the_fits: a mean of 1e9 "
+        "with the spread of the Polana maxima over 1000",
+    },
+    reference_cases=("tests/fixtures/formulas/flood-frequency-cases.json",),
+    oracles=(
+        Oracle(
+            kind="frozen",
+            description="evd 2.3.7.1 fgev, extRemes 2.2.1 fevd, ismev 1.43 gev.fit "
+            "and lmomco 2.5.8 mle2par on seven samples, R 4.5.3, 2026-11-18: "
+            "Hydrolog's log-likelihood is not lower",
+            test="tests/oracles/frequency_ml_r.csv (tests/unit/"
+            "test_maximum_likelihood.py)",
+            conventions=(
+                "evd, extRemes and ismev give Coles's xi = -c",
+                "lmomco's Pearson III (mu, sigma, gamma) and Weibull (zeta, beta, "
+                "delta) are written as scipy's parameters",
+            ),
+        ),
+    ),
+    base={"annual_maxima": list(_POLANA), "distribution": "gev"},
+)
+
+
+def fit_maximum_likelihood(
+    annual_maxima: NDArray[np.float64] | list[float] | tuple[float, ...],
+    distribution: str,
+) -> FittedParameters:
+    """Return the maximum-likelihood parameters, spec fit_maximum_likelihood.
+
+    Parameters
+    ----------
+    annual_maxima : array_like of float
+        The sample.
+    distribution : str
+        The distribution: ``"log_normal"``, ``"gev"``, Pearson III or ``"weibull"``.
+
+    Returns
+    -------
+    FittedParameters
+        Its ``(shape, loc, scale)`` of :mod:`scipy.stats`.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the inputs are refused by the spec (``precondition_failed`` names the
+        condition, ``likelihood_has_a_maximum`` a likelihood without a maximum).
+    CalculationError
+        If an output is not finite (a defect: the search's preconditions hold).
+    """
+    x = checked_inputs(
+        FIT_MAXIMUM_LIKELIHOOD, annual_maxima=annual_maxima, distribution=distribution
+    )
+    name = x.choice("distribution")
+    data = x.array("annual_maxima")
+    if name == "log_normal":
+        shape, _, scale = lognorm.fit(data, floc=0)
+        return _fitted(FIT_MAXIMUM_LIKELIHOOD, (float(shape), 0.0, float(scale)))
+    found = _settled(FIT_MAXIMUM_LIKELIHOOD, _maximum_likelihood(name, data))
+    return _fitted(FIT_MAXIMUM_LIKELIHOOD, found)
+
+
+def _squares_minimum(run: Callable[..., Values]) -> None:
+    """No point near the estimate has a smaller sum of squares (a local minimum)."""
+    sample = np.sort(np.array(_POLANA))
+    probabilities = np.arange(1, sample.size + 1) / (sample.size + 1)
+    for name in _DISTRIBUTIONS:
+        out = run(annual_maxima=list(_POLANA), distribution=name)
+        best = [out.real("shape"), out.real("loc"), out.real("scale")]
+        quantiles = _DISTRIBUTIONS[name].ppf(probabilities, *best)
+        least = math.fsum((sample - quantiles) ** 2)
+        for index in (0, 1, 2) if name != "log_normal" else (0, 2):
+            for step in (-1e-4, 1e-4):
+                moved = list(best)
+                moved[index] += step * max(abs(best[index]), best[2])
+                there = _DISTRIBUTIONS[name].ppf(probabilities, *moved)
+                assert_within(
+                    max(least - math.fsum((sample - there) ** 2), 0.0),
+                    0.0,
+                    abs=1e-9 * least,
+                    reason="the sum of squares a step of 1e-4 away is not smaller, "
+                    "within the gain at which the search settles",
+                )
+
+
+FIT_LEAST_SQUARES: Final = FormulaSpec(
+    name="fit_least_squares",
+    title="Parameters of a distribution of annual maxima by least squares on the "
+    "plotting positions",
+    function="hydrolog.statistics.frequency.fit_least_squares",
+    family="statistic",
+    equation=(
+        "the parameters that minimise sum_j (x(j) - Q(j / (n + 1)))**2 over the "
+        "ascending sample x(1) <= ... <= x(n), Q the quantile function of the "
+        "distribution: the quantiles at the Weibull plotting positions"
+    ),
+    latex=(
+        r"(\hat{k}, \hat{\xi}, \hat{\alpha}) = \arg\min \sum_{j=1}^{n}\left(x_{(j)} "
+        r"- Q\left(\frac{j}{n + 1}; k, \xi, \alpha\right)\right)^2"
+    ),
+    variables=(_maxima_variable(), _DISTRIBUTION_CHOICE),
+    outputs=_FITTED_OUTPUTS,
+    sources=(
+        Source(
+            citation=_WMO_168,
+            locator="sect. 5.6.1, p. II.5-14: the Weibull plotting position i / (n + "
+            "1) of the graphical fit of a distribution to the ordered sample",
+            url=_WMO_168_URL,
+        ),
+        Source(
+            citation=_KZGW,
+            locator="eq. 3.7: the empirical probability m / (N + 1) of the ordered "
+            "annual maxima",
+            url=_KZGW_URL,
+        ),
+    ),
+    constraints=(
+        _enough(
+            3,
+            Source(
+                citation=_B17B,
+                locator="eq. 4a: the moments of the start divide by (N - 1)(N - 2)",
+                url=_B17B_URL,
+            ),
+        ),
+        _different(
+            Source(
+                citation=_WMO_168,
+                locator="sect. 5.6.1: values all equal have no spread to fit",
+                url=_WMO_168_URL,
+            )
+        ),
+        _POSITIVE_FOR_LOG_NORMAL,
+        Constraint(
+            name="skewness_within_distribution",
+            cls="precondition",
+            check=lambda x: _within_moments(
+                x.choice("distribution"), x.array("annual_maxima")
+            ),
+            text="G > -1.1395 for the Weibull distribution: the search starts from "
+            "the moments' estimate",
+            source=_GUMBEL_CONSTANTS[0].source,
+            satisfied={"distribution": "weibull"},
+            violated={"distribution": "weibull", "annual_maxima": list(_NEGATIVE_SKEW)},
+        ),
+        Constraint(
+            name="squares_have_a_minimum",
+            cls="precondition",
+            check=lambda x: (
+                _least_squares(
+                    x.choice("distribution"), x.array("annual_maxima")
+                ).parameters
+                is not None
+            ),
+            text="the sum of squares has a minimum inside the shapes searched "
+            "(log-normal s < 5, GEV -1 < c < 50, Pearson III |G| < 9, Weibull shape "
+            "< 50) on which the search settles",
+            source=Source(
+                citation=_B17B,
+                locator="appendix 3: the frequency factors of Pearson type III, "
+                "tabulated for skews of -9 to 9",
+                url=_B17B_URL,
+            ),
+            satisfied={"distribution": "weibull"},
+            violated={
+                "distribution": "weibull",
+                "annual_maxima": list(_REVERSED_GUMBEL),
+            },
+        ),
+    ),
+    constants=_GUMBEL_CONSTANTS,
+    properties=Properties(
+        units="homogeneous",
+        scalings=(_scaled_parameters(_EXACT_PARAMETERS),),
+        limits=(
+            Limit(
+                name="local_minimum",
+                text="no point a step of 1e-4 from the estimate has a smaller sum of "
+                "squares",
+                check=_squares_minimum,
+            ),
+        ),
+    ),
+    validation="none: the estimator gives the distribution closest to the plotted "
+    "sample",
+    formula_version=1,
+    status="oracle only",
+    conventions=(
+        "the Weibull plotting positions j / (n + 1) of the ascending sample, "
+        "unweighted residuals in the unit of the sample",
+        "scipy's parameters, as fit_moments",
+        "the search runs on the standardised sample (the log-normal, of location 0, "
+        "only divided by its standard deviation) from the moments' estimate; "
+        "Nelder-Mead (xatol 1e-10, fatol 1e-12) is run again from its end until a "
+        "run gains at most 1e-9, at most 21 runs",
+    ),
+    assumptions=("the annual maxima are independent and identically distributed",),
+    traps={
+        "singular_at_bound": "constraint case skewness_within_distribution-violated: "
+        "the Weibull start of a skewness below the reversed Gumbel's",
+        "unbounded_iteration": "test_a_search_that_does_not_settle_is_refused: a "
+        "search that does not settle in its bounded count of runs fails the "
+        "precondition squares_have_a_minimum",
+        "gap_propagation": "type case annual_maxima-nan_element: a gap is refused",
+        "moment_cancellation": "test_a_large_mean_shifts_the_fits: a mean of 1e9 "
+        "with the spread of the Polana maxima over 1000",
+    },
+    oracles=(
+        Oracle(
+            kind="algorithm",
+            description="the sum of squares at points a step of 1e-4 from the "
+            "estimate, by math.fsum",
+            test="tests/unit/test_formulas_flood_frequency.py (limit local_minimum)",
+        ),
+        Oracle(
+            kind="algorithm",
+            description="Powell's method from the estimate finds no smaller sum of "
+            "squares",
+            test="tests/unit/test_formulas_flood_frequency.py "
+            "(test_powell_finds_no_smaller_squares)",
+        ),
+    ),
+    base={"annual_maxima": list(_POLANA), "distribution": "gev"},
+)
+
+
+def fit_least_squares(
+    annual_maxima: NDArray[np.float64] | list[float] | tuple[float, ...],
+    distribution: str,
+) -> FittedParameters:
+    """Return the least-squares parameters, spec fit_least_squares.
+
+    Parameters
+    ----------
+    annual_maxima : array_like of float
+        The sample.
+    distribution : str
+        The distribution: ``"log_normal"``, ``"gev"``, Pearson III or ``"weibull"``.
+
+    Returns
+    -------
+    FittedParameters
+        Its ``(shape, loc, scale)`` of :mod:`scipy.stats`.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the inputs are refused by the spec (``precondition_failed`` names the
+        condition).
+    CalculationError
+        If an output is not finite (a defect: the search's preconditions hold).
+    """
+    x = checked_inputs(
+        FIT_LEAST_SQUARES, annual_maxima=annual_maxima, distribution=distribution
+    )
+    search = _least_squares(x.choice("distribution"), x.array("annual_maxima"))
+    return _fitted(FIT_LEAST_SQUARES, _settled(FIT_LEAST_SQUARES, search))
 
 
 SPECS: Final = (
@@ -2013,5 +3051,9 @@ SPECS: Final = (
     LOG_NORMAL_QUANTILES,
     PEARSON3_QUANTILES,
     WEIBULL_QUANTILES,
+    FIT_L_MOMENTS,
+    FIT_MOMENTS,
+    FIT_MAXIMUM_LIKELIHOOD,
+    FIT_LEAST_SQUARES,
 )
 """The Tier A formulas of the module, in the order of ``docs/FORMULAS.md``."""

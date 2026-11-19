@@ -1,0 +1,330 @@
+schema = "nogat-formula-card/1"
+name = "fit_l_moments"
+title = "Parameters of a distribution of annual maxima by the method of L-moments"
+function = "hydrolog.statistics.frequency.fit_l_moments"
+family = "statistic"
+formula_version = 1
+status = "oracle only"
+equation = "the distribution whose L-moments are the sample's l1, l2 and t3: log-normal (loc 0) s = 2 erfinv(l2 / l1), scale = l1 exp(-s**2 / 2); GEV: c solves t3 = 2 (1 - 3**-c) / (1 - 2**-c) - 3, scale = l2 c / ((1 - 2**-c) Gamma(1 + c)), loc = l1 - scale (1 - Gamma(1 + c)) / c; Pearson III: alpha = 4 / G**2 from |t3| (rational approximations), G = 2 sign(t3) / sqrt(alpha), scale = l2 sqrt(pi alpha) Gamma(alpha) / Gamma(alpha + 1/2), loc = l1; Weibull: the GEV (c, xi, a) of (-l1, l2, -t3), shape = 1/c, loc = -xi - a/c, scale = a/c"
+latex = "\\tau_3 = \\frac{2(1 - 3^{-c})}{1 - 2^{-c}} - 3,\\quad \\alpha = \\frac{\\lambda_2 c}{(1 - 2^{-c})\\Gamma(1 + c)},\\quad \\xi = \\lambda_1 - \\alpha\\frac{1 - \\Gamma(1 + c)}{c};\\qquad s = 2\\,\\mathrm{erf}^{-1}\\frac{\\lambda_2}{\\lambda_1};\\qquad \\sigma = \\lambda_2\\sqrt{\\pi a}\\,\\frac{\\Gamma(a)}{\\Gamma(a + 1/2)},\\ G = \\frac{2\\,\\mathrm{sign}\\,\\tau_3}{\\sqrt{a}}"
+validation = "none: the estimator gives the distribution of the sample's L-moments; Hosking and Wallis (1997) report its efficiency on simulated samples"
+conventions = ["the unbiased sample L-moments of sample_l_moments", "scipy's parameters: the GEV shape c is Hosking's k and -xi of Coles; Pearson III (loc, scale, shape) are its mean, standard deviation and skewness; the log-normal has location 0", "the GEV shape solved exactly by brentq in -1 < c <= 50 (lmom's pelgev uses Donaldson's approximation, within 2e-7 of it); a t3 beyond the L-skewness of an end of that bracket gives the end", "Weibull as the GEV of the negated L-moments, as lmom's pelwei"]
+assumptions = ["the annual maxima are independent and identically distributed"]
+notices = []
+reference_cases = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_sample"
+
+[properties.scalings.inputs]
+annual_maxima = 1.0
+
+[properties.scalings.outputs]
+loc = 1.0
+scale = 1.0
+
+[properties.scalings.tolerance]
+reason = "the estimators run on the sample divided by a power of two, so doubling it changes no rounding: the shape is the same and loc and scale double exactly; a scale below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[properties.limits]]
+name = "l_moments_of_the_fit"
+text = "the fitted distribution has the sample's l1, l2 and t3 (l1 and l2 for the log-normal), by quadrature of its quantile function"
+
+[[sources]]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from |t3| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments"
+url = "https://cran.r-project.org/package=lmom"
+
+[[sources]]
+citation = "Hosking, J.R.M. and Wallis, J.R. (1997). Regional Frequency Analysis: An Approach Based on L-Moments. Cambridge University Press"
+access = "author-provided"
+locator = "appendix A.5 (GEV), A.8 (log-normal), A.9 (Pearson type III, the rational approximations of alpha from |t3|)"
+
+[[sources]]
+citation = "Hosking, J.R.M. (1990). L-moments: analysis and estimation of distributions using linear combinations of order statistics. Journal of the Royal Statistical Society, Series B 52(1), 105-124"
+access = "author-provided"
+locator = "sect. 2: probability-weighted moments and the sample L-moments of their unbiased estimators"
+
+[[variables]]
+name = "annual_maxima"
+symbol = "x_i"
+unit = "m3/s"
+kind = "real_array"
+description = "The sample: annual maxima, or any sample of the distribution."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0"
+
+[variables.typical]
+low = 0.81
+low_inclusive = true
+high = 111.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "distribution"
+symbol = "F"
+unit = "-"
+kind = "choice"
+description = "The distribution: the log-normal of location 0, the GEV, Pearson type III or the three-parameter Weibull distribution of scipy.stats."
+choices = ["log_normal", "gev", "pearson3", "weibull"]
+
+[[constraints]]
+name = "enough_values"
+class = "precondition"
+text = "n >= 3"
+
+[constraints.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "samlmu: t3 needs 3 values"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constraints]]
+name = "values_not_all_equal"
+class = "precondition"
+text = "min(x) < max(x)"
+
+[constraints.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "pelgev, pelpe3: l2 must be positive"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constraints]]
+name = "positive_values"
+class = "precondition"
+text = "min(x) > 0 for the log-normal (location 0)"
+
+[constraints.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constraints]]
+name = "l_moments_within_distribution"
+class = "precondition"
+text = "l2 < l1 (log-normal); -1 < t3 < 1 (GEV, Pearson III); -0.1699 < t3 < 1 (Weibull)"
+
+[constraints.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from |t3| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constants]]
+name = "a1"
+value = 0.2906
+unit = "-"
+symbol = "A_1"
+
+[constants.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from |t3| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constants]]
+name = "a2"
+value = 0.1882
+unit = "-"
+symbol = "A_2"
+
+[constants.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from |t3| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constants]]
+name = "a3"
+value = 0.0442
+unit = "-"
+symbol = "A_3"
+
+[constants.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from |t3| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constants]]
+name = "b1"
+value = 0.36067
+unit = "-"
+symbol = "B_1"
+
+[constants.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from |t3| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constants]]
+name = "b2"
+value = -0.59567
+unit = "-"
+symbol = "B_2"
+
+[constants.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from |t3| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constants]]
+name = "b3"
+value = 0.25361
+unit = "-"
+symbol = "B_3"
+
+[constants.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from |t3| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constants]]
+name = "b4"
+value = -2.78861
+unit = "-"
+symbol = "C_1"
+
+[constants.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from |t3| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constants]]
+name = "b5"
+value = 2.56096
+unit = "-"
+symbol = "C_2"
+
+[constants.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from |t3| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constants]]
+name = "b6"
+value = -0.77045
+unit = "-"
+symbol = "C_3"
+
+[constants.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from |t3| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constants]]
+name = "normal_below"
+value = 1e-06
+unit = "-"
+symbol = "\\tau_{3,0}"
+
+[constants.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from |t3| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constants]]
+name = "gumbel_l_skewness"
+value = 0.1699250014423126
+unit = "-"
+symbol = "\\tau_{3,G}"
+
+[constants.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "pelwei: the GEV of the negated L-moments, which needs -t3 below the Gumbel's L-skewness 2 ln 3 / ln 2 - 3 = 0.1699"
+url = "https://cran.r-project.org/package=lmom"
+
+[[outputs]]
+name = "shape"
+unit = "-"
+kind = "real"
+symbol = "k"
+description = "Shape: s of the log-normal, c of the GEV (scipy's sign, k of Hosking, -xi of Coles), the skewness of Pearson III, the Weibull shape."
+
+[outputs.physical]
+
+[[outputs]]
+name = "loc"
+unit = "m3/s"
+kind = "real"
+symbol = "\\xi"
+description = "Location: 0 for the log-normal, the mean of Pearson III, the lower bound of Weibull."
+
+[outputs.physical]
+
+[[outputs]]
+name = "scale"
+unit = "m3/s"
+kind = "real"
+symbol = "\\alpha"
+description = "Scale; one that would underflow is the smallest float64 (its boundary tolerance)."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "constraint case l_moments_within_distribution-violated and test_l_skewness_near_one_clamps_the_gev_shape: |t3| = 1 is refused, a t3 within rounding of it gives the end of the bracket"
+
+[[traps]]
+name = "unbounded_iteration"
+description = "An iteration without a bounded count (root finding, fit)."
+test = "test_l_skewness_near_one_clamps_the_gev_shape: brentq runs in a bracket, its ends clamped (at most 100 iterations)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case annual_maxima-nan_element: a gap is refused"
+
+[[traps]]
+name = "moment_cancellation"
+description = "Cancellation in moments computed as E[x^2] - E[x]^2."
+test = "test_a_large_mean_shifts_the_fits: a mean of 1e9 with the spread of the Polana maxima over 1000"
+
+[[oracles]]
+kind = "algorithm"
+description = "the L-moments of the fitted distribution by quadrature of its quantile function"
+test = "tests/unit/test_formulas_flood_frequency.py (limit l_moments_of_the_fit)"
+conventions = []
+
+[[oracles]]
+kind = "frozen"
+description = "lmom 3.3 pelgev, pelpe3, pelwei, pelln3 (bound 0) and lmomco 2.5.8 pargev (useHosking=FALSE) on seven samples, R 4.5.3, 2026-11-18"
+test = "tests/oracles/frequency_lmom_r.csv"
+conventions = ["GEV (xi, alpha, k) of Hosking is scipy's (loc, scale, c)", "Pearson III (mu, sigma, gamma) is scipy's (loc, scale, skew)", "LN3 (zeta 0, mu, sigma) is scipy's lognorm(s = sigma, scale = exp(mu))", "Weibull (zeta, beta, delta) is scipy's weibull_min(delta, loc = zeta, scale = beta)"]

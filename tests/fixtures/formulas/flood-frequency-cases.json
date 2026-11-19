@@ -839,5 +839,268 @@
    "access": "author-provided"
   },
   "status": "second_source"
+ },
+ {
+  "formula": "fit_moments",
+  "case_id": "b17b-ex1-fishkill",
+  "source": {
+   "citation": "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia",
+   "url": "https://pubs.usgs.gov/unnumbered/70275162/report.pdf",
+   "access": "open",
+   "locator": "appendix 12, example 1, table 12-2 and eqs. 12-1 to 12-3, pp. 12-5 to 12-6 (Fishkill Creek at Beacon, NY, 1945-1968)"
+  },
+  "inputs": {
+   "annual_maxima": [
+    3.35984,
+    3.16732,
+    3.34635,
+    3.47276,
+    3.48001,
+    3.08279,
+    3.3962,
+    3.50106,
+    3.50786,
+    3.24551,
+    3.94448,
+    3.91803,
+    3.11727,
+    3.39794,
+    3.29226,
+    3.33041,
+    3.63749,
+    3.48572,
+    3.25042,
+    3.13988,
+    2.99123,
+    3.01703,
+    3.19866,
+    3.55991
+   ],
+   "distribution": "pearson3"
+  },
+  "expected": {
+   "loc": 3.3684,
+   "scale": 0.2456,
+   "shape": 0.73
+  },
+  "printed_precision": {
+   "annual_maxima": 1e-05,
+   "loc": 0.0001,
+   "scale": 0.0001,
+   "shape": 0.0001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "X**2 and X**3 of each logarithm printed to 5 decimals and summed (table 12-2); S and G from the sums (eqs. 12-2, 12-3): |dS| <= N 5e-6 / (2 (N - 1) S) = 1.06e-05, |dG| <= (N**2 N 5e-6 + 3 N sum(X) N 5e-6) / (N (N - 1)(N - 2) S**3) + 3 G dS / S = 0.00436",
+    "effect": {
+     "scale": 1.062e-05,
+     "shape": 0.004361
+    }
+   },
+   {
+    "step": "S**3 carried as .014816 in eq. 12-3 (exact S**3 of the printed logarithms 0.0148169)",
+    "effect": {
+     "shape": 4.235e-05
+    }
+   }
+  ],
+  "conventions": [
+   "the values are the base-10 logarithms of the annual peaks as table 12-2 prints them (5 decimals); the peaks of table 12-1 give the same logarithms",
+   "S with the divisor N - 1 (eq. 3b); G of eq. 4b, the adjusted Fisher-Pearson coefficient",
+   "the log-Pearson type III distribution of the example is Pearson III fitted by moments to the logarithms: (G, mean, S) are scipy's pearson3 (shape, loc, scale)"
+  ],
+  "second_source": {
+   "citation": "USGS National Water Information System, peak streamflow of site 01373500 (Fishkill Creek at Beacon, NY)",
+   "locator": "the 24 annual peaks of 1945-1968, as in table 12-1",
+   "url": "https://nwis.waterdata.usgs.gov/nwis/peak?site_no=01373500&agency_cd=USGS&format=rdb",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "fit_moments",
+  "case_id": "b17b-ex2-floyd",
+  "source": {
+   "citation": "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia",
+   "url": "https://pubs.usgs.gov/unnumbered/70275162/report.pdf",
+   "access": "open",
+   "locator": "appendix 12, example 2, step 1, p. 12-14 (Floyd River at James, IA, 1935-1973); peaks in table 12-1, p. 12-4"
+  },
+  "inputs": {
+   "annual_maxima": [
+    3.16435,
+    3.60746,
+    3.55267,
+    3.31387,
+    3.11394,
+    3.14301,
+    3.23553,
+    3.79796,
+    3.13354,
+    3.87157,
+    3.72591,
+    3.14613,
+    3.51055,
+    3.43297,
+    3.65514,
+    3.68485,
+    3.92012,
+    4.14301,
+    4.85431,
+    3.79588,
+    3.35411,
+    2.50243,
+    3.12385,
+    2.98677,
+    3.2833,
+    4.17898,
+    3.45788,
+    4.31387,
+    3.58092,
+    2.86094,
+    3.87506,
+    3.85552,
+    3.30103,
+    2.91855,
+    4.23805,
+    3.67578,
+    4.1271,
+    3.46835,
+    3.75282
+   ],
+   "distribution": "pearson3"
+  },
+  "expected": {
+   "loc": 3.5553,
+   "scale": 0.4642,
+   "shape": 0.3566
+  },
+  "printed_precision": {
+   "annual_maxima": 1e-05,
+   "loc": 0.0001,
+   "scale": 0.0001,
+   "shape": 0.0001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "the example omits its computations; done as in example 1, the X**2 and X**3 of the 5-decimal logarithms rounded to 5 decimals and summed: |dS| <= 5.53e-06, |dG| <= 0.000644 (the bounds of example 1 for N = 39)",
+    "effect": {
+     "scale": 5.53e-06,
+     "shape": 0.000644
+    }
+   }
+  ],
+  "conventions": [
+   "the values are the base-10 logarithms of the 39 annual peaks of table 12-1 rounded to 5 decimals, as table 12-2 of example 1 prints them",
+   "S with the divisor N - 1 (eq. 3b); G of eq. 4b",
+   "the log-Pearson type III distribution of the example is Pearson III fitted by moments to the logarithms: (G, mean, S) are scipy's pearson3 (shape, loc, scale)"
+  ],
+  "second_source": {
+   "citation": "USGS National Water Information System, peak streamflow of site 06600500 (Floyd River at James, IA)",
+   "locator": "the 39 annual peaks of 1935-1973, as in table 12-1",
+   "url": "https://nwis.waterdata.usgs.gov/nwis/peak?site_no=06600500&agency_cd=USGS&format=rdb",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "fit_maximum_likelihood",
+  "case_id": "coles2001-port-pirie",
+  "source": {
+   "citation": "OpenTURNS 1.28 documentation, example 'Estimate a GEV on the Port Pirie sea-levels data', reproducing Coles (2001), sect. 3.4.1",
+   "locator": "its output of the maximum likelihood: mu 3.875, sigma 0.198, xi -0.050 (log-likelihood 4.339056652316124)",
+   "url": "https://openturns.github.io/openturns/latest/auto_data_analysis/distribution_fitting/plot_estimate_gev_pirie.html",
+   "access": "open"
+  },
+  "inputs": {
+   "annual_maxima": [
+    4.03,
+    3.83,
+    3.65,
+    3.88,
+    4.01,
+    4.08,
+    4.18,
+    3.8,
+    4.36,
+    3.96,
+    3.98,
+    4.69,
+    3.85,
+    3.96,
+    3.85,
+    3.93,
+    3.75,
+    3.63,
+    3.57,
+    4.25,
+    3.97,
+    4.05,
+    4.24,
+    4.22,
+    3.73,
+    4.37,
+    4.06,
+    3.71,
+    3.96,
+    4.06,
+    4.55,
+    3.79,
+    3.89,
+    4.11,
+    3.85,
+    3.86,
+    3.86,
+    4.21,
+    4.01,
+    4.11,
+    4.24,
+    3.96,
+    4.21,
+    3.74,
+    3.85,
+    3.88,
+    3.66,
+    4.11,
+    3.71,
+    4.18,
+    3.9,
+    3.78,
+    3.91,
+    3.72,
+    4.0,
+    3.66,
+    3.62,
+    4.33,
+    4.55,
+    3.75,
+    4.08,
+    3.9,
+    3.88,
+    3.94,
+    4.33
+   ],
+   "distribution": "gev"
+  },
+  "expected": {
+   "shape": 0.05,
+   "loc": 3.875,
+   "scale": 0.198
+  },
+  "printed_precision": {
+   "shape": 0.001,
+   "loc": 0.001,
+   "scale": 0.001
+  },
+  "conventions": [
+   "the 65 annual maximum sea levels [m] of Port Pirie, 1923-1987, as R's evd::portpirie and Coles's data give them",
+   "Coles's (mu, sigma, xi) with xi = -c: scipy's c = 0.050 for xi = -0.050"
+  ],
+  "second_source": {
+   "citation": "Coles, S. (2001). An Introduction to Statistical Modeling of Extreme Values. Springer",
+   "locator": "sect. 3.4.1, Port Pirie: (mu, sigma, xi) = (3.87, 0.198, -0.050), the maximized log-likelihood 4.34",
+   "access": "author-provided"
+  },
+  "status": "second_source"
  }
 ]

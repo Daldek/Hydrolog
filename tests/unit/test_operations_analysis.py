@@ -1107,13 +1107,14 @@ class TestFloodFrequency:
         )
 
     def test_a_single_distribution_the_method_cannot_fit_is_an_error(self):
-        with pytest.raises(CalculationError) as caught:
+        with pytest.raises(InvalidParameterError) as caught:
             stats.stats_flood_frequency(
                 values=[0.5, *[10.0] * 8, 10.5],
                 distribution="weibull",
                 fit_method="l_moments",
             )
-        assert caught.value.details["reason"] == "out_of_range"
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "l_moments_within_distribution"
 
     def test_a_fit_without_density_at_a_maximum_has_a_null_aic_and_a_notice(self):
         floods = [95.0, 102.0, 110.0, 118.0, 125.0, 133.0, 140.0, 152.0, 170.0]
@@ -1179,7 +1180,6 @@ class TestFloodFrequency:
         fitted = {
             (d.distribution_name, d.fit_method) for d in output.result.distributions
         }
-        assert ("weibull", "mle") in fitted
         left_out = [n for n in output.notices if n.code == "distribution_left_out"]
         expected = {
             ("weibull", "moments"): "out_of_range",
@@ -1187,6 +1187,10 @@ class TestFloodFrequency:
             ("weibull", "least_squares"): "out_of_range",
             ("gev", "mle"): "unbounded_likelihood",
             ("pearson3", "mle"): "unbounded_likelihood",
+            # the Weibull likelihood grows with its shape, beyond the 50 searched
+            ("weibull", "mle"): "unbounded_likelihood",
+            # the least squares of Pearson III lie beyond the skewness of -9
+            ("pearson3", "least_squares"): "not_converged",
         }
         assert {
             (n.details["distribution"], n.details["fit_method"]): n.details["reason"]
