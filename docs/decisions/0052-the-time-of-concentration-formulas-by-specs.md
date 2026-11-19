@@ -76,8 +76,9 @@ module contains no conversion literal: every conversion is an entry of the units
   (`{"kirpich": 1}`) from this release on. The guide's Kamiennik: Kirpich 187.4 → 187.1 min, NRCS 399.8 → 399.4 min,
   Kerby-Kirpich 208.9 → 208.6 min, its hydrograph 54.20 → 54.23 m³/s.
 - Kirpich warns on almost every watershed of Hydrograf: their flow paths are longer than 1.22 km.
-- Nogat's hand-off example D15 was computed with 3.981; Hydrolog now gives 57.9012 m³/s instead of the printed 57.8786,
-  and Nogat recomputes the example.
+- Nogat's hand-off example D15 was computed with 3.981; with the exact Beta storm of ADR-0046 Hydrolog now gives
+  57.9 m³/s and 1 046 737.6 m³ instead of the printed 57.8773 m³/s and 1 046 712.9 m³. Hydrolog's copy of
+  `handoff-1.schema.json` records them, and Nogat's file takes the same change.
 - Docstrings of the six methods name their specs and hold no number (CMP-2.7); the reports take their constants from
   the specs, and `docs/FORMULAS.md` shows equations, constants, ranges and sources.
 

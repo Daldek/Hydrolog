@@ -7,9 +7,8 @@ valid ``hydrolog-network/1``, whose outlet through ``route network`` peaks as th
 inputs and result without fetching the PMAXTP depth it names the point of, and written
 once more the same hand-off. Nogat's own example (D15), which carries Kamiennik's
 longest flow path, opens from the clipboard with its depth fetched at Hydrograf's outlet
-and nothing asked for; Hydrolog's result, 57,90 m³/s at 6:40 and 1 046 738 m³, differs
-from the example's 57,88 m³/s and 1 046 713 m³ of an earlier Hydrolog, so the rows that
-differ are marked and the verdict names both versions;
+and nothing asked for; Hydrolog gives its recorded result again, 57,90 m³/s at 6:40 and
+1 046 738 m³, so the verdict says they agree and only the producer's version is marked;
 Hydrograf's own hand-offs, written by its builder, open from the clipboard too: one with
 its hydrograph gives Hydrograf's result again with the exact values it handed, and the
 watershed alone opens with PMAXTP at Hydrograf's outlet, the probability, the duration
@@ -465,7 +464,7 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
     assert fetched == []
 
 
-def test_nogats_example_opens_from_the_clipboard_and_marks_its_older_result_apart(
+def test_nogats_example_opens_from_the_clipboard_and_matches_its_result(
     tab: Tab, tmp_path: Path
 ) -> None:
     tab.page.context.grant_permissions(["clipboard-read", "clipboard-write"])
@@ -541,34 +540,31 @@ def test_nogats_example_opens_from_the_clipboard_and_marks_its_older_result_apar
         "Kamiennik — Świerzawa · p 1% · 12 h"
     )
 
-    # Hydrolog computes the example again with Kirpich's own constant (0,0078 with the
-    # length in feet), so its result differs from the example's, computed by an earlier
-    # Hydrolog with the rounded metric constant: the differing rows are marked and the
-    # verdict names both versions
+    # Hydrolog reproduces the example's result, recorded with Kirpich's own constant
+    # (ADR-0052) and the exact Beta storm (ADR-0046): only the producer's version
+    # differs
     shows(page, "57,90", "6:40", "1 046 738")
     expect(page.locator(f"{HG} [data-handoff-received]")).to_have_attribute(
         "data-handoff-received", "same"
     )
     expect(page.locator(f"{HG} [data-handoff-verdict]")).to_have_attribute(
-        "data-handoff-verdict", "warn"
+        "data-handoff-verdict", "ok"
     )
-    producer = f"Hydrolog {D15['producer']['version']}"
     expect(page.locator(f"{HG} [data-handoff-verdict] li")).to_have_text(
-        f"Wyniki się różnią: producent liczył wersją {producer}, ten wynik to "
-        f"Hydrolog {hydrolog.__version__}."
+        "Wynik producenta zgodny z wynikiem Hydrologa."
     )
     assert compared(page, HG) == {
-        "version": [producer, f"Hydrolog {hydrolog.__version__}"],
-        "q": ["57,88 m³/s", "57,90 m³/s"],
+        "version": [
+            f"Hydrolog {D15['producer']['version']}",
+            f"Hydrolog {hydrolog.__version__}",
+        ],
+        "q": ["57,90 m³/s", "57,90 m³/s"],
         "tp": ["6:40 h", "6:40 h"],
-        "volume": ["1 046 713 m³", "1 046 738 m³"],
+        "volume": ["1 046 738 m³", "1 046 738 m³"],
     }
     marked = page.locator(f'{HG} [data-table="handoff-compare"] tbody tr.conflict')
-    expect(marked).to_have_count(3)
     assert marked.evaluate_all("rows => rows.map((row) => row.dataset.row)") == [
-        "version",
-        "q",
-        "volume",
+        "version"
     ]
 
     # A changed field marks the producer's result as of the data handed
