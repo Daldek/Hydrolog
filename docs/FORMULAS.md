@@ -18,6 +18,9 @@
 | [Time of concentration by the Kerby-Kirpich method (Roussel et al. 2005)](#kerby_kirpich) | `hydrolog.time.concentration.ConcentrationTime.kerby_kirpich` | referenced | 1 | not measured |
 | [Equal-area slope of a longitudinal profile (the line through the outlet with equal areas above and below it)](#equal_area_slope) | `hydrolog.morphometry.profile.equal_area_slope` | oracle only | 1 | not measured |
 | [Nash's n and K of an ungauged watershed by Lutz's method (KZGW 2017)](#lutz) | `hydrolog.runoff.nash_iuh.lutz_parameters` | referenced | 1 | not measured |
+| [Baseflow of a daily series by the Lyne and Hollick filter (standard approach of Ladson et al. 2013)](#lyne_hollick) | `hydrolog.statistics.baseflow.lyne_hollick_filter` | referenced | 1 | not measured |
+| [Baseflow index: the volume of baseflow over the volume of flow](#baseflow_index) | `hydrolog.statistics.baseflow.baseflow_index` | referenced | 1 | not measured |
+| [Recession constant of the total flow: the median daily ratio of runs of falling flow](#recession_constant) | `hydrolog.statistics.baseflow.recession_ratio` | oracle only | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
 ### Potential maximum retention S of the SCS curve number
@@ -965,14 +968,257 @@ Plain text: `tp = P1 * (L * Lc / Jg**1.5)**0.26 * exp(-0.016 * U) * exp(0.004 * 
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
+<a id="lyne_hollick"></a>
+### Baseflow of a daily series by the Lyne and Hollick filter (standard approach of Ladson et al. 2013)
+
+`hydrolog.statistics.baseflow.lyne_hollick_filter` · family `scheme` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+q_t = \alpha\,q_{t-1} + \frac{1 + \alpha}{2}\,(Q_t - Q_{t-1}),\quad b_t = \begin{cases} Q_t - q_t & q_t > 0 \\ Q_t & q_t \le 0 \end{cases}
+$$
+
+Plain text: `q_t = alpha q_(t-1) + (1 + alpha)/2 (Q_t - Q_(t-1)); b_t = Q_t - q_t if q_t > 0 else Q_t; passes alternately forward and backward, each on the baseflow of the pass before, over Q_31, ..., Q_2, Q_1, ..., Q_n, Q_(n-1), ..., Q_(n-30); q of each pass starts at the first value of its input; the baseflow of days 1 to n after the last pass, below 0 set to 0`
+
+**Sources**
+
+- Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript), sect. 1.1, eqs. 1 and 2 (the filter); sect. 2.1 to 2.3 (reflection, initial values, passes); sect. 3, Tables 3 and 4 (the worked example) (open) <https://tonyladson.wordpress.com/2013/10/01/a-standard-approach-to-baseflow-separation-using-the-lyne-and-hollick-filter/>
+- Ladson, A.R. (2013). BFI.R and BFI_example.R, the code of Ladson et al. (2013), github.com/TonyLadson/BaseflowSeparation_LyneHollick, commit 8d09646 (2014-02-12), copied into tests/oracles/baseflow/, BFI.R: FirstPass, BackwardPass, ForwardPass and BFI.calc (open) <https://github.com/TonyLadson/BaseflowSeparation_LyneHollick>
+- Nathan, R.J. and McMahon, T.A. (1990). Evaluation of automated techniques for base flow and recession analyses. Water Resources Research 26(7), 1465-1473, the filter with three passes and alpha 0.925 for daily flows, as quoted by Ladson et al. (2013), sect. 1.1 and 2.5, and by Murphy et al. (2009), p. 16 (author-provided) <https://doi.org/10.1029/WR026i007p01465>
+- Murphy, R., Graszkiewicz, Z., Hill, P., Neal, B., Nathan, R. and Ladson, T. (2009). Australian Rainfall and Runoff Revision Project 7: Baseflow for Catchment Simulation, Stage 1 report, P7/S1/004, Engineers Australia, p. 15, eq. 7 (the filter); p. 16 (three passes, forward, backward and forward; alpha 0.925 of Nathan and McMahon 1990 for daily data) (open) <https://www.arr-software.org/pdfs/ARR_Project07_Stage1_Final%20Report.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $Q_t$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (the formulas are homogeneous in the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)) | unstated | [0.5, 125.0]: IMGW-PIB, public hydrological data: daily discharge of the Nysa Kłodzka at Kłodzko (station 150160180) in 2010, files codz_2010_01 to codz_2010_12; and Hydrolog's synthetic station of the GUI guide, tests/fixtures/station_daily.csv, Kłodzko 2010: 4.93 to 96.0 m3/s; station_daily.csv, 2018-11 to 2023-10: 0.52 to 122.34 m3/s |
+| `alpha` | $\alpha$ | - | real | (0.0, 1.0) | [0.9, 0.98]: Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript), sect. 2.5, pp. 9-10: Nathan and McMahon (1990) found 0.9, 0.925 and 0.95 satisfactory against manual separation, and 0.98 matched chemical tracers better than 0.925 in 9 catchments; sect. 3.1, p. 16: alpha 'anywhere in the range 0.9 to 0.98' | [0.925, 0.98]: Hydrolog's catalog and tests: the defaults of stats baseflow (alpha 0.925, passes 3, recession segments of 5 days), with which Obserwator calls it, and alpha 0.98 of the worked example of Ladson et al. (2013) in its verification, src/hydrolog/catalog/groups/stats.py (stats baseflow); tests/unit/test_station_regime.py (TestBaseflow) |
+| `passes` | $N$ | - | integer | [1.0, inf), test bound high 99.0 (99 passes far exceed the 9 that Ladson et al. (2013, sect. 2.3) recommend for hourly data, and only cost time) | unstated | [3.0, 3.0]: Hydrolog's catalog and tests: the defaults of stats baseflow (alpha 0.925, passes 3, recession segments of 5 days), with which Obserwator calls it, and alpha 0.98 of the worked example of Ladson et al. (2013) in its verification, src/hydrolog/catalog/groups/stats.py (stats baseflow); tests/unit/test_station_regime.py (TestBaseflow) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `longer_than_reflection` | precondition | n > 30 | Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript), sect. 2.1, p. 7: 'the data set must be longer than the amount of reflection'; BFI.R, l. 297 |
+| `odd_passes` | precondition | passes odd and passes >= 3 | Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript), sect. 2.2 and 2.3, pp. 8-9: three passes for daily data, in order forward, backward, forward; BFI.R, l. 290: 'passes must be odd and greater than 2' |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `reflected_values` | $30$ | 30.0 | d | Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript), sect. 2.1, pp. 6-7; BFI.R, n.reflect = 30 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `baseflow` | m3/s | real_array | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the standard approach as Ladson et al. worked it in their spreadsheet, Table 4 and BFI.R: the quickflow is kept unclipped, negative too, as the state of the next day (Table 4, notes d to f), not set to 0 as the printed eq. 1 ('q_f = 0 otherwise') and Murphy et al. (2009) eq. 7 ('subject to q_f(i) >= 0') read
+- 30 values reflected at each end without repeating the end value: Q_31, ..., Q_2 before the series and Q_(n-1), ..., Q_(n-30) after it (sect. 2.1)
+- the quickflow of each pass starts at the first value of its input: Q_31 for the first pass, the last baseflow of the pass before for a backward pass and its first for a forward one (sect. 2.2)
+- an odd number of passes, alternately forward and backward, so that the last runs forward (sect. 2.3: three for daily data, nine for hourly)
+- the baseflow below 0 is set to 0 after the last pass, and the reflected values are dropped (BFI.R, BFI.calc)
+- the series in any unit, the baseflow in the same (sect. 2: 'In general the units of flow are not important')
+- daily data without a gap: a gap is refused; baseflow_separation filters each gapless span of a series with gaps (Tier B baseflow_spans)
+
+**Assumptions**
+
+- the quickflow is the high-frequency part of the hydrograph and the baseflow the low-frequency rest; the filter has no physical basis (Ladson et al., sect. 1)
+- the start of each pass is an end effect that the reflection damps but does not remove: a constant series of 10 gets the baseflow 6.78 on its first day and the BFI 0.983 over 400 days; Ladson et al. (sect. 2.1) found the effect of the reflection on the BFI negligible from about 300 days
+
+**Validation:** Ladson et al. (2013, sect. 2.5, Table 2, Fig. 2): on 9 Australian catchments the BFI with alpha 0.98 matched chemical-tracer estimates better than with 0.925, with large scatter; Nathan and McMahon (1990) found alpha 0.9 to 0.95 satisfactory against manual separation on 122 catchments of 4.2 to 210 km2 (as quoted by Ladson et al.)
+
+**Notices:** `outside_applicability`
+
+**Numerical traps (CMP-6.6)**
+
+- `stability_bound`: test_alpha_next_to_one_keeps_the_baseflow_within_the_flow: alpha just below 1, where the quickflow hardly decays, against the exact recursion; alpha = 1 is refused (range case alpha-physical_high)
+- `gap_propagation`: type case values-nan_element: a gap is refused; test_a_gap_parts_the_spans: baseflow_separation filters around it
+- `many_small_terms`: test_a_long_series_matches_the_exact_recursion: the quickflow sums alpha-weighted differences over 3,000 days, against Fraction arithmetic
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_series`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`baseflow` e = 1.0)
+- limit `no_flow`: a series without flow has no baseflow
+- conservation `baseflow_within_flow`: 0 <= b_t <= Q_t on every day: each pass takes a positive quickflow away from its input (eq. 2) and the last sets b < 0 to 0
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/baseflow-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the recursion of Ladson et al. (sect. 2.1 to 2.3) in exact rational arithmetic (fractions), written as loops over the padded series (`tests/unit/test_formulas_baseflow.py::test_the_filter_is_the_exact_recursion`)
+- frozen: Ladson's BFI() of BFI.R (ReturnQbase = TRUE) run by R 4.5.3 on the Bass River and a seeded 730-day series, alpha 0.9 to 0.987, 3, 5 and 9 passes (`tests/oracles/baseflow/lyne_hollick_r.csv`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="baseflow_index"></a>
+### Baseflow index: the volume of baseflow over the volume of flow
+
+`hydrolog.statistics.baseflow.baseflow_index` · family `index` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\mathrm{BFI} = \frac{\sum_t b_t}{\sum_t Q_t}
+$$
+
+Plain text: `BFI = sum(b_t) / sum(Q_t) over the days with both values`
+
+**Sources**
+
+- Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript), sect. 1.1, p. 5: 'the ratio of the baseflow volume (calculated from q_b) to the volume of streamflow (q) over a specified period'; sect. 2.4, p. 9: 'the sum of baseflow divided by the sum of total flow over the period of available raw data segments' (open) <https://tonyladson.wordpress.com/2013/10/01/a-standard-approach-to-baseflow-separation-using-the-lyne-and-hollick-filter/>
+- Ladson, A.R. (2013). BFI.R and BFI_example.R, the code of Ladson et al. (2013), github.com/TonyLadson/BaseflowSeparation_LyneHollick, commit 8d09646 (2014-02-12), copied into tests/oracles/baseflow/, BFI.R, BFI.calc: BFI.value <- sum(Qbase)/sum(Qin) (open) <https://github.com/TonyLadson/BaseflowSeparation_LyneHollick>
+- WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 5.2, pp. 43-44: 'BFI = V_baseflow/V_total'; annual BFI from the volumes of each year (open) <https://library.wmo.int/idurl/4/32176>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $Q_t$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (the formulas are homogeneous in the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)) | unstated | [0.5, 125.0]: IMGW-PIB, public hydrological data: daily discharge of the Nysa Kłodzka at Kłodzko (station 150160180) in 2010, files codz_2010_01 to codz_2010_12; and Hydrolog's synthetic station of the GUI guide, tests/fixtures/station_daily.csv, Kłodzko 2010: 4.93 to 96.0 m3/s; station_daily.csv, 2018-11 to 2023-10: 0.52 to 122.34 m3/s |
+| `baseflow` | $b_t$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (the formulas are homogeneous in the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)) | unstated | [0.5, 125.0]: IMGW-PIB, public hydrological data: daily discharge of the Nysa Kłodzka at Kłodzko (station 150160180) in 2010, files codz_2010_01 to codz_2010_12; and Hydrolog's synthetic station of the GUI guide, tests/fixtures/station_daily.csv, Kłodzko 2010: 4.93 to 96.0 m3/s; station_daily.csv, 2018-11 to 2023-10: 0.52 to 122.34 m3/s |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `baseflow_not_above_flow` | physical | b_t <= Q_t on every day with both values | Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript), sect. 1.1, eq. 2: q_b = q - q_f with q_f >= 0 |
+| `same_days` | precondition | len(b) = len(Q) | Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript), sect. 2.4, p. 9: baseflow statistics 'only from time steps in which raw data were available' |
+| `positive_flow_volume` | precondition | sum(Q_t) > 0 | Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript), sect. 1.1, p. 5: a ratio to the volume of streamflow, undefined without flow |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `bfi` | - | real | [0.0, 1.0] | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the volumes are the sums of the daily values (each day the same length), summed exactly once rounded (math.fsum)
+- a day counts when it has both a discharge and a baseflow; with gaps the index is the ratio of the sums over the days with values (Ladson et al., sect. 2.4), not the mean of the spans' indices weighted by their lengths that BFI.R computes
+- the series in any unit: the index has none
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: the definition of the index
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case positive_flow_volume-violated: no flow is refused before the division; test_a_trickle_has_a_finite_index: the smallest flows divide without underflow
+- `gap_propagation`: test_a_day_without_a_value_is_left_out: a gap in either series leaves the day out of both sums
+- `many_small_terms`: test_a_long_series_sums_exactly: 50,000 days against the exact rational sums
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `baseflow` increasing, `values` decreasing
+- scaling `unit_of_the_series`: inputs times 2^e (`values` e = 1.0, `baseflow` e = 1.0) give outputs times 2^e (`bfi` e = 0.0)
+- limit `all_baseflow`: a flow that is all baseflow has BFI = 1
+- limit `no_baseflow`: a flow without baseflow has BFI = 0
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/baseflow-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the ratio of the sums in exact rational arithmetic (fractions) (`tests/unit/test_formulas_baseflow.py::test_the_index_is_the_exact_ratio`)
+- frozen: the BFI that Ladson's BFI() of BFI.R reports, run by R 4.5.3, of the filter's baseflow (`tests/oracles/baseflow/lyne_hollick_bfi_r.csv`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="recession_constant"></a>
+### Recession constant of the total flow: the median daily ratio of runs of falling flow
+
+`hydrolog.statistics.baseflow.recession_ratio` · family `statistic` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+k = \operatorname{median}\left\{\frac{Q_{t+1}}{Q_t}\right\},\quad T_{1/2} = \frac{\ln 2}{-\ln k}
+$$
+
+Plain text: `k = median of Q_(t+1) / Q_t over the runs of at least min_days consecutive days with Q_t > 0 and Q_(t+1) < Q_t; half-life = ln 2 / (-ln k) (0 for k = 0)`
+
+**Sources**
+
+- WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 5.3, p. 45, eqs. 5.1 to 5.3: Q_t = Q_0 exp(-t/C), k = Q_t/Q_(t-1), C = -dt/ln(k); 'A minimum length in the order of five to seven days is, however, commonly used' (open) <https://library.wmo.int/idurl/4/32176>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $Q_t$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (the formulas are homogeneous in the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)) | unstated | [0.5, 125.0]: IMGW-PIB, public hydrological data: daily discharge of the Nysa Kłodzka at Kłodzko (station 150160180) in 2010, files codz_2010_01 to codz_2010_12; and Hydrolog's synthetic station of the GUI guide, tests/fixtures/station_daily.csv, Kłodzko 2010: 4.93 to 96.0 m3/s; station_daily.csv, 2018-11 to 2023-10: 0.52 to 122.34 m3/s |
+| `min_days` | $m$ | d | integer | [1.0, inf), test bound high 365.0 (a segment of a year of falling daily flow; longer ones only test the count) | unstated | [5.0, 5.0]: Hydrolog's catalog and tests: the defaults of stats baseflow (alpha 0.925, passes 3, recession segments of 5 days), with which Obserwator calls it, and alpha 0.98 of the worked example of Ladson et al. (2013) in its verification, src/hydrolog/catalog/groups/stats.py (stats baseflow); tests/unit/test_station_regime.py (TestBaseflow) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `recession_segment` | precondition | a run of at least min_days days with 0 < Q_(t+1) / Q_t < 1 | WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 5.3, p. 45: the recession is analysed on segments of a minimum length |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `k` | - | real | [0.0, 1.0) | 4 ulp of the bound |
+| `half_life_days` | d | real | [0.0, inf) | 4 ulp of the bound |
+| `n_segments` | - | integer | [1.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- k is the daily ratio Q_(t+1) / Q_t of WMO-No. 1029 eq. 5.2, and the half-life ln 2 / (-ln k) is C ln 2 of its eq. 5.3
+- segments of Hydrolog's own rule: every run of at least min_days falls, from the first day after a peak, no threshold (WMO starts below Q70 and two days after a peak, on segments of seven days, and fits them by regression)
+- the median of all the ratios of all the segments pooled, not a regression through the origin (WMO's master recession curve) nor the mean of the segments' constants (WMO's individual recession segments)
+- a fall is strict: a day of equal flow (a tie) ends a run, as a rise does
+- a day without a value or a day without flow (Q_t = 0) ends a run; a fall to 0 is the last ratio of its run, so k = 0 and a half-life of 0 only when min_days is 1
+
+**Assumptions**
+
+- the recession is exponential within each segment (WMO-No. 1029 eq. 5.1)
+- the series is daily: k is per day and the half-life in days
+
+**Validation:** none: the median ratio of the total flow is Hydrolog's own estimator; on WMO-No. 1029's Ngaruroro example (1963-1989) it gives k = 0.932 where WMO's master recession curve gives 0.9602 and lfstat's MRC 0.954 (the research of 2026-11-18): its segments include the quickflow after a peak
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: test_a_ratio_next_to_one_has_a_finite_half_life and test_a_fall_to_no_flow_has_a_half_life_of_zero: ln k at both ends of (0, 1)
+- `gap_propagation`: test_a_gap_ends_a_segment: a day without a value ends a run and is never a ratio
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_series`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`k` e = 0.0, `half_life_days` e = 0.0)
+- limit `exponential_recession`: two recessions Q_t = Q_0 0.95^t parted by a rise: k = 0.95 and the half-life ln 2 / (-ln 0.95), from both segments
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the runs found by a scan of the days and the median of their ratios in exact rational arithmetic (fractions, statistics.median) (`tests/unit/test_formulas_baseflow.py::test_the_recession_constant_is_the_exact_median`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
 ## Tier B
 
 | Formula | Function | Definition | Constants | Convention | Source |
 |---|---|---|---|---|---|
 | `weighted_cn` | `hydrolog.runoff.cn_lookup.calculate_weighted_cn` | CN_w = sum(A_j CN_j) / sum(A_j), the area-weighted mean CN of the parts | – | areas or shares in any one unit; a part of zero area counts nothing | USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10, example 10-4, p. 10-12 (also KZGW 2017 eq. 6.3) |
+| `baseflow_spans` | `hydrolog.statistics.baseflow.baseflow_separation` | the daily series is laid on a calendar of consecutive days (an absent date is a day without a value); each gapless span of at least 60 days is filtered on its own (spec lyne_hollick), reflected at both of its ends; a day of a shorter span has no baseflow; series_baseflow is the baseflow of each day of series_year, by default the last complete hydrological year | min_span_days = 60.0 d (Hydrolog's own rules, ADR-0031: Regime, seasonality, harmonics, Sen's slope and baseflow of a station, point 5: the filter on each gapless span of at least 60 days, a year's index from 300 days with a baseflow (no published source; Ladson et al. 2013 filter every segment longer than the 30 reflected values, sect. 2.1 and 2.4)) | spans of at least 60 days are Hydrolog's own rule; Ladson et al. (2013, sect. 2.4) filter every segment of non-missing values and their BFI.R every one longer than the 30 reflected values | Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript), sect. 2.4, p. 9: 'Flow data should be divided into segments of non-missing values ... data should be reflected at each end of each segment' |
+| `baseflow_index_by_year` | `hydrolog.statistics.baseflow.baseflow_separation` | the baseflow index of the period and of each hydrological year (1 November - 31 October, named after its end) is the index (spec baseflow_index) of their days with a baseflow; a year needs 300 such days for an index of its own, and a year without flow on them has none (null); a period without flow on them is refused | min_year_days = 300.0 d (Hydrolog's own rules, ADR-0031: Regime, seasonality, harmonics, Sen's slope and baseflow of a station, point 5: the filter on each gapless span of at least 60 days, a year's index from 300 days with a baseflow (no published source; Ladson et al. 2013 filter every segment longer than the 30 reflected values, sect. 2.1 and 2.4)) | the ratio of the volumes over the days with a baseflow (Ladson et al., sect. 2.4; WMO-No. 1029, sect. 5.2), not BFI.R's mean of the spans' indices weighted by their lengths; 300 days a year is Hydrolog's own rule | WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 5.2, p. 44: 'Annual BFI values can be determined by summing up the base-flow and total-flow volume separately for each year' |
+| `recession_without_segment` | `hydrolog.statistics.baseflow.recession_constant` | the recession constant of a series (spec recession_constant) with k and the half-life null and no segments when the series has no recession segment | – | the recession of baseflow_separation is that of the whole daily calendar of the series, gaps included as ends of segments | WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 5.3, p. 45 |
 
 ## Delegated computations (CMP-1.2)
 
 | Computation | Library | Versions | Smoke case | Test |
 |---|---|---|---|---|
 | nash_shape_root | scipy.optimize.brentq | scipy>=1.10 (1.18.1 locked) | the root N of f(N) = (N-1)^N e^-(N-1) / Gamma(N) = f(2.55) on [1.1, 20] with xtol 1e-6 is 2.55 within 1e-6 (spec lutz) | `tests/unit/test_formulas_lutz.py::test_the_delegated_root_finder_finds_a_known_root` |
+| lyne_hollick_recursion | scipy.signal.lfilter | scipy>=1.10 (1.18.1 locked) | lfilter([(1 + a) / 2], [1, -a], diff(Q), zi=[a Q_1]) gives the quickflow q_t = a q_(t-1) + (1 + a)/2 (Q_t - Q_(t-1)) from q_1 = Q_1 of the first pass of Ladson et al. (2013), Table 4 (Bass River, a = 0.98): 155.46 after 96 and 158 (spec lyne_hollick) | `tests/unit/test_formulas_baseflow.py::test_the_delegated_recursion_is_the_first_pass_of_table_4` |

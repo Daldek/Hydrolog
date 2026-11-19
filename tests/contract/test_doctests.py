@@ -57,6 +57,7 @@ MODULES = (
     "hydrolog.soil",
     "hydrolog.soil.hsg",
     "hydrolog.soil.texture",
+    "hydrolog.statistics.baseflow",
     "hydrolog.statistics.high_flows",
     "hydrolog.statistics.homogeneity",
     "hydrolog.statistics.low_flows",

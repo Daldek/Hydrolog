@@ -398,3 +398,28 @@ class TestBaseflow:
                 {"values": BASS_RIVER[:59], "dates": days("2020-01-01", 59)},
             )
         assert caught.value.details["reason"] == "no_gapless_span"
+
+    def test_an_alpha_beyond_its_sources_is_a_notice_once(self):
+        # three spans, one notice: alpha 0.99 lies above the 0.98 of Ladson et al.
+        dates = days("2020-11-01", 212)
+        values = [3.0 + math.sin(index / 7.0) for index in range(212)]
+        for index in (150, 80):
+            del dates[index], values[index]
+        document = envelope("stats baseflow", values=values, dates=dates, alpha=0.99)
+        found = [n for n in document["notices"] if n["code"] == "outside_typical_range"]
+        assert document["result"]["n_spans"] == 3
+        assert [(n["details"]["method"], n["details"]["value"]) for n in found] == [
+            ("lyne_hollick", 0.99)
+        ]
+
+    def test_a_period_without_flow_or_with_a_negative_flow_is_refused(self):
+        # both were computed before: the index NaN (null) and a negative day as flow
+        dated = days("2020-11-01", 90)
+        with pytest.raises(InvalidParameterError) as caught:
+            run_command("stats baseflow", {"values": [0.0] * 90, "dates": dated})
+        assert caught.value.details["constraint"] == "positive_flow_volume"
+        with pytest.raises(InvalidParameterError) as caught:
+            run_command(
+                "stats baseflow", {"values": [-1.0] + [2.0] * 89, "dates": dated}
+            )
+        assert caught.value.details["reason"] == "outside_physical_range"

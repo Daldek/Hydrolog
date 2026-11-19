@@ -2309,16 +2309,20 @@ def stats_baseflow(
     -------
     OperationOutput
         ``result`` is a :class:`~hydrolog.statistics.BaseflowSeparation`; the notices
-        report years with too few days for an index of their own
-        (``short_years_left_out``) and a period shorter than 30 years
-        (``short_reference_period``).
+        report an ``alpha`` outside the values its sources validated
+        (``outside_typical_range``, spec ``lyne_hollick``), years with too few days
+        for an index of their own (``short_years_left_out``) and a period shorter
+        than 30 years (``short_reference_period``).
 
     Raises
     ------
     InvalidParameterError
         If the series options are inconsistent, ``alpha`` is outside (0, 1),
         ``passes`` is not an odd number of at least 3, ``first_year`` is after
-        ``last_year`` or ``series_year`` has no value in the period.
+        ``last_year`` or ``series_year`` has no value in the period; if a
+        discharge is negative (``outside_physical_range``) or no water flowed on
+        the days with a baseflow (``precondition_failed``, constraint
+        ``positive_flow_volume``).
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError
@@ -2373,16 +2377,20 @@ def stats_baseflow(
             },
             hint="Fill the gaps of the series or choose other years.",
         )
-    result: BaseflowSeparation = baseflow_separation(
-        series.values,
-        dates_array,
-        alpha=level,
-        passes=passes,
-        series_year=series_year,
-    )
-    notices = _years_left_out(
-        series, [row.year for row in result.years], BASEFLOW_MIN_YEAR_DAYS
-    )
+    with capture_warnings() as warned:
+        result: BaseflowSeparation = baseflow_separation(
+            series.values,
+            dates_array,
+            alpha=level,
+            passes=passes,
+            series_year=series_year,
+        )
+    notices = [
+        *warned,
+        *_years_left_out(
+            series, [row.year for row in result.years], BASEFLOW_MIN_YEAR_DAYS
+        ),
+    ]
     notices.extend(
         reference_period_notices(
             result.period_years, result.first_year, result.last_year

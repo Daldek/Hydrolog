@@ -229,6 +229,12 @@ _SOURCE_PL: Final[Mapping[tuple[str, str], str]] = {
         "Roussel i in. (2005), suplement, s. 29: spadki cieków głównych od działu "
         "wodnego do przekroju, ok. 0,002–0,02"
     ),
+    ("lyne_hollick", "alpha"): (
+        "Ladson i in. (2013), rozdz. 2.5, s. 9–10: Nathan i McMahon (1990) uznali "
+        "0,9, 0,925 i 0,95 za zadowalające względem rozdziału ręcznego, a 0,98 lepiej "
+        "zgadzało się ze znacznikami chemicznymi w 9 zlewniach; rozdz. 3.1, s. 16: "
+        "α „w przedziale od 0,9 do 0,98”"
+    ),
 }
 """The Polish text of the source of each range of a formula with a spec."""
 
@@ -413,6 +419,7 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
         "KZGW (2017): szereg maksimów rocznych w analizie częstości wezbrań",
         notice="short_record",
     ),
+    *_specified("lyne_hollick"),
 )
 """Every typical range, one per method and parameter."""
 

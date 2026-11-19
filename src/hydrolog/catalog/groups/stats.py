@@ -960,6 +960,7 @@ COMMANDS: tuple[Command, ...] = (
             "`series_year` to domyślnie ostatni pełny rok.",
         ),
         errors=_STATION_ERRORS,
+        typical_ranges=(RangeCheck("lyne_hollick", "alpha", ("alpha",)),),
         example_results=(
             {
                 "alpha": 0.925,

@@ -63,6 +63,7 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.time.concentration",
     "hydrolog.morphometry.profile",
     "hydrolog.runoff.nash_iuh",
+    "hydrolog.statistics.baseflow",
 )
 """The modules whose ``SPECS`` (and ``TIER_B``) declare Hydrolog's formulas, in the
 order of ``docs/FORMULAS.md``."""
@@ -76,6 +77,17 @@ DELEGATED: Final[tuple[Delegated, ...]] = (
         "[1.1, 20] with xtol 1e-6 is 2.55 within 1e-6 (spec lutz)",
         test="tests/unit/test_formulas_lutz.py::"
         "test_the_delegated_root_finder_finds_a_known_root",
+    ),
+    Delegated(
+        name="lyne_hollick_recursion",
+        library="scipy.signal.lfilter",
+        versions="scipy>=1.10 (1.18.1 locked)",
+        smoke_case="lfilter([(1 + a) / 2], [1, -a], diff(Q), zi=[a Q_1]) gives the "
+        "quickflow q_t = a q_(t-1) + (1 + a)/2 (Q_t - Q_(t-1)) from q_1 = Q_1 of the "
+        "first pass of Ladson et al. (2013), Table 4 (Bass River, a = 0.98): 155.46 "
+        "after 96 and 158 (spec lyne_hollick)",
+        test="tests/unit/test_formulas_baseflow.py::"
+        "test_the_delegated_recursion_is_the_first_pass_of_table_4",
     ),
 )
 """Computations delegated to third-party libraries (CMP-1.2)."""

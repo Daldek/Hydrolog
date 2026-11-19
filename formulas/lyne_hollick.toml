@@ -1,0 +1,234 @@
+schema = "nogat-formula-card/1"
+name = "lyne_hollick"
+title = "Baseflow of a daily series by the Lyne and Hollick filter (standard approach of Ladson et al. 2013)"
+function = "hydrolog.statistics.baseflow.lyne_hollick_filter"
+family = "scheme"
+formula_version = 1
+status = "referenced"
+equation = "q_t = alpha q_(t-1) + (1 + alpha)/2 (Q_t - Q_(t-1)); b_t = Q_t - q_t if q_t > 0 else Q_t; passes alternately forward and backward, each on the baseflow of the pass before, over Q_31, ..., Q_2, Q_1, ..., Q_n, Q_(n-1), ..., Q_(n-30); q of each pass starts at the first value of its input; the baseflow of days 1 to n after the last pass, below 0 set to 0"
+latex = "q_t = \\alpha\\,q_{t-1} + \\frac{1 + \\alpha}{2}\\,(Q_t - Q_{t-1}),\\quad b_t = \\begin{cases} Q_t - q_t & q_t > 0 \\\\ Q_t & q_t \\le 0 \\end{cases}"
+validation = "Ladson et al. (2013, sect. 2.5, Table 2, Fig. 2): on 9 Australian catchments the BFI with alpha 0.98 matched chemical-tracer estimates better than with 0.925, with large scatter; Nathan and McMahon (1990) found alpha 0.9 to 0.95 satisfactory against manual separation on 122 catchments of 4.2 to 210 km2 (as quoted by Ladson et al.)"
+conventions = ["the standard approach as Ladson et al. worked it in their spreadsheet, Table 4 and BFI.R: the quickflow is kept unclipped, negative too, as the state of the next day (Table 4, notes d to f), not set to 0 as the printed eq. 1 ('q_f = 0 otherwise') and Murphy et al. (2009) eq. 7 ('subject to q_f(i) >= 0') read", "30 values reflected at each end without repeating the end value: Q_31, ..., Q_2 before the series and Q_(n-1), ..., Q_(n-30) after it (sect. 2.1)", "the quickflow of each pass starts at the first value of its input: Q_31 for the first pass, the last baseflow of the pass before for a backward pass and its first for a forward one (sect. 2.2)", "an odd number of passes, alternately forward and backward, so that the last runs forward (sect. 2.3: three for daily data, nine for hourly)", "the baseflow below 0 is set to 0 after the last pass, and the reflected values are dropped (BFI.R, BFI.calc)", "the series in any unit, the baseflow in the same (sect. 2: 'In general the units of flow are not important')", "daily data without a gap: a gap is refused; baseflow_separation filters each gapless span of a series with gaps (Tier B baseflow_spans)"]
+assumptions = ["the quickflow is the high-frequency part of the hydrograph and the baseflow the low-frequency rest; the filter has no physical basis (Ladson et al., sect. 1)", "the start of each pass is an end effect that the reflection damps but does not remove: a constant series of 10 gets the baseflow 6.78 on its first day and the BFI 0.983 over 400 days; Ladson et al. (sect. 2.1) found the effect of the reflection on the BFI negligible from about 300 days"]
+notices = ["outside_applicability"]
+reference_cases = ["tests/fixtures/formulas/baseflow-cases.json"]
+tables = []
+
+[properties]
+units = "homogeneous"
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_series"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+baseflow = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling every value of a series doubles every term of the recursion and of the sums exactly, so no rounding changes; a result below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[properties.limits]]
+name = "no_flow"
+text = "a series without flow has no baseflow"
+
+[[properties.conservation]]
+name = "baseflow_within_flow"
+text = "0 <= b_t <= Q_t on every day: each pass takes a positive quickflow away from its input (eq. 2) and the last sets b < 0 to 0"
+
+[properties.conservation.tolerance]
+reason = "Q - q with q > 0 rounds to at most Q, and max(b, 0) is exact: the bounds hold in floating point without slack"
+abs = 0.0
+
+[[sources]]
+citation = "Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript)"
+access = "open"
+locator = "sect. 1.1, eqs. 1 and 2 (the filter); sect. 2.1 to 2.3 (reflection, initial values, passes); sect. 3, Tables 3 and 4 (the worked example)"
+url = "https://tonyladson.wordpress.com/2013/10/01/a-standard-approach-to-baseflow-separation-using-the-lyne-and-hollick-filter/"
+
+[[sources]]
+citation = "Ladson, A.R. (2013). BFI.R and BFI_example.R, the code of Ladson et al. (2013), github.com/TonyLadson/BaseflowSeparation_LyneHollick, commit 8d09646 (2014-02-12), copied into tests/oracles/baseflow/"
+access = "open"
+locator = "BFI.R: FirstPass, BackwardPass, ForwardPass and BFI.calc"
+url = "https://github.com/TonyLadson/BaseflowSeparation_LyneHollick"
+
+[[sources]]
+citation = "Nathan, R.J. and McMahon, T.A. (1990). Evaluation of automated techniques for base flow and recession analyses. Water Resources Research 26(7), 1465-1473"
+access = "author-provided"
+locator = "the filter with three passes and alpha 0.925 for daily flows, as quoted by Ladson et al. (2013), sect. 1.1 and 2.5, and by Murphy et al. (2009), p. 16"
+url = "https://doi.org/10.1029/WR026i007p01465"
+
+[[sources]]
+citation = "Murphy, R., Graszkiewicz, Z., Hill, P., Neal, B., Nathan, R. and Ladson, T. (2009). Australian Rainfall and Runoff Revision Project 7: Baseflow for Catchment Simulation, Stage 1 report, P7/S1/004, Engineers Australia"
+access = "open"
+locator = "p. 15, eq. 7 (the filter); p. 16 (three passes, forward, backward and forward; alpha 0.925 of Nathan and McMahon 1990 for daily data)"
+url = "https://www.arr-software.org/pdfs/ARR_Project07_Stage1_Final%20Report.pdf"
+
+[[variables]]
+name = "values"
+symbol = "Q_t"
+unit = "m3/s"
+kind = "real_array"
+description = "Daily discharge, every day known, in time order."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)"
+
+[variables.typical]
+low = 0.5
+low_inclusive = true
+high = 125.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "IMGW-PIB, public hydrological data: daily discharge of the Nysa Kłodzka at Kłodzko (station 150160180) in 2010, files codz_2010_01 to codz_2010_12; and Hydrolog's synthetic station of the GUI guide, tests/fixtures/station_daily.csv"
+access = "open"
+locator = "Kłodzko 2010: 4.93 to 96.0 m3/s; station_daily.csv, 2018-11 to 2023-10: 0.52 to 122.34 m3/s"
+url = "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/"
+
+[[variables]]
+name = "alpha"
+symbol = "\\alpha"
+unit = "-"
+kind = "real"
+description = "Filter parameter."
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+high = 1.0
+high_inclusive = false
+
+[variables.applicability]
+low = 0.9
+low_inclusive = true
+high = 0.98
+high_inclusive = true
+
+[variables.applicability.source]
+citation = "Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript)"
+access = "open"
+locator = "sect. 2.5, pp. 9-10: Nathan and McMahon (1990) found 0.9, 0.925 and 0.95 satisfactory against manual separation, and 0.98 matched chemical tracers better than 0.925 in 9 catchments; sect. 3.1, p. 16: alpha 'anywhere in the range 0.9 to 0.98'"
+url = "https://tonyladson.wordpress.com/2013/10/01/a-standard-approach-to-baseflow-separation-using-the-lyne-and-hollick-filter/"
+
+[variables.typical]
+low = 0.925
+low_inclusive = true
+high = 0.98
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's catalog and tests: the defaults of stats baseflow (alpha 0.925, passes 3, recession segments of 5 days), with which Obserwator calls it, and alpha 0.98 of the worked example of Ladson et al. (2013) in its verification"
+access = "open"
+locator = "src/hydrolog/catalog/groups/stats.py (stats baseflow); tests/unit/test_station_regime.py (TestBaseflow)"
+
+[[variables]]
+name = "passes"
+symbol = "N"
+unit = "-"
+kind = "integer"
+description = "Passes of the filter, alternately forward and backward."
+applicability = "unstated"
+
+[variables.physical]
+low = 1.0
+low_inclusive = true
+test_high = 99.0
+test_reason = "99 passes far exceed the 9 that Ladson et al. (2013, sect. 2.3) recommend for hourly data, and only cost time"
+
+[variables.typical]
+low = 3.0
+low_inclusive = true
+high = 3.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's catalog and tests: the defaults of stats baseflow (alpha 0.925, passes 3, recession segments of 5 days), with which Obserwator calls it, and alpha 0.98 of the worked example of Ladson et al. (2013) in its verification"
+access = "open"
+locator = "src/hydrolog/catalog/groups/stats.py (stats baseflow); tests/unit/test_station_regime.py (TestBaseflow)"
+
+[[constraints]]
+name = "longer_than_reflection"
+class = "precondition"
+text = "n > 30"
+
+[constraints.source]
+citation = "Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript)"
+access = "open"
+locator = "sect. 2.1, p. 7: 'the data set must be longer than the amount of reflection'; BFI.R, l. 297"
+url = "https://tonyladson.wordpress.com/2013/10/01/a-standard-approach-to-baseflow-separation-using-the-lyne-and-hollick-filter/"
+
+[[constraints]]
+name = "odd_passes"
+class = "precondition"
+text = "passes odd and passes >= 3"
+
+[constraints.source]
+citation = "Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript)"
+access = "open"
+locator = "sect. 2.2 and 2.3, pp. 8-9: three passes for daily data, in order forward, backward, forward; BFI.R, l. 290: 'passes must be odd and greater than 2'"
+url = "https://tonyladson.wordpress.com/2013/10/01/a-standard-approach-to-baseflow-separation-using-the-lyne-and-hollick-filter/"
+
+[[constants]]
+name = "reflected_values"
+value = 30.0
+unit = "d"
+symbol = "30"
+
+[constants.source]
+citation = "Ladson, A.R., Brown, R., Neal, B. and Nathan, R. (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. Australasian Journal of Water Resources 17(1), 25-34 (the authors' accepted manuscript)"
+access = "open"
+locator = "sect. 2.1, pp. 6-7; BFI.R, n.reflect = 30"
+url = "https://tonyladson.wordpress.com/2013/10/01/a-standard-approach-to-baseflow-separation-using-the-lyne-and-hollick-filter/"
+
+[[outputs]]
+name = "baseflow"
+unit = "m3/s"
+kind = "real_array"
+symbol = "b_t"
+description = "Baseflow of each day, in the unit of the series."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "stability_bound"
+description = "The stability bound of a numerical scheme (a Courant number, Muskingum's 2KX <= dt <= 2K(1-X))."
+test = "test_alpha_next_to_one_keeps_the_baseflow_within_the_flow: alpha just below 1, where the quickflow hardly decays, against the exact recursion; alpha = 1 is refused (range case alpha-physical_high)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case values-nan_element: a gap is refused; test_a_gap_parts_the_spans: baseflow_separation filters around it"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_a_long_series_matches_the_exact_recursion: the quickflow sums alpha-weighted differences over 3,000 days, against Fraction arithmetic"
+
+[[oracles]]
+kind = "exact"
+description = "the recursion of Ladson et al. (sect. 2.1 to 2.3) in exact rational arithmetic (fractions), written as loops over the padded series"
+test = "tests/unit/test_formulas_baseflow.py::test_the_filter_is_the_exact_recursion"
+conventions = []
+
+[[oracles]]
+kind = "frozen"
+description = "Ladson's BFI() of BFI.R (ReturnQbase = TRUE) run by R 4.5.3 on the Bass River and a seeded 730-day series, alpha 0.9 to 0.987, 3, 5 and 9 passes"
+test = "tests/oracles/baseflow/lyne_hollick_r.csv"
+conventions = ["BFI.R and Hydrolog: 30 values reflected without the end value, the quickflow unclipped, starting at the first value of each pass's input, baseflow below 0 set to 0 after the last pass"]
