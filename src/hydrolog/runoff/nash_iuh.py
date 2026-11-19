@@ -417,6 +417,7 @@ class NashIUH:
         >>> nash = NashIUH(n=3.0, k_min=30.0, area_km2=45.0)
         >>> result = nash.generate(timestep_min=5.0)
         >>> print(f"Peak: {result.peak_discharge_m3s:.2f} m³/s per mm")
+        Peak: 6.75 m³/s per mm
         """
         if self.area_km2 is not None:
             # Return dimensional unit hydrograph
@@ -562,6 +563,7 @@ class NashIUH:
         >>> iuh = NashIUH(n=3.0, k_min=30.0)
         >>> uh = iuh.to_unit_hydrograph(area_km2=45.0, duration_min=30.0)
         >>> print(f"Peak: {uh.peak_discharge_m3s:.2f} m³/s per mm")
+        Peak: 6.63 m³/s per mm
         """
         if area_km2 <= 0:
             raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
@@ -752,6 +754,7 @@ class NashIUH:
         ...     forest_pct=40.0
         ... )
         >>> print(f"n = {nash.n:.2f}, K = {nash.k_min:.1f} min")
+        n = 3.66, K = 70.9 min
         """
         # Validate inputs
         if L_km <= 0:
