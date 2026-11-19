@@ -8,6 +8,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog.nogat_formulas import convert
+from hydrolog.runoff.nash_iuh import LUTZ
 from hydrolog.time.concentration import FAA, GIANDOTTI, KERBY, KIRPICH, NRCS
 
 # The metric forms the report prints, derived from the constants of the specs of the
@@ -44,6 +45,22 @@ _FAA_KM = (
 _KERBY_E = KERBY.constant("kerby_exponent")
 _KERBY_KM = (KERBY.constant("kerby_coefficient") * convert(1.0, "km", "ft")) ** _KERBY_E
 """Kerby's constant for L in km (36.37)."""
+
+
+def _pl(value: float) -> str:
+    """Return a constant of a spec in the report's LaTeX, with a decimal comma."""
+    return f"{value:g}".replace(".", "{,}")
+
+
+# Lutz's constants (spec lutz) in the report's notation
+_LUTZ_P1_SLOPE = _pl(LUTZ.constant("p1_slope"))
+_LUTZ_P1_INTERCEPT = _pl(LUTZ.constant("p1_intercept"))
+_LUTZ_SLOPE_EXPONENT = _pl(LUTZ.constant("slope_exponent"))
+_LUTZ_GEOMETRIC_EXPONENT = _pl(LUTZ.constant("geometric_exponent"))
+_LUTZ_URBAN = _pl(LUTZ.constant("urban_coefficient"))
+_LUTZ_FOREST = _pl(LUTZ.constant("forest_coefficient"))
+_LUTZ_PEAK = _pl(LUTZ.constant("peak_coefficient"))
+_LUTZ_PEAK_EXPONENT = _pl(LUTZ.constant("peak_exponent"))
 
 
 def _low_slope_adjusted(slope_m_per_m: float) -> float:
@@ -612,12 +629,15 @@ class FormulaRenderer:
         return (
             "**Metoda Lutza — wyznaczanie parametrów n i K:**\n\n"
             "**Krok 1: Współczynnik P1**\n\n"
-            "$$P_1 = 3{,}989 \\cdot n_{Man} + 0{,}028$$\n\n"
-            f"$$P_1 = 3{{,}}989 \\cdot {manning_n:.3f} + 0{{,}}028 = {P1:.4f}$$\n\n"
+            f"$$P_1 = {_LUTZ_P1_SLOPE} \\cdot n_{{Man}} + {_LUTZ_P1_INTERCEPT}$$\n\n"
+            f"$$P_1 = {_LUTZ_P1_SLOPE} \\cdot {manning_n:.3f} + {_LUTZ_P1_INTERCEPT}"
+            f" = {P1:.4f}$$\n\n"
             "**Krok 2: Czas do szczytu tp**\n\n"
             "$$t_p = P_1 \\cdot \\left(\\frac{L \\cdot "
-            "L_c}{J_g^{1{,}5}}\\right)^{0{,}26}"
-            " \\cdot e^{-0{,}016 U} \\cdot e^{0{,}004 W} \\quad [\\text{h}]$$\n\n"
+            f"L_c}}{{J_g^{{{_LUTZ_SLOPE_EXPONENT}}}}}\\right)"
+            f"^{{{_LUTZ_GEOMETRIC_EXPONENT}}}"
+            f" \\cdot e^{{{_LUTZ_URBAN} U}} \\cdot e^{{{_LUTZ_FOREST} W}}"
+            " \\quad [\\text{h}]$$\n\n"
             "gdzie:\n"
             f"- $L$ = {L_km:.3f} km (długość cieku głównego od działu wodnego)\n"
             f"- $L_c$ = {Lc_km:.3f} km (odległość do centroidu zlewni)\n"
@@ -626,13 +646,19 @@ class FormulaRenderer:
             f"- $U$ = {urban_pct:.1f}% (tereny zurbanizowane)\n"
             f"- $W$ = {forest_pct:.1f}% (tereny leśne)\n\n"
             f"$$t_p = {P1:.4f} \\cdot \\left(\\frac{{{L_km:.3f} \\cdot {Lc_km:.3f}}}"
-            f"{{{slope:.4f}^{{1{{,}}5}}}}\\right)^{{0{{,}}26}}"
-            f" \\cdot e^{{-0{{,}}016 \\cdot {urban_pct:.1f}}}"
-            f" \\cdot e^{{0{{,}}004 \\cdot {forest_pct:.1f}}}"
+            f"{{{slope:.4f}^{{{_LUTZ_SLOPE_EXPONENT}}}}}\\right)"
+            f"^{{{_LUTZ_GEOMETRIC_EXPONENT}}}"
+            f" \\cdot e^{{{_LUTZ_URBAN} \\cdot {urban_pct:.1f}}}"
+            f" \\cdot e^{{{_LUTZ_FOREST} \\cdot {forest_pct:.1f}}}"
             f" = {tp_hours:.4f} \\text{{ h}} = {tp_min:.1f} \\text{{ min}}$$\n\n"
             "**Krok 3: Szczytowa rzędna IUH**\n\n"
-            "$$u_p = \\frac{0{,}66}{t_p^{1{,}04}} \\quad [\\text{h}^{-1}]$$\n\n"
-            f"$$u_p = \\frac{{0{{,}}66}}{{{tp_hours:.4f}^{{1{{,}}04}}}}"
+            f"$$u_p = \\frac{{{_LUTZ_PEAK}}}{{t_p^{{{_LUTZ_PEAK_EXPONENT}}}}}"
+            " \\quad [\\text{h}^{-1}]$$\n\n"
+            "Zależność Lutza dla $\\Delta t \\to 0$ (KZGW 2017, wzór 6.19): szczyt "
+            "chwilowego hydrogramu jednostkowego, który hydrogram jednostkowy "
+            "uśrednia dokładnie w kroku $\\Delta t$.\n\n"
+            f"$$u_p = \\frac{{{_LUTZ_PEAK}}}"
+            f"{{{tp_hours:.4f}^{{{_LUTZ_PEAK_EXPONENT}}}}}"
             f" = {up_per_hour:.4f} \\text{{ h}}^{{-1}}$$\n\n"
             "**Krok 4: Funkcja kształtu f(N)**\n\n"
             "$$f(N) = t_p \\cdot u_p$$\n\n"

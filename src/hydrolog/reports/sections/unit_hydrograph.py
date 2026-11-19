@@ -16,6 +16,7 @@ from hydrolog.reports.templates import (
     SUBSECTION_HEADERS,
     UH_MODELS,
 )
+from hydrolog.runoff.nash_iuh import LUTZ
 
 
 def generate_uh_section(
@@ -280,16 +281,27 @@ def _generate_nash_section(
             "cieku)"
         )
         lines.append(f"- n_M = {lutz_params.manning_n:.3f} (współczynnik Manninga)")
-        lines.append(f"- U = {lutz_params.urban_pct:.1f}% (powierzchnia uszczelniona)")
+        lines.append(
+            f"- U = {lutz_params.urban_pct:.1f}% (udział terenów zurbanizowanych)"
+        )
         lines.append(f"- W = {lutz_params.forest_pct:.1f}% (lesistość)")
         lines.append("")
         lines.append("---")
         lines.append("")
         lines.append("**Krok 1: Współczynnik P₁**")
         lines.append("")
+        p1_slope = f"{LUTZ.constant('p1_slope'):g}"
+        p1_intercept = f"{LUTZ.constant('p1_intercept'):g}"
+        slope_exponent = f"{LUTZ.constant('slope_exponent'):g}"
+        geometric_exponent = f"{LUTZ.constant('geometric_exponent'):g}"
+        urban = f"{LUTZ.constant('urban_coefficient'):g}"
+        forest = f"{LUTZ.constant('forest_coefficient'):g}"
+        peak = f"{LUTZ.constant('peak_coefficient'):g}"
+        peak_exponent = f"{LUTZ.constant('peak_exponent'):g}"
         lines.append(
-            f"$$P_1 = 3.989 \\cdot n_M + 0.028 = "
-            f"3.989 \\cdot {lutz_params.manning_n:.3f} + 0.028 = {lutz_params.P1:.4f}$$"
+            f"$$P_1 = {p1_slope} \\cdot n_M + {p1_intercept} = "
+            f"{p1_slope} \\cdot {lutz_params.manning_n:.3f} + {p1_intercept} = "
+            f"{lutz_params.P1:.4f}$$"
         )
         lines.append("")
         lines.append("---")
@@ -297,16 +309,18 @@ def _generate_nash_section(
         lines.append("**Krok 2: Czas do szczytu IUH (tp)**")
         lines.append("")
         lines.append(
-            "$$t_p = P_1 \\cdot \\left(\\frac{L \\cdot L_c}{J_g^{1.5}}\\right)^{0.26} "
-            "\\cdot e^{-0.016 \\cdot U} \\cdot e^{0.004 \\cdot W}$$"
+            f"$$t_p = P_1 \\cdot \\left(\\frac{{L \\cdot L_c}}"
+            f"{{J_g^{{{slope_exponent}}}}}\\right)^{{{geometric_exponent}}} "
+            f"\\cdot e^{{{urban} \\cdot U}} \\cdot e^{{{forest} \\cdot W}}$$"
         )
         lines.append("")
         lines.append(
             f"$$t_p = {lutz_params.P1:.4f} \\cdot "
             f"\\left(\\frac{{{lutz_params.L_km:.2f} \\cdot {lutz_params.Lc_km:.2f}}}"
-            f"{{{lutz_params.slope:.4f}^{{1.5}}}}\\right)^{{0.26}} \\cdot "
-            f"e^{{-0.016 \\cdot {lutz_params.urban_pct:.1f}}} \\cdot "
-            f"e^{{0.004 \\cdot {lutz_params.forest_pct:.1f}}} = "
+            f"{{{lutz_params.slope:.4f}^{{{slope_exponent}}}}}\\right)"
+            f"^{{{geometric_exponent}}} \\cdot "
+            f"e^{{{urban} \\cdot {lutz_params.urban_pct:.1f}}} \\cdot "
+            f"e^{{{forest} \\cdot {lutz_params.forest_pct:.1f}}} = "
             f"{lutz_params.tp_hours:.3f} \\text{{ h}} = {lutz_params.tp_min:.1f} "
             f"\\text{{ min}}$$"
         )
@@ -316,9 +330,15 @@ def _generate_nash_section(
         lines.append("**Krok 3: Rzędna szczytowa IUH (up)**")
         lines.append("")
         lines.append(
-            f"$$u_p = \\frac{{0.66}}{{t_p^{{1.04}}}} = "
-            f"\\frac{{0.66}}{{{lutz_params.tp_hours:.3f}^{{1.04}}}} = "
+            f"$$u_p = \\frac{{{peak}}}{{t_p^{{{peak_exponent}}}}} = "
+            f"\\frac{{{peak}}}{{{lutz_params.tp_hours:.3f}^{{{peak_exponent}}}}} = "
             f"{lutz_params.up_per_hour:.3f} \\text{{ [1/h]}}$$"
+        )
+        lines.append("")
+        lines.append(
+            "Zależność Lutza dla Δt → 0 (KZGW 2017, wzór 6.19): szczyt chwilowego "
+            "hydrogramu jednostkowego, który hydrogram jednostkowy uśrednia dokładnie "
+            "w kroku Δt."
         )
         lines.append("")
         lines.append("---")

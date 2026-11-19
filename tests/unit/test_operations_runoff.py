@@ -2794,7 +2794,7 @@ class TestTypicalRangesOfTheModels:
             ("nash", "n", 10.001, 1.0, 10.0),
             ("nash", "k_min", 9.99, 10.0, 200.0),
             ("nash", "k_min", 200.01, 10.0, 200.0),
-            # KZGW (2017), annex 2, p. 96: the Lutz method up to 236 km2
+            # KZGW (2017), annex 2, p. 97: the Lutz method up to 236 km2
             ("lutz", "area_km2", 236.1, 0.0, 236.0),
             # HEC-HMS Technical Reference Manual: R/tc 0.2-1.5
             ("clark", "r_tc_ratio", 0.199, 0.2, 1.5),
