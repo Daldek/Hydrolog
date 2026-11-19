@@ -53,6 +53,21 @@
 | [Walsh and Lawler's seasonality index of twelve monthly totals](#seasonality_index) | `hydrolog.statistics.regime.seasonality_index` | referenced | 1 | not measured |
 | [Sielianinov's hydrothermal coefficient of a month or a season](#sielianinov_coefficient) | `hydrolog.statistics.meteo_hydrothermal.sielianinov_coefficient` | referenced | 1 | not measured |
 | [Class of Sielianinov's hydrothermal coefficient (Skowera and Puła)](#sielianinov_class) | `hydrolog.statistics.meteo_hydrothermal.sielianinov_class` | referenced | 1 | not measured |
+| [Mean, standard deviation and skewness of a sample (product moments)](#sample_moments) | `hydrolog.statistics.frequency.sample_moments` | referenced | 1 | not measured |
+| [L-moments and L-skewness of a sample (unbiased probability-weighted moments)](#sample_l_moments) | `hydrolog.statistics.frequency.sample_l_moments` | referenced | 1 | not measured |
+| [Quantiles of the generalized extreme value (GEV) distribution for return periods](#gev_quantiles) | `hydrolog.statistics.frequency.gev_quantiles` | referenced | 1 | not measured |
+| [Quantiles of the log-normal distribution for return periods](#log_normal_quantiles) | `hydrolog.statistics.frequency.log_normal_quantiles` | referenced | 1 | not measured |
+| [Quantiles of the Pearson type III distribution for return periods](#pearson3_quantiles) | `hydrolog.statistics.frequency.pearson3_quantiles` | referenced | 1 | not measured |
+| [Quantiles of the three-parameter Weibull distribution for return periods](#weibull_quantiles) | `hydrolog.statistics.frequency.weibull_quantiles` | referenced | 1 | not measured |
+| [Parameters of a distribution of annual maxima by the method of L-moments](#fit_l_moments) | `hydrolog.statistics.frequency.fit_l_moments` | oracle only | 1 | not measured |
+| [Parameters of a distribution of annual maxima by the method of moments](#fit_moments) | `hydrolog.statistics.frequency.fit_moments` | referenced | 1 | not measured |
+| [Parameters of a distribution of annual maxima by maximum likelihood](#fit_maximum_likelihood) | `hydrolog.statistics.frequency.fit_maximum_likelihood` | referenced | 1 | not measured |
+| [Parameters of a distribution of annual maxima by least squares on the plotting positions](#fit_least_squares) | `hydrolog.statistics.frequency.fit_least_squares` | oracle only | 1 | not measured |
+| [Anderson-Darling statistic A² of a sample against a fitted distribution](#anderson_darling) | `hydrolog.statistics.frequency.anderson_darling` | oracle only | 1 | not measured |
+| [Akaike information criterion of a distribution fitted to a sample](#akaike_information_criterion) | `hydrolog.statistics.frequency.akaike_information_criterion` | referenced | 1 | not measured |
+| [Plotting positions of annual maxima: exceedance probabilities and return periods](#plotting_positions) | `hydrolog.statistics._types.compute_plotting_positions` | referenced | 1 | not measured |
+| [Plotting positions of annual minima: non-exceedance probabilities and return periods](#non_exceedance_positions) | `hydrolog.statistics._types.compute_non_exceedance_positions` | referenced | 1 | not measured |
+| [Fisher-Tippett distribution of annual minima by maximum likelihood and its quantiles](#fisher_tippett_minima) | `hydrolog.statistics.low_flows.fisher_tippett_minima` | oracle only | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
 ### Potential maximum retention S of the SCS curve number
@@ -3658,6 +3673,1199 @@ None.
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
+<a id="sample_moments"></a>
+### Mean, standard deviation and skewness of a sample (product moments)
+
+`hydrolog.statistics.frequency.sample_moments` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\bar{x} = \frac{1}{n}\sum_i x_i,\quad s = \sqrt{\frac{\sum_i (x_i - \bar{x})^2}{n - 1}},\quad G = \frac{\sqrt{n(n - 1)}}{n - 2}\,\frac{m_3}{m_2^{3/2}},\quad m_k = \frac{1}{n}\sum_i (x_i - \bar{x})^k
+$$
+
+Plain text: `mean = sum(x) / n; s = sqrt(sum((x - mean)**2) / (n - 1)); G = sqrt(n (n - 1)) / (n - 2) * m3 / m2**1.5 with m_k = sum((x - mean)**k) / n`
+
+**Sources**
+
+- Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eqs. 2, 3a and 4a (equal to 3b and 4b), pp. 9-10; appendix 12, example 1, table 12-2 and eqs. 12-1 to 12-3 (open) <https://pubs.usgs.gov/unnumbered/70275162/report.pdf>
+- WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.6.1, eqs. 7.7 and 7.8, p. 63 (its eq. 7.9 is the biased skewness m3 / m2**1.5); table 7.1, p. 64 (open) <https://library.wmo.int/idurl/4/32176>
+- Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.skew with bias=False: the adjusted Fisher-Pearson standardized moment coefficient G1 = sqrt(n (n - 1)) / (n - 2) m3 / m2**1.5 (open) <https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.skew.html>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 3 | Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 4a: the skewness divides by (N - 1)(N - 2) |
+| `values_not_all_equal` | precondition | min(x) < max(x) | Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 4a: the skewness divides by S cubed, 0 for equal values |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `mean` | m3/s | real | (-inf, inf) | 4 ulp of the bound |
+| `std` | m3/s | real | [0.0, inf) | 4 ulp of the bound |
+| `skewness` | - | real | (-inf, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the standard deviation with the divisor n - 1 (Bulletin 17B eq. 3a; WMO-No. 1029 eq. 7.8)
+- the skewness G of Bulletin 17B eq. 4a, N sum((X - mean)**3) / ((N - 1)(N - 2) S**3), which is the adjusted Fisher-Pearson coefficient G1 of scipy.stats.skew with bias=False; WMO-No. 1029 eq. 7.9 is the biased m3 / m2**1.5, G (n - 2) / sqrt(n (n - 1))
+- the sample in any unit: the mean and the standard deviation in its unit, the skewness without one
+- the moments of the deviations from the mean (eqs. 3a and 4a, which Bulletin 17B p. 10 finds less sensitive to the digits carried than the sums of powers of eqs. 3b and 4b), centred twice, on the sample divided by a power of two
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: the definitions of the sample statistics
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case values_not_all_equal-violated: m2 = 0 of equal values is refused before the division by m2**1.5
+- `gap_propagation`: type case values-nan_element: a gap is refused
+- `many_small_terms`: test_long_samples_keep_their_moments
+- `moment_cancellation`: limit exact_rational: a mean of 1e9 with a spread of 0.03 against rational arithmetic
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `values` increasing
+- scaling `unit_of_the_sample`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`mean` e = 1.0, `std` e = 1.0)
+- limit `exact_rational`: the statistics of the definition in exact rational arithmetic
+- symmetry `mirror`: the negated sample has the negated mean and skewness and the same standard deviation
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the mean, the standard deviation and the skewness in exact rational arithmetic (fractions) (`tests/unit/test_formulas_flood_frequency.py (limit exact_rational)`)
+- established: numpy.mean, numpy.std with ddof=1 and scipy.stats.skew with bias=False (`tests/unit/test_formulas_flood_frequency.py (test_the_moments_are_numpys_and_scipys)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="sample_l_moments"></a>
+### L-moments and L-skewness of a sample (unbiased probability-weighted moments)
+
+`hydrolog.statistics.frequency.sample_l_moments` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+b_r = \frac{1}{n}\binom{n - 1}{r}^{-1}\sum_{j=1}^{n}\binom{j - 1}{r}x_{(j)},\quad \lambda_1 = b_0,\quad \lambda_2 = 2b_1 - b_0,\quad \tau_3 = \frac{6b_2 - 6b_1 + b_0}{\lambda_2}
+$$
+
+Plain text: `b_r = n^-1 C(n - 1, r)^-1 sum_j C(j - 1, r) x(j) over the ascending sample x(1) <= ... <= x(n); l1 = b0; l2 = 2 b1 - b0; t3 = (6 b2 - 6 b1 + b0) / l2`
+
+**Sources**
+
+- Hosking, J.R.M. (1990). L-moments: analysis and estimation of distributions using linear combinations of order statistics. Journal of the Royal Statistical Society, Series B 52(1), 105-124, sect. 2: probability-weighted moments and the sample L-moments of their unbiased estimators (author-provided)
+- Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), samlmu: the sample L-moments of Hosking (1990) from the unbiased probability-weighted moments (open) <https://cran.r-project.org/package=lmom>
+- Asquith, W.H. lmomco: L-moments, censored L-moments, trimmed L-moments, L-comoments, and many distributions, R package version 2.5.8, CRAN, pwm.ub: beta_r = n^-1 C(n - 1, r)^-1 sum C(j - 1, r) x(j:n); lmoms (open) <https://cran.r-project.org/package=lmomco>
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.5.1, eqs. 5.25 to 5.27 and table II.5.4, pp. II.5-11 to II.5-12 (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+- WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.6.2, eqs. 7.11 and 7.12, p. 64; table 7.1, p. 64 (open) <https://library.wmo.int/idurl/4/32176>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 3 | Asquith, W.H. lmomco: L-moments, censored L-moments, trimmed L-moments, L-comoments, and many distributions, R package version 2.5.8, CRAN, pwm.ub: b2 divides by C(n - 1, 2), 0 for n < 3 |
+| `values_not_all_equal` | precondition | min(x) < max(x) | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.4: the L-skewness is lambda3 / lambda2, and lambda2 is 0 for equal values |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `l1` | m3/s | real | (-inf, inf) | 4 ulp of the bound |
+| `l2` | m3/s | real | [0.0, inf) | 4 ulp of the bound |
+| `t3` | - | real | [-1.0, 1.0] | 1e-09 |
+
+**Conventions (CMP-2.3)**
+
+- the unbiased probability-weighted moments b_r of the ascending sample (Hosking 1990; lmom samlmu; lmomco pwm.ub), not the biased estimators of plotting positions
+- the L-skewness t3 = lambda3 / lambda2 (WMO-No. 168 table II.5.4)
+- the sample in any unit: l1 and l2 in its unit, t3 without one
+- lambda2 and lambda3 as the weighted sums of the ordered deviations from the mean that the b_r make (their weights summed first), on the sample divided by a power of two; l1 the mean centred twice
+- |t3| = 1 for values all equal but the largest or the smallest; the weighted sums of n values round by up to n ulp, so a t3 within 1e-9 beyond 1 or -1 is set to the bound (its boundary tolerance)
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: the definitions of the sample statistics
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case values_not_all_equal-violated: l2 = 0 of equal values is refused before the division by l2
+- `gap_propagation`: type case values-nan_element: a gap is refused
+- `many_small_terms`: test_long_samples_keep_their_moments
+- `moment_cancellation`: limit exact_rational: a mean of 1e9 with a spread of 0.03 against rational arithmetic
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `values` increasing
+- scaling `unit_of_the_sample`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`l1` e = 1.0, `l2` e = 1.0)
+- limit `exact_rational`: the L-moments of the definition in exact rational arithmetic
+- symmetry `mirror`: the negated sample has the negated l1 and t3 and the same l2
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the L-moments of the unbiased probability-weighted moments in exact rational arithmetic (fractions) (`tests/unit/test_formulas_flood_frequency.py (limit exact_rational)`)
+- frozen: lmom 3.3 samlmu (Hosking) and lmomco 2.5.8 lmoms (Asquith) on seven samples, R 4.5.3, 2026-11-18 (`tests/oracles/frequency_lmom_r.csv`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="gev_quantiles"></a>
+### Quantiles of the generalized extreme value (GEV) distribution for return periods
+
+`hydrolog.statistics.frequency.gev_quantiles` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+Q_T = \xi + \alpha\,\frac{1 - y^{c}}{c},\quad y = -\ln\left(1 - \frac{1}{T}\right);\qquad Q_T = \xi - \alpha \ln y \ \ (c = 0)
+$$
+
+Plain text: `Q_T = loc + scale (1 - y**c) / c with y = -ln(1 - 1/T); Q_T = loc - scale ln y for c = 0 (Gumbel); c is scipy's genextreme shape, k of Hosking, -xi of Coles`
+
+**Sources**
+
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.2, p. II.5-5 (the GEV of Stedinger et al. 1993, F(x) = exp{-[1 - kappa (x - xi) / alpha]^(1/kappa)}); sect. 5.6.1, p. II.5-14 (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+- WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.5, eq. 7.5, p. 62 (the same GEV, kappa > 0 bounded above) (open) <https://library.wmo.int/idurl/4/32176>
+- Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.genextreme, lognorm, pearson3 and weibull_min: isf, the inverse of the survival function (open) <https://docs.scipy.org/doc/scipy/reference/stats.html>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `shape` | $c$ | - | real | (-inf, inf), test bound low -1.0 and high 50.0 (the shapes of Hydrolog's estimators: above -1 by the L-moments (where the GEV has a mean), at most 50, the end of the brackets of the L-moment and moment solvers) | unstated | [-0.6, 0.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `loc` | $\xi$ | m3/s | real | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [2.0, 22.2]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `scale` | $\alpha$ | m3/s | real | (0.0, inf), test bound high 1000000.0 (the formulas are homogeneous in the unit of loc and scale (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river) | unstated | [1.0, 19.5]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `return_periods_years` | $T$ | years | real_array | (1.0, inf), test bound high 1000000.0 (a million years lies far beyond every design flood (the Polish rules ask for 5,000 years at most) and tests the far tail of each distribution) | unstated | [2.0, 5000.0]: Rozporządzenie Ministra Środowiska z dnia 20 kwietnia 2007 r. w sprawie warunków technicznych, jakim powinny odpowiadać budowle hydrotechniczne i ich usytuowanie (Dz.U. 2007 nr 86 poz. 579); Dz.U. 2026 poz. 692 repeats its values, załącznik nr 4: the control flood of a structure of class I at p = 0.02 %, 5,000 years; Hydrolog's default return periods start at 2 years |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `quantiles` | m3/s | real_array | (-inf, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the shape c of scipy's genextreme, equal to k of Hosking and kappa of WMO-No. 168 and WMO-No. 1029, and to -xi of Coles (2001): c > 0 has the upper bound loc + scale/c, c < 0 a heavy upper tail
+- the quantile of the return period T at the annual exceedance probability 1/T, the non-exceedance 1 - 1/T (Polish Q_p% with p = 100/T %, KZGW 2017 eq. 3.7; WMO-No. 168 sect. 5.6.1), computed as the inverse survival function at 1/T, which keeps its digits for long return periods
+- loc and scale in the unit of the sample; the formula is homogeneous
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: the quantile function of the distribution
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: range case return_periods_years-physical_low_inside: T just above 1 puts the non-exceedance probability at 2.2e-16, the far lower tail, finite
+- `exp_overflow`: range cases shape-physical_low_test_bound and shape-physical_high_test_bound with the far tails: y**c of c = 50 at T just above 1 and of c = -1 at a million years stay finite
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `return_periods_years` increasing, `loc` increasing
+- scaling `unit_of_the_sample`: inputs times 2^e (`loc` e = 1.0, `scale` e = 1.0) give outputs times 2^e (`quantiles` e = 1.0)
+- limit `closed_form`: the quantile function of the GEV and, at c = 0, of the Gumbel distribution, in decimal arithmetic at 50 digits
+- symmetry `location`: a location larger by 1 gives quantiles larger by 1
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the quantile function in decimal arithmetic at 50 digits (`tests/unit/test_formulas_flood_frequency.py (limit closed_form)`)
+- frozen: lmom 3.3 quagev at the parameters of pelgev on seven samples, R 4.5.3, 2026-11-18 (`tests/oracles/frequency_lmom_r.csv`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="log_normal_quantiles"></a>
+### Quantiles of the log-normal distribution for return periods
+
+`hydrolog.statistics.frequency.log_normal_quantiles` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+Q_T = \epsilon + e^{\mu} \exp\left(\sigma\,\Phi^{-1}\left(1 - \frac{1}{T}\right)\right)
+$$
+
+Plain text: `Q_T = loc + scale exp(s z) with z the standard normal quantile of the non-exceedance 1 - 1/T; loc = 0 is the two-parameter distribution`
+
+**Sources**
+
+- KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 3.35 and 3.40, p. 46 (Q_p = epsilon + exp(mu + sigma u_p)); example 3.3, table 3.12, p. 51 (open) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.2, p. II.5-5 and its note a (the three-parameter log-normal with Y = ln(X - xi)) (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+- Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.genextreme, lognorm, pearson3 and weibull_min: isf, the inverse of the survival function (open) <https://docs.scipy.org/doc/scipy/reference/stats.html>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `shape` | $\sigma$ | - | real | (0.0, inf), test bound high 5.0 (a shape of 5 spreads the quantiles of T from just above 1 to a million years over a factor of 10**15; the fits of annual maxima stay below 1) | unstated | [0.6, 0.9]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `loc` | $\epsilon$ | m3/s | real | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.0, 0.4]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `scale` | $e^{\mu}$ | m3/s | real | (0.0, inf), test bound high 1000000.0 (the formulas are homogeneous in the unit of loc and scale (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river) | unstated | [2.4, 27.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `return_periods_years` | $T$ | years | real_array | (1.0, inf), test bound high 1000000.0 (a million years lies far beyond every design flood (the Polish rules ask for 5,000 years at most) and tests the far tail of each distribution) | unstated | [2.0, 5000.0]: Rozporządzenie Ministra Środowiska z dnia 20 kwietnia 2007 r. w sprawie warunków technicznych, jakim powinny odpowiadać budowle hydrotechniczne i ich usytuowanie (Dz.U. 2007 nr 86 poz. 579); Dz.U. 2026 poz. 692 repeats its values, załącznik nr 4: the control flood of a structure of class I at p = 0.02 %, 5,000 years; Hydrolog's default return periods start at 2 years |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `quantiles` | m3/s | real_array | (-inf, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- scipy's lognorm(s, loc, scale): s = sigma, loc = epsilon (the lower bound of KZGW 2017 eq. 3.35), scale = exp(mu)
+- the quantile of the return period T at the annual exceedance probability 1/T, the non-exceedance 1 - 1/T (Polish Q_p% with p = 100/T %, KZGW 2017 eq. 3.7; WMO-No. 168 sect. 5.6.1), computed as the inverse survival function at 1/T, which keeps its digits for long return periods
+- loc and scale in the unit of the sample; the formula is homogeneous
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: the quantile function of the distribution
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: range case return_periods_years-physical_low_inside: T just above 1 puts the non-exceedance probability at 2.2e-16, the far lower tail, finite
+- `exp_overflow`: range case shape-physical_high_test_bound: exp(5 z) at a million years is 2e10, finite
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `return_periods_years` increasing, `loc` increasing, `scale` increasing
+- scaling `unit_of_the_sample`: inputs times 2^e (`loc` e = 1.0, `scale` e = 1.0) give outputs times 2^e (`quantiles` e = 1.0)
+- limit `closed_form`: loc + scale exp(s z) with an independent normal quantile
+- symmetry `location`: a location larger by 1 gives quantiles larger by 1
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: loc + scale exp(s z) with z from Python's statistics.NormalDist (`tests/unit/test_formulas_flood_frequency.py (limit closed_form)`)
+- frozen: lmom 3.3 qualn3 at the parameters of pelln3 with bound 0 on seven samples, R 4.5.3, 2026-11-18 (`tests/oracles/frequency_lmom_r.csv`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="pearson3_quantiles"></a>
+### Quantiles of the Pearson type III distribution for return periods
+
+`hydrolog.statistics.frequency.pearson3_quantiles` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+Q_T = \mu + K_{\gamma}\!\left(1 - \frac{1}{T}\right)\sigma
+$$
+
+Plain text: `Q_T = loc + K(skew, T) scale, K the frequency factor: the standardised Pearson III quantile of the non-exceedance 1 - 1/T (a gamma of shape 4 / skew**2 shifted and scaled to the mean 0 and standard deviation 1)`
+
+**Sources**
+
+- Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 1, p. 9 (log Q = X + K S) and appendix 3, pp. 3-1 to 3-10 (the frequency factors K of Harter 1969 for skews of -9 to 9) (open) <https://pubs.usgs.gov/unnumbered/70275162/report.pdf>
+- KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 3.1 and 3.3, p. 28 (Q_p = epsilon + the gamma quantile of 1 - p with lambda and 1/alpha); example 3.2, table 3.9, p. 44 (open) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+- Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.genextreme, lognorm, pearson3 and weibull_min: isf, the inverse of the survival function (open) <https://docs.scipy.org/doc/scipy/reference/stats.html>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `skew` | $\gamma$ | - | real | (-inf, inf), test bound low -9.0 and high 9.0 (Bulletin 17B appendix 3 tabulates the frequency factor for skews of -9 to 9) | unstated | [1.3, 2.7]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `loc` | $\mu$ | m3/s | real | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [3.0, 35.4]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `scale` | $\sigma$ | m3/s | real | (0.0, inf), test bound high 1000000.0 (the formulas are homogeneous in the unit of loc and scale (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river) | unstated | [2.0, 29.6]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `return_periods_years` | $T$ | years | real_array | (1.0, inf), test bound high 1000000.0 (a million years lies far beyond every design flood (the Polish rules ask for 5,000 years at most) and tests the far tail of each distribution) | unstated | [2.0, 5000.0]: Rozporządzenie Ministra Środowiska z dnia 20 kwietnia 2007 r. w sprawie warunków technicznych, jakim powinny odpowiadać budowle hydrotechniczne i ich usytuowanie (Dz.U. 2007 nr 86 poz. 579); Dz.U. 2026 poz. 692 repeats its values, załącznik nr 4: the control flood of a structure of class I at p = 0.02 %, 5,000 years; Hydrolog's default return periods start at 2 years |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `quantiles` | m3/s | real_array | (-inf, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- scipy's pearson3(skew, loc, scale) is parameterised by the mean, standard deviation and skewness, as Bulletin 17B and lmom's PE3 (mu, sigma, gamma); KZGW 2017's (epsilon, alpha, lambda) give skew = 2 / sqrt(lambda), loc = epsilon + lambda / alpha and scale = sqrt(lambda) / alpha
+- a positive skewness has the lower bound loc - 2 scale / skew, a negative one the upper bound loc - 2 scale / skew
+- the quantile of the return period T at the annual exceedance probability 1/T, the non-exceedance 1 - 1/T (Polish Q_p% with p = 100/T %, KZGW 2017 eq. 3.7; WMO-No. 168 sect. 5.6.1), computed as the inverse survival function at 1/T, which keeps its digits for long return periods
+- loc and scale in the unit of the sample; the formula is homogeneous
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: the quantile function of the distribution
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: range case return_periods_years-physical_low_inside: T just above 1 puts the non-exceedance probability at 2.2e-16, the far lower tail, finite
+- `exp_overflow`: range cases skew-physical_low_test_bound and skew-physical_high_test_bound: a gamma shape of 4/81 in both tails stays finite
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `return_periods_years` increasing, `loc` increasing
+- scaling `unit_of_the_sample`: inputs times 2^e (`loc` e = 1.0, `scale` e = 1.0) give outputs times 2^e (`quantiles` e = 1.0)
+- limit `normal`: the skewness 0 gives the normal distribution
+- symmetry `location`: a location larger by 1 gives quantiles larger by 1
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- frozen: lmom 3.3 quape3 at the parameters of pelpe3 on seven samples, R 4.5.3, 2026-11-18 (`tests/oracles/frequency_lmom_r.csv`)
+- algorithm: the normal quantile of Python's statistics.NormalDist at the skewness 0 (`tests/unit/test_formulas_flood_frequency.py (limit normal)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="weibull_quantiles"></a>
+### Quantiles of the three-parameter Weibull distribution for return periods
+
+`hydrolog.statistics.frequency.weibull_quantiles` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+Q_T = \epsilon + \frac{1}{\alpha_W}\left(\ln T\right)^{1/\beta_W}
+$$
+
+Plain text: `Q_T = loc + scale (ln T)**(1/k): F(x) = 1 - exp(-((x - loc) / scale)**k) = 1 - 1/T`
+
+**Sources**
+
+- KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 3.52 and 3.55, pp. 53-54 (P(Q >= x) = exp(-[alpha_W (x - epsilon)]^beta_W)); example 3.4, table 3.15, p. 60 (open) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+- WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.5, eq. 7.6, p. 62 (F(x) = 1 - exp[-((x - xi) / alpha)^kappa]) and eq. 7.13, p. 64 (open) <https://library.wmo.int/idurl/4/32176>
+- Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.genextreme, lognorm, pearson3 and weibull_min: isf, the inverse of the survival function (open) <https://docs.scipy.org/doc/scipy/reference/stats.html>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `shape` | $\beta_W$ | - | real | (0.0, inf), test bound high 50.0 (shapes above 50 put the quantile of every T up to a million years within 6 % of loc + scale ((ln 10**6)**(1/50) = 1.054)) | unstated | [0.7, 1.4]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `loc` | $\epsilon$ | m3/s | real | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [-1.0, 4.9]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `scale` | $1/\alpha_W$ | m3/s | real | (0.0, inf), test bound high 1000000.0 (the formulas are homogeneous in the unit of loc and scale (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river) | unstated | [1.5, 37.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `return_periods_years` | $T$ | years | real_array | (1.0, inf), test bound high 1000000.0 (a million years lies far beyond every design flood (the Polish rules ask for 5,000 years at most) and tests the far tail of each distribution) | unstated | [2.0, 5000.0]: Rozporządzenie Ministra Środowiska z dnia 20 kwietnia 2007 r. w sprawie warunków technicznych, jakim powinny odpowiadać budowle hydrotechniczne i ich usytuowanie (Dz.U. 2007 nr 86 poz. 579); Dz.U. 2026 poz. 692 repeats its values, załącznik nr 4: the control flood of a structure of class I at p = 0.02 %, 5,000 years; Hydrolog's default return periods start at 2 years |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `finite_quantiles` | precondition | ln(scale) + ln(ln T) / k < 708.78 for every T: scale (ln T)**(1/k) below e**-1 of the largest float64 | Harris, C.R. et al. (2020). Array programming with NumPy. Nature 585, 357-362, numpy.finfo(numpy.float64).max, about 1.8e308, the largest IEEE 754 binary64 number |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `quantiles` | m3/s | real_array | (-inf, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- scipy's weibull_min(k, loc, scale), the lower-bounded Weibull fitted to maxima as KZGW 2017 eq. 3.52 (epsilon = loc, alpha_W = 1/scale, beta_W = k) and lmom's (zeta, beta, delta)
+- the quantile of the return period T at the annual exceedance probability 1/T, the non-exceedance 1 - 1/T (Polish Q_p% with p = 100/T %, KZGW 2017 eq. 3.7; WMO-No. 168 sect. 5.6.1), computed as the inverse survival function at 1/T, which keeps its digits for long return periods
+- loc and scale in the unit of the sample; the formula is homogeneous
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: the quantile function of the distribution
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: range case return_periods_years-physical_low_inside: T just above 1 puts the non-exceedance probability at 2.2e-16, the far lower tail, finite
+- `exp_overflow`: constraint case finite_quantiles-violated: a shape of 0.001 would raise (ln T)**(1/k) beyond the float64 numbers at T = 5,000 years; it is refused before the computation
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `return_periods_years` increasing, `loc` increasing, `scale` increasing
+- scaling `unit_of_the_sample`: inputs times 2^e (`loc` e = 1.0, `scale` e = 1.0) give outputs times 2^e (`quantiles` e = 1.0)
+- limit `closed_form`: loc + scale (ln T)^(1/k) in decimal arithmetic at 50 digits
+- symmetry `location`: a location larger by 1 gives quantiles larger by 1
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: loc + scale (ln T)^(1/k) in decimal arithmetic at 50 digits (`tests/unit/test_formulas_flood_frequency.py (limit closed_form)`)
+- frozen: lmom 3.3 quawei at the parameters of pelwei on seven samples, R 4.5.3, 2026-11-18 (`tests/oracles/frequency_lmom_r.csv`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="fit_l_moments"></a>
+### Parameters of a distribution of annual maxima by the method of L-moments
+
+`hydrolog.statistics.frequency.fit_l_moments` · family `statistic` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+\tau_3 = \frac{2(1 - 3^{-c})}{1 - 2^{-c}} - 3,\quad \alpha = \frac{\lambda_2 c}{(1 - 2^{-c})\Gamma(1 + c)},\quad \xi = \lambda_1 - \alpha\frac{1 - \Gamma(1 + c)}{c};\qquad s = 2\,\mathrm{erf}^{-1}\frac{\lambda_2}{\lambda_1};\qquad \sigma = \lambda_2\sqrt{\pi a}\,\frac{\Gamma(a)}{\Gamma(a + 1/2)},\ G = \frac{2\,\mathrm{sign}\,\tau_3}{\sqrt{a}}
+$$
+
+Plain text: `the distribution whose L-moments are the sample's l1, l2 and t3: log-normal (loc 0) s = 2 erfinv(l2 / l1), scale = l1 exp(-s**2 / 2); GEV: c solves t3 = 2 (1 - 3**-c) / (1 - 2**-c) - 3, scale = l2 c / ((1 - 2**-c) Gamma(1 + c)), loc = l1 - scale (1 - Gamma(1 + c)) / c; Pearson III: alpha = 4 / G**2 from |t3| (rational approximations), G = 2 sign(t3) / sqrt(alpha), scale = l2 sqrt(pi alpha) Gamma(alpha) / Gamma(alpha + 1/2), loc = l1; Weibull: the GEV (c, xi, a) of (-l1, l2, -t3), shape = 1/c, loc = -xi - a/c, scale = a/c`
+
+**Sources**
+
+- Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from |t3| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments (open) <https://cran.r-project.org/package=lmom>
+- Hosking, J.R.M. and Wallis, J.R. (1997). Regional Frequency Analysis: An Approach Based on L-Moments. Cambridge University Press, appendix A.5 (GEV), A.8 (log-normal), A.9 (Pearson type III, the rational approximations of alpha from |t3|) (author-provided)
+- Hosking, J.R.M. (1990). L-moments: analysis and estimation of distributions using linear combinations of order statistics. Journal of the Royal Statistical Society, Series B 52(1), 105-124, sect. 2: probability-weighted moments and the sample L-moments of their unbiased estimators (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `annual_maxima` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+| `distribution` | $F$ | - | choice of log_normal, gev, pearson3, weibull | – | – | – |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 3 | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), samlmu: t3 needs 3 values |
+| `values_not_all_equal` | precondition | min(x) < max(x) | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelgev, pelpe3: l2 must be positive |
+| `positive_values` | precondition | min(x) > 0 for the log-normal (location 0) | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0 |
+| `l_moments_within_distribution` | precondition | l2 < l1 (log-normal); -1 < t3 < 1 (GEV, Pearson III); -0.1699 < t3 < 1 (Weibull) | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `a1` | $A_1$ | 0.2906 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `a2` | $A_2$ | 0.1882 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `a3` | $A_3$ | 0.0442 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `b1` | $B_1$ | 0.36067 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `b2` | $B_2$ | -0.59567 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `b3` | $B_3$ | 0.25361 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `b4` | $C_1$ | -2.78861 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `b5` | $C_2$ | 2.56096 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `b6` | $C_3$ | -0.77045 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `normal_below` | $\tau_{3,0}$ | 1e-06 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments |
+| `gumbel_l_skewness` | $\tau_{3,G}$ | 0.1699250014423126 | - | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelwei: the GEV of the negated L-moments, which needs -t3 below the Gumbel's L-skewness 2 ln 3 / ln 2 - 3 = 0.1699 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `shape` | - | real | (-inf, inf) | 4 ulp of the bound |
+| `loc` | m3/s | real | (-inf, inf) | 4 ulp of the bound |
+| `scale` | m3/s | real | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the unbiased sample L-moments of sample_l_moments
+- scipy's parameters: the GEV shape c is Hosking's k and -xi of Coles; Pearson III (loc, scale, shape) are its mean, standard deviation and skewness; the log-normal has location 0
+- the GEV shape solved exactly by brentq in -1 < c <= 50 (lmom's pelgev uses Donaldson's approximation, within 2e-7 of it); a t3 beyond the L-skewness of an end of that bracket gives the end
+- Weibull as the GEV of the negated L-moments, as lmom's pelwei
+
+**Assumptions**
+
+- the annual maxima are independent and identically distributed
+
+**Validation:** none: the estimator gives the distribution of the sample's L-moments; Hosking and Wallis (1997) report its efficiency on simulated samples
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case l_moments_within_distribution-violated and test_l_skewness_near_one_clamps_the_gev_shape: |t3| = 1 is refused, a t3 within rounding of it gives the end of the bracket
+- `unbounded_iteration`: test_l_skewness_near_one_clamps_the_gev_shape: brentq runs in a bracket, its ends clamped (at most 100 iterations)
+- `gap_propagation`: type case annual_maxima-nan_element: a gap is refused
+- `moment_cancellation`: test_a_large_mean_shifts_the_fits: a mean of 1e9 with the spread of the Polana maxima over 1000
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_sample`: inputs times 2^e (`annual_maxima` e = 1.0) give outputs times 2^e (`loc` e = 1.0, `scale` e = 1.0)
+- limit `l_moments_of_the_fit`: the fitted distribution has the sample's l1, l2 and t3 (l1 and l2 for the log-normal), by quadrature of its quantile function
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the L-moments of the fitted distribution by quadrature of its quantile function (`tests/unit/test_formulas_flood_frequency.py (limit l_moments_of_the_fit)`)
+- frozen: lmom 3.3 pelgev, pelpe3, pelwei, pelln3 (bound 0) and lmomco 2.5.8 pargev (useHosking=FALSE) on seven samples, R 4.5.3, 2026-11-18 (`tests/oracles/frequency_lmom_r.csv`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="fit_moments"></a>
+### Parameters of a distribution of annual maxima by the method of moments
+
+`hydrolog.statistics.frequency.fit_moments` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\sigma_l = \sqrt{\ln(1 + C_v^2)},\ e^{\mu} = \frac{\bar{x}}{\sqrt{1 + C_v^2}};\qquad (\gamma, \mu, \sigma) = (G, \bar{x}, s);\qquad \gamma_{GEV}(c) = G,\ \alpha = \frac{s}{\sigma_{GEV}(c)},\ \xi = \bar{x} - \alpha\,\mu_{GEV}(c)
+$$
+
+Plain text: `the distribution whose mean, standard deviation and skewness are the sample's mean, s and G: log-normal (loc 0) s_l = sqrt(ln(1 + Cv**2)), scale = mean / sqrt(1 + Cv**2), Cv = s / mean; Pearson III (G, mean, s); GEV: c solves G(c) = G, G(c) the skewness of the GEV, scale = s / sd(c), loc = mean - scale m(c), m(c) and sd(c) the mean and standard deviation of the GEV(c, 0, 1); Weibull: the GEV (c, xi, a) of (-mean, s, -G), shape = 1/c, loc = -xi - a/c, scale = a/c`
+
+**Sources**
+
+- Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, pp. 9-10 and appendix 12, example 1: the log-Pearson type III distribution of the mean, standard deviation and skewness of the logarithms (eqs. 2, 3a, 4a) (open) <https://pubs.usgs.gov/unnumbered/70275162/report.pdf>
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.5 and table II.5.2, pp. II.5-5 to II.5-12: the method of moments and the moments of the GEV, log-normal, Pearson type III and Weibull distributions (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+- Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.genextreme, lognorm, pearson3 and weibull_min: isf, the inverse of the survival function (open) <https://docs.scipy.org/doc/scipy/reference/stats.html>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `annual_maxima` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+| `distribution` | $F$ | - | choice of log_normal, gev, pearson3, weibull | – | – | – |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 3 | Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 4a: the skewness divides by (N - 1)(N - 2) |
+| `values_not_all_equal` | precondition | min(x) < max(x) | Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 4a: the skewness divides by S cubed, 0 for equal values |
+| `positive_values` | precondition | min(x) > 0 for the log-normal (location 0) | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0 |
+| `skewness_within_distribution` | precondition | G > -1.1395 for the Weibull distribution, the skewness of the reversed Gumbel distribution | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.2, p. II.5-5: the Gumbel (EV1) distribution, of skewness 1.1396, 12 sqrt(6) zeta(3) / pi**3 |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `gumbel_skewness` | $\gamma_G$ | 1.1395470994046488 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.2, p. II.5-5: the Gumbel (EV1) distribution, of skewness 1.1396, 12 sqrt(6) zeta(3) / pi**3 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `shape` | - | real | (-inf, inf) | 4 ulp of the bound |
+| `loc` | m3/s | real | (-inf, inf) | 4 ulp of the bound |
+| `scale` | m3/s | real | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the sample moments of sample_moments: s with the divisor n - 1, G the adjusted Fisher-Pearson coefficient
+- the log-normal of location 0 from the mean and Cv of the values, not of their logarithms
+- scipy's parameters: the GEV shape c is Hosking's k and -xi of Coles; Pearson III (loc, scale, shape) are its mean, standard deviation and skewness
+- the GEV shape solved by brentq in -1/3 < c <= 50 (the skewness exists above -1/3); Weibull as the GEV of the negated moments, its c in 0 < c <= 50
+
+**Assumptions**
+
+- the annual maxima are independent and identically distributed
+
+**Validation:** none: the estimator gives the distribution of the sample's moments
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case skewness_within_distribution-violated: the Weibull shape 1/c grows without limit as G falls to -1.1395
+- `unbounded_iteration`: test_a_skewness_beyond_the_bracket_clamps: brentq runs in a bracket, its ends clamped (at most 100 iterations)
+- `gap_propagation`: type case annual_maxima-nan_element: a gap is refused
+- `moment_cancellation`: test_a_large_mean_shifts_the_fits: a mean of 1e9 with the spread of the Polana maxima over 1000
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_sample`: inputs times 2^e (`annual_maxima` e = 1.0) give outputs times 2^e (`loc` e = 1.0, `scale` e = 1.0)
+- limit `moments_of_the_fit`: the fitted distribution has the sample's mean, standard deviation and skewness (the mean and s for the log-normal), by scipy's stats
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the mean, variance and skewness of the fitted distribution by scipy.stats (`tests/unit/test_formulas_flood_frequency.py (limit moments_of_the_fit)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="fit_maximum_likelihood"></a>
+### Parameters of a distribution of annual maxima by maximum likelihood
+
+`hydrolog.statistics.frequency.fit_maximum_likelihood` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+(\hat{k}, \hat{\xi}, \hat{\alpha}) = \arg\max \sum_i \ln f(x_i; k, \xi, \alpha);\qquad \hat{\mu} = \frac{1}{n}\sum_i \ln x_i,\ \hat{s}^2 = \frac{1}{n}\sum_i (\ln x_i - \hat{\mu})^2
+$$
+
+Plain text: `the parameters that maximise the log-likelihood sum_i ln f(x_i; shape, loc, scale) of the distribution's density f; for the log-normal of location 0 in closed form: ln scale = mean(ln x), s = sqrt(mean((ln x - ln scale)**2))`
+
+**Sources**
+
+- Coles, S. (2001). An Introduction to Statistical Modeling of Extreme Values. Springer, sect. 3.3.2 (the likelihood of the GEV) and 3.4.1 (Port Pirie) (author-provided)
+- Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, the likelihood of a three-parameter distribution has no maximum where its density is infinite at the bound of its support (author-provided)
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.5, p. II.5-11: the method of maximum likelihood; sect. 5.3.2.3: the Weibull density goes to infinity at its bound for k < 1 (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `annual_maxima` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+| `distribution` | $F$ | - | choice of log_normal, gev, pearson3, weibull | – | – | – |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n > p, the number of parameters: n >= 3 for the log-normal, n >= 4 for the others | Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, n values fit n parameters exactly, where the likelihood has no maximum |
+| `values_not_all_equal` | precondition | min(x) < max(x) | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.5: the likelihood of values all equal grows without limit as the scale falls to 0 |
+| `positive_values` | precondition | min(x) > 0 for the log-normal (location 0) | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0 |
+| `likelihood_has_a_maximum` | precondition | the likelihood has a maximum inside the shapes searched: the search ends neither within 1e-3 of the shapes whose density is infinite at a bound of the support (GEV c >= 1, Pearson III \|G\| >= 2, Weibull shape <= 1), nor of GEV c = -1 (no mean) or Weibull shape 50, nor at a scale of a millionth of the standard deviation; a GEV has at most half the values tied at the smallest; and the search settles | Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, the bound placed at the closest value makes the likelihood grow without limit |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `shape` | - | real | (-inf, inf) | 4 ulp of the bound |
+| `loc` | m3/s | real | (-inf, inf) | 4 ulp of the bound |
+| `scale` | m3/s | real | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- scipy's densities and parameters: the GEV shape c is -xi of Coles (evd, extRemes, ismev)
+- the search runs on the standardised sample (x / 2**e - mean) / sd, from the L-moments' estimate; Nelder-Mead (xatol 1e-10, fatol 1e-12) is run again from its end until a run gains at most 1e-9 of log-likelihood, at most 21 runs
+- the log-normal of location 0 in closed form (scipy's lognorm.fit with floc=0)
+
+**Assumptions**
+
+- the annual maxima are independent and identically distributed
+
+**Validation:** none: the estimator gives the most likely distribution of the sample
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case likelihood_has_a_maximum-violated: the density infinite at a bound placed on a value
+- `unbounded_iteration`: test_a_search_that_does_not_settle_is_refused: a search that does not settle in its bounded count of runs fails the precondition likelihood_has_a_maximum
+- `gap_propagation`: type case annual_maxima-nan_element: a gap is refused
+- `moment_cancellation`: test_a_large_mean_shifts_the_fits: a mean of 1e9 with the spread of the Polana maxima over 1000
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_sample`: inputs times 2^e (`annual_maxima` e = 1.0) give outputs times 2^e (`loc` e = 1.0, `scale` e = 1.0)
+- limit `local_maximum`: no point a step of 1e-4 from the estimate is more likely
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- frozen: evd 2.3.7.1 fgev, extRemes 2.2.1 fevd, ismev 1.43 gev.fit and lmomco 2.5.8 mle2par on seven samples, R 4.5.3, 2026-11-18: Hydrolog's log-likelihood is not lower (`tests/oracles/frequency_ml_r.csv (tests/unit/test_maximum_likelihood.py)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="fit_least_squares"></a>
+### Parameters of a distribution of annual maxima by least squares on the plotting positions
+
+`hydrolog.statistics.frequency.fit_least_squares` · family `statistic` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+(\hat{k}, \hat{\xi}, \hat{\alpha}) = \arg\min \sum_{j=1}^{n}\left(x_{(j)} - Q\left(\frac{j}{n + 1}; k, \xi, \alpha\right)\right)^2
+$$
+
+Plain text: `the parameters that minimise sum_j (x(j) - Q(j / (n + 1)))**2 over the ascending sample x(1) <= ... <= x(n), Q the quantile function of the distribution: the quantiles at the Weibull plotting positions`
+
+**Sources**
+
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the Weibull plotting position i / (n + 1) of the graphical fit of a distribution to the ordered sample (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+- KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eq. 3.7: the empirical probability m / (N + 1) of the ordered annual maxima (open) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `annual_maxima` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+| `distribution` | $F$ | - | choice of log_normal, gev, pearson3, weibull | – | – | – |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 3 | Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 4a: the moments of the start divide by (N - 1)(N - 2) |
+| `values_not_all_equal` | precondition | min(x) < max(x) | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1: values all equal have no spread to fit |
+| `positive_values` | precondition | min(x) > 0 for the log-normal (location 0) | Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0 |
+| `skewness_within_distribution` | precondition | G > -1.1395 for the Weibull distribution: the search starts from the moments' estimate | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.2, p. II.5-5: the Gumbel (EV1) distribution, of skewness 1.1396, 12 sqrt(6) zeta(3) / pi**3 |
+| `squares_have_a_minimum` | precondition | the sum of squares has a minimum inside the shapes searched (log-normal s < 5, GEV -1 < c < 50, Pearson III \|G\| < 9, Weibull shape < 50) on which the search settles | Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, appendix 3: the frequency factors of Pearson type III, tabulated for skews of -9 to 9 |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `gumbel_skewness` | $\gamma_G$ | 1.1395470994046488 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.2, p. II.5-5: the Gumbel (EV1) distribution, of skewness 1.1396, 12 sqrt(6) zeta(3) / pi**3 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `shape` | - | real | (-inf, inf) | 4 ulp of the bound |
+| `loc` | m3/s | real | (-inf, inf) | 4 ulp of the bound |
+| `scale` | m3/s | real | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the Weibull plotting positions j / (n + 1) of the ascending sample, unweighted residuals in the unit of the sample
+- scipy's parameters, as fit_moments
+- the search runs on the standardised sample (the log-normal, of location 0, only divided by its standard deviation) from the moments' estimate; Nelder-Mead (xatol 1e-10, fatol 1e-12) is run again from its end until a run gains at most 1e-9, at most 21 runs
+
+**Assumptions**
+
+- the annual maxima are independent and identically distributed
+
+**Validation:** none: the estimator gives the distribution closest to the plotted sample
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case skewness_within_distribution-violated: the Weibull start of a skewness below the reversed Gumbel's
+- `unbounded_iteration`: test_a_search_that_does_not_settle_is_refused: a search that does not settle in its bounded count of runs fails the precondition squares_have_a_minimum
+- `gap_propagation`: type case annual_maxima-nan_element: a gap is refused
+- `moment_cancellation`: test_a_large_mean_shifts_the_fits: a mean of 1e9 with the spread of the Polana maxima over 1000
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_sample`: inputs times 2^e (`annual_maxima` e = 1.0) give outputs times 2^e (`loc` e = 1.0, `scale` e = 1.0)
+- limit `local_minimum`: no point a step of 1e-4 from the estimate has a smaller sum of squares
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the sum of squares at points a step of 1e-4 from the estimate, by math.fsum (`tests/unit/test_formulas_flood_frequency.py (limit local_minimum)`)
+- algorithm: Powell's method from the estimate finds no smaller sum of squares (`tests/unit/test_formulas_flood_frequency.py (test_powell_finds_no_smaller_squares)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="anderson_darling"></a>
+### Anderson-Darling statistic A² of a sample against a fitted distribution
+
+`hydrolog.statistics.frequency.anderson_darling` · family `statistic` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+A^2 = -n - \sum_{i=1}^{n} \frac{2i - 1}{n}\left[\ln F(x_{(i)}) + \ln\left(1 - F(x_{(n+1-i)})\right)\right]
+$$
+
+Plain text: `A² = -n - sum_i (2 i - 1) / n [ln F(x_(i)) + ln(1 - F(x_(n+1-i)))] over the ascending sample x_(1) <= ... <= x_(n), F the distribution function at the parameters, clipped to [cdf_clip, 1 - cdf_clip]`
+
+**Sources**
+
+- NIST/SEMATECH e-Handbook of Statistical Methods (2012), sect. 1.3.5.14, Anderson-Darling test: A² = -N - S, S = sum (2i - 1) / N [ln F(Y_i) + ln(1 - F(Y_(N+1-i)))] of the ordered data (open) <https://www.itl.nist.gov/div898/handbook/eda/section3/eda35e.htm>
+- Anderson, T.W. and Darling, D.A. (1954). A test of goodness of fit. Journal of the American Statistical Association 49(268), 765-769, the statistic W_n² and its computing form (author-provided)
+- Stephens, M.A. (1974). EDF statistics for goodness of fit and some comparisons. Journal of the American Statistical Association 69(347), 730-737, the computing form of A²; case 0, a distribution given in advance (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `annual_maxima` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+| `distribution` | $F$ | - | choice of log_normal, gev, pearson3, weibull | – | – | – |
+| `shape` | $k$ | - | real | (-inf, inf), test bound low -9.0 and high 50.0 (the shapes of Hydrolog's estimators: a Pearson III skewness above -9 by least squares, a GEV c and a Weibull shape of at most 50) | unstated | [-0.6, 2.7]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `loc` | $\xi$ | m3/s | real | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [-1.0, 35.4]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `scale` | $\alpha$ | m3/s | real | (0.0, inf), test bound high 1000000.0 (the formulas are homogeneous in the unit of loc and scale (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river) | unstated | [1.0, 37.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `shape_of_the_distribution` | physical | shape > 0 for the log-normal (s) and Weibull (k) | Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.lognorm, shape s > 0, and scipy.stats.weibull_min, shape c > 0 |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `cdf_clip` | $\epsilon$ | 1e-10 | - | Hydrolog (2026). ADR-0048: Anderson-Darling critical values by a parametric bootstrap, decision 1: A² keeps its form, F clipped to [1e-10, 1 - 1e-10] |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `a_squared` | - | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the statistic of a distribution given in advance (case 0 of Stephens 1974), here at the parameters estimated from the same sample: its critical values are not case 0's
+- the critical values FloodFrequencyAnalysis gives a fit by L-moments are those of a parametric bootstrap of that fit (ADR-0048): 999 samples of n values drawn from it with the seed 20261118, each refitted by L-moments; a fit by another method has none
+- F clipped to [cdf_clip, 1 - cdf_clip], so a value outside the support of the distribution adds a large finite term instead of an infinite one
+- F of scipy.stats at the parameters of its lognorm, genextreme, pearson3 or weibull_min
+- the sample in any unit, with loc and scale in it: A² has none
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a distance between the sample and the fitted distribution
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: limit integral_form: ln F at a value outside the support, where F = 0, is ln cdf_clip
+- `gap_propagation`: type case annual_maxima-nan_element: a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_sample`: inputs times 2^e (`annual_maxima` e = 1.0, `loc` e = 1.0, `scale` e = 1.0) give outputs times 2^e (none)
+- limit `integral_form`: n times the integral of (F_n(u) - u)² / (u (1 - u)) over [0, 1], in closed pieces at 50 digits, for the L-moment fits of two samples and a Weibull distribution that leaves a value outside its support
+- symmetry `order`: the sample in the reverse order has the same A²
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the integral form of the definition, n times the integral of (F_n(u) - u)² / (u (1 - u)) du, in closed pieces at 50 digits (decimal) (`tests/unit/test_formulas_flood_frequency.py (limit integral_form)`)
+- established: scipy.stats.anderson for the normal distribution (Pearson III of skewness 0) and the Gumbel distribution (the GEV of c = 0) (`tests/unit/test_formulas_flood_frequency.py (test_the_a_squared_is_scipys)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="akaike_information_criterion"></a>
+### Akaike information criterion of a distribution fitted to a sample
+
+`hydrolog.statistics.frequency.akaike_information_criterion` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+\mathrm{AIC} = 2k - 2\sum_{i=1}^{n} \ln f(x_i; k, \xi, \alpha)
+$$
+
+Plain text: `AIC = 2 k - 2 sum_i ln f(x_i; shape, loc, scale), f the density at the parameters; k = 2 for the log-normal of location 0, 3 for the others`
+
+**Sources**
+
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.3, eq. 5.31, pp. II.5-14 and II.5-15: AIC(f) = -2 log L(theta, x) + 2k, with L the likelihood function and k the number of parameters; alone not appropriate for model selection (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+- Akaike, H. (1974). A new look at the statistical model identification. IEEE Transactions on Automatic Control 19(6), 716-723, the criterion -2 ln (maximum likelihood) + 2 k (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `annual_maxima` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+| `distribution` | $F$ | - | choice of log_normal, gev, pearson3, weibull | – | – | – |
+| `shape` | $k$ | - | real | (-inf, inf), test bound low -9.0 and high 50.0 (the shapes of Hydrolog's estimators: a Pearson III skewness above -9 by least squares, a GEV c and a Weibull shape of at most 50) | unstated | [-0.6, 2.7]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `loc` | $\xi$ | m3/s | real | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [-1.0, 35.4]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+| `scale` | $\alpha$ | m3/s | real | (0.0, inf), test bound high 1000000.0 (the formulas are homogeneous in the unit of loc and scale (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river) | unstated | [1.0, 37.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `shape_of_the_distribution` | physical | shape > 0 for the log-normal (s) and Weibull (k) | Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.lognorm, shape s > 0, and scipy.stats.weibull_min, shape c > 0 |
+| `values_within_support` | precondition | ln f(x_i) is finite for every value, and so is their sum: each value inside the support of the distribution, where its density is positive and finite | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.3, eq. 5.31: the logarithm of the likelihood, -inf where a value has no density |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `aic` | - | real | (-inf, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the likelihood at the parameters of the method that fitted them, the maximum only for maximum likelihood (ADR-0021, point 7): a ranking by AIC compares the likelihood of each fit's parameters
+- k counts the parameters fitted: 2 for the log-normal, whose location is fixed at 0, 3 for the others
+- a fit that leaves a value outside its support has no finite AIC: FloodFrequencyAnalysis gives it an infinite AIC without the formula, with the notice outside_support, and ranks it last
+- ln f of scipy.stats at the parameters of its lognorm, genextreme, pearson3 or weibull_min, summed exactly rounded (math.fsum)
+- the natural logarithm; the AIC depends on the unit of the sample
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a criterion for comparing fits; WMO-No. 168 finds it alone not appropriate for choosing one
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case values_within_support-violated: ln f of a value outside the support is refused before the sum
+- `gap_propagation`: type case annual_maxima-nan_element: a gap is refused
+- `many_small_terms`: symmetry order: the log-likelihood is summed exactly rounded, in any order
+
+**Properties (CMP-6.5)**
+
+- units: unit_specific
+- limit `closed_form`: the AIC of the moment fits of two samples, every value inside their supports, with the densities of the four distributions written out
+- limit `unit_of_the_sample`: doubling the sample, loc and scale adds 2 n ln 2: the AIC depends on the unit of the sample
+- symmetry `order`: the sample in the reverse order has the same AIC
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the log-likelihood with the densities of the GEV, the log-normal, Pearson III and Weibull written out (math) (`tests/unit/test_formulas_flood_frequency.py (limit closed_form)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="plotting_positions"></a>
+### Plotting positions of annual maxima: exceedance probabilities and return periods
+
+`hydrolog.statistics._types.compute_plotting_positions` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+p_i = \frac{i - a}{n + 1 - 2a},\qquad T_i = \frac{1}{p_i}
+$$
+
+Plain text: `p_i = (i - a) / (n + 1 - 2a) and T_i = 1 / p_i of the value of rank i = 1 ... n, ranked from the largest (rank 1); a = 0 (Weibull, i / (n + 1)), 1/2 (Hazen, (i - 1/2) / n) or 2/5 (Cunnane, (i - 2/5) / (n + 1/5))`
+
+**Sources**
+
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+- KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eq. 3.7, p. 29: p_i = i / (N + 1) 100 %, the empirical exceedance probability of the ith largest annual maximum; example 3.4, table 3.13, pp. 54-55 (open) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+- WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.3, eq. 7.3, p. 59: P_i = (i - a) / (n + 1 - 2a), the non-exceedance probability of the ith smallest of n events; p. 60: the Weibull formula is a = 0; sect. 7.8, step I, p. 65: the AM(7) values ranked ascending, the smallest rank 1, and the Weibull formula (open) <https://library.wmo.int/idurl/4/32176>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $x_{(i)}$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) |
+| `method` | $a$ | - | choice of weibull, hazen, cunnane | – | – | – |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `a_weibull` | $a$ | 0 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n |
+| `a_hazen` | $a$ | 1/2 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n |
+| `a_cunnane` | $a$ | 2/5 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `values_sorted` | m3/s | real_array | (-inf, inf) | 4 ulp of the bound |
+| `exceedance_prob` | - | real_array | (0.0, 1.0) | 4 ulp of the bound |
+| `return_periods` | years | real_array | (1.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the exceedance probability of the ith largest value, rank 1 the largest (WMO-No. 168 sect. 5.6.1; KZGW 2017 eq. 3.7, Polish p_i = i / (N + 1)); the return period T = 1 / p, as of the quantiles of the maxima
+- the general form (i - a) / (n + 1 - 2a) of WMO-No. 1029 eq. 7.3 with the a of WMO-No. 168 sect. 5.6.1; no Gringorten formula
+- tied values keep consecutive ranks, each with its own position, as KZGW 2017 table 3.13 ranks its two values of 10.3 and of 7.88 m3/s
+- the sample in any unit: the positions depend on the ranks only
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: an estimate of the probability of each value of the ranked sample
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: limit exact_rational: the return period one over the smallest position, about 1 / n, of up to 10,000 values; the positions never reach 0 or 1
+- `gap_propagation`: type case values-nan_element: a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `values` increasing
+- scaling `unit_of_the_sample`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`values_sorted` e = 1.0)
+- limit `exact_rational`: the positions and return periods of the definition in exact rational arithmetic, for samples of 1 to 10,000 values
+- symmetry `order`: the sample in the reverse order has the same positions
+- symmetry `mirror`: the negated sample has the negated values in the reverse order and the same positions
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the positions and return periods in exact rational arithmetic (fractions) (`tests/unit/test_formulas_flood_frequency.py (limit exact_rational)`)
+- established: scipy.stats.mstats.plotting_positions with alpha = beta = a (`tests/unit/test_formulas_flood_frequency.py (test_the_plotting_positions_are_scipys)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="non_exceedance_positions"></a>
+### Plotting positions of annual minima: non-exceedance probabilities and return periods
+
+`hydrolog.statistics._types.compute_non_exceedance_positions` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+p_i = \frac{i - a}{n + 1 - 2a},\qquad T_i = \frac{1}{p_i}
+$$
+
+Plain text: `p_i = (i - a) / (n + 1 - 2a) and T_i = 1 / p_i of the value of rank i = 1 ... n, ranked from the smallest (rank 1); a = 0 (Weibull, i / (n + 1)), 1/2 (Hazen, (i - 1/2) / n) or 2/5 (Cunnane, (i - 2/5) / (n + 1/5))`
+
+**Sources**
+
+- WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.3, eq. 7.3, p. 59: P_i = (i - a) / (n + 1 - 2a), the non-exceedance probability of the ith smallest of n events; p. 60: the Weibull formula is a = 0; sect. 7.8, step I, p. 65: the AM(7) values ranked ascending, the smallest rank 1, and the Weibull formula (open) <https://library.wmo.int/idurl/4/32176>
+- WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n (open) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $x_{(i)}$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.0, 78.0]: WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, table 7.1, p. 64: the AM(7) annual minima of stations 223204 and 223207, 0 to 78 in the unit of the table |
+| `method` | $a$ | - | choice of weibull, hazen, cunnane | – | – | – |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `a_weibull` | $a$ | 0 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n |
+| `a_hazen` | $a$ | 1/2 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n |
+| `a_cunnane` | $a$ | 2/5 | - | WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `values_ascending` | m3/s | real_array | (-inf, inf) | 4 ulp of the bound |
+| `non_exceedance_probabilities` | - | real_array | (0.0, 1.0) | 4 ulp of the bound |
+| `return_periods` | years | real_array | (1.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the non-exceedance probability of the ith smallest value, rank 1 the smallest (WMO-No. 1029 eq. 7.3 and sect. 7.8, step I); the return period T = 1 / F of a low flow undercut once in T years (WMO-No. 1029 eq. 7.14), as of the quantiles of fisher_tippett_minima
+- the general form (i - a) / (n + 1 - 2a) of WMO-No. 1029 eq. 7.3 with the a of WMO-No. 168 sect. 5.6.1; no Gringorten formula
+- tied values keep consecutive ranks, each with its own position, as KZGW 2017 table 3.13 ranks its two values of 10.3 and of 7.88 m3/s
+- the sample in any unit: the positions depend on the ranks only
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: an estimate of the probability of each value of the ranked sample
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: limit exact_rational: the return period one over the smallest position, about 1 / n, of up to 10,000 values; the positions never reach 0 or 1
+- `gap_propagation`: type case values-nan_element: a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `values` increasing
+- scaling `unit_of_the_sample`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`values_ascending` e = 1.0)
+- limit `exact_rational`: the positions and return periods of the definition in exact rational arithmetic, for samples of 1 to 10,000 values
+- symmetry `order`: the sample in the reverse order has the same positions
+- symmetry `mirror`: the negated sample has the negated values in the reverse order and the same positions
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/flood-frequency-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the positions and return periods in exact rational arithmetic (fractions) (`tests/unit/test_formulas_flood_frequency.py (limit exact_rational)`)
+- established: scipy.stats.mstats.plotting_positions with alpha = beta = a (`tests/unit/test_formulas_flood_frequency.py (test_the_plotting_positions_are_scipys)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="fisher_tippett_minima"></a>
+### Fisher-Tippett distribution of annual minima by maximum likelihood and its quantiles
+
+`hydrolog.statistics.low_flows.fisher_tippett_minima` · family `statistic` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+F(x) = 1 - \exp\left\{-\left[1 + c\,\frac{x - \xi}{\alpha}\right]^{1/c}\right\},\quad Q_T = \xi + \frac{\alpha}{c}\left[\left(-\ln\left(1 - \frac{1}{T}\right)\right)^{c} - 1\right]
+$$
+
+Plain text: `F(x) = 1 - exp{-[1 + c (x - loc) / scale]^(1/c)}, the GEV of -x (scipy's genextreme with shape c and location -loc) fitted to the negated minima by maximum likelihood (fit_maximum_likelihood); Q_T = loc + scale ((-ln(1 - 1/T))**c - 1) / c at the non-exceedance 1/T, loc + scale ln(-ln(1 - 1/T)) for c = 0; a quantile of a discharge below 0 is a gap`
+
+**Sources**
+
+- WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.5, p. 62: if X is EV III distributed, -X is Weibull distributed; eq. 7.14, p. 64: T of the event X <= x_p (open) <https://library.wmo.int/idurl/4/32176>
+- Coles, S. (2001). An Introduction to Statistical Modeling of Extreme Values. Springer, sect. 3.1.4: min(X) = -max(-X), the GEV of minima (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `minima` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.0, 78.0]: WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, table 7.1, p. 64: the AM(7) annual minima of stations 223204 and 223207, 0 to 78 in the unit of the table |
+| `return_periods_years` | $T$ | years | real_array | (1.0, inf), test bound high 1000000.0 (a million years tests the far lower tail; droughts are estimated for at most a thousand years) | unstated | [2.0, 1000.0]: Hydrolog (2026). stats low-flow and Obserwator's low_flow.Q, the default return periods, 2 to 1000 years |
+| `variable` | $v$ | - | choice of discharge, stage | – | – | – |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 4 | Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, n values fit n parameters exactly, where the likelihood has no maximum: one value more than the three parameters |
+| `values_not_all_equal` | precondition | min(x) < max(x) | WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.5: a distribution of the minima needs their spread |
+| `discharges_not_negative` | physical | min(x) >= 0 for a discharge | WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.5, p. 62: the lower bound of the minima of a flow is 0 or above |
+| `likelihood_has_a_maximum` | precondition | the GEV likelihood of the negated minima has a maximum the search settles on (precondition likelihood_has_a_maximum of fit_maximum_likelihood) | Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, the bound placed at the closest value makes the likelihood grow without limit |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `shape` | - | real | (-inf, inf) | 4 ulp of the bound |
+| `loc` | m3/s | real | (-inf, inf) | 4 ulp of the bound |
+| `scale` | m3/s | real | (0.0, inf) | 4 ulp of the bound |
+| `quantiles` | m3/s | real_array | (-inf, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- min(x) = -max(-x): the Fisher-Tippett distribution of the minima is the GEV of the negated minima, F(x) = 1 - exp{-[1 + c (x - loc) / scale]^(1/c)} with scipy's genextreme shape c and the location -loc of the negated sample
+- the quantile of T years at the non-exceedance probability 1/T (WMO-No. 1029 eq. 7.14), from the inverse survival function of the negated sample
+- a discharge quantile below 0 is a gap (NaN, null in JSON) with the notice negative_quantiles; a stage keeps it
+- the search of fit_maximum_likelihood: the GEVs with a mean, -1 < c < 1
+
+**Assumptions**
+
+- the annual minima are independent and identically distributed
+
+**Validation:** none: the maximum-likelihood fit of the distribution of minima
+
+**Notices:** `negative_quantiles`
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case likelihood_has_a_maximum-violated: the density infinite at a bound placed on a value
+- `unbounded_iteration`: the search of fit_maximum_likelihood (tests/unit/test_formulas_flood_frequency.py, test_a_search_that_does_not_settle_is_refused)
+- `gap_propagation`: type case minima-nan_element: a gap is refused; the gaps of the quantiles are the negative discharges
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_minima`: inputs times 2^e (`minima` e = 1.0) give outputs times 2^e (`loc` e = 1.0, `scale` e = 1.0, `quantiles` e = 1.0)
+- limit `gev_of_the_negated`: the parameters and quantiles are those of the maximum-likelihood GEV of the negated minima, mirrored
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the maximum-likelihood GEV of the negated minima and its quantiles, mirrored (`tests/unit/test_formulas_low_flows.py (limit gev_of_the_negated)`)
+- frozen: evd 2.3.7.1 fgev and extRemes 2.2.1 fevd on the negated minima of a small stream (the research of 2026-11-18): log-likelihood 54.537, Q10 0.017422 m3/s (`tests/unit/test_maximum_likelihood.py (test_small_stream_low_flows_are_the_maximum_and_never_negative)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
 ## Tier B
 
 | Formula | Function | Definition | Constants | Convention | Source |
@@ -3711,3 +4919,6 @@ None.
 | Computation | Library | Versions | Smoke case | Test |
 |---|---|---|---|---|
 | nash_shape_root | scipy.optimize.brentq | scipy>=1.10 (1.18.1 locked) | the root N of f(N) = (N-1)^N e^-(N-1) / Gamma(N) = f(2.55) on [1.1, 20] with xtol 1e-6 is 2.55 within 1e-6 (spec lutz) | `tests/unit/test_formulas_lutz.py::test_the_delegated_root_finder_finds_a_known_root` |
+| kolmogorov_smirnov_test | scipy.stats.kstest (the K-S statistic and p-value of the flood and low-flow frequency analyses) | scipy>=1.10 (1.18.1 locked) | three values 0.05, 0.1 and 0.2 against the uniform distribution on [0, 1]: D = 0.8, the largest of i / n - u_i and u_i - (i - 1) / n, and the exact p = 2 (1 - D)^3 = 0.016 of D >= 2/3 | `tests/unit/test_formulas_flood_frequency.py::test_the_delegated_ks_test_gives_the_exact_statistic_and_p` |
+| distribution_functions | scipy.stats genextreme, lognorm, pearson3 and weibull_min: cdf (the statistics of the fits and the bootstrap of A²) | scipy>=1.10 (1.18.1 locked) | F(1) of the GEV of c = 0.5, exp(-1/4); F(e) of the log-normal of s = 1, Phi(1); F(1) of Pearson III of skewness 2, 1 - exp(-2); F(1) of the Weibull of shape 2, 1 - exp(-1); loc 0 and scale 1 | `tests/unit/test_formulas_flood_frequency.py::test_the_delegated_distribution_functions_are_the_closed_forms` |
+| densities | scipy.stats genextreme, lognorm, pearson3 and weibull_min: pdf and logpdf (the AIC, the densities at the quantiles, the likelihood searched) | scipy>=1.10 (1.18.1 locked) | f(1) of the GEV of c = 0.5, exp(-1/4) / 2; f(e) of the log-normal of s = 1, exp(-3/2) / sqrt(2 pi); f(1) of Pearson III of skewness 2, exp(-2); f(1) of the Weibull of shape 2, 2 exp(-1); loc 0 and scale 1, and ln f | `tests/unit/test_formulas_flood_frequency.py::test_the_delegated_densities_are_the_closed_forms` |

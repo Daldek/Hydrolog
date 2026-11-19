@@ -84,6 +84,9 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.statistics.meteo_hydrothermal",
     "hydrolog.statistics.meteo_snow",
     "hydrolog.statistics._climate",
+    "hydrolog.statistics.frequency",
+    "hydrolog.statistics._types",
+    "hydrolog.statistics.low_flows",
 )
 """The modules whose ``SPECS`` (and ``TIER_B``) declare Hydrolog's formulas, in the
 order of ``docs/FORMULAS.md``."""
@@ -97,6 +100,40 @@ DELEGATED: Final[tuple[Delegated, ...]] = (
         "[1.1, 20] with xtol 1e-6 is 2.55 within 1e-6 (spec lutz)",
         test="tests/unit/test_formulas_lutz.py::"
         "test_the_delegated_root_finder_finds_a_known_root",
+    ),
+    Delegated(
+        name="kolmogorov_smirnov_test",
+        library="scipy.stats.kstest (the K-S statistic and p-value of the flood and "
+        "low-flow frequency analyses)",
+        versions="scipy>=1.10 (1.18.1 locked)",
+        smoke_case="three values 0.05, 0.1 and 0.2 against the uniform distribution "
+        "on [0, 1]: D = 0.8, the largest of i / n - u_i and u_i - (i - 1) / n, and "
+        "the exact p = 2 (1 - D)^3 = 0.016 of D >= 2/3",
+        test="tests/unit/test_formulas_flood_frequency.py::"
+        "test_the_delegated_ks_test_gives_the_exact_statistic_and_p",
+    ),
+    Delegated(
+        name="distribution_functions",
+        library="scipy.stats genextreme, lognorm, pearson3 and weibull_min: cdf (the "
+        "statistics of the fits and the bootstrap of A²)",
+        versions="scipy>=1.10 (1.18.1 locked)",
+        smoke_case="F(1) of the GEV of c = 0.5, exp(-1/4); F(e) of the log-normal of "
+        "s = 1, Phi(1); F(1) of Pearson III of skewness 2, 1 - exp(-2); F(1) of the "
+        "Weibull of shape 2, 1 - exp(-1); loc 0 and scale 1",
+        test="tests/unit/test_formulas_flood_frequency.py::"
+        "test_the_delegated_distribution_functions_are_the_closed_forms",
+    ),
+    Delegated(
+        name="densities",
+        library="scipy.stats genextreme, lognorm, pearson3 and weibull_min: pdf and "
+        "logpdf (the AIC, the densities at the quantiles, the likelihood searched)",
+        versions="scipy>=1.10 (1.18.1 locked)",
+        smoke_case="f(1) of the GEV of c = 0.5, exp(-1/4) / 2; f(e) of the log-normal "
+        "of s = 1, exp(-3/2) / sqrt(2 pi); f(1) of Pearson III of skewness 2, "
+        "exp(-2); f(1) of the Weibull of shape 2, 2 exp(-1); loc 0 and scale 1, and "
+        "ln f",
+        test="tests/unit/test_formulas_flood_frequency.py::"
+        "test_the_delegated_densities_are_the_closed_forms",
     ),
 )
 """Computations delegated to third-party libraries (CMP-1.2)."""

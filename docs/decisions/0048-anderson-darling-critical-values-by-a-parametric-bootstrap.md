@@ -2,6 +2,8 @@
 
 - Status: accepted
 - Date: 2026-11-18
+- Amended by [ADR-0055](0055-the-frequency-estimators-refuse-by-preconditions-and-search-within-bounds.md)
+  (2026-11-19): A² is the formula `anderson_darling` with a spec; its critical values are unchanged
 - Builds on: the audit of the computation standard of 2026-11-18 (TRIAGE T30, flood frequency §1.5)
 - Amends: [ADR-0021](0021-fit-methods-of-flood-frequency.md) (the goodness of fit of every fit)
 

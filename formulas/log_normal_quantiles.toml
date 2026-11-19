@@ -1,0 +1,210 @@
+schema = "nogat-formula-card/1"
+name = "log_normal_quantiles"
+title = "Quantiles of the log-normal distribution for return periods"
+function = "hydrolog.statistics.frequency.log_normal_quantiles"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "Q_T = loc + scale exp(s z) with z the standard normal quantile of the non-exceedance 1 - 1/T; loc = 0 is the two-parameter distribution"
+latex = "Q_T = \\epsilon + e^{\\mu} \\exp\\left(\\sigma\\,\\Phi^{-1}\\left(1 - \\frac{1}{T}\\right)\\right)"
+validation = "none: the quantile function of the distribution"
+conventions = ["scipy's lognorm(s, loc, scale): s = sigma, loc = epsilon (the lower bound of KZGW 2017 eq. 3.35), scale = exp(mu)", "the quantile of the return period T at the annual exceedance probability 1/T, the non-exceedance 1 - 1/T (Polish Q_p% with p = 100/T %, KZGW 2017 eq. 3.7; WMO-No. 168 sect. 5.6.1), computed as the inverse survival function at 1/T, which keeps its digits for long return periods", "loc and scale in the unit of the sample; the formula is homogeneous"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/flood-frequency-cases.json"]
+constraints = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+return_periods_years = 1
+loc = 1
+scale = 1
+
+[[properties.scalings]]
+name = "unit_of_the_sample"
+
+[properties.scalings.inputs]
+loc = 1.0
+scale = 1.0
+
+[properties.scalings.outputs]
+quantiles = 1.0
+
+[properties.scalings.tolerance]
+reason = "the quantile is loc + scale times that of the standard distribution, and doubling loc and scale rounds alike"
+abs = 1e-300
+rel = 4.5e-16
+
+[[properties.limits]]
+name = "closed_form"
+text = "loc + scale exp(s z) with an independent normal quantile"
+
+[[properties.symmetries]]
+name = "location"
+text = "a location larger by 1 gives quantiles larger by 1"
+
+[properties.symmetries.tolerance]
+reason = "loc + 1 and the sum round within an ulp of the larger of loc and the quantile, below 1e-9 within the test bound of a million"
+abs = 1e-09
+rel = 4.5e-16
+
+[[sources]]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "eqs. 3.35 and 3.40, p. 46 (Q_p = epsilon + exp(mu + sigma u_p)); example 3.3, table 3.12, p. 51"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[sources]]
+citation = "WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168"
+access = "open"
+locator = "table II.5.2, p. II.5-5 and its note a (the three-parameter log-normal with Y = ln(X - xi))"
+url = "https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf"
+
+[[sources]]
+citation = "Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272"
+access = "open"
+locator = "scipy.stats.genextreme, lognorm, pearson3 and weibull_min: isf, the inverse of the survival function"
+url = "https://docs.scipy.org/doc/scipy/reference/stats.html"
+
+[[variables]]
+name = "shape"
+symbol = "\\sigma"
+unit = "-"
+kind = "real"
+description = "Standard deviation of the logarithms of x - loc."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 5.0
+test_reason = "a shape of 5 spreads the quantiles of T from just above 1 to a million years over a factor of 10**15; the fits of annual maxima stay below 1"
+
+[variables.typical]
+low = 0.6
+low_inclusive = true
+high = 0.9
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "loc"
+symbol = "\\epsilon"
+unit = "m3/s"
+kind = "real"
+description = "Lower bound: 0 for the two-parameter distribution of Hydrolog's fits."
+applicability = "unstated"
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 0.4
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "scale"
+symbol = "e^{\\mu}"
+unit = "m3/s"
+kind = "real"
+description = "exp of the mean of the logarithms."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of loc and scale (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river"
+
+[variables.typical]
+low = 2.4
+low_inclusive = true
+high = 27.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "return_periods_years"
+symbol = "T"
+unit = "years"
+kind = "real_array"
+description = "Return periods: the quantile of T years is exceeded with the probability 1/T in a year."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 1.0
+low_inclusive = false
+test_high = 1000000.0
+test_reason = "a million years lies far beyond every design flood (the Polish rules ask for 5,000 years at most) and tests the far tail of each distribution"
+
+[variables.typical]
+low = 2.0
+low_inclusive = true
+high = 5000.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Rozporządzenie Ministra Środowiska z dnia 20 kwietnia 2007 r. w sprawie warunków technicznych, jakim powinny odpowiadać budowle hydrotechniczne i ich usytuowanie (Dz.U. 2007 nr 86 poz. 579); Dz.U. 2026 poz. 692 repeats its values"
+access = "open"
+locator = "załącznik nr 4: the control flood of a structure of class I at p = 0.02 %, 5,000 years; Hydrolog's default return periods start at 2 years"
+url = "https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=WDU20070860579"
+
+[[outputs]]
+name = "quantiles"
+unit = "m3/s"
+kind = "real_array"
+symbol = "Q_T"
+description = "The flows of the return periods."
+gaps_allowed = false
+
+[outputs.physical]
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "range case return_periods_years-physical_low_inside: T just above 1 puts the non-exceedance probability at 2.2e-16, the far lower tail, finite"
+
+[[traps]]
+name = "exp_overflow"
+description = "exp of a scaled input at its test bound."
+test = "range case shape-physical_high_test_bound: exp(5 z) at a million years is 2e10, finite"
+
+[[oracles]]
+kind = "algorithm"
+description = "loc + scale exp(s z) with z from Python's statistics.NormalDist"
+test = "tests/unit/test_formulas_flood_frequency.py (limit closed_form)"
+conventions = []
+
+[[oracles]]
+kind = "frozen"
+description = "lmom 3.3 qualn3 at the parameters of pelln3 with bound 0 on seven samples, R 4.5.3, 2026-11-18"
+test = "tests/oracles/frequency_lmom_r.csv"
+conventions = ["qualn3 takes (zeta, mu, sigma): loc = zeta, scale = exp(mu), shape = sigma"]

@@ -1,0 +1,225 @@
+schema = "nogat-formula-card/1"
+name = "fisher_tippett_minima"
+title = "Fisher-Tippett distribution of annual minima by maximum likelihood and its quantiles"
+function = "hydrolog.statistics.low_flows.fisher_tippett_minima"
+family = "statistic"
+formula_version = 1
+status = "oracle only"
+equation = "F(x) = 1 - exp{-[1 + c (x - loc) / scale]^(1/c)}, the GEV of -x (scipy's genextreme with shape c and location -loc) fitted to the negated minima by maximum likelihood (fit_maximum_likelihood); Q_T = loc + scale ((-ln(1 - 1/T))**c - 1) / c at the non-exceedance 1/T, loc + scale ln(-ln(1 - 1/T)) for c = 0; a quantile of a discharge below 0 is a gap"
+latex = "F(x) = 1 - \\exp\\left\\{-\\left[1 + c\\,\\frac{x - \\xi}{\\alpha}\\right]^{1/c}\\right\\},\\quad Q_T = \\xi + \\frac{\\alpha}{c}\\left[\\left(-\\ln\\left(1 - \\frac{1}{T}\\right)\\right)^{c} - 1\\right]"
+validation = "none: the maximum-likelihood fit of the distribution of minima"
+conventions = ["min(x) = -max(-x): the Fisher-Tippett distribution of the minima is the GEV of the negated minima, F(x) = 1 - exp{-[1 + c (x - loc) / scale]^(1/c)} with scipy's genextreme shape c and the location -loc of the negated sample", "the quantile of T years at the non-exceedance probability 1/T (WMO-No. 1029 eq. 7.14), from the inverse survival function of the negated sample", "a discharge quantile below 0 is a gap (NaN, null in JSON) with the notice negative_quantiles; a stage keeps it", "the search of fit_maximum_likelihood: the GEVs with a mean, -1 < c < 1"]
+assumptions = ["the annual minima are independent and identically distributed"]
+notices = ["negative_quantiles"]
+reference_cases = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_minima"
+
+[properties.scalings.inputs]
+minima = 1.0
+
+[properties.scalings.outputs]
+loc = 1.0
+scale = 1.0
+quantiles = 1.0
+
+[properties.scalings.tolerance]
+reason = "the search runs on the sample divided by a power of two and the quantile is loc + scale times the standard one, so doubling the minima rounds alike"
+abs = 1e-300
+rel = 4.5e-16
+
+[[properties.limits]]
+name = "gev_of_the_negated"
+text = "the parameters and quantiles are those of the maximum-likelihood GEV of the negated minima, mirrored"
+
+[[sources]]
+citation = "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029"
+access = "open"
+locator = "sect. 7.5, p. 62: if X is EV III distributed, -X is Weibull distributed; eq. 7.14, p. 64: T of the event X <= x_p"
+url = "https://library.wmo.int/idurl/4/32176"
+
+[[sources]]
+citation = "Coles, S. (2001). An Introduction to Statistical Modeling of Extreme Values. Springer"
+access = "author-provided"
+locator = "sect. 3.1.4: min(X) = -max(-X), the GEV of minima"
+
+[[variables]]
+name = "minima"
+symbol = "x_i"
+unit = "m3/s"
+kind = "real_array"
+description = "Annual minima of a discharge or a stage."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 78.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029"
+access = "open"
+locator = "table 7.1, p. 64: the AM(7) annual minima of stations 223204 and 223207, 0 to 78 in the unit of the table"
+url = "https://library.wmo.int/idurl/4/32176"
+
+[[variables]]
+name = "return_periods_years"
+symbol = "T"
+unit = "years"
+kind = "real_array"
+description = "Return periods: the quantile of T years is undercut with the probability 1/T in a year."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 1.0
+low_inclusive = false
+test_high = 1000000.0
+test_reason = "a million years tests the far lower tail; droughts are estimated for at most a thousand years"
+
+[variables.typical]
+low = 2.0
+low_inclusive = true
+high = 1000.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog (2026). stats low-flow and Obserwator's low_flow.Q"
+access = "open"
+locator = "the default return periods, 2 to 1000 years"
+url = "https://github.com/Daldek/Hydrolog"
+
+[[variables]]
+name = "variable"
+symbol = "v"
+unit = "-"
+kind = "choice"
+description = "What the minima are: a discharge, never below 0, or a stage, whose 0 is the gauge's."
+choices = ["discharge", "stage"]
+
+[[constraints]]
+name = "enough_values"
+class = "precondition"
+text = "n >= 4"
+
+[constraints.source]
+citation = "Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90"
+access = "author-provided"
+locator = "n values fit n parameters exactly, where the likelihood has no maximum: one value more than the three parameters"
+
+[[constraints]]
+name = "values_not_all_equal"
+class = "precondition"
+text = "min(x) < max(x)"
+
+[constraints.source]
+citation = "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029"
+access = "open"
+locator = "sect. 7.5: a distribution of the minima needs their spread"
+url = "https://library.wmo.int/idurl/4/32176"
+
+[[constraints]]
+name = "discharges_not_negative"
+class = "physical"
+text = "min(x) >= 0 for a discharge"
+
+[constraints.source]
+citation = "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029"
+access = "open"
+locator = "sect. 7.5, p. 62: the lower bound of the minima of a flow is 0 or above"
+url = "https://library.wmo.int/idurl/4/32176"
+
+[[constraints]]
+name = "likelihood_has_a_maximum"
+class = "precondition"
+text = "the GEV likelihood of the negated minima has a maximum the search settles on (precondition likelihood_has_a_maximum of fit_maximum_likelihood)"
+
+[constraints.source]
+citation = "Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90"
+access = "author-provided"
+locator = "the bound placed at the closest value makes the likelihood grow without limit"
+
+[[outputs]]
+name = "shape"
+unit = "-"
+kind = "real"
+symbol = "c"
+description = "Shape c of scipy's genextreme of the negated minima: a lower bound loc - scale / c of the minima for c > 0."
+
+[outputs.physical]
+
+[[outputs]]
+name = "loc"
+unit = "m3/s"
+kind = "real"
+symbol = "\\xi"
+
+[outputs.physical]
+
+[[outputs]]
+name = "scale"
+unit = "m3/s"
+kind = "real"
+symbol = "\\alpha"
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "quantiles"
+unit = "m3/s"
+kind = "real_array"
+symbol = "Q_T"
+description = "The minima of the return periods; a gap where a discharge would be negative."
+gaps_allowed = true
+
+[outputs.physical]
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "constraint case likelihood_has_a_maximum-violated: the density infinite at a bound placed on a value"
+
+[[traps]]
+name = "unbounded_iteration"
+description = "An iteration without a bounded count (root finding, fit)."
+test = "the search of fit_maximum_likelihood (tests/unit/test_formulas_flood_frequency.py, test_a_search_that_does_not_settle_is_refused)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case minima-nan_element: a gap is refused; the gaps of the quantiles are the negative discharges"
+
+[[oracles]]
+kind = "algorithm"
+description = "the maximum-likelihood GEV of the negated minima and its quantiles, mirrored"
+test = "tests/unit/test_formulas_low_flows.py (limit gev_of_the_negated)"
+conventions = []
+
+[[oracles]]
+kind = "frozen"
+description = "evd 2.3.7.1 fgev and extRemes 2.2.1 fevd on the negated minima of a small stream (the research of 2026-11-18): log-likelihood 54.537, Q10 0.017422 m3/s"
+test = "tests/unit/test_maximum_likelihood.py (test_small_stream_low_flows_are_the_maximum_and_never_negative)"
+conventions = ["evd's xi of the negated sample is -c"]

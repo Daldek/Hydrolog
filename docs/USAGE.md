@@ -917,8 +917,10 @@ quantiles need at least 30 years).
   default, `mle`, `moments` or `least_squares`, and `all` fits each distribution by each method,
   every item naming its `fit_method`, ADR-0021). Maximum likelihood needs one value more than
   the distribution has parameters, and a distribution whose likelihood has no maximum (its
-  density infinite at a bound placed on a value) gets no parameters (`unbounded_likelihood`):
-  among several it is left out with the notice `distribution_left_out`. `stats low-flow`:
+  density infinite at a bound placed on a value) gets no parameters: a sample that fails a
+  precondition of the method is a `validation_error` (`precondition_failed`, `details.constraint`
+  `likelihood_has_a_maximum` here), and among several it is left out with the notice
+  `distribution_left_out` (reason `unbounded_likelihood`). `stats low-flow`:
   low-flow quantiles from annual minima, the Fisher-Tippett distribution by maximum likelihood
   from at least 4 complete years; a quantile of a discharge below 0 is `null`, with the notice
   `negative_quantiles`. `stats low-flow-sequences`: drought sequences below a threshold.

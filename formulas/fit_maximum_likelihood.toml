@@ -1,0 +1,191 @@
+schema = "nogat-formula-card/1"
+name = "fit_maximum_likelihood"
+title = "Parameters of a distribution of annual maxima by maximum likelihood"
+function = "hydrolog.statistics.frequency.fit_maximum_likelihood"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "the parameters that maximise the log-likelihood sum_i ln f(x_i; shape, loc, scale) of the distribution's density f; for the log-normal of location 0 in closed form: ln scale = mean(ln x), s = sqrt(mean((ln x - ln scale)**2))"
+latex = "(\\hat{k}, \\hat{\\xi}, \\hat{\\alpha}) = \\arg\\max \\sum_i \\ln f(x_i; k, \\xi, \\alpha);\\qquad \\hat{\\mu} = \\frac{1}{n}\\sum_i \\ln x_i,\\ \\hat{s}^2 = \\frac{1}{n}\\sum_i (\\ln x_i - \\hat{\\mu})^2"
+validation = "none: the estimator gives the most likely distribution of the sample"
+conventions = ["scipy's densities and parameters: the GEV shape c is -xi of Coles (evd, extRemes, ismev)", "the search runs on the standardised sample (x / 2**e - mean) / sd, from the L-moments' estimate; Nelder-Mead (xatol 1e-10, fatol 1e-12) is run again from its end until a run gains at most 1e-9 of log-likelihood, at most 21 runs", "the log-normal of location 0 in closed form (scipy's lognorm.fit with floc=0)"]
+assumptions = ["the annual maxima are independent and identically distributed"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/flood-frequency-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_sample"
+
+[properties.scalings.inputs]
+annual_maxima = 1.0
+
+[properties.scalings.outputs]
+loc = 1.0
+scale = 1.0
+
+[properties.scalings.tolerance]
+reason = "the searches run on the sample divided by a power of two, so doubling it changes no rounding; the log-normal's closed form takes exp of the mean of ln x, whose rounding of up to an ulp of |ln x| < 745 is a relative error of the scale of up to 745 ulp"
+abs = 1e-300
+rel = 2e-13
+
+[[properties.limits]]
+name = "local_maximum"
+text = "no point a step of 1e-4 from the estimate is more likely"
+
+[[sources]]
+citation = "Coles, S. (2001). An Introduction to Statistical Modeling of Extreme Values. Springer"
+access = "author-provided"
+locator = "sect. 3.3.2 (the likelihood of the GEV) and 3.4.1 (Port Pirie)"
+
+[[sources]]
+citation = "Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90"
+access = "author-provided"
+locator = "the likelihood of a three-parameter distribution has no maximum where its density is infinite at the bound of its support"
+
+[[sources]]
+citation = "WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168"
+access = "open"
+locator = "sect. 5.5, p. II.5-11: the method of maximum likelihood; sect. 5.3.2.3: the Weibull density goes to infinity at its bound for k < 1"
+url = "https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf"
+
+[[variables]]
+name = "annual_maxima"
+symbol = "x_i"
+unit = "m3/s"
+kind = "real_array"
+description = "The sample: annual maxima, or any sample of the distribution."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0"
+
+[variables.typical]
+low = 0.81
+low_inclusive = true
+high = 111.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "distribution"
+symbol = "F"
+unit = "-"
+kind = "choice"
+description = "The distribution: the log-normal of location 0, the GEV, Pearson type III or the three-parameter Weibull distribution of scipy.stats."
+choices = ["log_normal", "gev", "pearson3", "weibull"]
+
+[[constraints]]
+name = "enough_values"
+class = "precondition"
+text = "n > p, the number of parameters: n >= 3 for the log-normal, n >= 4 for the others"
+
+[constraints.source]
+citation = "Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90"
+access = "author-provided"
+locator = "n values fit n parameters exactly, where the likelihood has no maximum"
+
+[[constraints]]
+name = "values_not_all_equal"
+class = "precondition"
+text = "min(x) < max(x)"
+
+[constraints.source]
+citation = "WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168"
+access = "open"
+locator = "sect. 5.5: the likelihood of values all equal grows without limit as the scale falls to 0"
+url = "https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf"
+
+[[constraints]]
+name = "positive_values"
+class = "precondition"
+text = "min(x) > 0 for the log-normal (location 0)"
+
+[constraints.source]
+citation = "Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997)"
+access = "open"
+locator = "pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0"
+url = "https://cran.r-project.org/package=lmom"
+
+[[constraints]]
+name = "likelihood_has_a_maximum"
+class = "precondition"
+text = "the likelihood has a maximum inside the shapes searched: the search ends neither within 1e-3 of the shapes whose density is infinite at a bound of the support (GEV c >= 1, Pearson III |G| >= 2, Weibull shape <= 1), nor of GEV c = -1 (no mean) or Weibull shape 50, nor at a scale of a millionth of the standard deviation; a GEV has at most half the values tied at the smallest; and the search settles"
+
+[constraints.source]
+citation = "Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90"
+access = "author-provided"
+locator = "the bound placed at the closest value makes the likelihood grow without limit"
+
+[[outputs]]
+name = "shape"
+unit = "-"
+kind = "real"
+symbol = "k"
+description = "Shape: s of the log-normal, c of the GEV (scipy's sign, k of Hosking, -xi of Coles), the skewness of Pearson III, the Weibull shape."
+
+[outputs.physical]
+
+[[outputs]]
+name = "loc"
+unit = "m3/s"
+kind = "real"
+symbol = "\\xi"
+description = "Location: 0 for the log-normal, the mean of Pearson III, the lower bound of Weibull."
+
+[outputs.physical]
+
+[[outputs]]
+name = "scale"
+unit = "m3/s"
+kind = "real"
+symbol = "\\alpha"
+description = "Scale; one that would underflow is the smallest float64 (its boundary tolerance)."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "constraint case likelihood_has_a_maximum-violated: the density infinite at a bound placed on a value"
+
+[[traps]]
+name = "unbounded_iteration"
+description = "An iteration without a bounded count (root finding, fit)."
+test = "test_a_search_that_does_not_settle_is_refused: a search that does not settle in its bounded count of runs fails the precondition likelihood_has_a_maximum"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case annual_maxima-nan_element: a gap is refused"
+
+[[traps]]
+name = "moment_cancellation"
+description = "Cancellation in moments computed as E[x^2] - E[x]^2."
+test = "test_a_large_mean_shifts_the_fits: a mean of 1e9 with the spread of the Polana maxima over 1000"
+
+[[oracles]]
+kind = "frozen"
+description = "evd 2.3.7.1 fgev, extRemes 2.2.1 fevd, ismev 1.43 gev.fit and lmomco 2.5.8 mle2par on seven samples, R 4.5.3, 2026-11-18: Hydrolog's log-likelihood is not lower"
+test = "tests/oracles/frequency_ml_r.csv (tests/unit/test_maximum_likelihood.py)"
+conventions = ["evd, extRemes and ismev give Coles's xi = -c", "lmomco's Pearson III (mu, sigma, gamma) and Weibull (zeta, beta, delta) are written as scipy's parameters"]

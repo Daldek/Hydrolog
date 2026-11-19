@@ -33,15 +33,33 @@ from __future__ import annotations
 
 import math
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Final, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import genextreme, kstest
 
+from hydrolog._formulas import checked_inputs, checked_outputs
 from hydrolog._serialization import JsonResultMixin
 from hydrolog._warnings import IncompleteYears, NegativeQuantiles, SmallSample
 from hydrolog.exceptions import CalculationError, InvalidParameterError
+from hydrolog.nogat_formulas import (
+    Constraint,
+    FormulaSpec,
+    Limit,
+    Oracle,
+    Output,
+    Properties,
+    Range,
+    Scaling,
+    Source,
+    Tolerance,
+    Values,
+    Variable,
+    assert_within,
+)
 from hydrolog.statistics._hydrological_year import (
     AnnualExtremes,
     annual_extremes,
@@ -55,7 +73,18 @@ from hydrolog.statistics._types import (
     compute_plotting_positions,
 )
 from hydrolog.statistics.events import threshold_runs
-from hydrolog.statistics.high_flows import _maximum_likelihood, _NoParameters
+from hydrolog.statistics.frequency import (
+    _ANY_VALUE,
+    _MINIMA,
+    _SMITH_1985,
+    _WMO_1029,
+    _WMO_1029_URL,
+    _count,
+    _maximum_likelihood,
+    _not_constant,
+    fit_maximum_likelihood,
+    gev_quantiles,
+)
 
 _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0])
 _MIN_RELIABLE_YEARS = 10  # below it the estimates may be unreliable
@@ -329,12 +358,15 @@ class LowFlowAnalysis:
         Raises
         ------
         CalculationError
-            If the series has no complete hydrological year, or maximum likelihood
-            gives no parameters: fewer than 4 annual minima (``too_few_values``),
-            all equal (``constant_values``), a likelihood without a maximum
-            (``unbounded_likelihood``: a shape of 1 or more puts the lower bound at
-            the smallest minimum) or a search that does not settle
-            (``not_converged``).
+            If the series has no complete hydrological year.
+        InvalidParameterError
+            If the annual minima are refused by the spec ``fisher_tippett_minima``:
+            ``details.reason`` ``precondition_failed`` with ``details.constraint``
+            ``enough_values`` (fewer than 4), ``values_not_all_equal`` or
+            ``likelihood_has_a_maximum`` (a shape of 1 or more puts the lower bound
+            at the smallest minimum, the search ends at an end of the shapes it
+            covers or does not settle), or ``outside_physical_range`` for a
+            negative discharge minimum.
 
         Warns
         -----
@@ -602,10 +634,8 @@ def fit_fisher_tippett_minima(
     Raises
     ------
     InvalidParameterError
-        If a minimum is not a finite number.
-    CalculationError
-        If maximum likelihood gives no parameters (see
-        :meth:`LowFlowAnalysis.fit_fisher_tippett`).
+        If a minimum is not a finite number, or the minima are refused by the spec
+        ``fisher_tippett_minima`` (see :meth:`LowFlowAnalysis.fit_fisher_tippett`).
 
     Warns
     -----
@@ -635,59 +665,374 @@ def fit_fisher_tippett_minima(
 def _fisher_tippett(
     minima: NDArray[np.float64], periods: NDArray[np.float64], *, discharge: bool
 ) -> LowFlowFrequencyResult:
-    """Return the maximum-likelihood fit of :func:`fit_fisher_tippett_minima`."""
-    # min(x) = -max(-x): the minima-type GEV is the maxima-type GEV of -x.
-    negated = -np.asarray(minima, dtype=np.float64)
-    try:
-        c, loc_negated, scale = _maximum_likelihood("gev", negated)
-    except _NoParameters as exc:
-        raise CalculationError(
-            "The method of maximum likelihood cannot fit the Fisher-Tippett "
-            f"distribution to these annual minima: {exc}",
-            details={
-                "distribution": "fisher_tippett",
-                "fit_method": "mle",
-                "reason": exc.reason,
-                **exc.details,
-            },
-            hint="Check the smallest annual minima or provide a longer series.",
-        ) from None
+    """Return the fit of :func:`fit_fisher_tippett_minima`, with its K-S statistic."""
+    fit = fisher_tippett_minima(minima, periods, "discharge" if discharge else "stage")
+    fitted = genextreme(fit.shape, loc=0.0 - fit.loc, scale=fit.scale)
+    # K-S test (informational; invalid when parameters estimated from data).
+    # The statistic is the same for a sample and its mirror image.
+    ks_stat, ks_pval = kstest(-np.asarray(minima, dtype=np.float64), fitted.cdf)
+    return LowFlowFrequencyResult(
+        distribution_name="fisher_tippett",
+        parameters={"shape": fit.shape, "loc": fit.loc, "scale": fit.scale},
+        return_periods=np.asarray(periods, dtype=np.float64).copy(),
+        quantiles=fit.quantiles,
+        non_exceedance_probabilities=1.0 / np.asarray(periods, dtype=np.float64),
+        ks_statistic=float(ks_stat),
+        ks_p_value=float(ks_pval),
+        ks_valid=False,
+    )
+
+
+# --- the spec of the Fisher-Tippett distribution of minima ---------------------
+
+
+class FisherTippettMinima(NamedTuple):
+    """Fisher-Tippett distribution of minima, quantiles (spec fisher_tippett_minima)."""
+
+    shape: float
+    loc: float
+    scale: float
+    quantiles: NDArray[np.float64]
+
+
+_STATION_223207: Final = (
+    27.3, 38.0, 72.9, 53.6, 45.7, 37.0, 21.7, 36.6, 43.1, 12.6, 20.7, 66.7, 76.6,
+    53.1, 15.7, 66.6, 78.0, 53.1, 62.6, 40.7, 51.6, 23.1, 23.4, 23.0, 6.0,
+)  # fmt: skip
+"""The AM(7) annual minima of station 223207 (WMO-No. 1029, table 7.1): the typical
+sample of the generated tests."""
+_UNBOUNDED_MINIMA: Final = (19.0, *[10.0] * 8, 9.5)
+"""Minima whose negated sample has a GEV likelihood without a maximum (its upper
+bound runs to the largest value, Smith 1985)."""
+_NEGATED: Final = (
+    "min(x) = -max(-x): the Fisher-Tippett distribution of the minima is the GEV of "
+    "the negated minima, F(x) = 1 - exp{-[1 + c (x - loc) / scale]^(1/c)} with "
+    "scipy's genextreme shape c and the location -loc of the negated sample"
+)
+
+
+def _gev_of_the_negated(run: Callable[..., Values]) -> None:
+    """Assert that the fit is the mirrored maximum-likelihood GEV of the negated."""
+    periods = [1.5, 2.0, 10.0, 100.0, 1000.0]
+    out = run(minima=list(_STATION_223207), return_periods_years=periods)
+    gev = fit_maximum_likelihood([-value for value in _STATION_223207], "gev")
+    assert_within(
+        [out.real("shape"), out.real("loc"), out.real("scale")],
+        [gev.shape, -gev.loc, gev.scale],
+        rel=4.5e-16,
+        abs=1e-300,
+        reason="the same search on the same negated sample",
+    )
+    assert_within(
+        out.array("quantiles"),
+        -gev_quantiles(gev.shape, gev.loc, gev.scale, periods),
+        rel=4.5e-16,
+        abs=1e-300,
+        reason="the non-exceedance 1/T of the minima is the exceedance 1/T of the "
+        "negated minima, the same inverse survival function",
+    )
+
+
+FISHER_TIPPETT: Final = FormulaSpec(
+    name="fisher_tippett_minima",
+    title="Fisher-Tippett distribution of annual minima by maximum likelihood and its "
+    "quantiles",
+    function="hydrolog.statistics.low_flows.fisher_tippett_minima",
+    family="statistic",
+    equation=(
+        "F(x) = 1 - exp{-[1 + c (x - loc) / scale]^(1/c)}, the GEV of -x (scipy's "
+        "genextreme with shape c and location -loc) fitted to the negated minima by "
+        "maximum likelihood (fit_maximum_likelihood); Q_T = loc + scale ((-ln(1 - "
+        "1/T))**c - 1) / c at the non-exceedance 1/T, loc + scale ln(-ln(1 - 1/T)) "
+        "for c = 0; a quantile of a discharge below 0 is a gap"
+    ),
+    latex=(
+        r"F(x) = 1 - \exp\left\{-\left[1 + c\,\frac{x - \xi}{\alpha}\right]^{1/c}"
+        r"\right\},\quad Q_T = \xi + \frac{\alpha}{c}\left[\left(-\ln\left(1 - "
+        r"\frac{1}{T}\right)\right)^{c} - 1\right]"
+    ),
+    variables=(
+        Variable(
+            name="minima",
+            symbol="x_i",
+            unit="m3/s",
+            kind="real_array",
+            description="Annual minima of a discharge or a stage.",
+            physical=_ANY_VALUE,
+            applicability="unstated",
+            typical=_MINIMA,
+        ),
+        Variable(
+            name="return_periods_years",
+            symbol="T",
+            unit="years",
+            kind="real_array",
+            description="Return periods: the quantile of T years is undercut with the "
+            "probability 1/T in a year.",
+            physical=Range(
+                low=1.0,
+                low_inclusive=False,
+                test_high=1.0e6,
+                test_reason="a million years tests the far lower tail; droughts are "
+                "estimated for at most a thousand years",
+            ),
+            applicability="unstated",
+            typical=Range(
+                low=2.0,
+                high=1000.0,
+                source=Source(
+                    citation="Hydrolog (2026). stats low-flow and Obserwator's "
+                    "low_flow.Q",
+                    locator="the default return periods, 2 to 1000 years",
+                    url="https://github.com/Daldek/Hydrolog",
+                ),
+            ),
+        ),
+        Variable(
+            name="variable",
+            symbol="v",
+            unit="-",
+            kind="choice",
+            description="What the minima are: a discharge, never below 0, or a stage, "
+            "whose 0 is the gauge's.",
+            choices=("discharge", "stage"),
+        ),
+    ),
+    outputs=(
+        Output(
+            name="shape",
+            unit="-",
+            symbol="c",
+            description="Shape c of scipy's genextreme of the negated minima: a lower "
+            "bound loc - scale / c of the minima for c > 0.",
+            physical=Range(),
+        ),
+        Output(name="loc", unit="m3/s", symbol=r"\xi", physical=Range()),
+        Output(
+            name="scale",
+            unit="m3/s",
+            symbol=r"\alpha",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+        Output(
+            name="quantiles",
+            unit="m3/s",
+            kind="real_array",
+            symbol="Q_T",
+            description="The minima of the return periods; a gap where a discharge "
+            "would be negative.",
+            physical=Range(),
+            gaps_allowed=True,
+        ),
+    ),
+    sources=(
+        Source(
+            citation=_WMO_1029,
+            locator="sect. 7.5, p. 62: if X is EV III distributed, -X is Weibull "
+            "distributed; eq. 7.14, p. 64: T of the event X <= x_p",
+            url=_WMO_1029_URL,
+        ),
+        Source(
+            citation="Coles, S. (2001). An Introduction to Statistical Modeling of "
+            "Extreme Values. Springer",
+            locator="sect. 3.1.4: min(X) = -max(-X), the GEV of minima",
+            access="author-provided",
+        ),
+    ),
+    constraints=(
+        _count(
+            4,
+            Source(
+                citation=_SMITH_1985,
+                locator="n values fit n parameters exactly, where the likelihood "
+                "has no maximum: one value more than the three parameters",
+                access="author-provided",
+            ),
+            "minima",
+        ),
+        _not_constant(
+            Source(
+                citation=_WMO_1029,
+                locator="sect. 7.5: a distribution of the minima needs their spread",
+                url=_WMO_1029_URL,
+            ),
+            "minima",
+            satisfied=(5.0, 6.0, 6.0, 7.0),
+        ),
+        Constraint(
+            name="discharges_not_negative",
+            cls="physical",
+            check=lambda x: (
+                x.choice("variable") != "discharge"
+                or bool(np.min(x.array("minima")) >= 0.0)
+            ),
+            text="min(x) >= 0 for a discharge",
+            source=Source(
+                citation=_WMO_1029,
+                locator="sect. 7.5, p. 62: the lower bound of the minima of a flow "
+                "is 0 or above",
+                url=_WMO_1029_URL,
+            ),
+            satisfied={"variable": "discharge"},
+            violated={"variable": "discharge", "minima": [-0.01, 2.0, 4.0, 8.0]},
+            boundary={"variable": "discharge", "minima": [0.0, 2.0, 4.0, 8.0, 16.0]},
+        ),
+        Constraint(
+            name="likelihood_has_a_maximum",
+            cls="precondition",
+            check=lambda x: (
+                _maximum_likelihood("gev", -x.array("minima")).parameters is not None
+            ),
+            text="the GEV likelihood of the negated minima has a maximum the search "
+            "settles on (precondition likelihood_has_a_maximum of "
+            "fit_maximum_likelihood)",
+            source=Source(
+                citation=_SMITH_1985,
+                locator="the bound placed at the closest value makes the likelihood "
+                "grow without limit",
+                access="author-provided",
+            ),
+            satisfied={"variable": "stage"},
+            violated={"minima": list(_UNBOUNDED_MINIMA)},
+        ),
+    ),
+    properties=Properties(
+        units="homogeneous",
+        scalings=(
+            Scaling(
+                name="unit_of_the_minima",
+                inputs={"minima": 1.0},
+                outputs={"loc": 1.0, "scale": 1.0, "quantiles": 1.0},
+                tolerance=Tolerance(
+                    abs=1e-300,
+                    rel=4.5e-16,
+                    reason="the search runs on the sample divided by a power of two "
+                    "and the quantile is loc + scale times the standard one, so "
+                    "doubling the minima rounds alike",
+                ),
+            ),
+        ),
+        limits=(
+            Limit(
+                name="gev_of_the_negated",
+                text="the parameters and quantiles are those of the maximum-likelihood "
+                "GEV of the negated minima, mirrored",
+                check=_gev_of_the_negated,
+            ),
+        ),
+    ),
+    validation="none: the maximum-likelihood fit of the distribution of minima",
+    formula_version=1,
+    status="oracle only",
+    conventions=(
+        _NEGATED,
+        "the quantile of T years at the non-exceedance probability 1/T (WMO-No. 1029 "
+        "eq. 7.14), from the inverse survival function of the negated sample",
+        "a discharge quantile below 0 is a gap (NaN, null in JSON) with the notice "
+        "negative_quantiles; a stage keeps it",
+        "the search of fit_maximum_likelihood: the GEVs with a mean, -1 < c < 1",
+    ),
+    assumptions=("the annual minima are independent and identically distributed",),
+    notices=("negative_quantiles",),
+    traps={
+        "singular_at_bound": "constraint case likelihood_has_a_maximum-violated: the "
+        "density infinite at a bound placed on a value",
+        "unbounded_iteration": "the search of fit_maximum_likelihood "
+        "(tests/unit/test_formulas_flood_frequency.py, "
+        "test_a_search_that_does_not_settle_is_refused)",
+        "gap_propagation": "type case minima-nan_element: a gap is refused; the gaps "
+        "of the quantiles are the negative discharges",
+    },
+    oracles=(
+        Oracle(
+            kind="algorithm",
+            description="the maximum-likelihood GEV of the negated minima and its "
+            "quantiles, mirrored",
+            test="tests/unit/test_formulas_low_flows.py (limit gev_of_the_negated)",
+        ),
+        Oracle(
+            kind="frozen",
+            description="evd 2.3.7.1 fgev and extRemes 2.2.1 fevd on the negated "
+            "minima of a small stream (the research of 2026-11-18): log-likelihood "
+            "54.537, Q10 0.017422 m3/s",
+            test="tests/unit/test_maximum_likelihood.py "
+            "(test_small_stream_low_flows_are_the_maximum_and_never_negative)",
+            conventions=("evd's xi of the negated sample is -c",),
+        ),
+    ),
+    base={
+        "minima": list(_STATION_223207),
+        "return_periods_years": [2.0, 10.0, 100.0],
+        "variable": "discharge",
+    },
+)
+
+
+def fisher_tippett_minima(
+    minima: NDArray[np.float64] | list[float] | tuple[float, ...],
+    return_periods_years: NDArray[np.float64] | list[float] | tuple[float, ...],
+    variable: str,
+) -> FisherTippettMinima:
+    """Return the Fisher-Tippett distribution of minima, spec fisher_tippett_minima.
+
+    Parameters
+    ----------
+    minima : array_like of float
+        Annual minima.
+    return_periods_years : array_like of float
+        Return periods [years].
+    variable : str
+        ``"discharge"`` or ``"stage"``.
+
+    Returns
+    -------
+    FisherTippettMinima
+        The parameters and the quantile of each return period.
+
+    Raises
+    ------
+    InvalidParameterError
+        If an input is refused by the spec.
+
+    Warns
+    -----
+    NegativeQuantiles
+        If quantiles of a discharge are left out as negative.
+    """
+    x = checked_inputs(
+        FISHER_TIPPETT,
+        minima=minima,
+        return_periods_years=return_periods_years,
+        variable=variable,
+    )
+    search = _maximum_likelihood("gev", -x.array("minima")).parameters
+    if search is None:  # the precondition likelihood_has_a_maximum holds
+        raise CalculationError("fisher_tippett_minima: the search ended without a fit")
+    c, loc_negated, scale = search
     fitted = genextreme(c, loc=loc_negated, scale=scale)
-
-    # ``0.0 - x`` instead of ``-x``: a location of 0 must give 0.0, not -0.0.
-    params: dict[str, float] = {
-        "shape": float(c),
-        "loc": float(0.0 - loc_negated),
-        "scale": float(scale),
-    }
-
-    # Non-exceedance probability p = 1/T of the minima = exceedance
-    # probability of the negated series; isf stays accurate for tiny p.
-    p = 1.0 / periods
-    quantiles = np.asarray(0.0 - fitted.isf(p), dtype=np.float64)
+    periods = x.array("return_periods_years")
+    # the non-exceedance 1/T of the minima is the exceedance 1/T of the negated
+    quantiles = np.asarray(0.0 - fitted.isf(1.0 / periods), dtype=np.float64)
     negative = quantiles < 0.0
-    if discharge and negative.any():
-        # The fitted distribution reaches below zero flow: F(0) = P(-x >= 0) > 1 / T.
+    if x.choice("variable") == "discharge" and negative.any():
+        # the distribution reaches below zero flow: F(0) = P(-x >= 0) > 1 / T
         warnings.warn(
             NegativeQuantiles(
                 return_periods=[float(period) for period in periods[negative]],
                 zero_return_period=float(1.0 / fitted.sf(0.0)),
             ),
-            stacklevel=3,
+            stacklevel=2,
         )
         quantiles = np.where(negative, np.nan, quantiles)
-
-    # K-S test (informational; invalid when parameters estimated from data).
-    # The statistic is the same for a sample and its mirror image.
-    ks_stat, ks_pval = kstest(negated, fitted.cdf)
-
-    return LowFlowFrequencyResult(
-        distribution_name="fisher_tippett",
-        parameters=params,
-        return_periods=periods.copy(),
-        quantiles=quantiles,
-        non_exceedance_probabilities=p,
-        ks_statistic=float(ks_stat),
-        ks_p_value=float(ks_pval),
-        ks_valid=False,
+    # ``0.0 - x`` instead of ``-x``: a location of 0 must give 0.0, not -0.0.
+    out = checked_outputs(
+        FISHER_TIPPETT,
+        {"shape": c, "loc": 0.0 - loc_negated, "scale": scale, "quantiles": quantiles},
     )
+    return FisherTippettMinima(
+        out.real("shape"), out.real("loc"), out.real("scale"), out.array("quantiles")
+    )
+
+
+SPECS: Final = (FISHER_TIPPETT,)
+"""The Tier A formulas of the module, in the order of ``docs/FORMULAS.md``."""
