@@ -20,6 +20,7 @@
 | [Parameters of a distribution of annual maxima by the method of moments](#fit_moments) | `hydrolog.statistics.frequency.fit_moments` | referenced | 1 | not measured |
 | [Parameters of a distribution of annual maxima by maximum likelihood](#fit_maximum_likelihood) | `hydrolog.statistics.frequency.fit_maximum_likelihood` | referenced | 1 | not measured |
 | [Parameters of a distribution of annual maxima by least squares on the plotting positions](#fit_least_squares) | `hydrolog.statistics.frequency.fit_least_squares` | oracle only | 1 | not measured |
+| [Fisher-Tippett distribution of annual minima by maximum likelihood and its quantiles](#fisher_tippett_minima) | `hydrolog.statistics.low_flows.fisher_tippett_minima` | oracle only | 1 | not measured |
 
 <a id="scs_cn_retention"></a>
 ### Potential maximum retention S of the SCS curve number
@@ -1107,6 +1108,86 @@ None.
 - algorithm: Powell's method from the estimate finds no smaller sum of squares (`tests/unit/test_formulas_flood_frequency.py (test_powell_finds_no_smaller_squares)`)
 
 **Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="fisher_tippett_minima"></a>
+### Fisher-Tippett distribution of annual minima by maximum likelihood and its quantiles
+
+`hydrolog.statistics.low_flows.fisher_tippett_minima` · family `statistic` · formula_version 1 · status **oracle only** · mutation score not measured
+
+$$
+F(x) = 1 - \exp\left\{-\left[1 + c\,\frac{x - \xi}{\alpha}\right]^{1/c}\right\},\quad Q_T = \xi + \frac{\alpha}{c}\left[\left(-\ln\left(1 - \frac{1}{T}\right)\right)^{c} - 1\right]
+$$
+
+Plain text: `F(x) = 1 - exp{-[1 + c (x - loc) / scale]^(1/c)}, the GEV of -x (scipy's genextreme with shape c and location -loc) fitted to the negated minima by maximum likelihood (fit_maximum_likelihood); Q_T = loc + scale ((-ln(1 - 1/T))**c - 1) / c at the non-exceedance 1/T, loc + scale ln(-ln(1 - 1/T)) for c = 0; a quantile of a discharge below 0 is a gap`
+
+**Sources**
+
+- WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.5, p. 62: if X is EV III distributed, -X is Weibull distributed; eq. 7.14, p. 64: T of the event X <= x_p (open) <https://library.wmo.int/idurl/4/32176>
+- Coles, S. (2001). An Introduction to Statistical Modeling of Extreme Values. Springer, sect. 3.1.4: min(X) = -max(-X), the GEV of minima (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `minima` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0) | unstated | [0.0, 78.0]: WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, table 7.1, p. 64: the AM(7) annual minima of stations 223204 and 223207, 0 to 78 in the unit of the table |
+| `return_periods_years` | $T$ | years | real_array | (1.0, inf), test bound high 1000000.0 (a million years tests the far lower tail; droughts are estimated for at most a thousand years) | unstated | [2.0, 1000.0]: Hydrolog (2026). stats low-flow and Obserwator's low_flow.Q, the default return periods, 2 to 1000 years |
+| `variable` | $v$ | - | choice of discharge, stage | – | – | – |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 4 | Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, n values fit n parameters exactly, where the likelihood has no maximum: one value more than the three parameters |
+| `values_not_all_equal` | precondition | min(x) < max(x) | WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.5: a distribution of the minima needs their spread |
+| `discharges_not_negative` | physical | min(x) >= 0 for a discharge | WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.5, p. 62: the lower bound of the minima of a flow is 0 or above |
+| `likelihood_has_a_maximum` | precondition | the GEV likelihood of the negated minima has a maximum the search settles on (precondition likelihood_has_a_maximum of fit_maximum_likelihood) | Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, the bound placed at the closest value makes the likelihood grow without limit |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `shape` | - | real | (-inf, inf) | 4 ulp of the bound |
+| `loc` | m3/s | real | (-inf, inf) | 4 ulp of the bound |
+| `scale` | m3/s | real | (0.0, inf) | 4 ulp of the bound |
+| `quantiles` | m3/s | real_array | (-inf, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- min(x) = -max(-x): the Fisher-Tippett distribution of the minima is the GEV of the negated minima, F(x) = 1 - exp{-[1 + c (x - loc) / scale]^(1/c)} with scipy's genextreme shape c and the location -loc of the negated sample
+- the quantile of T years at the non-exceedance probability 1/T (WMO-No. 1029 eq. 7.14), from the inverse survival function of the negated sample
+- a discharge quantile below 0 is a gap (NaN, null in JSON) with the notice negative_quantiles; a stage keeps it
+- the search of fit_maximum_likelihood: the GEVs with a mean, -1 < c < 1
+
+**Assumptions**
+
+- the annual minima are independent and identically distributed
+
+**Validation:** none: the maximum-likelihood fit of the distribution of minima
+
+**Notices:** `negative_quantiles`
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: constraint case likelihood_has_a_maximum-violated: the density infinite at a bound placed on a value
+- `unbounded_iteration`: the search of fit_maximum_likelihood (tests/unit/test_formulas_flood_frequency.py, test_a_search_that_does_not_settle_is_refused)
+- `gap_propagation`: type case minima-nan_element: a gap is refused; the gaps of the quantiles are the negative discharges
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_minima`: inputs times 2^e (`minima` e = 1.0) give outputs times 2^e (`loc` e = 1.0, `scale` e = 1.0, `quantiles` e = 1.0)
+- limit `gev_of_the_negated`: the parameters and quantiles are those of the maximum-likelihood GEV of the negated minima, mirrored
+
+**Reference cases (CMP-6.1)**
+
+None.
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the maximum-likelihood GEV of the negated minima and its quantiles, mirrored (`tests/unit/test_formulas_low_flows.py (limit gev_of_the_negated)`)
+- frozen: evd 2.3.7.1 fgev and extRemes 2.2.1 fevd on the negated minima of a small stream (the research of 2026-11-18): log-likelihood 54.537, Q10 0.017422 m3/s (`tests/unit/test_maximum_likelihood.py (test_small_stream_low_flows_are_the_maximum_and_never_negative)`)
+
+**Tests by class (CMP §6):** oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
 
 ## Tier B
 

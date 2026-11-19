@@ -459,14 +459,11 @@ def test_low_flow_minima_all_equal_are_refused():
 
     Up to 0.8.1 scipy's ``fit`` returned a scale of 5e-23 and quantiles of -2e-21.
     """
-    with pytest.raises(CalculationError) as caught:
+    with pytest.raises(InvalidParameterError) as caught:
         fit_fisher_tippett_minima(np.zeros(12))
 
-    assert caught.value.details == {
-        "distribution": "fisher_tippett",
-        "fit_method": "mle",
-        "reason": "constant_values",
-    }
+    assert caught.value.details["reason"] == "precondition_failed"
+    assert caught.value.details["constraint"] == "values_not_all_equal"
 
 
 # --- seeded samples against an independent search -----------------------------------
@@ -552,8 +549,8 @@ def test_seeded_low_flow_samples_reach_the_maximum_or_refuse_the_limit():
             warnings.simplefilter("ignore")  # negative_quantiles
             try:
                 result = fit_fisher_tippett_minima(minima)
-            except CalculationError as exc:
-                assert exc.details["reason"] == "unbounded_likelihood"
+            except InvalidParameterError as exc:
+                assert exc.details["constraint"] == "likelihood_has_a_maximum"
                 refused += 1
                 if c < 1.0 - 1e-3:
                     inconsistent.append((draw, c))
