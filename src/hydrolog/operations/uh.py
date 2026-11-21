@@ -4,7 +4,7 @@ Wrappers over :class:`~hydrolog.runoff.SCSUnitHydrograph`,
 :class:`~hydrolog.runoff.NashIUH`, :class:`~hydrolog.runoff.ClarkIUH` and
 :class:`~hydrolog.runoff.SnyderUH`. All four return the same :class:`UhResult`: the
 unit hydrograph of the catchment in m3/s per mm of effective precipitation, in an
-``OperationOutput`` with the ``outside_typical_range`` notices of its parameters and
+``OperationOutput`` with the ``outside_applicability`` notices of its parameters and
 of the area (:data:`hydrolog._ranges.TYPICAL_RANGES`).
 
 Nash and Clark parameters can be given in several ways; the group of options that is
@@ -126,7 +126,7 @@ def uh_scs(
     -------
     OperationOutput
         :class:`UhResult` (the lag, tp, qp and tb of the formula and the ordinates;
-        ``docs/FORMULAS.md``) with an ``outside_typical_range`` notice for an area
+        ``docs/FORMULAS.md``) with an ``outside_applicability`` notice for an area
         larger than the subareas of NEH 630, and ``uh_substeps`` when the step was
         computed on sub-steps.
 

@@ -9,7 +9,7 @@ English ``message``, which is :meth:`NoticeSpec.message` of the details:
   filled with the details (:func:`hydrolog._warnings.render`), and the details are
   next to it in the envelope;
 * a warning of the library (a :class:`hydrolog._warnings.HydrologWarning`, class
-  ``OutsideTypicalRange`` for ``outside_typical_range``) caught by
+  ``OutsideApplicability`` for ``outside_applicability``) caught by
   :func:`~hydrolog.catalog.capture_warnings` becomes a notice with the code, message
   and details of its class; the specs of those codes are made from the classes and
   word the details as the class does (``HydrologWarning.message_of``: the template
@@ -38,8 +38,8 @@ from hydrolog._warnings import (
     IuhPeakUndefined,
     KsTestApproximate,
     NegativeQuantiles,
+    OutsideApplicability,
     OutsideSupport,
-    OutsideTypicalRange,
     OutsideUnverifiedRange,
     PositionsIgnored,
     ShortRecord,
@@ -101,17 +101,17 @@ class NoticeSpec:
             The template filled with the details (:func:`hydrolog._warnings.render`),
             or for a library warning the wording of its class
             (``HydrologWarning.message_of``), which words a range with one end of
-            ``outside_typical_range`` by that end.
+            ``outside_applicability`` by that end.
 
         Examples
         --------
         >>> NOTICES["small_sample"].message({"years": 6, "minimum": 10})[:44]
         'Only 6 year(s) in the sample, fewer than 10:'
-        >>> range_details = dict.fromkeys(NOTICES["outside_typical_range"].details)
+        >>> range_details = dict.fromkeys(NOTICES["outside_applicability"].details)
         >>> range_details |= {"method": "m", "parameter": "n", "field": "n"}
         >>> range_details |= {"value": 6, "minimum": 12}
-        >>> NOTICES["outside_typical_range"].message(range_details)
-        'm: n=6 is below its typical minimum 12. Results may be unreliable.'
+        >>> NOTICES["outside_applicability"].message(range_details)
+        'm: n=6 is below its applicability range, from 12. Results may be unreliable.'
         """
         if self.warning is not None:
             return self.warning.message_of(details)
@@ -322,7 +322,7 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         "`output_dir` to write one table per node",
         ("size_chars", "page_chars"),
     ),
-    _library(OutsideTypicalRange),
+    _library(OutsideApplicability),
     _library(OutsideUnverifiedRange),
     _library(SmallSample),
     _library(ShortRecord),

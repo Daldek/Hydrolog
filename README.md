@@ -75,14 +75,14 @@ hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023 --json
   "notices": [
     {
       "level": "warning",
-      "code": "outside_typical_range",
-      "message": "kirpich: length_km=8.2 is outside typical range [0.10668, 1.2192]. Results may be unreliable.",
+      "code": "outside_applicability",
+      "message": "kirpich: length_km=8.2 is outside its applicability range [0.10668, 1.2192]. Results may be unreliable.",
       "details": {"method": "kirpich", "parameter": "length_km", "field": "length_km", "value": 8.2, "minimum": 0.10668, "maximum": 1.2192}
     },
     {
       "level": "warning",
-      "code": "outside_typical_range",
-      "message": "kirpich: slope_m_per_m=0.023 is outside typical range [0.025, 0.1]. Results may be unreliable.",
+      "code": "outside_applicability",
+      "message": "kirpich: slope_m_per_m=0.023 is outside its applicability range [0.025, 0.1]. Results may be unreliable.",
       "details": {"method": "kirpich", "parameter": "slope_m_per_m", "field": "slope_m_per_m", "value": 0.023, "minimum": 0.025, "maximum": 0.1}
     }
   ],

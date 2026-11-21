@@ -605,7 +605,7 @@ def runoff_depths(
 
     Warns
     -----
-    OutsideTypicalRange
+    OutsideApplicability
         If the curve number is outside the applicability of the method.
     """
     x = checked_inputs(
@@ -818,7 +818,7 @@ def amc_curve_number(cn: float, amc: str) -> int:
 
     Warns
     -----
-    OutsideTypicalRange
+    OutsideApplicability
         If the curve number is outside the range of the conversion.
     """
     x = checked_inputs(AMC_CONVERSION, cn=cn, amc=amc)
@@ -982,7 +982,7 @@ class SCSCN:
 
         Warns
         -----
-        OutsideTypicalRange
+        OutsideApplicability
             For AMC I or III, if the CN is outside the CN of the conversion
             (method ``scs_cn_amc``, parameter ``cn``).
         """

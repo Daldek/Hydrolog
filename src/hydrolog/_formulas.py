@@ -14,16 +14,14 @@ into :class:`~hydrolog.exceptions.InvalidParameterError` (code ``validation_erro
 ``precondition_failed``, ``invalid_type``, ``invalid_shape`` or ``invalid_choice``,
 ``details.option`` the input it names, for a precondition the input of
 :data:`CONSTRAINT_OPTIONS`), and issues each notice as a warning of the
-library. The standard's notice ``outside_applicability`` (CMP-3.3) is issued as
-Hydrolog's :class:`~hydrolog._warnings.OutsideTypicalRange`, code
-``outside_typical_range``, whose ``method`` is the name of the spec: for an input
-outside its applicability range ``parameter`` is the input; for a violated
-applicability constraint it is the quantity the constraint bounds, which the formula
-module declares beside its spec with :func:`constraint_range` (the number of
-``gaugings`` of a rating curve), with the constraint's name, text and source. The
-code is renamed together with its consumers, in one release (plan of the computation
-standard, step 5). A formula with the status ``unreferenced`` gives on every result
-the notice ``unreferenced_formula`` (CMP-5.1) at level ``info``,
+library. The standard's notice ``outside_applicability`` (CMP-3.3) is Hydrolog's
+warning :class:`~hydrolog._warnings.OutsideApplicability`, whose ``method`` is the
+name of the spec: for an input outside its applicability range ``parameter`` is the
+input; for a violated applicability constraint it is the quantity the constraint
+bounds, which the formula module declares beside its spec with
+:func:`constraint_range` (the number of ``gaugings`` of a rating curve), with the
+constraint's name, text and source. A formula with the status ``unreferenced`` gives
+on every result the notice ``unreferenced_formula`` (CMP-5.1) at level ``info``,
 :class:`~hydrolog._warnings.UnreferencedFormula`. :func:`checked_outputs` runs
 ``check_outputs`` (:class:`~hydrolog.exceptions.CalculationError`, code
 ``calculation_error``, for a result a formula must not return, CMP-3.4) and records
@@ -45,7 +43,7 @@ from types import MappingProxyType
 from typing import Final, cast
 
 from hydrolog._formula_versions import record
-from hydrolog._warnings import UnreferencedFormula, warn_outside_typical_range
+from hydrolog._warnings import UnreferencedFormula, warn_outside_applicability
 from hydrolog.exceptions import CalculationError, InvalidParameterError
 from hydrolog.nogat_formulas import (
     Delegated,
@@ -307,7 +305,7 @@ class ConstraintRange:
     """The range an applicability constraint of a formula puts on a quantity.
 
     A violated applicability constraint (CMP-3.3) is issued as the notice
-    ``outside_typical_range`` of that quantity, as an input outside its range is.
+    ``outside_applicability`` of that quantity, as an input outside its range is.
 
     Attributes
     ----------
@@ -437,7 +435,7 @@ def _issue(spec: FormulaSpec, notice: Notice, values: Values) -> None:
         bounds = details.get("range")
         if not isinstance(bounds, Mapping):
             raise TypeError(f"{spec.name}: {variable} has no applicability range")
-        warn_outside_typical_range(
+        warn_outside_applicability(
             spec.name,
             variable,
             cast("float", details["value"]),
@@ -454,7 +452,7 @@ def _issue(spec: FormulaSpec, notice: Notice, values: Values) -> None:
     )
     if declared is None:
         raise TypeError(f"{spec.name}: no warning of the library for {details}")
-    warn_outside_typical_range(
+    warn_outside_applicability(
         spec.name,
         declared.parameter,
         declared.value(values),
@@ -489,7 +487,7 @@ def checked_inputs(spec: FormulaSpec, /, **inputs: object) -> Values:
 
     Warns
     -----
-    OutsideTypicalRange
+    OutsideApplicability
         For each input outside its applicability range and each violated
         applicability constraint, in the order of the spec (``method`` the spec's
         name, ``parameter`` the input or the quantity the constraint bounds).

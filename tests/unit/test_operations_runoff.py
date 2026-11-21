@@ -72,7 +72,7 @@ from hydrolog.time.concentration import KIRPICH
 
 RUNOFF_GROUPS = ("tc", "cn", "scs", "precip", "uh", "hydrograph")
 _NO_CONDITION = {"constraint": None, "condition": None, "source": None}
-"""The details of ``outside_typical_range`` that only a violated condition between
+"""The details of ``outside_applicability`` that only a violated condition between
 inputs fills (since 0.9.0)."""
 
 FULL_WATERSHED = {
@@ -427,8 +427,8 @@ class TestTimeOfConcentration:
             (notice["code"], notice["details"]["parameter"])
             for notice in document["notices"]
         ] == [
-            ("outside_typical_range", "length_km"),
-            ("outside_typical_range", "slope_m_per_m"),
+            ("outside_applicability", "length_km"),
+            ("outside_applicability", "slope_m_per_m"),
         ]
 
     def test_run_command_notice(self):
@@ -437,7 +437,7 @@ class TestTimeOfConcentration:
         2015: 350-4,000 ft, 0.025-0.1)."""
         envelope = run_command("tc kirpich", {"length_km": 8.2, "slope_m_per_m": 0.023})
         length, slope = envelope.notices
-        assert (slope.level, slope.code) == ("warning", "outside_typical_range")
+        assert (slope.level, slope.code) == ("warning", "outside_applicability")
         assert length.details == {
             "method": "kirpich",
             "parameter": "length_km",
@@ -2311,11 +2311,11 @@ class TestHydrographGenerate:
             (n.level, n.code, n.details["parameter"], n.details["field"])
             for n in notices
         ] == [
-            ("warning", "outside_typical_range", "area_km2", "area_km2"),
-            ("warning", "outside_typical_range", "length_km", "flow_path_length_km"),
+            ("warning", "outside_applicability", "area_km2", "area_km2"),
+            ("warning", "outside_applicability", "length_km", "flow_path_length_km"),
             (
                 "warning",
-                "outside_typical_range",
+                "outside_applicability",
                 "slope_m_per_m",
                 "flow_path_slope_m_per_m",
             ),
@@ -2730,7 +2730,7 @@ class TestHydrographGenerate:
         assert [
             (n.code, n.details["method"], n.details["parameter"], n.details["field"])
             for n in run.notices
-        ] == [("outside_typical_range", "nrcs", "area_km2", "area_km2")]
+        ] == [("outside_applicability", "nrcs", "area_km2", "area_km2")]
 
     def test_compute_hydrograph_builds_a_hietogram_from_a_series(self):
         """For a series the run carries an equivalent ``HietogramResult``."""
@@ -2773,8 +2773,8 @@ class TestHydrographGenerate:
             (n.code, n.details["parameter"], n.details["field"])
             for n in envelope.notices
         ] == [
-            ("outside_typical_range", "area_km2", "area_km2"),
-            ("outside_typical_range", "length_km", "flow_path_length_km"),
+            ("outside_applicability", "area_km2", "area_km2"),
+            ("outside_applicability", "length_km", "flow_path_length_km"),
         ]
 
     def test_run_command_rejects_a_watershed_and_area_together(self):
@@ -2822,7 +2822,7 @@ MODEL_CALLS = {
 }
 
 
-RANGE_CODES = ("outside_typical_range", "outside_unverified_range")
+RANGE_CODES = ("outside_applicability", "outside_unverified_range")
 """The notices of a value outside a two-sided typical range (verified or not)."""
 
 
@@ -2914,13 +2914,13 @@ class TestTypicalRangesOfTheModels:
             ops.hydrograph_generate(area_km2=45.3, cn=72, tc_min=70.0, **storm)
         )
         assert bound.uh_time_to_peak_min == pytest.approx(48.0)
-        assert [n for n in notices if n.code == "outside_typical_range"] == []
+        assert [n for n in notices if n.code == "outside_applicability"] == []
 
         # tc 69.9 min: tp = 47.94 min and 0.25 tp = 11.985 min, below the 12 min step
         _, notices = unwrap(
             ops.hydrograph_generate(area_km2=45.3, cn=72, tc_min=69.9, **storm)
         )
-        assert [n.details for n in notices if n.code == "outside_typical_range"] == [
+        assert [n.details for n in notices if n.code == "outside_applicability"] == [
             {
                 "method": "scs",
                 "parameter": "timestep_min",
@@ -2961,7 +2961,7 @@ class TestTypicalRangesOfTheModels:
         ]
         # the step itself stays outside its range: the hydrograph has daily ordinates
         assert [
-            n.details["value"] for n in notices if n.code == "outside_typical_range"
+            n.details["value"] for n in notices if n.code == "outside_applicability"
         ] == [1440.0]
 
 

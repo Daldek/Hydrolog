@@ -244,7 +244,7 @@ class TestTheCommand:
         found = [
             notice["details"]
             for notice in envelope["notices"]
-            if notice["code"] == "outside_typical_range"
+            if notice["code"] == "outside_applicability"
         ]
         assert [(d["method"], d["parameter"], d["field"]) for d in found] == [
             ("lutz", "area_km2", "area_km2")

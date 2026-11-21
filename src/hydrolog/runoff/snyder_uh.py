@@ -783,7 +783,7 @@ SNYDER: Final = FormulaSpec(
         (
             "most watersheds of the ecosystem (the hand-offs' areas up to 250 km2) are "
             "smaller than Snyder's, 30 to 30,000 km2: they get the notice "
-            "outside_typical_range of snyder.area_km2"
+            "outside_applicability of snyder.area_km2"
         ),
     ),
     traps={
@@ -854,7 +854,7 @@ def snyder_parameters(
 
     Warns
     -----
-    OutsideTypicalRange
+    OutsideApplicability
         For the area, ``ct`` or ``cp`` outside the range of the method.
     """
     x = checked_inputs(
@@ -1404,7 +1404,7 @@ class SnyderUH:
     that the specs check every input then (the constructor checks nothing): a
     refusal is an :class:`~hydrolog.exceptions.InvalidParameterError` with the
     standard's ``details.reason``, and a value outside the method's range warns
-    with :class:`~hydrolog._warnings.OutsideTypicalRange` at each call.
+    with :class:`~hydrolog._warnings.OutsideApplicability` at each call.
 
     Parameters
     ----------

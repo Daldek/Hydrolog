@@ -4,8 +4,8 @@ The reference module's ``run_case``, ``assert_property_contract``,
 ``assert_properties``, ``assert_limits`` and ``assert_case`` read the standard's
 notice ``outside_applicability`` with ``details.variable`` or, for a violated
 applicability constraint, ``details.constraint``. Until that code replaces
-``outside_typical_range`` together with its consumers (ADR-0050, point 3), the
-library warns with :class:`~hydrolog._warnings.OutsideTypicalRange`, whose
+``outside_applicability`` together with its consumers (ADR-0050, point 3), the
+library warns with :class:`~hydrolog._warnings.OutsideApplicability`, whose
 ``parameter`` is the input and whose ``constraint`` names a violated constraint:
 :func:`as_standard` gives the assertions the function with each such warning read as
 the standard's notice, and nothing else changed.
@@ -14,7 +14,7 @@ the standard's notice, and nothing else changed.
 import warnings
 from collections.abc import Callable, Mapping
 
-from hydrolog._warnings import OutsideTypicalRange
+from hydrolog._warnings import OutsideApplicability
 
 
 class _Applicability(UserWarning):
@@ -28,7 +28,7 @@ class _Applicability(UserWarning):
 
 
 def as_standard(function: Callable[..., object]) -> Callable[..., object]:
-    """Return ``function`` with its ``outside_typical_range`` read as the standard's.
+    """Return ``function`` with its ``outside_applicability`` read as the standard's.
 
     Parameters
     ----------
@@ -39,7 +39,7 @@ def as_standard(function: Callable[..., object]) -> Callable[..., object]:
     -------
     callable
         Takes the same keyword arguments and returns the same result; it issues each
-        ``OutsideTypicalRange`` of the call as ``outside_applicability`` whose
+        ``OutsideApplicability`` of the call as ``outside_applicability`` whose
         ``variable`` is the warning's ``parameter``, or whose ``constraint`` is the
         warning's for a violated constraint, and every other warning as it was.
     """
@@ -50,7 +50,7 @@ def as_standard(function: Callable[..., object]) -> Callable[..., object]:
             result = function(**inputs)
         for item in caught:
             message = item.message
-            if isinstance(message, OutsideTypicalRange) and message.details:
+            if isinstance(message, OutsideApplicability) and message.details:
                 details = dict(message.details)
                 if details.get("constraint") is None:
                     details = {"variable": details["parameter"], **details}

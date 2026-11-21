@@ -111,14 +111,14 @@ export const notices = {
       text: "Duży wynik: {size_chars} znaków (strona: {page_chars}).",
       plain: "Duży wynik.",
     },
-    outside_typical_range: {
-      text: "{method}: {parameter} = {value} poza typowym zakresem od {minimum} do {maximum}.",
+    outside_applicability: {
+      text: "{method}: {parameter} = {value} poza zakresem stosowania od {minimum} do {maximum}.",
       partial: [
         "{method}: {parameter} = {value}, mniej niż {minimum}: {constraint}.",
-        "{method}: {parameter} = {value} poniżej typowego zakresu, od {minimum}.",
-        "{method}: {parameter} = {value} powyżej typowego zakresu, do {maximum}.",
+        "{method}: {parameter} = {value} poniżej zakresu stosowania, od {minimum}.",
+        "{method}: {parameter} = {value} powyżej zakresu stosowania, do {maximum}.",
       ],
-      plain: "Parametr metody poza typowym zakresem.",
+      plain: "Parametr metody poza zakresem stosowania.",
       names: {
         method: { rating_curve_fit: "Krzywa przepływu" },
         parameter: { gaugings: "liczba par stan–przepływ" },
@@ -248,14 +248,14 @@ export const notices = {
 
 /**
  * Whether a notice puts a value outside a two-sided typical range of Hydrolog: the code
- * `outside_typical_range`, or `outside_unverified_range` for a range to be verified
+ * `outside_applicability`, or `outside_unverified_range` for a range to be verified
  * (`verified` false in the served `typical_ranges`).
  *
  * @param {{code?: string}|null} notice a notice of hydrolog-result/1
  * @returns {boolean} true for either code
  */
 export function isRangeNotice(notice) {
-  return Boolean(notice) && (notice.code === "outside_typical_range" || notice.code === "outside_unverified_range");
+  return Boolean(notice) && (notice.code === "outside_applicability" || notice.code === "outside_unverified_range");
 }
 
 /**

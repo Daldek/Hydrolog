@@ -3,7 +3,7 @@
 A typical range is the range of the data a formula was derived from, or the range its
 literature recommends: the applicability range of Nogat's computation standard. Outside
 it the formula still computes and the library warns
-(:class:`~hydrolog._warnings.OutsideTypicalRange`, notice ``outside_typical_range``)
+(:class:`~hydrolog._warnings.OutsideApplicability`, notice ``outside_applicability``)
 with the bounds of :data:`TYPICAL_RANGES`; the record length of a flood frequency
 analysis has the notice ``short_record`` instead. The catalog serves the table in the
 ``typical_ranges`` of the commands that check it, in the document of one command
@@ -39,7 +39,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from hydrolog._applicability import APPLICABILITY
-from hydrolog._warnings import warn_outside_typical_range
+from hydrolog._warnings import warn_outside_applicability
 
 __all__ = [
     "NASH_INPUTS",
@@ -79,7 +79,7 @@ class TypicalRange:
         time step), else ``None``.
     notice : str
         Code of the notice a value outside the range gives:
-        ``outside_typical_range``, ``outside_unverified_range`` for a range to be
+        ``outside_applicability``, ``outside_unverified_range`` for a range to be
         verified, or ``short_record``.
     verified : bool
         Whether the range has a published source; one without is kept only to be
@@ -94,7 +94,7 @@ class TypicalRange:
     source: str
     source_pl: str
     relative_to: str | None = None
-    notice: str = "outside_typical_range"
+    notice: str = "outside_applicability"
     verified: bool = True
 
     def __post_init__(self) -> None:
@@ -113,7 +113,7 @@ class TypicalRange:
             )
 
     def check(self, value: float, *, scale: float = 1.0, stacklevel: int = 2) -> None:
-        """Warn (:class:`~hydrolog._warnings.OutsideTypicalRange`) outside the range.
+        """Warn (:class:`~hydrolog._warnings.OutsideApplicability`) outside the range.
 
         A range to be verified warns with the subclass
         :class:`~hydrolog._warnings.OutsideUnverifiedRange`.
@@ -131,7 +131,7 @@ class TypicalRange:
         ------
         TypeError
             If the range lacks a bound, or its notice is neither
-            ``outside_typical_range`` nor ``outside_unverified_range``.
+            ``outside_applicability`` nor ``outside_unverified_range``.
         """
         if (
             self.notice not in _RANGE_NOTICES
@@ -139,7 +139,7 @@ class TypicalRange:
             or self.maximum is None
         ):
             raise TypeError(f"{self.method}.{self.parameter} is not a two-sided range")
-        warn_outside_typical_range(
+        warn_outside_applicability(
             self.method,
             self.parameter,
             value,
@@ -150,7 +150,7 @@ class TypicalRange:
         )
 
 
-_RANGE_NOTICES: Final = ("outside_typical_range", "outside_unverified_range")
+_RANGE_NOTICES: Final = ("outside_applicability", "outside_unverified_range")
 """The notices of a value outside a two-sided range."""
 
 

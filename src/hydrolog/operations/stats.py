@@ -2366,7 +2366,7 @@ def stats_baseflow(
     OperationOutput
         ``result`` is a :class:`~hydrolog.statistics.BaseflowSeparation`; the notices
         report an ``alpha`` outside the values its sources validated
-        (``outside_typical_range``, spec ``lyne_hollick``), years with too few days
+        (``outside_applicability``, spec ``lyne_hollick``), years with too few days
         for an index of their own (``short_years_left_out``) and a period shorter
         than 30 years (``short_reference_period``).
 

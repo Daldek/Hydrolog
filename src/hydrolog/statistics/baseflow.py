@@ -650,7 +650,7 @@ def lyne_hollick_filter(
 
     Warns
     -----
-    OutsideTypicalRange
+    OutsideApplicability
         If ``alpha`` lies outside the values its sources validated.
     """
     x = checked_inputs(LYNE_HOLLICK, values=values, alpha=alpha, passes=passes)

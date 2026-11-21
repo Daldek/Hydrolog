@@ -432,9 +432,11 @@ class TestWhatTheRunObserves:
 
         notices = result.nodes["A"].notices
         assert [(n.code, n.level) for n in notices] == [
-            ("outside_typical_range", "warning")
+            ("outside_applicability", "warning")
         ] * 3
-        assert [n.message.split(" is outside typical range")[0] for n in notices] == [
+        assert [
+            n.message.split(" is outside its applicability")[0] for n in notices
+        ] == [
             "kirpich: area_km2=12.0",
             "kirpich: length_km=12.0",
             f"kirpich: slope_m_per_m={10.0 / 12000.0}",

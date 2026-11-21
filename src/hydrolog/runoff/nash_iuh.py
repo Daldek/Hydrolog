@@ -311,7 +311,7 @@ class NashIUH:
             If ``n`` or ``k_min`` is outside its typical range (method ``nash``;
             the ranges: :data:`hydrolog._ranges.TYPICAL_RANGES`). The ranges have
             no published source and are kept as to be verified, so the warning is
-            this subclass of ``OutsideTypicalRange``. The estimating constructors
+            this subclass of ``OutsideApplicability``. The estimating constructors
             (``from_lutz``, ``from_urban_regression``) do not warn
             about them: the ranges are those of given parameters.
         """
@@ -651,7 +651,7 @@ class NashIUH:
 
         Warns
         -----
-        OutsideTypicalRange
+        OutsideApplicability
             If ``area_km2`` is larger than the watersheds KZGW (2017) recommends
             the method for (method ``lutz``; the ranges and their sources:
             :data:`hydrolog._ranges.TYPICAL_RANGES`).
@@ -2791,7 +2791,7 @@ def urban_regression_parameters(
 
     Warns
     -----
-    OutsideTypicalRange
+    OutsideApplicability
         If the area or the impervious fraction is outside the watersheds the
         relations are for.
     """

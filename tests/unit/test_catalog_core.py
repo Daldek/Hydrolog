@@ -59,7 +59,7 @@ def noisy_operation(*, length_km: float):
     """Return an OperationOutput with a notice."""
     return OperationOutput(
         result={"tc_min": length_km * 10.0},
-        notices=(Notice("warning", "outside_typical_range", "length is large"),),
+        notices=(Notice("warning", "outside_applicability", "length is large"),),
     )
 
 
@@ -1346,7 +1346,7 @@ class TestEnvelope:
             "notices": [
                 {
                     "level": "warning",
-                    "code": "outside_typical_range",
+                    "code": "outside_applicability",
                     "message": "length is large",
                 }
             ],
