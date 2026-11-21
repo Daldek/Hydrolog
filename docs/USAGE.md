@@ -1036,7 +1036,7 @@ hydrolog commands batch --input-file tests/fixtures/station_batch.jsonl --output
 ### Meteorological statistics from an Obserwator export
 
 The `meteo` commands read a station's daily export (`obserwator series export --dataset
-pl.imgw.meteo_climate_daily`, `pl.imgw.meteo_precip_daily` or `cz.chmi.meteo_daily`) as it is: the
+pl.imgw.meteo_climate_daily`, `pl.imgw.meteo_precip_daily` or `cz.chmu.meteo_daily`) as it is: the
 columns `date`, `P`, `P_flag`, `Tmax`, `Tmin`, `Tmean`, `snow_cover` and `fresh_snow` are found by
 their names (`--precipitation-column` and the like change them). `meteo precipitation` and
 `meteo temperature` take one `--index` per call; years are calendar years unless `--year-type
@@ -1056,9 +1056,10 @@ every spell), which keeps the result of a long record small. `meteo temperature 
 gives both FD (`frost_days`, Tmin < 0 °C) and IMGW-PIB's „dni przymrozkowe”
 (`freeze_thaw_days`, Tmin < 0 °C < Tmax), and `meteo hydrothermal` takes its season from the
 days of April-September above 10 °C.
-The export's attribution columns (`attribution_source`, `attribution_processed`) are not data:
-Hydrolog carries their lines into the envelope's `attribution` and `terms_notice` (ADR-0028); show
-them when you publish results. Values given inline take theirs with `--attribution '[...]'`.
+The export's attribution columns (`attribution`, `terms_notice`, and `attribution_source`,
+`attribution_processed` in a file of Obserwator 3.0.x or older) are not data: Hydrolog carries
+their lines into the envelope's `attribution` and `terms_notice` (ADR-0028); show them when you
+publish results. Values given inline take theirs with `--attribution '[...]'`.
 
 ```bash
 hydrolog meteo precipitation --index sums --input-file tests/fixtures/meteo_daily.csv --first-year 2019 --last-year 2021 --json

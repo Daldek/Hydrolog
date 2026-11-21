@@ -714,7 +714,7 @@ class _Gui:
         ``nogat.toml``, read at every request; ``None`` without it), which the page
         gives Nogat's app menu (DEV-15.4, ADR-0027). ``attribution`` is the complete
         lines of each provider Hydrolog knows (``imgw``, ``imgw_hydro``, ``pmaxtp``,
-        ``chmi``: ``attribution`` and ``terms_notice``), by which the page names the
+        ``chmu``: ``attribution`` and ``terms_notice``), by which the page names the
         provider of a hand-off that carries no lines of its own (ADR-0028).
         ``retired_lines`` maps each line Nogat retired (ECO-065) to its current line or
         ``None``, by which the page shows a kept depth's or an older hand-off's lines as
