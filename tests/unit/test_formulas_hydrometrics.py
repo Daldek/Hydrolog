@@ -72,6 +72,7 @@ FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
     (RATING_CURVE_PLAUSIBILITY, rating_curve_plausibility),
     (RYBCZYNSKI_ZONES, rybczynski_zones),
 )
+NAMES = [spec.name for spec, _ in FAMILY]
 PAIRS_H = list(rating_curve._PAIRS_H)
 PAIRS_Q = list(rating_curve._PAIRS_Q)
 NLS_SETS = {
@@ -111,7 +112,7 @@ def test_ranges_and_types(spec: FormulaSpec, function, case: Case):
     run_case(spec, as_standard(function), case, ERRORS)
 
 
-@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=lambda x: str(x))
+@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=NAMES)
 def test_limits_and_oracles(spec: FormulaSpec, function):
     assert_limits(spec, as_standard(function), ERRORS)
 

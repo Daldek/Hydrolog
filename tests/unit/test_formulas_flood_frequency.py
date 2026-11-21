@@ -106,6 +106,7 @@ FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
     (PLOTTING_POSITIONS, compute_plotting_positions),
     (NON_EXCEEDANCE_POSITIONS, compute_non_exceedance_positions),
 )
+NAMES = [spec.name for spec, _ in FAMILY]
 DISTRIBUTIONS = ("log_normal", "gev", "pearson3", "weibull")
 POLANA = list(frequency._POLANA)
 RETURN_PERIODS = [2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0]
@@ -160,7 +161,7 @@ def test_reference_cases(spec: FormulaSpec, function, case: ReferenceCase):
     assert_case(spec, as_standard(function), case, ERRORS)
 
 
-@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=lambda x: str(x))
+@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=NAMES)
 def test_limits_and_oracles(spec: FormulaSpec, function):
     assert_limits(spec, as_standard(function), ERRORS)
 

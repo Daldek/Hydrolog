@@ -80,6 +80,7 @@ FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
     (SKEWNESS, fisher_pearson_skewness),
     (MEAN_INTERVAL, mean_interval_half_width),
 )
+NAMES = [spec.name for spec, _ in FAMILY]
 
 
 def _generated() -> list[object]:
@@ -108,7 +109,7 @@ def test_reference_cases(spec: FormulaSpec, function, case: ReferenceCase):
     assert_case(spec, function, case, ERRORS)
 
 
-@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=lambda x: str(x))
+@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=NAMES)
 def test_limits_and_oracles(spec: FormulaSpec, function):
     assert_limits(spec, function, ERRORS)
 

@@ -32,6 +32,7 @@ from ._warszawa import DATES, P
 pytestmark = pytest.mark.formula
 
 FAMILY: tuple[tuple[FormulaSpec, object], ...] = ((SPELL_LENGTHS, spell_lengths),)
+NAMES = [spec.name for spec, _ in FAMILY]
 
 
 def _generated() -> list[object]:
@@ -47,7 +48,7 @@ def test_ranges_and_types(spec: FormulaSpec, function, case: Case):
     run_case(spec, as_standard(function), case, ERRORS)
 
 
-@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=lambda x: str(x))
+@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=NAMES)
 def test_limits_and_oracles(spec: FormulaSpec, function):
     assert_limits(spec, as_standard(function), ERRORS)
 
