@@ -81,3 +81,13 @@ Hydrolog carried any line but the PMAXTP result's.
 - The command line the GUI shows for a run with lines has `--attribution '[...]'`; it reproduces the run.
 - Output tables of runs with provider data have two more columns; a reader that takes columns by name, as every
   reader in the ecosystem does, is unchanged.
+
+## Erratum (2026-11-21, Nogat ECO-082)
+
+Nogat ECO-082 names every provider by its national acronym without diacritics: the provider point 1 lists as `chmi`
+is `chmu` (`Attribution.of("chmu")`, the key of GET api/session's `attribution`, `CHMU_SOURCE` and `CHMU_PROCESSED` in
+`hydrolog._attribution`), and the GUI (point 7) names a hand-off's provider ČHMÚ by `CHMU`, „ČHMÚ” or a dataset
+`cz.chmu.…`, no longer by `CHMI` or `cz.chmi.…`. The same decision drops the columns `attribution_source` and
+`attribution_processed` from Obserwator's CSV (3.1.0): its exports end with `attribution` and `terms_notice`.
+Hydrolog still reads the two columns as lines, not data (point 3), since exports of Obserwator 3.0.x and older that
+have them exist.

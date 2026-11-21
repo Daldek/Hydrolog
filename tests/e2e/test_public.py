@@ -22,7 +22,7 @@ RAIL_TERMS = "nav.rail a.rail-terms"
 # The statement of the footer that is gone: the regulamin's § 3 alone holds it
 STATEMENT = "Serwis jest niekomercyjny i bezpłatny"
 WELCOME = "Witaj w Hydrologu"
-# The blocks Hydrolog keeps (imgw, pmaxtp, chmi)
+# The blocks Hydrolog keeps (imgw, pmaxtp, chmu)
 BLOCKS = [
     "IMGW-PIB: dane publiczne",
     "IMGW-PIB: opady maksymalne PMAXTP",

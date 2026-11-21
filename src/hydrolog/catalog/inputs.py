@@ -36,10 +36,11 @@ Files
 CSV (comma or semicolon, detected from the header; UTF-8 with or without BOM; a header
 row; quoted fields; CRLF or LF; rows without any content are skipped) and JSON. The CSV
 written by Obserwator ``export_series``
-(``date,year,Q [m3/s],Q_flag,...,attribution_source,attribution_processed``) loads
-without preprocessing. JSON may be a list of records, an object of equal-length
-columns, or a plain list of numbers (one column called ``values``); a missing JSON
-value is ``null`` (``NaN`` is not JSON and is rejected).
+(``date,year,Q [m3/s],Q_flag,...,attribution,terms_notice``; 3.0.x and older put
+``attribution_source,attribution_processed`` before them) loads without preprocessing.
+JSON may be a list of records, an object of equal-length columns, or a plain list of
+numbers (one column called ``values``); a missing JSON value is ``null`` (``NaN`` is
+not JSON and is rejected).
 
 A station's series ``hydrolog-series/1`` (ADR-0020), alone or as the payload of
 Archiwista's hand-off ``nogat-handoff/1``, is read as two columns (ADR-0068): ``date``
@@ -54,8 +55,9 @@ Attribution
 -----------
 The lines the data providers' terms require travel with the data (Nogat DEV-20.5,
 DEV-20.6): the CSV columns ``attribution`` and ``terms_notice`` (one line per cell from
-the first data row down, a cell may hold several lines) and Obserwator's
-``attribution_source`` and ``attribution_processed`` are not data: :func:`read_table`
+the first data row down, a cell may hold several lines) and the columns
+``attribution_source`` and ``attribution_processed`` of the files of Obserwator 3.0.x
+and older (3.1.0 no longer writes them, Nogat ECO-082) are not data: :func:`read_table`
 leaves them out of the table, keeps their lines in :attr:`Table.attribution` and cites
 them for the run (:func:`hydrolog._attribution.cite`). The fields ``attribution`` and
 ``terms_notice`` of a JSON object (a table of columns, a network, a watershed) are cited

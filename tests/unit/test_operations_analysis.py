@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from hydrolog._attribution import CHMI_PROCESSED, CHMI_SOURCE, SOILGRIDS_SOURCE
+from hydrolog._attribution import CHMU_PROCESSED, CHMU_SOURCE, SOILGRIDS_SOURCE
 from hydrolog.catalog import Command, get_command, run_command
 from hydrolog.catalog.envelope import sha256_file
 from hydrolog.catalog.groups import collect_commands
@@ -2271,7 +2271,7 @@ class TestSoilHsg:
             "sand_path": {"dataset": "global.isric.soilgrids", "attribution": [other]},
             "silt_path": {
                 "dataset": "global.isric.soilgrids",
-                "attribution": [CHMI_SOURCE, gugik],
+                "attribution": [CHMU_SOURCE, gugik],
             },
         }
         for name, sidecar in sidecars.items():
@@ -2283,8 +2283,8 @@ class TestSoilHsg:
         )
 
         assert document["attribution"] == [
-            CHMI_SOURCE,
-            CHMI_PROCESSED,
+            CHMU_SOURCE,
+            CHMU_PROCESSED,
             gugik,
             SOILGRIDS_SOURCE,
             other,

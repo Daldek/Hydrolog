@@ -11,8 +11,8 @@ import pytest
 
 import hydrolog
 from hydrolog._attribution import (
-    CHMI_PROCESSED,
-    CHMI_SOURCE,
+    CHMU_PROCESSED,
+    CHMU_SOURCE,
     IMGW_PROCESSED,
     IMGW_SOURCE,
     PMAXTP_MONOGRAPH,
@@ -32,11 +32,11 @@ from hydrolog.exceptions import InvalidParameterError
 from hydrolog.testing import example_network_document
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
-OLD_OBSERWATOR_CHMI_PROCESSED = (
+OLD_OBSERWATOR_CHMU_PROCESSED = (
     "Dane ČHMÚ zostały przetworzone (normalizacja i zmiana formatu)"
 )
 """Obserwator's CP before Nogat ECO-071, which said what it did with ČHMÚ's data."""
-OLD_HYDROLOG_CHMI_PROCESSED = (
+OLD_HYDROLOG_CHMU_PROCESSED = (
     "Dane ČHMÚ zostały przetworzone (obliczenia hydrologiczne programem Hydrolog)"
 )
 """Hydrolog's own CP before Nogat ECO-071."""
@@ -80,13 +80,13 @@ class TestTheLines:
             "Instytut Badawczy, Warszawa 2022"
         )
 
-    def test_chmi(self):
-        assert CHMI_SOURCE == (
+    def test_chmu(self):
+        assert CHMU_SOURCE == (
             "Źródło danych: Český hydrometeorologický ústav (ČHMÚ), "
             "https://opendata.chmi.cz, licencja CC BY 4.0 "
             "(https://creativecommons.org/licenses/by/4.0/)"
         )
-        assert CHMI_PROCESSED == "Dane ČHMÚ zostały przetworzone"
+        assert CHMU_PROCESSED == "Dane ČHMÚ zostały przetworzone"
 
     def test_the_terms_lines(self):
         assert TERMS_DANEPUBLICZNE == (
@@ -126,7 +126,7 @@ class TestRecognition:
 
         assert attribution.lines == (IMGW_SOURCE, IMGW_PROCESSED)
 
-    def test_an_older_chmi_credit_becomes_the_complete_one(self):
+    def test_an_older_chmu_credit_becomes_the_complete_one(self):
         """Obserwator's credit without the licence's link."""
         older = (
             "Źródło danych: Český hydrometeorologický ústav (ČHMÚ), "
@@ -134,23 +134,23 @@ class TestRecognition:
         )
         attribution = Attribution.from_lines([older])
 
-        assert attribution.lines == (CHMI_SOURCE, CHMI_PROCESSED)
+        assert attribution.lines == (CHMU_SOURCE, CHMU_PROCESSED)
         assert attribution.terms_notice == ()
 
     @pytest.mark.parametrize(
         "given",
         [
-            [OLD_OBSERWATOR_CHMI_PROCESSED],
-            [OLD_HYDROLOG_CHMI_PROCESSED, CHMI_PROCESSED],
-            [OLD_OBSERWATOR_CHMI_PROCESSED, f"{OLD_HYDROLOG_CHMI_PROCESSED}."],
-            ["Dane ČHMÚ zostały przetworzone ()", CHMI_SOURCE],
+            [OLD_OBSERWATOR_CHMU_PROCESSED],
+            [OLD_HYDROLOG_CHMU_PROCESSED, CHMU_PROCESSED],
+            [OLD_OBSERWATOR_CHMU_PROCESSED, f"{OLD_HYDROLOG_CHMU_PROCESSED}."],
+            ["Dane ČHMÚ zostały przetworzone ()", CHMU_SOURCE],
         ],
     )
     def test_an_older_cp_with_its_detail_is_the_one_cp(self, given):
         """Nogat ECO-071: whatever its parentheses say, written once, without them."""
         attribution = Attribution.from_lines(given)
 
-        assert attribution.lines == (CHMI_SOURCE, CHMI_PROCESSED)
+        assert attribution.lines == (CHMU_SOURCE, CHMU_PROCESSED)
 
     def test_a_line_that_only_begins_like_cp_is_another_line(self):
         """Only the parenthetical form of ECO-071 is CP; other words stay verbatim."""
@@ -160,7 +160,7 @@ class TestRecognition:
 
     def test_lines_of_several_providers_take_the_order_of_dev_20_4(self):
         attribution = (
-            Attribution.of("chmi")
+            Attribution.of("chmu")
             | Attribution.from_lines(["Inny dostawca danych"])
             | Attribution.of("pmaxtp")
             | Attribution.from_lines([IMGW_PROCESSED])
@@ -172,8 +172,8 @@ class TestRecognition:
             PMAXTP_SOURCE,
             PMAXTP_PROCESSED,
             PMAXTP_MONOGRAPH,
-            CHMI_SOURCE,
-            CHMI_PROCESSED,
+            CHMU_SOURCE,
+            CHMU_PROCESSED,
             "Inny dostawca danych",
         )
         assert attribution.terms_notice == (TERMS_DANEPUBLICZNE, TERMS_PMAXTP)
@@ -230,8 +230,8 @@ class TestRecognition:
             "terms_notice": [TERMS_DANEPUBLICZNE],
         }
         assert lines["pmaxtp"]["attribution"][2] == PMAXTP_MONOGRAPH
-        assert lines["chmi"] == {
-            "attribution": [CHMI_SOURCE, CHMI_PROCESSED],
+        assert lines["chmu"] == {
+            "attribution": [CHMU_SOURCE, CHMU_PROCESSED],
             "terms_notice": [],
         }
 
@@ -324,22 +324,24 @@ class TestFiles:
         ]
 
 
-def _observer_export(path: Path, *, lines: list[str], terms: list[str]) -> Path:
+def _observer_export(
+    path: Path, *, lines: list[str], terms: list[str], legacy: bool = False
+) -> Path:
     """Write a daily series as Obserwator's ``series export`` does, with its lines.
 
     The values are ``daily_flows_3y.csv`` (three hydrological years); the columns
-    ``attribution_source`` and ``attribution_processed`` hold the first two lines in
-    the first row, ``attribution`` and ``terms_notice`` one line per row (DEV-20.5).
+    ``attribution`` and ``terms_notice`` hold one line per row (DEV-20.5). ``legacy``
+    writes an export of Obserwator 3.0.x, whose columns ``attribution_source`` and
+    ``attribution_processed`` before them hold the first two lines in the first row.
     """
     rows = (FIXTURES / "daily_flows_3y.csv").read_text(encoding="utf-8").splitlines()
-    out = [
-        "date,year,Q [m3/s],Q_flag,attribution_source,attribution_processed,"
-        "attribution,terms_notice"
-    ]
+    old = ["attribution_source", "attribution_processed"] if legacy else []
+    out = [",".join(["date", "year", "Q [m3/s]", "Q_flag", *old, "attribution"])]
+    out[0] += ",terms_notice"
     for number, row in enumerate(rows[1:]):
         date, value = row.split(",")
         year = int(date[:4]) + (1 if date[5:7] in ("11", "12") else 0)
-        pair = lines[:2] if number == 0 else ["", ""]
+        pair = (lines[:2] if number == 0 else ["", ""]) if legacy else []
         line = lines[number] if number < len(lines) else ""
         term = terms[number] if number < len(terms) else ""
         cells = [date, str(year), value, "value", *pair, line, term]
@@ -351,11 +353,16 @@ def _observer_export(path: Path, *, lines: list[str], terms: list[str]) -> Path:
 class TestResults:
     """The envelope of a run carries the lines of its data (ADR-0028)."""
 
-    def test_flood_frequency_of_an_obserwator_export_carries_s_and_p(self, tmp_path):
+    @pytest.mark.parametrize("legacy", [False, True])
+    def test_flood_frequency_of_an_obserwator_export_carries_s_and_p(
+        self, tmp_path, legacy
+    ):
+        """Today's export or Obserwator 3.0.x's, whose two more columns are lines."""
         export = _observer_export(
             tmp_path / "q_daily.csv",
             lines=[IMGW_SOURCE, IMGW_PROCESSED],
             terms=[TERMS_DANEPUBLICZNE],
+            legacy=legacy,
         )
 
         envelope = hydrolog.run_command(
@@ -382,19 +389,19 @@ class TestResults:
         assert envelope["terms_notice"] == [TERMS_DANEPUBLICZNE]
 
     @pytest.mark.parametrize(
-        "processed", [CHMI_PROCESSED, OLD_OBSERWATOR_CHMI_PROCESSED]
+        "processed", [CHMU_PROCESSED, OLD_OBSERWATOR_CHMU_PROCESSED]
     )
-    def test_a_chmi_export_carries_its_credit_and_one_cp(self, tmp_path, processed):
+    def test_a_chmu_export_carries_its_credit_and_one_cp(self, tmp_path, processed):
         """Obserwator's export of today or of before Nogat ECO-071."""
         export = _observer_export(
-            tmp_path / "chmi.csv", lines=[CHMI_SOURCE, processed], terms=[]
+            tmp_path / "chmu.csv", lines=[CHMU_SOURCE, processed], terms=[]
         )
 
         envelope = hydrolog.run_command(
             "stats mann-kendall", input_file=str(export), value_column="Q"
         ).to_dict()
 
-        assert envelope["attribution"] == [CHMI_SOURCE, CHMI_PROCESSED]
+        assert envelope["attribution"] == [CHMU_SOURCE, CHMU_PROCESSED]
         assert "terms_notice" not in envelope
 
     def test_values_without_a_source_carry_nothing(self):
@@ -572,14 +579,11 @@ def _observer_climate_export(path: Path, *, lines: list[str], terms: list[str]) 
     The columns of the lines are those of :func:`_observer_export` (DEV-20.5).
     """
     rows = (FIXTURES / "meteo_daily.csv").read_text(encoding="utf-8").splitlines()
-    out = [
-        rows[0] + ",attribution_source,attribution_processed,attribution,terms_notice"
-    ]
+    out = [rows[0] + ",attribution,terms_notice"]
     for number, row in enumerate(rows[1:]):
-        pair = lines[:2] if number == 0 else ["", ""]
         line = lines[number] if number < len(lines) else ""
         term = terms[number] if number < len(terms) else ""
-        cells = [*pair, line, term]
+        cells = [line, term]
         out.append(
             ",".join([row, *(f'"{cell}"' if "," in cell else cell for cell in cells)])
         )

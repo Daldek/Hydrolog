@@ -427,7 +427,7 @@ hydrolog stats homogeneity --input-file raba-max.handoff.json --value-column Q -
 
 ### Obserwator: series export → `stats` commands
 
-Hydrolog does not download IMGW series. Obserwator exports the daily series (`series export`) to a single CSV file with units in the header (`Q [m3/s]`), a `date` column, value flags (`Q_flag`) and the providers' lines (`attribution_source`, `attribution_processed`, `attribution`, `terms_notice`), which Hydrolog reads as lines, not data, and carries into its results and files. Export to a file uses `--output FILE` (for example `series export ... --output q_daily.csv`); the versioned-store root option is `--root` and defaults to the user data directory. The file is loaded without preprocessing (comma or semicolon separator, UTF-8; columns are given by name without the unit: `Q` finds `Q [m3/s]`):
+Hydrolog does not download IMGW series. Obserwator exports the daily series (`series export`) to a single CSV file with units in the header (`Q [m3/s]`), a `date` column, value flags (`Q_flag`) and the providers' lines (`attribution`, `terms_notice`; a file of Obserwator 3.0.x or older has `attribution_source` and `attribution_processed` too), which Hydrolog reads as lines, not data, and carries into its results and files. Export to a file uses `--output FILE` (for example `series export ... --output q_daily.csv`); the versioned-store root option is `--root` and defaults to the user data directory. The file is loaded without preprocessing (comma or semicolon separator, UTF-8; columns are given by name without the unit: `Q` finds `Q [m3/s]`):
 
 ```bash
 hydrolog stats flood-frequency --input-file q_daily.csv --value-column Q --date-column date \

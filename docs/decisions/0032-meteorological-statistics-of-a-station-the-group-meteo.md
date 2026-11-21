@@ -46,3 +46,8 @@ The guide has a budget of 16,384 bytes (DOC-1.7). After S3 `AGENTS.md` has 16,32
 - **Kaczorowska's annual limits for months**, as the mockup: her classes are defined for years and seasons, and limits for months are published (Gąsiorek and Musiał, 2011, Table 1).
 - **A dry-day threshold of 0.1 mm** by default, as the mockup: the plan and the ETCCDI's CDD and CWD use 1 mm; 0.1 mm is a value of `threshold_mm`.
 - **A reference period for normals beside the period of the data** (the mockup's anomalies against 1991–2020 in every year, the SPI calibrated on 1991–2020 for the whole record): D12 has no such option and D1 makes the chosen period the data; left as an open question for the author.
+
+## Erratum (2026-11-21, Nogat ECO-082)
+
+ČHMÚ's daily weather series of the Context is Obserwator's dataset `cz.chmu.meteo_daily` since Obserwator 3.1.0 (Nogat
+ECO-082: identifiers by the national acronym without diacritics); its columns are unchanged.
