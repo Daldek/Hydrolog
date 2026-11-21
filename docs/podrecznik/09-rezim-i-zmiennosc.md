@@ -839,19 +839,19 @@ obejmowały cały zakres stanów (WMO 2010, s. II.1-3).
 
 <a id="spec-rating_curve_fit"></a>
 
-> **Krzywa natężenia przepływu Q = a (H - H0)^b dopasowana do par stan–przepływ metodą najmniejszych kwadratów na Q** · specyfikacja [`rating_curve_fit`](../FORMULAS.md#rating_curve_fit) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+> **Krzywa natężenia przepływu Q = a (H - H0)^b dopasowana do par stan–przepływ metodą najmniejszych kwadratów na Q** · specyfikacja [`rating_curve_fit`](../FORMULAS.md#rating_curve_fit) · wersja wzoru 2 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
 >
 > $$
-> (\hat a, \hat b, \hat H_0) = \arg\min_{a \ge 0,\, b \ge 0,\, H_0 < \min H} \sum_{i=1}^{n} \left(Q_i - a\,(H_i - H_0)^{b}\right)^2,\quad R^2 = 1 - \frac{SS_{res}}{SS_{tot}}
+> (\hat a, \hat b, \hat H_0) = \arg\min_{a \ge 0,\, 0 \le b < 100,\, \min H - 1024\,(\max H - \min H) < H_0 < \min H} \sum_{i=1}^{n} \left(Q_i - a\,(H_i - H_0)^{b}\right)^2,\quad R^2 = 1 - \frac{SS_{res}}{SS_{tot}}
 > $$
 >
 > **Dane wejściowe**
 >
 > | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
 > |---|---|---|---|---|---|---|
-> | $H$ | `water_levels` (ciąg) | Stan wody H każdego pomiaru przepływu, w jednej jednostce stanów | cm | (−∞; ∞) | nie podano w źródłach | [−10; 330] (źr. 4) |
-> | $Q$ | `discharges_m3s` (ciąg) | Przepływ zmierzony przy każdym stanie | m³/s | [0; ∞) | nie podano w źródłach | [0,5; 125] (źr. 5) |
-> | $H_{0,start}$ | `h0_initial` | Punkt startowy poszukiwania H0, poniżej każdego stanu | cm | (−∞; ∞) | nie podano w źródłach | [−30; 60] (źr. 6) |
+> | $H$ | `water_levels` (ciąg) | Stan wody H każdego pomiaru przepływu, w jednej jednostce stanów | cm | (−∞; ∞) | nie podano w źródłach | [−10; 330] (źr. 5) |
+> | $Q$ | `discharges_m3s` (ciąg) | Przepływ zmierzony przy każdym stanie | m³/s | [0; ∞) | nie podano w źródłach | [0,5; 125] (źr. 6) |
+> | $H_{0,start}$ | `h0_initial` | Punkt startowy poszukiwania H0, poniżej każdego stanu | cm | (−∞; ∞) | nie podano w źródłach | [−30; 60] (źr. 7) |
 >
 > **Wyniki**
 >
@@ -867,25 +867,25 @@ obejmowały cały zakres stanów (WMO 2010, s. II.1-3).
 >
 > | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
 > |---|---|---|---|
-> | jeden przepływ na każdy stan | `same_length` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 7) |
+> | jeden przepływ na każdy stan | `same_length` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 8) |
 > | n >= 3: co najmniej trzy pary dla trzech parametrów a, b i H0 | `enough_pairs` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
 > | min(H) < max(H): jednakowe stany nie wyznaczają ani b, ani H0 | `levels_not_all_equal` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
 > | min(Q) < max(Q): przepływ niezmienny ze stanem daje dopasowanie b = 0 przy dowolnym H0 | `discharges_not_all_equal` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
 > | h0_initial < min(H): poszukiwanie zaczyna się wewnątrz swojego ograniczenia, z H0 poniżej każdego stanu | `start_below_levels` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
-> | suma kwadratów ma minimum, które poszukiwanie osiąga w 10 000 obliczeń funkcji i w którym krzywa przy każdym stanie jest liczbą float64 | `least_squares_minimum` | odmowa obliczeń: wzór jest nieokreślony | (źr. 2) |
-> | n >= 12: co najmniej 12 do 15 pomiarów przepływu z okresu analizy | `enough_gaugings` | wynik z ostrzeżeniem: poza zakresem stosowalności | (źr. 7) |
+> | suma kwadratów ma minimum przy b < 100 i H0 powyżej 1024 rozstępów stanów poniżej najniższego stanu, które poszukiwanie osiąga i w którym krzywa przy każdym stanie jest liczbą float64; pary, w których przepływ rośnie jak funkcja wykładnicza H, nie mają go, bo ich krzywa jest wklęsła na papierze logarytmicznym przy każdej wartości próbnej H0 | `least_squares_minimum` | odmowa obliczeń: wzór jest nieokreślony | (źr. 3) |
+> | n >= 12: co najmniej 12 do 15 pomiarów przepływu z okresu analizy | `enough_gaugings` | wynik z ostrzeżeniem: poza zakresem stosowalności | (źr. 8) |
 >
 > **Stałe**
 >
 > | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
 > |---|---|---|---|---|---|
-> | – | `least_gaugings` | Najmniejsza liczba pomiarów przepływu z okresu analizy | 12 | – | (źr. 7) |
+> | – | `least_gaugings` | Najmniejsza liczba pomiarów przepływu z okresu analizy | 12 | – | (źr. 8) |
 >
 > **Konwencje**
 >
 > - najmniejsze kwadraty na Q, reszty arytmetyczne wszystkich par z jednakową wagą; WMO-No. 1044 (rozdz. 1.12.2) dopasowuje prostą na papierze logarytmicznym, log Q względem log(H - H0), co daje inną krzywą (sześć pomiarów przepływu z katalogu: b = 1,640 na Q, 1,820 w logarytmach)
-> - ograniczenia a >= 0, b >= 0 i H0 poniżej najniższego stanu o 2^-30 skali stanów (potęgi dwójki, która sprowadza największe \|H\| do [1/2, 1)), czyli około 5e-7 cm dla stanów rzędu kilku metrów
-> - poszukiwanie: `curve_fit` z SciPy, metoda trust region reflective z ftol, xtol i gtol równymi 1e-12 i co najwyżej 10 000 obliczeń funkcji, od a = 1, b = 1,5 i H0 = `h0_initial`, na stanach i przepływach podzielonych dokładnie przez potęgi dwójki sprowadzające ich największe wartości bezwzględne do [1/2, 1); krzywa jest następnie przeskalowana z powrotem, więc stany w cm albo m i przepływy przeskalowane przez potęgę dwójki dają tę samą krzywą
+> - ograniczenia a >= 0, b od 0 do 100 (25 razy więcej niż największy wykładnik wiarygodnej krzywej, ADR-0041) i H0 od 1024 rozstępów stanów poniżej najniższego stanu do 2^-30 skali stanów poniżej niego (potęgi dwójki, która sprowadza największe \|H\| do [1/2, 1)), czyli około 5e-7 cm dla stanów rzędu kilku metrów; koniec poszukiwania odległy o mniej niż 10^-3 od ograniczenia b albo, względnie, o mniej niż 10^-3 od najgłębszego ograniczenia H0 nie jest minimum: najmniejsze kwadraty par, w których przepływ rośnie jak funkcja wykładnicza H (pary z dwóch krzywych, kontrola złożona), zmierzają do Q = C exp(k H), granicy krzywej, gdy H0 dąży do minus nieskończoności, a b do plus nieskończoności, i osiągają ograniczenia
+> - poszukiwanie na stanach i przepływach podzielonych dokładnie przez potęgi dwójki sprowadzające ich największe wartości bezwzględne do [1/2, 1) (krzywa jest następnie przeskalowana z powrotem, więc stany w cm albo m i przepływy przeskalowane przez potęgę dwójki dają tę samą krzywą): wartości próbne H0 według WMO-No. 1044 (rozdz. 1.5.4), czyli ograniczenie, `h0_initial` oraz rozstęp stanów razy 2^j poniżej najniższego stanu dla j = -20 do 10; dla każdej z nich najlepsze b, przy a w postaci jawnej, na siatce od 0 do 8 co 0,25 i dalej z mnożnikiem 1,13 do 100, uściślone między sąsiadami najlepszego punktu przez `minimize_scalar` z SciPy (ograniczona metoda Brenta, xatol 1e-12); ln głębokości H0 uściślony tak samo między sąsiadami najlepszej wartości próbnej; następnie `curve_fit` z SciPy od tego końca, metoda trust region reflective w granicach ograniczeń z ftol, xtol i gtol równymi 1e-12 i co najwyżej 10 000 obliczeń funkcji, której koniec zachowuje się tam, gdzie nie jest wyższy
 > - R2 = 1 - SS_res / SS_tot na Q; s to odchylenie standardowe reszt z dzielnikiem n - 1 (numpy.std, ddof 1)
 > - H, H0 i `h0_initial` w jednej jednostce stanów (cm albo m); a w m³/s na (jednostkę H)^b; Q w m³/s
 >
@@ -900,11 +900,12 @@ obejmowały cały zakres stanów (WMO 2010, s. II.1-3).
 >
 > 1. WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper <https://library.wmo.int/idurl/4/32726>
 > 2. WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.12.2, p. II.1-20: the equation of the relation may be computed by the method of least squares, which assumes that the relation plots as a straight line on logarithmic paper <https://library.wmo.int/idurl/4/32726>
-> 3. ISO 1100-2:2010. Hydrometry - Measurement of liquid flow in open channels - Part 2: Determination of the stage-discharge relationship, the power-law rating equation and its fit to gaugings — *źródło niedostępne publicznie (dostarczone przez autora)*
-> 4. Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, stages of -10 cm (below the gauge zero, the catalog's example) to 329 cm (station_daily.csv); 6 to 161 cm at 150170070
-> 5. Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, discharges of 0.5 (the catalog's example) to 122.3 m3/s (station_daily.csv)
-> 6. Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, the starts of their fits: -23 (the catalog's example of stages below the gauge zero), 40 and 41.2 cm
-> 7. WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.5.1, p. II.1-3: at a minimum the list of discharge measurements should include at least 12 to 15 measurements, all made during the period of analysis <https://library.wmo.int/idurl/4/32726>
+> 3. WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.5.4, pp. II.1-7 to II.1-8: e of a channel control or a section control of irregular shape may be determined by successive approximations, adding or subtracting trial values of e until the rating plots as a straight line on logarithmic paper; with values of e smaller than the true one the rating is concave upward, with greater ones concave downward <https://library.wmo.int/idurl/4/32726>
+> 4. ISO 1100-2:2010. Hydrometry - Measurement of liquid flow in open channels - Part 2: Determination of the stage-discharge relationship, the power-law rating equation and its fit to gaugings — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 5. Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, stages of -10 cm (below the gauge zero, the catalog's example) to 329 cm (station_daily.csv); 6 to 161 cm at 150170070
+> 6. Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, discharges of 0.5 (the catalog's example) to 122.3 m3/s (station_daily.csv)
+> 7. Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041, the starts of their fits: -23 (the catalog's example of stages below the gauge zero), 40 and 41.2 cm
+> 8. WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva, sect. 1.5.1, p. II.1-3: at a minimum the list of discharge measurements should include at least 12 to 15 measurements, all made during the period of analysis <https://library.wmo.int/idurl/4/32726>
 >
 > Funkcja `hydrolog.hydrometrics.rating_curve.fit_rating_curve`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
 

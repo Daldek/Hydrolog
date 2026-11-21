@@ -2571,13 +2571,13 @@ discharge_m3s = "Przepływ przy każdym stanie"
 finite_discharge = "a (max(H) - H0)**b < 1.8e308: przepływ przy każdym stanie jest liczbą float64"
 
 [formulas.rating_curve_fit]
-en_sha256 = "e5da6553e2be10ec9ff34e6f8c6bffa5dc5120b53eb91cb245cfc188f23f4cf9"
+en_sha256 = "2a493d3e2c6e8b459262e85d2af4173a07d45632d6a37e332cfa6519ce0bea3d"
 title = "Krzywa natężenia przepływu Q = a (H - H0)^b dopasowana do par stan–przepływ metodą najmniejszych kwadratów na Q"
 validation = "brak: metoda najmniejszych kwadratów daje krzywą najbliższą pomiarom przepływu w wartościach Q; WMO-No. 1044 (rozdz. 1.12.2) nie podaje żadnej miary zgodności takiego dopasowania, a w przeglądzie źródeł nie znaleziono otwartego przykładu obliczeniowego z pomiarami przepływu i dopasowanymi parametrami (WMO-No. 1044, Rantz 1982, Kennedy 1984)"
 conventions = [
     "najmniejsze kwadraty na Q, reszty arytmetyczne wszystkich par z jednakową wagą; WMO-No. 1044 (rozdz. 1.12.2) dopasowuje prostą na papierze logarytmicznym, log Q względem log(H - H0), co daje inną krzywą (sześć pomiarów przepływu z katalogu: b = 1,640 na Q, 1,820 w logarytmach)",
-    "ograniczenia a >= 0, b >= 0 i H0 poniżej najniższego stanu o 2^-30 skali stanów (potęgi dwójki, która sprowadza największe |H| do [1/2, 1)), czyli około 5e-7 cm dla stanów rzędu kilku metrów",
-    "poszukiwanie: `curve_fit` z SciPy, metoda trust region reflective z ftol, xtol i gtol równymi 1e-12 i co najwyżej 10 000 obliczeń funkcji, od a = 1, b = 1,5 i H0 = `h0_initial`, na stanach i przepływach podzielonych dokładnie przez potęgi dwójki sprowadzające ich największe wartości bezwzględne do [1/2, 1); krzywa jest następnie przeskalowana z powrotem, więc stany w cm albo m i przepływy przeskalowane przez potęgę dwójki dają tę samą krzywą",
+    "ograniczenia a >= 0, b od 0 do 100 (25 razy więcej niż największy wykładnik wiarygodnej krzywej, ADR-0041) i H0 od 1024 rozstępów stanów poniżej najniższego stanu do 2^-30 skali stanów poniżej niego (potęgi dwójki, która sprowadza największe |H| do [1/2, 1)), czyli około 5e-7 cm dla stanów rzędu kilku metrów; koniec poszukiwania odległy o mniej niż 10^-3 od ograniczenia b albo, względnie, o mniej niż 10^-3 od najgłębszego ograniczenia H0 nie jest minimum: najmniejsze kwadraty par, w których przepływ rośnie jak funkcja wykładnicza H (pary z dwóch krzywych, kontrola złożona), zmierzają do Q = C exp(k H), granicy krzywej, gdy H0 dąży do minus nieskończoności, a b do plus nieskończoności, i osiągają ograniczenia",
+    "poszukiwanie na stanach i przepływach podzielonych dokładnie przez potęgi dwójki sprowadzające ich największe wartości bezwzględne do [1/2, 1) (krzywa jest następnie przeskalowana z powrotem, więc stany w cm albo m i przepływy przeskalowane przez potęgę dwójki dają tę samą krzywą): wartości próbne H0 według WMO-No. 1044 (rozdz. 1.5.4), czyli ograniczenie, `h0_initial` oraz rozstęp stanów razy 2^j poniżej najniższego stanu dla j = -20 do 10; dla każdej z nich najlepsze b, przy a w postaci jawnej, na siatce od 0 do 8 co 0,25 i dalej z mnożnikiem 1,13 do 100, uściślone między sąsiadami najlepszego punktu przez `minimize_scalar` z SciPy (ograniczona metoda Brenta, xatol 1e-12); ln głębokości H0 uściślony tak samo między sąsiadami najlepszej wartości próbnej; następnie `curve_fit` z SciPy od tego końca, metoda trust region reflective w granicach ograniczeń z ftol, xtol i gtol równymi 1e-12 i co najwyżej 10 000 obliczeń funkcji, której koniec zachowuje się tam, gdzie nie jest wyższy",
     "R2 = 1 - SS_res / SS_tot na Q; s to odchylenie standardowe reszt z dzielnikiem n - 1 (numpy.std, ddof 1)",
     "H, H0 i `h0_initial` w jednej jednostce stanów (cm albo m); a w m³/s na (jednostkę H)^b; Q w m³/s",
 ]
@@ -2607,7 +2607,7 @@ enough_pairs = "n >= 3: co najmniej trzy pary dla trzech parametrów a, b i H0"
 levels_not_all_equal = "min(H) < max(H): jednakowe stany nie wyznaczają ani b, ani H0"
 discharges_not_all_equal = "min(Q) < max(Q): przepływ niezmienny ze stanem daje dopasowanie b = 0 przy dowolnym H0"
 start_below_levels = "h0_initial < min(H): poszukiwanie zaczyna się wewnątrz swojego ograniczenia, z H0 poniżej każdego stanu"
-least_squares_minimum = "suma kwadratów ma minimum, które poszukiwanie osiąga w 10 000 obliczeń funkcji i w którym krzywa przy każdym stanie jest liczbą float64"
+least_squares_minimum = "suma kwadratów ma minimum przy b < 100 i H0 powyżej 1024 rozstępów stanów poniżej najniższego stanu, które poszukiwanie osiąga i w którym krzywa przy każdym stanie jest liczbą float64; pary, w których przepływ rośnie jak funkcja wykładnicza H, nie mają go, bo ich krzywa jest wklęsła na papierze logarytmicznym przy każdej wartości próbnej H0"
 enough_gaugings = "n >= 12: co najmniej 12 do 15 pomiarów przepływu z okresu analizy"
 
 [formulas.rating_curve_plausibility]
