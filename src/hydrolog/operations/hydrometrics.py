@@ -75,8 +75,11 @@ class RatingPeriod(JsonResultMixin):
         when the curve gives no finite level there (a flat curve, ``b`` near 0, below
         that discharge), with the notice ``reference_level_not_computed``.
     reason : str or None
-        Why the period has no curve: ``too_few_pairs`` (fewer than 30) or
-        ``fit_failed``; ``None`` when it has one.
+        Why the period has no curve: ``too_few_pairs`` (fewer than 30),
+        ``no_least_squares_minimum`` (the least squares of its pairs have no minimum
+        within the search's bounds: the discharge rises like an exponential of the
+        stage, as the pairs of two ratings in one period do) or ``fit_failed`` (another
+        refusal of the fit, such as levels all equal); ``None`` when it has one.
     plausible : bool or None
         Whether the period's curve is plausible for one stage-discharge relation
         (ADR-0041); ``None`` when the period has no curve.
@@ -354,7 +357,13 @@ def _rating_periods(
         else:
             try:
                 curve = fit(levels[rows], flows[rows])
-            except (CalculationError, InvalidParameterError, ArithmeticError):
+            except InvalidParameterError as exc:
+                period.reason = (
+                    "no_least_squares_minimum"
+                    if exc.details.get("constraint") == "least_squares_minimum"
+                    else "fit_failed"
+                )
+            except (CalculationError, ArithmeticError):
                 period.reason = "fit_failed"
             else:
                 for name in (
@@ -397,19 +406,24 @@ def hydrometrics_rating_curve(
 
     Fits the rating curve to pairs of water level ``H`` and discharge ``Q`` by
     non-linear least squares on ``Q`` (spec ``rating_curve_fit`` through
-    :class:`hydrolog.hydrometrics.RatingCurve`; ``a >= 0``, ``b >= 0``, ``H0`` below
-    every observed level; starting point ``a = 1``, ``b = 1.5``, ``H0 = h0_initial``,
-    by default chosen from the levels so that it works for stages at or below zero).
-    With ``remove_outliers`` the pairs whose residual exceeds ``outlier_std`` standard
-    deviations are dropped after the first fit and the curve is fitted again (when at
-    least 3 pairs remain). Fewer than 12 pairs, the least of WMO-No. 1044 (sect.
-    1.5.1), give the notice ``outside_typical_range`` of ``gaugings``.
+    :class:`hydrolog.hydrometrics.RatingCurve`; ``a >= 0``, ``b`` from 0 to 100, ``H0``
+    below every observed level; the least squares profiled over trial values of
+    ``H0``, ``h0_initial`` one of them, by default chosen from the levels so that it
+    works for stages at or below zero, then a trust region search from their end).
+    Least squares without a minimum within those bounds, of pairs whose discharge rises
+    like an exponential of the stage (the pairs of two ratings, a moved gauge zero),
+    are refused (``least_squares_minimum``). With ``remove_outliers`` the pairs whose
+    residual exceeds ``outlier_std`` standard deviations are dropped after the first
+    fit and the curve is fitted again (when at least 3 pairs remain). Fewer than 12
+    pairs, the least of WMO-No. 1044 (sect. 1.5.1), give the notice
+    ``outside_typical_range`` of ``gaugings``.
 
     Dated pairs (a daily series of H and Q) may be limited to the hydrological years
     ``first_year`` to ``last_year``; with ``years_per_period`` the curve of each block
-    of that many years is fitted too (a block with fewer than 30 pairs has no curve)
-    and read at the median level and the median discharge of all the pairs, so that
-    the shift of the curve between periods is a number.
+    of that many years is fitted too (a block with fewer than 30 pairs has no curve,
+    nor one whose least squares have no minimum: ``reason``) and read at the median
+    level and the median discharge of all the pairs, so that the shift of the curve
+    between periods is a number.
 
     Each curve is checked as the curve of one stage-discharge relation (ADR-0041,
     spec ``rating_curve_plausibility``, Hydrolog's own rule, hence the notice
@@ -474,8 +488,9 @@ def hydrometrics_rating_curve(
         and the refusals of spec ``rating_curve_fit`` (``details.reason``
         ``precondition_failed``): a given ``h0_initial`` not below the lowest water
         level (``details.constraint`` ``start_below_levels``, ``details.option``
-        ``h0_initial``), levels or discharges all equal, or least squares on which
-        the search does not settle (``least_squares_minimum``).
+        ``h0_initial``), levels or discharges all equal, or least squares without a
+        minimum within the search's bounds (``least_squares_minimum``), also of all
+        the pairs when ``years_per_period`` is given.
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError
