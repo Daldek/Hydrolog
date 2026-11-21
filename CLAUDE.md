@@ -90,7 +90,7 @@ src/hydrolog/
 │                 # _admin.py (the admin panel's status and checks), _public.py (a public GUI: request
 │                 # limit, daily totals), _terms.py (the regulamin), _extra.py (the extra's check);
 │                 # web/ (the page: Preact modules without a build; instrukcja/: the user guide;
-│                 # admin/: Nogat's admin panel, the kit shell alone; nogat/: Nogat's tokens,
+│                 # admin/: Nogat's admin panel, the kit shell and admin.js; nogat/: Nogat's tokens,
 │                 # marks and GUI kit, copied byte for byte, ADR-0027)
 ├── agent_guide.py, _data/agents/   # generator and templates of AGENTS.md, llms.txt, block
 ├── exceptions.py, _errors.py       # HydrologError classes; registry generated from schemas/nogat
