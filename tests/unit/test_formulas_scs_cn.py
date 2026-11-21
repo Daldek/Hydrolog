@@ -51,6 +51,7 @@ FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
     (RUNOFF, runoff_depths),
     (AMC_CONVERSION, amc_curve_number),
 )
+NAMES = [spec.name for spec, _ in FAMILY]
 
 
 def _generated() -> list[object]:
@@ -79,7 +80,7 @@ def test_reference_cases(spec: FormulaSpec, function, case: ReferenceCase):
     assert_case(spec, as_standard(function), case, ERRORS)
 
 
-@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=lambda x: str(x))
+@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=NAMES)
 def test_limits_and_oracles(spec: FormulaSpec, function):
     assert_limits(spec, as_standard(function), ERRORS)
 

@@ -100,5 +100,7 @@ def test_the_examples_of_the_module_run(name):
         importlib.import_module(name), optionflags=doctest.ELLIPSIS, verbose=False
     )
 
-    assert found.attempted > 0
+    # Python 3.13 counts the examples marked +SKIP as attempted (and reports them as
+    # ``skipped``); 3.12 does not. Only the examples that ran count.
+    assert found.attempted - getattr(found, "skipped", 0) > 0
     assert found.failed == 0

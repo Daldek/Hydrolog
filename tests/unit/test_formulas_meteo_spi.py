@@ -59,6 +59,7 @@ FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
     (YEAR_CLASS, year_precipitation_class),
     (MONTH_CLASS, month_precipitation_class),
 )
+NAMES = [spec.name for spec, _ in FAMILY]
 FAMILY_SPECS = tuple(spec for spec, _ in FAMILY)
 
 
@@ -88,7 +89,7 @@ def test_reference_cases(spec: FormulaSpec, function, case: ReferenceCase):
     assert_case(spec, as_standard(function), case, ERRORS)
 
 
-@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=lambda x: str(x))
+@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=NAMES)
 def test_limits_and_oracles(spec: FormulaSpec, function):
     assert_limits(spec, as_standard(function), ERRORS)
 

@@ -38,7 +38,15 @@ _REPLACE_PATIENCE_S: Final = 1.0
 
 
 def is_same_file(first: Path, second: Path) -> bool:
-    """Whether two paths name the same file (also when one does not exist yet)."""
+    """Whether two paths name the same file (also when one does not exist yet).
+
+    Examples
+    --------
+    >>> is_same_file(Path("out/report.md"), Path("out/../out/report.md"))
+    True
+    >>> is_same_file(Path("out/report.md"), Path("out/report.csv"))
+    False
+    """
     try:
         return first.samefile(second)
     except OSError:

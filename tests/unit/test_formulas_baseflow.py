@@ -74,6 +74,7 @@ FAMILY: tuple[tuple[FormulaSpec, Callable[..., object]], ...] = (
     (BASEFLOW_INDEX, baseflow_index),
     (RECESSION, recession_ratio),
 )
+NAMES = [spec.name for spec, _ in FAMILY]
 BASS_RIVER = [
     float(value)
     for value in (ORACLES / "BassRiver@Loch.csv").read_text(encoding="utf-8").split()
@@ -182,7 +183,7 @@ def test_reference_cases(spec: FormulaSpec, function, case: ReferenceCase):
     assert_case(spec, as_standard(function), case, ERRORS)
 
 
-@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=lambda x: str(x))
+@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=NAMES)
 def test_limits(spec: FormulaSpec, function):
     assert_limits(spec, as_standard(function), ERRORS)
 
@@ -348,9 +349,15 @@ def _frozen(name: str) -> dict[tuple[str, float, int], dict[str, np.ndarray]]:
     return groups
 
 
-@pytest.mark.parametrize(
-    ("key", "frozen"), list(_frozen("lyne_hollick_r.csv").items()), ids=str
-)
+def _oracle_cases(name: str) -> list[object]:
+    """The groups of a frozen oracle, named by their key (dataset, alpha, passes)."""
+    return [
+        pytest.param(key, frozen, id="-".join(map(str, key)))
+        for key, frozen in _frozen(name).items()
+    ]
+
+
+@pytest.mark.parametrize(("key", "frozen"), _oracle_cases("lyne_hollick_r.csv"))
 def test_the_filter_is_ladsons_bfi_r(key, frozen):
     _, alpha, passes = key
     baseflow = _quiet(lyne_hollick_filter)(frozen["flow"], alpha=alpha, passes=passes)
@@ -364,9 +371,7 @@ def test_the_filter_is_ladsons_bfi_r(key, frozen):
     )
 
 
-@pytest.mark.parametrize(
-    ("key", "frozen"), list(_frozen("lyne_hollick_bfi_r.csv").items()), ids=str
-)
+@pytest.mark.parametrize(("key", "frozen"), _oracle_cases("lyne_hollick_bfi_r.csv"))
 def test_the_index_is_ladsons_bfi_r(key, frozen):
     dataset, alpha, passes = key
     flows = BASS_RIVER if dataset == "bass_river" else _synthetic()

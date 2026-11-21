@@ -59,6 +59,7 @@ FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
     (SEASONALITY_INDEX, seasonality_index),
     (SI_CLASS, si_class),
 )
+NAMES = [spec.name for spec, _ in FAMILY]
 DECADE = {
     "dates": [str(day) for day in DATES[:3653]],
     "precipitation_mm": P[:3653].tolist(),
@@ -91,7 +92,7 @@ def test_reference_cases(spec: FormulaSpec, function, case: ReferenceCase):
     assert_case(spec, as_standard(function), case, ERRORS)
 
 
-@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=lambda x: str(x))
+@pytest.mark.parametrize(("spec", "function"), FAMILY, ids=NAMES)
 def test_limits_and_oracles(spec: FormulaSpec, function):
     assert_limits(spec, as_standard(function), ERRORS)
 
