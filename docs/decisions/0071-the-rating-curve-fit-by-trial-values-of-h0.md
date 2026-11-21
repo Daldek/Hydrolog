@@ -52,13 +52,14 @@ for every fit of these stations:
 - Breaking: results of 0.9.0.dev0 to dev4 at the points of a valley are refused; stored `rating_curve*` analyses are
   found by `formula_versions` and recomputed. Of the analyses of the failing stations, the curve of all the pairs of
   149190390, 151219999, 152190070, 152230060 and 153220170 has no minimum, so their `rating_curve.periods` is refused
-  as a whole (open question below); 150230070 and 150169991 now give their curves.
+  as a whole (see the last point); 150230070 and 150169991 now give their curves.
 - Obserwator words `hydro.rating.reason.no_least_squares_minimum` and its text of the refusal.
 - A fit costs one profile: about 0.1 s for a few thousand pairs, under 2 s for 16,000.
-- Open, for the author: with `years_per_period`, a curve of all the pairs without a minimum refuses the whole result,
-  although its periods have curves. Giving the periods with a null curve of all the pairs and a notice changes the
-  meaning of `hydrolog-hydrometrics-rating-curve/1` (its curve fields are required numbers): a version 2 of the
-  document (AGI-4.1, the author's consent) or the refusal as now.
+- With `years_per_period`, a curve of all the pairs without a minimum refuses the whole result, although its periods
+  have curves. Giving the periods with a null curve of all the pairs and a notice changes the meaning of
+  `hydrolog-hydrometrics-rating-curve/1` (its curve fields are required numbers). Decided by the author on 2026-11-21:
+  the refusal stays; the periods without the curve of all the pairs go into version 2 of the document (AGI-4.1),
+  made once more changes of it are collected (PROGRESS, Next 14).
 
 ## Alternatives considered
 
