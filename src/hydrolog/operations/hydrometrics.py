@@ -403,7 +403,7 @@ def hydrometrics_rating_curve(
     With ``remove_outliers`` the pairs whose residual exceeds ``outlier_std`` standard
     deviations are dropped after the first fit and the curve is fitted again (when at
     least 3 pairs remain). Fewer than 12 pairs, the least of WMO-No. 1044 (sect.
-    1.5.1), give the notice ``outside_typical_range`` of ``gaugings``.
+    1.5.1), give the notice ``outside_applicability`` of ``gaugings``.
 
     Dated pairs (a daily series of H and Q) may be limited to the hydrological years
     ``first_year`` to ``last_year``; with ``years_per_period`` the curve of each block
@@ -458,7 +458,7 @@ def hydrometrics_rating_curve(
     OperationOutput
         ``result`` is a :class:`RatingCurveAnalysis`; the notices report pairs
         removed for a missing value (``missing_pairs_removed``), fewer than 12
-        gaugings (``outside_typical_range``, ``parameter`` ``gaugings``), periods
+        gaugings (``outside_applicability``, ``parameter`` ``gaugings``), periods
         whose curve gives no finite level at the reference discharge
         (``reference_level_not_computed``), implausible curves
         (``implausible_rating_curve``), the unreferenced rule of plausibility

@@ -23,10 +23,11 @@ from hydrolog._warnings import (
     DistributionLeftOut,
     HydrologWarning,
     IncompleteYears,
+    IuhPeakUndefined,
     KsTestApproximate,
     NegativeQuantiles,
+    OutsideApplicability,
     OutsideSupport,
-    OutsideTypicalRange,
     OutsideUnverifiedRange,
     PositionsIgnored,
     ShortRecord,
@@ -36,7 +37,7 @@ from hydrolog._warnings import (
     UnknownHietogramType,
     UnreferencedFormula,
     render,
-    warn_outside_typical_range,
+    warn_outside_applicability,
 )
 from hydrolog.catalog.envelope import NOTICE_LEVELS, Notice, capture_warnings
 from hydrolog.catalog.notices import NOTICES, notice
@@ -59,7 +60,7 @@ from ._network_documents import document, outlet
 from ._routing_extensions import Share
 
 SAMPLES = {
-    OutsideTypicalRange: {
+    OutsideApplicability: {
         "method": "kirpich",
         "parameter": "length_km",
         "field": "channel_length_km",
@@ -114,6 +115,7 @@ SAMPLES = {
         "substeps": 93,
         "substep_min": 15.4839,
     },
+    IuhPeakUndefined: {"n": 0.5, "k_min": 30.0},
     PositionsIgnored: {"reason": "partial", "node_id": "R3"},
     UnreferencedFormula: {
         "formula": "rybczynski_zones",
@@ -154,7 +156,7 @@ class TestRender:
 class TestLibraryWarnings:
     def test_the_codes_of_the_classes(self):
         assert [kind.code() for kind in LIBRARY_WARNINGS] == [
-            "outside_typical_range",
+            "outside_applicability",
             "outside_unverified_range",
             "small_sample",
             "short_record",
@@ -166,6 +168,7 @@ class TestLibraryWarnings:
             "unknown_hietogram_type",
             "uh_model_mismatch",
             "uh_substeps",
+            "iuh_peak_undefined",
             "positions_ignored",
             "unreferenced_formula",
         ]
@@ -181,10 +184,10 @@ class TestLibraryWarnings:
 
     def test_an_unverified_range_is_caught_as_a_typical_range(self):
         warning = OutsideUnverifiedRange(**SAMPLES[OutsideUnverifiedRange])
-        with pytest.warns(OutsideTypicalRange) as caught:
+        with pytest.warns(OutsideApplicability) as caught:
             warnings.warn(warning, stacklevel=2)
         assert caught[0].message is warning
-        assert OutsideUnverifiedRange.keys == OutsideTypicalRange.keys
+        assert OutsideUnverifiedRange.keys == OutsideApplicability.keys
 
     @pytest.mark.parametrize("kind", LIBRARY_WARNINGS, ids=lambda k: k.__name__)
     def test_the_registry_has_the_level_template_and_keys_of_the_class(self, kind):
@@ -522,27 +525,29 @@ class TestFormulaNotices:
     """``hydrolog._formulas`` issues the standard's notices as library warnings."""
 
     def test_a_range_with_one_end_words_that_end(self):
-        with pytest.warns(OutsideTypicalRange) as caught:
-            warn_outside_typical_range("m", "n", 6, 12, None, stacklevel=1)
-            warn_outside_typical_range("m", "n", 9.5, None, 8.0, stacklevel=1)
+        with pytest.warns(OutsideApplicability) as caught:
+            warn_outside_applicability("m", "n", 6, 12, None, stacklevel=1)
+            warn_outside_applicability("m", "n", 9.5, None, 8.0, stacklevel=1)
         assert [str(w.message) for w in caught] == [
-            "m: n=6 is below its typical minimum 12. Results may be unreliable.",
-            "m: n=9.5 is above its typical maximum 8.0. Results may be unreliable.",
+            "m: n=6 is below its applicability range, from 12. Results may be "
+            "unreliable.",
+            "m: n=9.5 is above its applicability range, up to 8.0. Results may be "
+            "unreliable.",
         ]
-        spec = NOTICES["outside_typical_range"]
+        spec = NOTICES["outside_applicability"]
         assert [spec.message(w.message.details) for w in caught] == [
             str(w.message) for w in caught
         ]
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            warn_outside_typical_range("m", "n", 12, 12, None, stacklevel=1)
+            warn_outside_applicability("m", "n", 12, 12, None, stacklevel=1)
 
     def test_an_input_outside_a_half_open_range_has_a_null_end(self):
         spec = _toy(
             "toy_half_open",
             Range(low=2.0, high=math.inf, source=_TOY_SOURCE),
         )
-        with pytest.warns(OutsideTypicalRange) as caught:
+        with pytest.warns(OutsideApplicability) as caught:
             checked_inputs(spec, x=1.0)
         assert caught[0].message.details == {
             "method": "toy_half_open",
@@ -573,7 +578,7 @@ class TestFormulaNotices:
             value=lambda values: 2.0 * values.real("x"),
             minimum=4.0,
         )
-        with pytest.warns(OutsideTypicalRange) as caught:
+        with pytest.warns(OutsideApplicability) as caught:
             checked_inputs(spec, x=1.5)
         assert constraint_ranges()[("toy_constraint", "x_at_least_two")] is declared
         assert caught[0].message.details == {
@@ -588,8 +593,8 @@ class TestFormulaNotices:
             "source": "A source of the tests, p. 1",
         }
         assert str(caught[0].message) == (
-            "toy_constraint: twice_x=3.0 is below its typical minimum 4.0: x >= 2 (A "
-            "source of the tests, p. 1). Results may be unreliable."
+            "toy_constraint: twice_x=3.0 is below its applicability range, from 4.0: x "
+            ">= 2 (A source of the tests, p. 1). Results may be unreliable."
         )
 
     def test_an_undeclared_constraint_has_no_warning(self):

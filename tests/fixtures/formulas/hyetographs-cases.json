@@ -1,0 +1,924 @@
+[
+ {
+  "formula": "triangular_hyetograph",
+  "case_id": "chow1988-ex14.3.1-urbana",
+  "source": {
+   "citation": "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York",
+   "url": "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf",
+   "access": "open",
+   "locator": "sec. 14.3, eqs. 14.3.1-14.3.3, Example 14.3.1, pp. 462-465: P = 1.07 in in 15 min (Urbana, 5-year), r = 0.38, h = 8.56 in/h, ta = 5.7 min, tb = 9.3 min"
+  },
+  "inputs": {
+   "total_mm": 27.178,
+   "duration_min": 15.0,
+   "timestep_min": 5.0,
+   "peak_position": 0.38
+  },
+  "expected": {
+   "peak_intensity_mm_per_h": 217.424,
+   "peak_time_min": 5.7
+  },
+  "printed_precision": {
+   "total_mm": 0.254,
+   "peak_position": 0.01,
+   "peak_intensity_mm_per_h": 0.254,
+   "peak_time_min": 0.1
+  },
+  "conventions": [
+   "the source's inches converted exactly: P = 1.07 in = 27.178 mm, h = 8.56 in/h = 217.424 mm/h (1 in = 25.4 mm)",
+   "any step that divides 15 min gives the same triangle; the case takes 5 min"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "euler_ii_hyetograph",
+  "case_id": "itwh2010r-goellheim-t5-d30",
+  "source": {
+   "citation": "itwh KOSTRA-DWD 2010R 3.2.3, model rains of Göllheim (Rasterfeld Spalte 18, Zeile 73, 'Ausgleich nach DWA-A 531', T = 5 a), Anhang III of a planning procedure of Rhineland-Palatinate",
+   "url": "https://upload.open.rlp.de/dataset/2420cfcf-294f-400f-8b82-93f2537feef6/resource/f7ac269a-d9c3-40ce-b926-ee7cafa9a4ab/download/merged-anhang-iii.pdf",
+   "access": "open",
+   "locator": "p. 3 (Euler type II storm of 30 min, steps printed to 0.01 mm), p. 7 (rain rates rN)"
+  },
+  "inputs": {
+   "durations_min": [
+    5.0,
+    10.0,
+    15.0,
+    20.0,
+    30.0,
+    45.0,
+    60.0,
+    90.0
+   ],
+   "depths_mm": [
+    9.513,
+    13.95,
+    16.947,
+    19.176,
+    22.392,
+    25.596,
+    27.9,
+    29.97
+   ],
+   "duration_min": 30.0,
+   "timestep_min": 5.0
+  },
+  "expected": {
+   "intensities_mm": [
+    4.44,
+    9.51,
+    3.0,
+    2.23,
+    1.76,
+    1.44
+   ]
+  },
+  "printed_precision": {
+   "intensities_mm": 0.01
+  },
+  "tolerance": {
+   "abs": 0.015,
+   "reason": "the depths come from the rain rates printed to 0.1 l/(s ha): h = 0.006 rN D mm moves by up to 0.0003 D mm, so a step between two durations a < b of the table moves by up to 0.0003 (a + b) mm, 0.0150 mm for 20 and 30 min"
+  },
+  "conventions": [
+   "time_min the end of each 5-min step; step j covers ((j - 1) 5, j 5] min",
+   "the depths of the curve from the rain rates rN [l/(s ha)] of T = 5 a on p. 7 as h = 0.006 rN D mm (D in min, 1 l/(s ha) = 0.006 mm/min exactly): 317.1, 232.5, 188.3, 159.8, 124.4, 94.8, 77.5 and 55.5 l/(s ha) for 5 to 90 min; the depths of p. 6, printed to 0.1 mm, agree",
+   "itwh interpolates its table between the durations of KOSTRA; the spec interpolates linearly in ln D"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "euler_ii_hyetograph",
+  "case_id": "itwh2010r-goellheim-t5-d60",
+  "source": {
+   "citation": "itwh KOSTRA-DWD 2010R 3.2.3, model rains of Göllheim (Rasterfeld Spalte 18, Zeile 73, 'Ausgleich nach DWA-A 531', T = 5 a), Anhang III of a planning procedure of Rhineland-Palatinate",
+   "url": "https://upload.open.rlp.de/dataset/2420cfcf-294f-400f-8b82-93f2537feef6/resource/f7ac269a-d9c3-40ce-b926-ee7cafa9a4ab/download/merged-anhang-iii.pdf",
+   "access": "open",
+   "locator": "p. 4 (Euler type II storm of 60 min, steps printed to 0.01 mm), p. 7 (rain rates rN)"
+  },
+  "inputs": {
+   "durations_min": [
+    5.0,
+    10.0,
+    15.0,
+    20.0,
+    30.0,
+    45.0,
+    60.0,
+    90.0
+   ],
+   "depths_mm": [
+    9.513,
+    13.95,
+    16.947,
+    19.176,
+    22.392,
+    25.596,
+    27.9,
+    29.97
+   ],
+   "duration_min": 60.0,
+   "timestep_min": 5.0
+  },
+  "expected": {
+   "intensities_mm": [
+    2.23,
+    3.0,
+    4.44,
+    9.51,
+    1.76,
+    1.44,
+    1.23,
+    1.06,
+    0.93,
+    0.84,
+    0.76,
+    0.7
+   ]
+  },
+  "printed_precision": {
+   "intensities_mm": 0.01
+  },
+  "tolerance": {
+   "abs": 0.0315,
+   "reason": "the depths come from the rain rates printed to 0.1 l/(s ha): h = 0.006 rN D mm moves by up to 0.0003 D mm, so a step between two durations a < b of the table moves by up to 0.0003 (a + b) mm, 0.0315 mm for 45 and 60 min"
+  },
+  "conventions": [
+   "time_min the end of each 5-min step; step j covers ((j - 1) 5, j 5] min",
+   "the depths of the curve from the rain rates rN [l/(s ha)] of T = 5 a on p. 7 as h = 0.006 rN D mm (D in min, 1 l/(s ha) = 0.006 mm/min exactly): 317.1, 232.5, 188.3, 159.8, 124.4, 94.8, 77.5 and 55.5 l/(s ha) for 5 to 90 min; the depths of p. 6, printed to 0.1 mm, agree",
+   "itwh interpolates its table between the durations of KOSTRA; the spec interpolates linearly in ln D"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "euler_ii_hyetograph",
+  "case_id": "itwh2010r-goellheim-t5-d90",
+  "source": {
+   "citation": "itwh KOSTRA-DWD 2010R 3.2.3, model rains of Göllheim (Rasterfeld Spalte 18, Zeile 73, 'Ausgleich nach DWA-A 531', T = 5 a), Anhang III of a planning procedure of Rhineland-Palatinate",
+   "url": "https://upload.open.rlp.de/dataset/2420cfcf-294f-400f-8b82-93f2537feef6/resource/f7ac269a-d9c3-40ce-b926-ee7cafa9a4ab/download/merged-anhang-iii.pdf",
+   "access": "open",
+   "locator": "p. 5 (Euler type II storm of 90 min, steps printed to 0.01 mm), p. 7 (rain rates rN)"
+  },
+  "inputs": {
+   "durations_min": [
+    5.0,
+    10.0,
+    15.0,
+    20.0,
+    30.0,
+    45.0,
+    60.0,
+    90.0
+   ],
+   "depths_mm": [
+    9.513,
+    13.95,
+    16.947,
+    19.176,
+    22.392,
+    25.596,
+    27.9,
+    29.97
+   ],
+   "duration_min": 90.0,
+   "timestep_min": 5.0
+  },
+  "expected": {
+   "intensities_mm": [
+    1.44,
+    1.76,
+    2.23,
+    3.0,
+    4.44,
+    9.51,
+    1.23,
+    1.06,
+    0.93,
+    0.84,
+    0.76,
+    0.7,
+    0.4,
+    0.38,
+    0.35,
+    0.34,
+    0.32,
+    0.3
+   ]
+  },
+  "printed_precision": {
+   "intensities_mm": 0.01
+  },
+  "tolerance": {
+   "abs": 0.045,
+   "reason": "the depths come from the rain rates printed to 0.1 l/(s ha): h = 0.006 rN D mm moves by up to 0.0003 D mm, so a step between two durations a < b of the table moves by up to 0.0003 (a + b) mm, 0.0450 mm for 60 and 90 min"
+  },
+  "conventions": [
+   "time_min the end of each 5-min step; step j covers ((j - 1) 5, j 5] min",
+   "the depths of the curve from the rain rates rN [l/(s ha)] of T = 5 a on p. 7 as h = 0.006 rN D mm (D in min, 1 l/(s ha) = 0.006 mm/min exactly): 317.1, 232.5, 188.3, 159.8, 124.4, 94.8, 77.5 and 55.5 l/(s ha) for 5 to 90 min; the depths of p. 6, printed to 0.1 mm, agree",
+   "itwh interpolates its table between the durations of KOSTRA; the spec interpolates linearly in ln D"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "euler_ii_hyetograph",
+  "case_id": "itwh2010r-goellheim-t5-d15",
+  "source": {
+   "citation": "itwh KOSTRA-DWD 2010R 3.2.3, model rains of Göllheim (Rasterfeld Spalte 18, Zeile 73, 'Ausgleich nach DWA-A 531', T = 5 a), Anhang III of a planning procedure of Rhineland-Palatinate",
+   "url": "https://upload.open.rlp.de/dataset/2420cfcf-294f-400f-8b82-93f2537feef6/resource/f7ac269a-d9c3-40ce-b926-ee7cafa9a4ab/download/merged-anhang-iii.pdf",
+   "access": "open",
+   "locator": "p. 2 (Euler type II storm of 15 min: 4.44, 9.51, 3.00 mm), p. 7 (rain rates rN)"
+  },
+  "inputs": {
+   "durations_min": [
+    5.0,
+    10.0,
+    15.0,
+    20.0,
+    30.0,
+    45.0,
+    60.0,
+    90.0
+   ],
+   "depths_mm": [
+    9.513,
+    13.95,
+    16.947,
+    19.176,
+    22.392,
+    25.596,
+    27.9,
+    29.97
+   ],
+   "duration_min": 15.0,
+   "timestep_min": 5.0
+  },
+  "expected": {
+   "intensities_mm": [
+    4.44,
+    9.51,
+    3.0
+   ]
+  },
+  "printed_precision": {
+   "intensities_mm": 0.01
+  },
+  "conventions": [
+   "time_min the end of each 5-min step; step j covers ((j - 1) 5, j 5] min",
+   "the depths of the curve from the rain rates rN [l/(s ha)] of T = 5 a on p. 7 as h = 0.006 rN D mm (D in min, 1 l/(s ha) = 0.006 mm/min exactly): 317.1, 232.5, 188.3, 159.8, 124.4, 94.8, 77.5 and 55.5 l/(s ha) for 5 to 90 min; the depths of p. 6, printed to 0.1 mm, agree",
+   "itwh interpolates its table between the durations of KOSTRA; the spec interpolates linearly in ln D"
+  ],
+  "status": "discrepancy",
+  "second_source": {
+   "citation": "itwh KOSTRA-DWD 2010R 3.2.3, model rain of Großenkneten (Spalte 21, Zeile 30, D = 15 min, T = 1 a), Anlage 2 Modellregen of a planning procedure of Lower Saxony",
+   "locator": "p. 1: 2.84, 4.52, 1.94 mm, the peak in the second step",
+   "url": "https://www.uvp-verbund.de/documents-ige-ng/igc_ni/F939F55C-7435-41E5-AEE1-D58555AE1507/Anlage%202%20Modellregen.pdf",
+   "access": "open"
+  },
+  "discrepancy": "the itwh software puts the peak of a 15-min storm in the second step (both printouts); A 118 as quoted by Thewes (2005, p. 10) starts it at 0.3 D = 4.5 min rounded down to 0 min, the first step, which the spec follows (ADR-0042); the depths of the steps agree"
+ },
+ {
+  "formula": "euler_ii_hyetograph",
+  "case_id": "dwd-malitz2009-slide18",
+  "source": {
+   "citation": "Malitz, G. (2009). Stark- und Extremniederschlag im Kurzzeitbereich. Deutscher Wetterdienst, Hydrometeorologie; slides of the 2. Trierer Workshop zur Niederschlag-Abfluss-Modellierung",
+   "url": "https://www.uni-trier.de/fileadmin/fb6/prof/PHY/PDF-Dateien/AG_ModSim/N-A-Workshop_2009/Malitz.pdf",
+   "access": "open",
+   "locator": "slide 18 (PDF p. 14): an Euler type II storm of 60 min in steps of 5 min, printed to 0.1 mm; slide 17: the rule"
+  },
+  "inputs": {
+   "durations_min": [
+    5.0,
+    10.0,
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    35.0,
+    40.0,
+    45.0,
+    50.0,
+    55.0,
+    60.0
+   ],
+   "depths_mm": [
+    10.4,
+    13.5,
+    15.7,
+    17.5,
+    19.1,
+    20.4,
+    21.6,
+    22.8,
+    23.8,
+    24.8,
+    25.7,
+    26.6
+   ],
+   "duration_min": 60.0,
+   "timestep_min": 5.0
+  },
+  "expected": {
+   "intensities_mm": [
+    1.8,
+    2.2,
+    3.1,
+    10.4,
+    1.6,
+    1.3,
+    1.2,
+    1.2,
+    1.0,
+    1.0,
+    0.9,
+    0.9
+   ]
+  },
+  "printed_precision": {
+   "intensities_mm": 0.1
+  },
+  "conventions": [
+   "time_min the end of each 5-min step; step j covers ((j - 1) 5, j 5] min",
+   "the slide prints the storm only: the curve is the cumulative sum of its values sorted, the depths of 5 to 60 min that slide 17 says the storm holds (the sum of the three largest is the depth of 15 min); the case tests the arrangement"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "euler_ii_hyetograph",
+  "case_id": "dwd-malitz2009-slide19",
+  "source": {
+   "citation": "Malitz, G. (2009). Stark- und Extremniederschlag im Kurzzeitbereich. Deutscher Wetterdienst, Hydrometeorologie; slides of the 2. Trierer Workshop zur Niederschlag-Abfluss-Modellierung",
+   "url": "https://www.uni-trier.de/fileadmin/fb6/prof/PHY/PDF-Dateien/AG_ModSim/N-A-Workshop_2009/Malitz.pdf",
+   "access": "open",
+   "locator": "slide 19 (PDF p. 15): an Euler type II storm of 60 min in steps of 5 min, printed to 0.1 mm; slide 17: the rule"
+  },
+  "inputs": {
+   "durations_min": [
+    5.0,
+    10.0,
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    35.0,
+    40.0,
+    45.0,
+    50.0,
+    55.0,
+    60.0
+   ],
+   "depths_mm": [
+    5.6,
+    8.5,
+    10.3,
+    11.5,
+    12.4,
+    13.1,
+    13.6,
+    14.0,
+    14.4,
+    14.7,
+    14.9,
+    15.1
+   ],
+   "duration_min": 60.0,
+   "timestep_min": 5.0
+  },
+  "expected": {
+   "intensities_mm": [
+    1.2,
+    1.8,
+    2.9,
+    5.6,
+    0.9,
+    0.7,
+    0.5,
+    0.4,
+    0.4,
+    0.3,
+    0.2,
+    0.2
+   ]
+  },
+  "printed_precision": {
+   "intensities_mm": 0.1
+  },
+  "conventions": [
+   "time_min the end of each 5-min step; step j covers ((j - 1) 5, j 5] min",
+   "the slide prints the storm only: the curve is the cumulative sum of its values sorted, the depths of 5 to 60 min that slide 17 says the storm holds (the sum of the three largest is the depth of 15 min); the case tests the arrangement"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "euler_ii_hyetograph",
+  "case_id": "kazmierczak-kotowski2012-tab4.6-c3-d75",
+  "source": {
+   "citation": "Kaźmierczak, B. and Kotowski, A. (2012). Weryfikacja przepustowości kanalizacji deszczowej w modelowaniu hydrodynamicznym. Oficyna Wydawnicza Politechniki Wrocławskiej, Wrocław",
+   "url": "https://www.dbc.wroc.pl/Content/19608/PDF/kazmierczak_weryfikacja.pdf",
+   "access": "open",
+   "locator": "Tab. 4.6, pp. 65-66: column 2 (H of formula 2.6, C = 3 years, printed to 0.01 mm) and the storm 'I' of 75 min (intensities printed to 0.01 mm/h); pp. 31-32 the rule"
+  },
+  "inputs": {
+   "durations_min": [
+    5.0,
+    10.0,
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    35.0,
+    40.0,
+    45.0,
+    50.0,
+    55.0,
+    60.0,
+    65.0,
+    70.0,
+    75.0,
+    80.0,
+    85.0,
+    90.0,
+    95.0,
+    100.0,
+    105.0,
+    110.0,
+    115.0,
+    120.0,
+    125.0,
+    130.0,
+    135.0,
+    140.0,
+    145.0,
+    150.0,
+    155.0,
+    160.0,
+    165.0,
+    170.0,
+    175.0,
+    180.0
+   ],
+   "depths_mm": [
+    8.48,
+    12.16,
+    14.49,
+    16.23,
+    17.64,
+    18.82,
+    19.85,
+    20.76,
+    21.58,
+    22.33,
+    23.02,
+    23.66,
+    24.25,
+    24.81,
+    25.33,
+    25.83,
+    26.3,
+    26.75,
+    27.18,
+    27.59,
+    27.99,
+    28.37,
+    28.73,
+    29.08,
+    29.42,
+    29.75,
+    30.07,
+    30.38,
+    30.68,
+    30.97,
+    31.26,
+    31.53,
+    31.8,
+    32.06,
+    32.32,
+    32.57
+   ],
+   "duration_min": 75.0,
+   "timestep_min": 5.0
+  },
+  "expected": {
+   "intensities_mm": [
+    1.405,
+    1.7425,
+    2.3308333333333335,
+    3.6825,
+    8.475833333333334,
+    1.185,
+    1.0291666666666666,
+    0.9125,
+    0.8208333333333333,
+    0.7475,
+    0.6875,
+    0.6375,
+    0.5941666666666666,
+    0.5575,
+    0.525
+   ]
+  },
+  "printed_precision": {
+   "intensities_mm": 0.0008333333333333334,
+   "depths_mm": 0.01
+  },
+  "tolerance": {
+   "abs": 0.01,
+   "reason": "the depths H are printed to 0.01 mm each on its own: a step, the difference of two of them, moves by up to 0.01 mm, where the corners move them together; the intensities come from the unrounded H"
+  },
+  "conventions": [
+   "time_min the end of each 5-min step; step j covers ((j - 1) 5, j 5] min",
+   "the printed intensities I [mm/h] of a 5-min step are depths of I 5 / 60 mm (exact, the units table)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "euler_ii_hyetograph",
+  "case_id": "kazmierczak-kotowski2012-tab4.6-c3-d150",
+  "source": {
+   "citation": "Kaźmierczak, B. and Kotowski, A. (2012). Weryfikacja przepustowości kanalizacji deszczowej w modelowaniu hydrodynamicznym. Oficyna Wydawnicza Politechniki Wrocławskiej, Wrocław",
+   "url": "https://www.dbc.wroc.pl/Content/19608/PDF/kazmierczak_weryfikacja.pdf",
+   "access": "open",
+   "locator": "Tab. 4.6, pp. 65-66: column 2 (H of formula 2.6, C = 3 years, printed to 0.01 mm) and the storm 'VI' of 150 min (intensities printed to 0.01 mm/h); pp. 31-32 the rule"
+  },
+  "inputs": {
+   "durations_min": [
+    5.0,
+    10.0,
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    35.0,
+    40.0,
+    45.0,
+    50.0,
+    55.0,
+    60.0,
+    65.0,
+    70.0,
+    75.0,
+    80.0,
+    85.0,
+    90.0,
+    95.0,
+    100.0,
+    105.0,
+    110.0,
+    115.0,
+    120.0,
+    125.0,
+    130.0,
+    135.0,
+    140.0,
+    145.0,
+    150.0,
+    155.0,
+    160.0,
+    165.0,
+    170.0,
+    175.0,
+    180.0
+   ],
+   "depths_mm": [
+    8.48,
+    12.16,
+    14.49,
+    16.23,
+    17.64,
+    18.82,
+    19.85,
+    20.76,
+    21.58,
+    22.33,
+    23.02,
+    23.66,
+    24.25,
+    24.81,
+    25.33,
+    25.83,
+    26.3,
+    26.75,
+    27.18,
+    27.59,
+    27.99,
+    28.37,
+    28.73,
+    29.08,
+    29.42,
+    29.75,
+    30.07,
+    30.38,
+    30.68,
+    30.97,
+    31.26,
+    31.53,
+    31.8,
+    32.06,
+    32.32,
+    32.57
+   ],
+   "duration_min": 150.0,
+   "timestep_min": 5.0
+  },
+  "expected": {
+   "intensities_mm": [
+    0.7475,
+    0.8208333333333333,
+    0.9125,
+    1.0291666666666666,
+    1.185,
+    1.405,
+    1.7425,
+    2.3308333333333335,
+    3.6825,
+    8.475833333333334,
+    0.6875,
+    0.6375,
+    0.5941666666666666,
+    0.5575,
+    0.525,
+    0.49666666666666665,
+    0.4716666666666667,
+    0.44916666666666666,
+    0.42916666666666664,
+    0.41083333333333333,
+    0.39416666666666667,
+    0.37916666666666665,
+    0.365,
+    0.3516666666666667,
+    0.34,
+    0.32916666666666666,
+    0.31833333333333336,
+    0.30916666666666665,
+    0.3,
+    0.2916666666666667
+   ]
+  },
+  "printed_precision": {
+   "intensities_mm": 0.0008333333333333334,
+   "depths_mm": 0.01
+  },
+  "tolerance": {
+   "abs": 0.01,
+   "reason": "the depths H are printed to 0.01 mm each on its own: a step, the difference of two of them, moves by up to 0.01 mm, where the corners move them together; the intensities come from the unrounded H"
+  },
+  "conventions": [
+   "time_min the end of each 5-min step; step j covers ((j - 1) 5, j 5] min",
+   "the printed intensities I [mm/h] of a 5-min step are depths of I 5 / 60 mm (exact, the units table)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "euler_ii_hyetograph",
+  "case_id": "kazmierczak-kotowski2012-tab4.6-c3-d180",
+  "source": {
+   "citation": "Kaźmierczak, B. and Kotowski, A. (2012). Weryfikacja przepustowości kanalizacji deszczowej w modelowaniu hydrodynamicznym. Oficyna Wydawnicza Politechniki Wrocławskiej, Wrocław",
+   "url": "https://www.dbc.wroc.pl/Content/19608/PDF/kazmierczak_weryfikacja.pdf",
+   "access": "open",
+   "locator": "Tab. 4.6, pp. 65-66: column 2 (H of formula 2.6, C = 3 years, printed to 0.01 mm) and the storm 'VIII' of 180 min (intensities printed to 0.01 mm/h); pp. 31-32 the rule"
+  },
+  "inputs": {
+   "durations_min": [
+    5.0,
+    10.0,
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    35.0,
+    40.0,
+    45.0,
+    50.0,
+    55.0,
+    60.0,
+    65.0,
+    70.0,
+    75.0,
+    80.0,
+    85.0,
+    90.0,
+    95.0,
+    100.0,
+    105.0,
+    110.0,
+    115.0,
+    120.0,
+    125.0,
+    130.0,
+    135.0,
+    140.0,
+    145.0,
+    150.0,
+    155.0,
+    160.0,
+    165.0,
+    170.0,
+    175.0,
+    180.0
+   ],
+   "depths_mm": [
+    8.48,
+    12.16,
+    14.49,
+    16.23,
+    17.64,
+    18.82,
+    19.85,
+    20.76,
+    21.58,
+    22.33,
+    23.02,
+    23.66,
+    24.25,
+    24.81,
+    25.33,
+    25.83,
+    26.3,
+    26.75,
+    27.18,
+    27.59,
+    27.99,
+    28.37,
+    28.73,
+    29.08,
+    29.42,
+    29.75,
+    30.07,
+    30.38,
+    30.68,
+    30.97,
+    31.26,
+    31.53,
+    31.8,
+    32.06,
+    32.32,
+    32.57
+   ],
+   "duration_min": 180.0,
+   "timestep_min": 5.0
+  },
+  "expected": {
+   "intensities_mm": [
+    0.6375,
+    0.6875,
+    0.7475,
+    0.8208333333333333,
+    0.9125,
+    1.0291666666666666,
+    1.185,
+    1.405,
+    1.7425,
+    2.3308333333333335,
+    3.6825,
+    8.475833333333334,
+    0.5941666666666666,
+    0.5575,
+    0.525,
+    0.49666666666666665,
+    0.4716666666666667,
+    0.44916666666666666,
+    0.42916666666666664,
+    0.41083333333333333,
+    0.39416666666666667,
+    0.37916666666666665,
+    0.365,
+    0.3516666666666667,
+    0.34,
+    0.32916666666666666,
+    0.31833333333333336,
+    0.30916666666666665,
+    0.3,
+    0.2916666666666667,
+    0.2841666666666667,
+    0.27666666666666667,
+    0.26916666666666667,
+    0.2625,
+    0.25666666666666665,
+    0.25083333333333335
+   ]
+  },
+  "printed_precision": {
+   "intensities_mm": 0.0008333333333333334,
+   "depths_mm": 0.01
+  },
+  "tolerance": {
+   "abs": 0.01,
+   "reason": "the depths H are printed to 0.01 mm each on its own: a step, the difference of two of them, moves by up to 0.01 mm, where the corners move them together; the intensities come from the unrounded H"
+  },
+  "conventions": [
+   "time_min the end of each 5-min step; step j covers ((j - 1) 5, j 5] min",
+   "the printed intensities I [mm/h] of a 5-min step are depths of I 5 / 60 mm (exact, the units table)"
+  ],
+  "status": "discrepancy",
+  "second_source": {
+   "citation": "Wartalska, K. et al. (2020). Water 12(1), 149",
+   "locator": "the peak of a Euler type II storm at the end of the first third of the duration",
+   "url": "https://doi.org/10.3390/w12010149",
+   "access": "open"
+  },
+  "discrepancy": "the monograph ends the peak at D / 3 (55-60 min for 180 min, p. 66), a step later than 0.3 D rounded down to a step (50-55 min), the rule of A 118 as quoted by Thewes (2005, p. 10) that the spec follows (ADR-0042); the two rules agree up to 150 min, the other steps keep their depths"
+ },
+ {
+  "formula": "euler_ii_hyetograph",
+  "case_id": "itwh2020-aurich-t3-d540",
+  "source": {
+   "citation": "itwh KOSTRA-DWD 2020 4.2.1, 'Modellregen' printouts of Aurich (Rasterfeld Zeile 84, Spalte 110), Euler Typ 2, 9 h, 5 min, 'Zuschlag Toleranzwert UC', published by the city of Aurich (B-Plan 393, Anhang 1.2)",
+   "url": "https://www.aurich.de/fileadmin/user_upload/pdf-files/Bauleitplanung/Beteiligungsverfahren/B-Plan_393/36._Anhang_1.2_KOSTRA_Modellregen.PDF",
+   "access": "open",
+   "locator": "Euler type II storm of 9 h, T = 3 a, total 40.8 mm: the peak in interval 33, 160-165 min (11.00 mm)"
+  },
+  "inputs": {
+   "durations_min": [
+    5.0,
+    10.0,
+    15.0,
+    20.0,
+    30.0,
+    45.0,
+    60.0,
+    90.0,
+    120.0,
+    180.0,
+    240.0,
+    360.0,
+    540.0
+   ],
+   "depths_mm": [
+    11.0,
+    14.16,
+    16.09,
+    17.69,
+    19.89,
+    22.02,
+    23.84,
+    26.19,
+    28.32,
+    31.0,
+    33.17,
+    36.68,
+    40.81
+   ],
+   "duration_min": 540.0,
+   "timestep_min": 5.0
+  },
+  "expected": {
+   "peak_start_min": 160.0
+  },
+  "conventions": [
+   "time_min the end of each 5-min step; step j covers ((j - 1) 5, j 5] min",
+   "the printout prints no input table and holds negative steps (the UC surcharge): the curve at the durations of KOSTRA is the cumulative depth of its steps in the order of their durations (the peak step, then back to t = 0, then onward), and only the start of the peak is compared"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "euler_ii_hyetograph",
+  "case_id": "itwh2020-aurich-t10-d540",
+  "source": {
+   "citation": "itwh KOSTRA-DWD 2020 4.2.1, 'Modellregen' printouts of Aurich (Rasterfeld Zeile 84, Spalte 110), Euler Typ 2, 9 h, 5 min, 'Zuschlag Toleranzwert UC', published by the city of Aurich (B-Plan 393, Anhang 1.2)",
+   "url": "https://www.aurich.de/fileadmin/user_upload/pdf-files/Bauleitplanung/Beteiligungsverfahren/B-Plan_393/36._Anhang_1.2_KOSTRA_Modellregen.PDF",
+   "access": "open",
+   "locator": "Euler type II storm of 9 h, T = 10 a, total 55.6 mm: the peak in interval 33, 160-165 min (14.99 mm)"
+  },
+  "inputs": {
+   "durations_min": [
+    5.0,
+    10.0,
+    15.0,
+    20.0,
+    30.0,
+    45.0,
+    60.0,
+    90.0,
+    120.0,
+    180.0,
+    240.0,
+    360.0,
+    540.0
+   ],
+   "depths_mm": [
+    14.99,
+    19.27,
+    22.07,
+    24.05,
+    26.9,
+    30.12,
+    32.34,
+    35.86,
+    38.48,
+    42.48,
+    45.57,
+    50.26,
+    55.56
+   ],
+   "duration_min": 540.0,
+   "timestep_min": 5.0
+  },
+  "expected": {
+   "peak_start_min": 160.0
+  },
+  "conventions": [
+   "time_min the end of each 5-min step; step j covers ((j - 1) 5, j 5] min",
+   "the printout prints no input table and holds negative steps (the UC surcharge): the curve at the durations of KOSTRA is the cumulative depth of its steps in the order of their durations (the peak step, then back to t = 0, then onward), and only the start of the peak is compared"
+  ],
+  "status": "single_source"
+ }
+]

@@ -1,9 +1,9 @@
 """Warnings of the library with a stable code and structured details (plan D16).
 
-The library reports a non-fatal observation (a value outside the typical range of a
-formula, a short sample...) with ``warnings.warn`` of a :class:`HydrologWarning`. Each
+The library reports a non-fatal observation (a value outside the applicability range of
+a formula, a short sample...) with ``warnings.warn`` of a :class:`HydrologWarning`. Each
 observation has a subclass whose name is its code in CamelCase
-(:class:`OutsideTypicalRange` has the code ``outside_typical_range``), and an instance
+(:class:`OutsideApplicability` has the code ``outside_applicability``), and an instance
 is made from its details, the values that its English message holds::
 
     warnings.warn(SmallSample(years=6, minimum=10), stacklevel=2)
@@ -32,10 +32,11 @@ __all__ = [
     "DistributionLeftOut",
     "HydrologWarning",
     "IncompleteYears",
+    "IuhPeakUndefined",
     "KsTestApproximate",
     "NegativeQuantiles",
+    "OutsideApplicability",
     "OutsideSupport",
-    "OutsideTypicalRange",
     "OutsideUnverifiedRange",
     "PositionsIgnored",
     "ShortRecord",
@@ -46,7 +47,7 @@ __all__ = [
     "UnreferencedFormula",
     "render",
     "typical_range_fields",
-    "warn_outside_typical_range",
+    "warn_outside_applicability",
     "warning_code",
 ]
 
@@ -67,8 +68,8 @@ def warning_code(category: type[Warning]) -> str:
     Returns
     -------
     str
-        ``"user_warning"`` for ``UserWarning``, ``"outside_typical_range"`` for
-        :class:`OutsideTypicalRange`.
+        ``"user_warning"`` for ``UserWarning``, ``"outside_applicability"`` for
+        :class:`OutsideApplicability`.
     """
     return _WORD_START.sub("_", category.__name__).lower()
 
@@ -125,7 +126,7 @@ class HydrologWarning(UserWarning):
     is made from exactly the details named by ``keys``, as keyword arguments, and its
     message is :meth:`message_of` them: the template filled with them (:func:`render`),
     or a wording of the subclass's own for a form the template cannot word (a range
-    with one end of :class:`OutsideTypicalRange`). The registry of notices words a
+    with one end of :class:`OutsideApplicability`). The registry of notices words a
     notice of the code by the same method. An instance pickles and copies.
 
     An instance is also made from its message alone, as ``warnings.warn(text, kind)``
@@ -241,8 +242,8 @@ def _restore(kind: type[HydrologWarning], details: dict[str, Any]) -> HydrologWa
     return kind(**details)
 
 
-class OutsideTypicalRange(HydrologWarning):
-    """A parameter of a formula or a model is outside its typical range.
+class OutsideApplicability(HydrologWarning):
+    """A parameter of a formula or a model is outside its applicability range.
 
     Details: ``method`` (the formula or the model: a time of concentration method,
     ``scs_cn_amc``, a unit hydrograph model, ``lutz``; the ranges are those of
@@ -250,17 +251,18 @@ class OutsideTypicalRange(HydrologWarning):
     the command of the formula), ``field`` (the input the value came from: the option
     of the command that was run or the field of the watershed, see
     :func:`typical_range_fields`), ``value`` and the range ``minimum``, ``maximum``
-    (in the unit of the parameter; ``None`` for an end without a bound). A condition
-    of the applicability of a formula between its inputs (Nogat CMP-3.3) gives this
-    warning too: ``parameter`` is then the quantity the condition bounds (the number
-    of ``gaugings`` of a rating curve), ``constraint`` the condition's name,
+    (in the unit of the parameter; ``None`` for an end without a bound). The notice
+    ``outside_applicability`` of Nogat's computation standard (CMP-3.3). A condition
+    of the applicability of a formula between its inputs gives this warning too:
+    ``parameter`` is then the quantity the condition bounds (the number of
+    ``gaugings`` of a rating curve), ``constraint`` the condition's name,
     ``condition`` its text and ``source`` its source; for a parameter outside its own
     range the three are ``None``. A range with one end gives the message of that end.
     """
 
     template = (
-        "{method}: {parameter}={value} is outside typical range [{minimum}, "
-        "{maximum}]. Results may be unreliable."
+        "{method}: {parameter}={value} is outside its applicability range "
+        "[{minimum}, {maximum}]. Results may be unreliable."
     )
     keys = (
         "method",
@@ -274,10 +276,11 @@ class OutsideTypicalRange(HydrologWarning):
         "source",
     )
     _below: ClassVar[str] = (
-        "{method}: {parameter}={value} is below its typical minimum {minimum}"
+        "{method}: {parameter}={value} is below its applicability range, from {minimum}"
     )
     _above: ClassVar[str] = (
-        "{method}: {parameter}={value} is above its typical maximum {maximum}"
+        "{method}: {parameter}={value} is above its applicability range, up to "
+        "{maximum}"
     )
 
     @classmethod
@@ -295,13 +298,13 @@ class OutsideTypicalRange(HydrologWarning):
         return f"{text}. Results may be unreliable."
 
 
-class OutsideUnverifiedRange(OutsideTypicalRange):
+class OutsideUnverifiedRange(OutsideApplicability):
     """A parameter is outside a typical range that has no published source yet.
 
     Such a range is kept and marked as to be verified (``verified`` false in
     ``hydrolog._ranges.TYPICAL_RANGES``; the author's decision of 2026-11-04: the given
     parameters of the Nash cascade). The details are those of
-    :class:`OutsideTypicalRange`, ``field`` included, and a filter on that class
+    :class:`OutsideApplicability`, ``field`` included, and a filter on that class
     catches this one too; the code and the message say that the range awaits
     verification.
     """
@@ -311,6 +314,12 @@ class OutsideUnverifiedRange(OutsideTypicalRange):
         "{maximum}], which has no published source and awaits verification. Results "
         "may be unreliable."
     )
+    _below: ClassVar[str] = (
+        "{method}: {parameter}={value} is below its typical minimum {minimum}"
+    )
+    _above: ClassVar[str] = (
+        "{method}: {parameter}={value} is above its typical maximum {maximum}"
+    )
 
 
 _FIELDS: ContextVar[Mapping[str, str]] = ContextVar("hydrolog_typical_range_fields")
@@ -318,7 +327,7 @@ _FIELDS: ContextVar[Mapping[str, str]] = ContextVar("hydrolog_typical_range_fiel
 
 @contextmanager
 def typical_range_fields(fields: Mapping[str, str]) -> Iterator[None]:
-    """Name the inputs the parameters of :class:`OutsideTypicalRange` come from.
+    """Name the inputs the parameters of :class:`OutsideApplicability` come from.
 
     Inside the block a warning about the parameter ``name`` has ``field``
     ``fields[name]``; outside every block, or for a parameter that no block names, it
@@ -340,7 +349,7 @@ def typical_range_fields(fields: Mapping[str, str]) -> Iterator[None]:
         _FIELDS.reset(token)
 
 
-def warn_outside_typical_range(
+def warn_outside_applicability(
     method: str,
     parameter: str,
     value: float,
@@ -365,9 +374,9 @@ def warn_outside_typical_range(
     value : float
         The value.
     minimum, maximum : float or None
-        The typical range, bounds included; ``None`` for an end without a bound.
+        The range, bounds included; ``None`` for an end without a bound.
     verified : bool, optional
-        Whether the range has a published source: :class:`OutsideTypicalRange` if so
+        Whether the range has a published source: :class:`OutsideApplicability` if so
         (the default), else :class:`OutsideUnverifiedRange`.
     constraint, condition, source : str or None, optional
         The name, text and source of the condition of the formula's applicability
@@ -377,7 +386,7 @@ def warn_outside_typical_range(
     """
     if (minimum is None or minimum <= value) and (maximum is None or value <= maximum):
         return
-    kind = OutsideTypicalRange if verified else OutsideUnverifiedRange
+    kind = OutsideApplicability if verified else OutsideUnverifiedRange
     warnings.warn(
         kind(
             method=method,
@@ -559,6 +568,23 @@ class UhSubsteps(HydrologWarning):
     keys = ("timestep_min", "maximum_min", "substeps", "substep_min")
 
 
+class IuhPeakUndefined(HydrologWarning):
+    """Nash's IUH of n <= 1 reservoirs has no peak after the rainfall.
+
+    Its density decreases from t = 0, where it is 1 / K for n = 1 and unbounded for
+    n < 1: the time to peak and the peak ordinate of the spec ``nash_iuh_peak`` are
+    undefined, and ``NashIUH`` gives them as None (null). Details: ``n`` and
+    ``k_min``.
+    """
+
+    template = (
+        "Nash's IUH of n = {n:g} reservoirs (K = {k_min:g} min) decreases from the "
+        "instant of the rainfall: for n <= 1 it has no peak after it, so its time to "
+        "peak and peak ordinate are undefined (null)."
+    )
+    keys = ("n", "k_min")
+
+
 class PositionsIgnored(HydrologWarning):
     """The positions of a network's nodes cannot be drawn: its layout is computed.
 
@@ -577,7 +603,7 @@ class PositionsIgnored(HydrologWarning):
 
 
 LIBRARY_WARNINGS: Final[tuple[type[HydrologWarning], ...]] = (
-    OutsideTypicalRange,
+    OutsideApplicability,
     OutsideUnverifiedRange,
     SmallSample,
     ShortRecord,
@@ -589,6 +615,7 @@ LIBRARY_WARNINGS: Final[tuple[type[HydrologWarning], ...]] = (
     UnknownHietogramType,
     UhModelMismatch,
     UhSubsteps,
+    IuhPeakUndefined,
     PositionsIgnored,
     UnreferencedFormula,
 )

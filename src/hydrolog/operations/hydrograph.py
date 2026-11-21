@@ -781,7 +781,7 @@ def hydrograph_generate(
     -------
     OperationOutput
         :class:`HydrographGenerateResult` with the notices: library warnings about
-        parameters outside the typical range (``outside_typical_range``, with
+        parameters outside their applicability range (``outside_applicability``, with
         ``details.field`` the input the value came from: the field of the
         watershed for a tc formula or Lutz's area, else the option, e.g.
         ``snyder_ct``), a non-standard ``ia_coefficient``, a duration that is not

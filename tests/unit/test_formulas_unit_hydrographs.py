@@ -15,12 +15,14 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from hypothesis import given
+from hypothesis import example, given
+from scipy.special import gammainc, gammaincc
 from scipy.stats import gamma
 
 from hydrolog._formula_versions import recording
 from hydrolog._formulas import ERRORS
 from hydrolog._warnings import OutsideUnverifiedRange, UhSubsteps
+from hydrolog.catalog import run_command
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.nogat_formulas import (
     Case,
@@ -40,11 +42,23 @@ from hydrolog.nogat_formulas import (
 from hydrolog.runoff import (
     ClarkIUH,
     HydrographGenerator,
+    NashIUH,
     SCSUnitHydrograph,
     SnyderUH,
 )
-from hydrolog.runoff.clark_iuh import CLARK, clark_unit_hydrograph
+from hydrolog.runoff.clark_iuh import (
+    CLARK,
+    CLARK_LAG,
+    clark_lag_time,
+    clark_unit_hydrograph,
+)
 from hydrolog.runoff.convolution import CONVOLUTION, convolve_discrete
+from hydrolog.runoff.nash_iuh import (
+    NASH_IUH,
+    NASH_IUH_PEAK,
+    nash_iuh_peak,
+    nash_unit_hydrograph,
+)
 from hydrolog.runoff.snyder_uh import (
     SNYDER,
     SNYDER_SHAPE,
@@ -69,6 +83,9 @@ FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
     (SNYDER, snyder_parameters),
     (SNYDER_SHAPE, snyder_shape),
     (CLARK, clark_unit_hydrograph),
+    (CLARK_LAG, clark_lag_time),
+    (NASH_IUH, nash_unit_hydrograph),
+    (NASH_IUH_PEAK, nash_iuh_peak),
     (CONVOLUTION, convolve_discrete),
 )
 
@@ -125,6 +142,15 @@ def test_snyder_properties(inputs):
 
 
 @given(inputs=strategies(SNYDER_SHAPE))
+@example(  # 1 mm over a subnormal area: the volume of the ordinates is not held
+    inputs={
+        "area_km2": 5e-324,
+        "time_to_peak_min": 16.0,
+        "peak_discharge_m3s": 5e-324,
+        "timestep_min": 5.0,
+        "total_duration_min": 60.0,
+    }
+)
 def test_snyder_shape_properties(inputs):
     function = as_standard(snyder_shape)
     assert_property_contract(SNYDER_SHAPE, function, inputs, ERRORS)
@@ -309,6 +335,16 @@ def test_the_snyder_wrapper_computes_through_the_specs():
 
 
 @given(inputs=strategies(CLARK))
+@example(  # subnormal ordinates: the time of the largest one is that of the shape
+    inputs={
+        "tc_min": 1.0,
+        "r_min": 3.0,
+        "area_km2": 5e-324,
+        "timestep_min": 5.0,
+        "duration_min": 5.0,
+        "total_duration_min": 7.0,
+    }
+)
 def test_clark_properties(inputs):
     function = as_standard(clark_unit_hydrograph)
     assert_property_contract(CLARK, function, inputs, ERRORS)
@@ -366,6 +402,160 @@ def test_the_clark_wrapper_computes_through_the_spec():
     assert np.array_equal(result.ordinates_m3s, found.ordinates_m3s)
     with pytest.warns(OutsideUnverifiedRange):
         ClarkIUH(tc_min=60.0, r_min=6.0).generate_iuh(timestep_min=5.0)
+
+
+# --- the traps of the spec nash_iuh (CMP-6.6) -----------------------------------------
+
+
+@given(inputs=strategies(NASH_IUH))
+@example(  # subnormal ordinates: the time of the largest one is that of the shape
+    inputs={
+        "n": 2.0,
+        "k_min": 3.0,
+        "area_km2": 5e-324,
+        "timestep_min": 5.0,
+        "duration_min": 7.0,
+        "total_duration_min": 9.0,
+    }
+)
+@example(  # a tiny n: SciPy's lower incomplete gamma is not monotonic, its upper one is
+    inputs={
+        "n": 1.7768199458011535e-99,
+        "k_min": 5.0,
+        "area_km2": 1.0,
+        "timestep_min": 6.0,
+        "duration_min": 5.0,
+        "total_duration_min": 9.0,
+    }
+)
+def test_nash_properties(inputs):
+    function = as_standard(nash_unit_hydrograph)
+    assert_property_contract(NASH_IUH, function, inputs, ERRORS)
+    assert_properties(NASH_IUH, function, inputs, ERRORS)
+
+
+@given(inputs=strategies(NASH_IUH_PEAK))
+def test_nash_peak_properties(inputs):
+    function = as_standard(nash_iuh_peak)
+    assert_property_contract(NASH_IUH_PEAK, function, inputs, ERRORS)
+    assert_properties(NASH_IUH_PEAK, function, inputs, ERRORS)
+
+
+def test_the_nash_peak_is_refused_for_n_up_to_1():
+    """Precondition peak_defined: the IUH of n <= 1 decreases from t = 0."""
+    for n in (1.0, 0.5):
+        with pytest.raises(InvalidParameterError) as caught:
+            nash_iuh_peak(n, 30.0)
+        assert caught.value.details["constraint"] == "peak_defined"
+
+
+def test_nash_a_million_ordinates_hold_their_volume():
+    """Trap many_small_terms: a million ordinates of a 2^-10 min step.
+
+    For D = dt the differences of the S-curve telescope to S at the end of the grid;
+    a million of them, each about 1e-6 of the unit, keep it. One more step is refused.
+    """
+    step = 2.0**-10
+    end = 999_999 * step
+    result = nash_unit_hydrograph(2.55, 42.0, 45.3, step, step, end)
+
+    assert result.ordinates_m3s.size == 1_000_000
+    depth_mm = math.fsum(result.ordinates_m3s.tolist()) * step * 60.0 / (45.3 * 1000.0)
+    assert_within(
+        depth_mm,
+        float(gammainc(2.55, end / 42.0)),
+        abs=1e-12,
+        reason="a million differences of the S-curve, each rounded once, summed "
+        "exactly: their rounding errors, below 2e-16 of each, add up to some 1e-16",
+    )
+    with pytest.raises(InvalidParameterError) as caught:
+        nash_unit_hydrograph(2.55, 42.0, 45.3, step, step, 1_000_000 * step)
+    assert caught.value.details["constraint"] == "length_bounded"
+
+
+def test_the_delegated_incomplete_gamma_is_the_closed_form():
+    """DELEGATED incomplete_gamma: P(1, x) = 1 - e^-x, Q(1, x) = e^-x, P(2, 1) = 1 -
+    2/e, P(1/2, x) = erf(sqrt(x))."""
+    for x in (0.25, 1.0, 7.5):
+        assert_within(
+            float(gammainc(1.0, x)),
+            -math.expm1(-x),
+            rel=1e-15,
+            reason="a few units in the last place of SciPy's series",
+        )
+        assert_within(
+            float(gammaincc(1.0, x)),
+            math.exp(-x),
+            rel=1e-15,
+            reason="a few units in the last place of SciPy's series",
+        )
+        assert_within(
+            float(gammainc(0.5, x)),
+            math.erf(math.sqrt(x)),
+            rel=1e-15,
+            reason="a few units in the last place of SciPy's series",
+        )
+    assert_within(
+        float(gammainc(2.0, 1.0)),
+        1.0 - 2.0 / math.e,
+        rel=1e-15,
+        reason="a few units in the last place of SciPy's series",
+    )
+
+
+def test_the_nash_wrapper_computes_through_the_spec():
+    """NashIUH fills the length 5 n K + D, and max(5 n K, 10 K) for its IUH, and
+    takes the IUH's peak from the spec nash_iuh_peak."""
+    cascade = NashIUH(n=3.0, k_min=30.0)
+    with recording() as used:
+        result = cascade.to_unit_hydrograph(area_km2=45.0, duration_min=30.0)
+        iuh = cascade.generate_iuh(timestep_min=5.0)
+    found = nash_unit_hydrograph(3.0, 30.0, 45.0, 5.0, 30.0, 450.0 + 30.0)
+    peak = nash_iuh_peak(3.0, 30.0)
+
+    assert used == {
+        "nash_iuh": NASH_IUH.formula_version,
+        "nash_iuh_peak": NASH_IUH_PEAK.formula_version,
+    }
+    assert np.array_equal(result.ordinates_m3s, found.ordinates_m3s)
+    assert result.lag_time_min == cascade.lag_time_min == 90.0
+    assert iuh.times_min[-1] == 450.0
+    assert iuh.ordinates_per_min[12] == cascade.ordinate(60.0)
+    assert (iuh.time_to_peak_min, iuh.peak_ordinate_per_min) == (
+        peak.time_to_peak_min,
+        peak.peak_ordinate_per_min,
+    )
+
+
+def test_uh_nash_records_the_version_of_its_formula():
+    envelope = run_command(
+        "uh nash", {"area_km2": 45.0, "n": 3.0, "k_min": 30.0}
+    ).to_dict()
+
+    assert envelope["formula_versions"] == {"nash_iuh": NASH_IUH.formula_version}
+    assert envelope["result"]["lag_time_min"] == 90.0
+
+
+# --- the spec clark_lag ---------------------------------------------------------------
+
+
+@given(inputs=strategies(CLARK_LAG))
+def test_clark_lag_properties(inputs):
+    function = as_standard(clark_lag_time)
+    assert_property_contract(CLARK_LAG, function, inputs, ERRORS)
+    assert_properties(CLARK_LAG, function, inputs, ERRORS)
+
+
+def test_uh_clark_records_the_versions_of_its_formulas():
+    envelope = run_command(
+        "uh clark", {"area_km2": 45.0, "tc_min": 120.0, "r_min": 60.0}
+    ).to_dict()
+
+    assert envelope["formula_versions"] == {
+        "clark": CLARK.formula_version,
+        "clark_lag": CLARK_LAG.formula_version,
+    }
+    assert envelope["result"]["lag_time_min"] == 120.0
 
 
 # --- the hydrograph generator: the volume of every model ------------------------------

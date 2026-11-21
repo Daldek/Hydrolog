@@ -1,13 +1,15 @@
 """The indices of a river network against their specs (Nogat CMP §6).
 
-Range, type and property tests are generated from the specs (CMP-6.5); Strahler's
-rule has the reference cases of ``morphometry-cases.json`` (CMP-6.1) and the
+Range, type and property tests are generated from the specs (CMP-6.5); Strahler's and
+Shreve's rules have the reference cases of ``morphometry-cases.json`` (CMP-6.1) and the
 quotients their exact rational oracles (CMP-6.2). A network is no input the generator
 can express, so the counts of streams that feed the indices are tested here by hand:
 against hand counts of two networks (the research's cases ``network-*``) and against
-another algorithm, the connected runs of links of one order, on random networks.
+another algorithm, the connected runs of links of one order, on random networks; the
+magnitudes against the sources counted upstream of every link.
 """
 
+from collections.abc import Callable
 from fractions import Fraction
 from pathlib import Path
 
@@ -17,14 +19,17 @@ from hypothesis import strategies as st
 
 from hydrolog._formula_versions import recording
 from hydrolog._formulas import ERRORS
+from hydrolog.catalog import run_command
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.network import OrderingMethod, StreamNetwork, StreamSegment
 from hydrolog.network.stream_order import (
+    SHREVE_MAGNITUDE,
     SPECS,
     STRAHLER_ORDER,
     bifurcation_ratio,
     drainage_density,
     length_ratio,
+    shreve_magnitude,
     strahler_order,
     stream_frequency,
 )
@@ -47,8 +52,9 @@ from hydrolog.nogat_formulas import (
 pytestmark = pytest.mark.formula
 
 CASES = Path(__file__).parents[1] / "fixtures" / "formulas" / "morphometry-cases.json"
-FUNCTIONS = {
+FUNCTIONS: dict[str, Callable[..., object]] = {
     "strahler_order": strahler_order,
+    "shreve_magnitude": shreve_magnitude,
     "bifurcation_ratio": bifurcation_ratio,
     "length_ratio": length_ratio,
     "drainage_density": drainage_density,
@@ -72,10 +78,15 @@ def test_ranges_and_types(spec: FormulaSpec, function, case: Case):
 
 
 @pytest.mark.parametrize(
-    "case", load_cases(CASES, "strahler_order"), ids=lambda case: case.case_id
+    ("spec", "case"),
+    [
+        pytest.param(spec, case, id=case.case_id)
+        for spec in (STRAHLER_ORDER, SHREVE_MAGNITUDE)
+        for case in load_cases(CASES, spec.name)
+    ],
 )
-def test_reference_cases(case: ReferenceCase):
-    assert_case(STRAHLER_ORDER, strahler_order, case, ERRORS)
+def test_reference_cases(spec: FormulaSpec, case: ReferenceCase):
+    assert_case(spec, FUNCTIONS[spec.name], case, ERRORS)
 
 
 @pytest.mark.parametrize(("spec", "function"), FAMILY, ids=[s.name for s in SPECS])
@@ -226,6 +237,28 @@ def test_streams_are_the_runs_of_links_of_one_order(links):
     assert network.n_streams == sum(stats.segment_counts.values())
 
 
+def _sources_upstream(links: dict[int, list[int]], key: int) -> int:
+    """Count the source links upstream of ``key`` (itself if it is one) by a search."""
+    found, stack = 0, [key]
+    while stack:
+        link = stack.pop()
+        if links[link]:
+            stack.extend(links[link])
+        else:
+            found += 1
+    return found
+
+
+@given(links=networks())
+def test_magnitudes_count_the_sources_upstream(links):
+    network = _network({key: (ups, 1.0) for key, ups in links.items()})
+    network.classify(OrderingMethod.SHREVE)
+
+    assert {key: seg.order for key, seg in network.segments.items()} == {
+        key: _sources_upstream(links, key) for key in links
+    }
+
+
 def test_a_bifurcation_ratio_below_two_is_refused():
     """Fewer than two streams per stream of the next order: links counted as
     streams, the defect of Hydrolog up to 0.8.1 (TRIAGE T16)."""
@@ -250,5 +283,21 @@ def test_the_statistics_record_the_formulas_they_use():
     assert used == {
         name: spec.formula_version
         for spec in SPECS
-        if (name := spec.name) != "stream_frequency"
+        if (name := spec.name) not in ("stream_frequency", "shreve_magnitude")
     }
+
+
+def test_network_stats_by_shreve_records_the_magnitude():
+    envelope = run_command(
+        "network stats",
+        {
+            "segments_file": "tests/fixtures/network_segments.csv",
+            "method": "shreve",
+            "area_km2": 12.0,
+        },
+    ).to_dict()
+
+    assert envelope["result"]["statistics"]["max_order"] == 5
+    assert envelope["formula_versions"]["shreve_magnitude"] == (
+        SHREVE_MAGNITUDE.formula_version
+    )

@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-11-18
+- Amended by [ADR-0070](0070-the-notice-outside-applicability.md) (2026-11-21): point 3, the notice's code is `outside_applicability`
 - Builds on: Nogat's computation standard (standard 1.1, `standards/COMPUTATIONS.md`, CMP §1–§9, ECO-078) and its
   plan `docs/plans/2026-11-18-computation-standard.md` (step 5: Hydrolog, the SCS-CN and time of concentration
   families first)

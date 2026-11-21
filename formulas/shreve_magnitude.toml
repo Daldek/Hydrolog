@@ -1,0 +1,120 @@
+schema = "nogat-formula-card/1"
+name = "shreve_magnitude"
+title = "Shreve's magnitude of a link below a junction"
+function = "hydrolog.network.stream_order.shreve_magnitude"
+family = "classification"
+formula_version = 1
+status = "referenced"
+equation = "M = 1 for a source; else M = sum of the upstream magnitudes"
+latex = "M = \\begin{cases} 1 & \\text{no upstream link} \\\\ \\sum_i M_i & \\text{otherwise} \\end{cases}"
+validation = "none: a classification of the links of a network"
+conventions = ["magnitudes of links, the segments between junctions, as the segments of StreamNetwork are", "network stats --method shreve counts the links of each magnitude and gives no Horton ratios, which are defined for Strahler's orders"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/morphometry-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+upstream_magnitudes = 1
+
+[[properties.limits]]
+name = "source"
+text = "a link without upstream links is of magnitude 1"
+
+[[properties.limits]]
+name = "pass_through"
+text = "a single upstream link keeps its magnitude"
+
+[[properties.limits]]
+name = "three_links"
+text = "three links meeting add their magnitudes, as two do"
+
+[[sources]]
+citation = "Esri. How Stream Order works. ArcGIS Pro 3.8 documentation, Spatial Analyst"
+access = "open"
+locator = "'Shreve method': exterior links are of order 1 and the orders of interior links are additive, 1 and 1 give 2, 1 and 2 give 3, 2 and 3 give 5; the magnitude of a link is the number of upstream links (after Shreve 1966)"
+url = "https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/how-stream-order-works.htm"
+
+[[sources]]
+citation = "Shreve, R.L. (1966). Statistical law of stream numbers. Journal of Geology 74(1): 17-37"
+access = "open"
+locator = "the magnitude of a link, the number of sources upstream of it: a source link is of magnitude 1 and the magnitudes add at every junction (not opened; the definition as Esri's documentation gives it)"
+url = "https://doi.org/10.1086/627137"
+
+[[variables]]
+name = "upstream_magnitudes"
+symbol = "M_i"
+unit = "-"
+kind = "real_array"
+description = "Shreve magnitudes of the links that flow into the link; empty for a source."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 0
+
+[variables.physical]
+low = 1.0
+low_inclusive = true
+test_high = 10000000.0
+test_reason = "ten million streams: a D8 network on 10^8 cells, a 10 m DEM of 10,000 km2, has fewer sources than cells"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 4.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2"
+access = "open"
+locator = "magnitudes 1 to 4 meet"
+
+[[constraints]]
+name = "whole_magnitudes"
+class = "physical"
+text = "magnitudes are whole numbers, counts of sources"
+
+[constraints.source]
+citation = "Shreve, R.L. (1966). Statistical law of stream numbers. Journal of Geology 74(1): 17-37"
+access = "open"
+locator = "the magnitude of a link, the number of sources upstream of it: a source link is of magnitude 1 and the magnitudes add at every junction (not opened; the definition as Esri's documentation gives it)"
+url = "https://doi.org/10.1086/627137"
+
+[[constraints]]
+name = "sum_exact"
+class = "precondition"
+text = "the sum of the magnitudes is below 2^53, where float64 holds every whole number"
+
+[constraints.source]
+citation = "IEEE 754 double precision (float64)"
+access = "open"
+locator = "53-bit significand: whole numbers exact up to 2^53"
+
+[[outputs]]
+name = "magnitude"
+unit = "-"
+kind = "integer"
+symbol = "M"
+description = "Shreve magnitude of the link below the junction, the number of sources upstream of it."
+
+[outputs.physical]
+low = 1.0
+low_inclusive = true
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case upstream_magnitudes-nan_element: a gap is refused"
+
+[[oracles]]
+kind = "algorithm"
+description = "the magnitude of every link of a random network as the number of sources reached by a search upstream of it"
+test = "tests/unit/test_formulas_network.py (test_magnitudes_count_the_sources_upstream)"
+conventions = []

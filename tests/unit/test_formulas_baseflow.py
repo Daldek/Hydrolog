@@ -10,7 +10,7 @@ CMP-6.4). The generic strategies draw series of one to fifty values, which the f
 refuses (it needs more than its thirty reflected values), baseflows above their flows
 and series without a recession: the hand-written strategies :func:`gapless_series`,
 :func:`flows_and_baseflows` and :func:`recessions` draw inputs the formulas compute,
-for the properties. The filter's notice ``outside_typical_range`` is read as the
+for the properties. The filter's notice ``outside_applicability`` is read as the
 standard's ``outside_applicability`` by :func:`as_standard` (ADR-0050, point 3).
 """
 
@@ -32,7 +32,7 @@ from scipy.signal import lfilter
 
 from hydrolog._formula_versions import recording
 from hydrolog._formulas import DELEGATED, ERRORS
-from hydrolog._warnings import OutsideTypicalRange
+from hydrolog._warnings import OutsideApplicability
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.nogat_formulas import (
     Case,
@@ -143,11 +143,11 @@ def _exact_recession(values: list[float], min_days: int) -> tuple[Fraction, int]
 
 
 def _quiet(function: Callable[..., object]) -> Callable[..., object]:
-    """Return the function without its notice ``outside_typical_range``."""
+    """Return the function without its notice ``outside_applicability``."""
 
     def call(*args: object, **kwargs: object) -> object:
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore", OutsideTypicalRange)
+            warnings.simplefilter("ignore", OutsideApplicability)
             return function(*args, **kwargs)
 
     return call
@@ -462,7 +462,7 @@ def test_ladsons_bfi_falls_with_alpha_as_in_table_5():
 def test_alpha_next_to_one_keeps_the_baseflow_within_the_flow():
     """Trap stability_bound: alpha just below 1, where the quickflow hardly decays."""
     alpha = math.nextafter(1.0, 0.0)
-    with pytest.warns(OutsideTypicalRange):
+    with pytest.warns(OutsideApplicability):
         baseflow = lyne_hollick_filter(BASS_RIVER, alpha=alpha)
 
     assert np.all((baseflow >= 0.0) & (baseflow <= np.array(BASS_RIVER)))

@@ -219,7 +219,7 @@ def scs_effective(
     -------
     OperationOutput
         :class:`ScsEffectiveResult`, an info notice when ``ia_coefficient`` is
-        not the standard 0.2, and an ``outside_typical_range`` notice for a ``cn``
+        not the standard 0.2, and an ``outside_applicability`` notice for a ``cn``
         outside the applicability of the formulas (``docs/FORMULAS.md``): method
         ``scs_cn_amc`` for AMC I or III outside 55-95, method ``scs_cn_runoff`` for
         the CN of the computation below 40 (TR-55).

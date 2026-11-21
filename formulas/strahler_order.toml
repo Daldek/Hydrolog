@@ -8,7 +8,7 @@ status = "referenced"
 equation = "u = 1 for a source; else u = max(upstream) + 1 if two or more upstream streams have the highest order, max(upstream) otherwise"
 latex = "u = \\begin{cases} 1 & \\text{no upstream stream} \\\\ \\max u_i + 1 & \\text{two or more } u_i = \\max u_i \\\\ \\max u_i & \\text{otherwise} \\end{cases}"
 validation = "none: a classification of the streams of a network"
-conventions = ["a junction of three or more streams raises the order when at least two of them have the highest order", "Shreve's magnitude, the sum of the upstream magnitudes, is another ordering"]
+conventions = ["a junction of three or more streams raises the order when at least two of them have the highest order", "Shreve's magnitude, the sum of the upstream magnitudes, is another ordering (spec shreve_magnitude)"]
 assumptions = []
 notices = []
 reference_cases = ["tests/fixtures/formulas/morphometry-cases.json"]

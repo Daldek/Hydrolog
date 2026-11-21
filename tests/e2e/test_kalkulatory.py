@@ -120,10 +120,10 @@ def test_the_tc_comparison_lists_six_methods_with_their_range_words(tab: Tab) ->
     ]
 
     # Hydrolog's notices in Polish, once each; the loop of the calls
-    notices = page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
+    notices = page.locator(f'{RIGHT} .notes li[data-code="outside_applicability"]')
     expect(notices).to_have_count(7)
     expect(notices.first).to_contain_text(
-        "kirpich: area_km2 = 37,22 poza typowym zakresem od 0,005 do 0,45."
+        "kirpich: area_km2 = 37,22 poza zakresem stosowania od 0,005 do 0,45."
     )
     loop = page.locator(f"{RIGHT} .kc-loop pre")
     expect(loop).to_have_text(

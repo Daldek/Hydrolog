@@ -295,7 +295,7 @@ def capture_warnings(
     appended to the yielded list as a :class:`Notice`, identical ones once:
 
     * a ``HydrologWarning`` gives the level, code, message and details of its class
-      (code ``outside_typical_range`` with ``method``, ``parameter``, ``value``...);
+      (code ``outside_applicability`` with ``method``, ``parameter``, ``value``...);
     * any other warning (of NumPy, SciPy...) gives level ``"warning"``, its message
       and the code of the requested category that it belongs to, never a class name
       of another library: ``user_warning`` for the ``UserWarning`` family,

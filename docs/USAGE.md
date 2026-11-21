@@ -49,7 +49,7 @@ hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023 --json
 ```
 
 ```json output
-{"schema": "hydrolog-result/1", "tool": "hydrolog", "command": "tc kirpich", "check": false, "status": "ok", "result": {"schema": "hydrolog-tc-kirpich/1", "method": "kirpich", "tc_min": 85.85676702638006, "tc_h": 1.4309461171063342}, "notices": [{"level": "warning", "code": "outside_typical_range", "message": "kirpich: length_km=8.2 is outside typical range [0.10668, 1.2192]. Results may be unreliable.", "details": {"method": "kirpich", "parameter": "length_km", "field": "length_km", "value": 8.2, "minimum": 0.10668, "maximum": 1.2192}}, {"level": "warning", "code": "outside_typical_range", "message": "kirpich: slope_m_per_m=0.023 is outside typical range [0.025, 0.1]. Results may be unreliable.", "details": {"method": "kirpich", "parameter": "slope_m_per_m", "field": "slope_m_per_m", "value": 0.023, "minimum": 0.025, "maximum": 0.1}}], "inputs": {"length_km": 8.2, "slope_m_per_m": 0.023}}
+{"schema": "hydrolog-result/1", "tool": "hydrolog", "command": "tc kirpich", "check": false, "status": "ok", "result": {"schema": "hydrolog-tc-kirpich/1", "method": "kirpich", "tc_min": 85.85676702638006, "tc_h": 1.4309461171063342}, "notices": [{"level": "warning", "code": "outside_applicability", "message": "kirpich: length_km=8.2 is outside its applicability range [0.10668, 1.2192]. Results may be unreliable.", "details": {"method": "kirpich", "parameter": "length_km", "field": "length_km", "value": 8.2, "minimum": 0.10668, "maximum": 1.2192}}, {"level": "warning", "code": "outside_applicability", "message": "kirpich: slope_m_per_m=0.023 is outside its applicability range [0.025, 0.1]. Results may be unreliable.", "details": {"method": "kirpich", "parameter": "slope_m_per_m", "field": "slope_m_per_m", "value": 0.023, "minimum": 0.025, "maximum": 0.1}}], "inputs": {"length_km": 8.2, "slope_m_per_m": 0.023}}
 ```
 
 The envelope keys are `schema`, `tool`, `version`, `command`, `check`, `status`, `result`,
@@ -302,7 +302,7 @@ KZGW 2017) reads the main stream from the divide, that is the longest flow path:
 `Lc_km`, `manning_n`, `urban_pct` and `forest_pct` (0 when missing). One run gives what `uh nash`
 with those inputs followed by `hydrograph generate` with its n and K gives; the result says
 `nash_estimation` and `uh_parameters` holds the estimate, which is not checked against the ranges of
-given n and K (a watershed above Lutz's 236 km2 gives `outside_typical_range`). A missing field is
+given n and K (a watershed above Lutz's 236 km2 gives `outside_applicability`). A missing field is
 `missing_field` with `details.method` `lutz`, also when the watershed has only the end-point slope;
 `nash_n` or `nash_k_min` beside it is `conflict`; another model or a run without a watershed
 (`--area-km2` with `--cn`) is `not_applicable`. `report generate` takes the same option and shows

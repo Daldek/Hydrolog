@@ -422,7 +422,7 @@ print(f"tc = {tc:.1f} min")
 
 **Acceptance criteria:**
 - [ ] Section „Kalkulatory”: 16 calculators, catalog forms prefilled from the watershed of „Hydrogram zlewni”
-- [ ] The tc comparison lists six methods with the words of their applicability notices (`outside_typical_range`)
+- [ ] The tc comparison lists six methods with the words of their applicability notices (`outside_applicability`)
 - [ ] A calculator's CLI line and result match the CLI's
 
 #### US-G05: Every command as a generated form

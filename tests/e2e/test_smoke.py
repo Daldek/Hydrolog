@@ -176,7 +176,7 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
     # The example's longest flow path is longer and flatter than Kirpich's data:
     # Hydrolog's warnings on its length and slope; the guide quotes the slope's
     outside = left.locator('[data-field="flow_path_slope_m_per_m"] .warn')
-    expect(outside).to_contain_text("outside_typical_range")
+    expect(outside).to_contain_text("outside_applicability")
     shown["hydrogram-outside"] = flat(
         outside.evaluate("node => node.firstChild.textContent")
     )

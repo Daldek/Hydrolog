@@ -1,0 +1,317 @@
+schema = "nogat-formula-card/1"
+name = "idw_precipitation"
+title = "Precipitation at a point by inverse distance weighting of the gauges"
+function = "hydrolog.precipitation.interpolation.idw_precipitation"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "P = sum(w_i P_i), w_i = d_i**-p / sum(d_j**-p), d_i the distance of gauge i from the point; at the point of a gauge (d_i < 1e-10 m) P is the mean of the gauges there"
+latex = "P = \\sum_i w_i P_i,\\quad w_i = \\frac{d_i^{-p}}{\\sum_j d_j^{-p}},\\quad d_i = \\sqrt{(x_i - x)^2 + (y_i - y)^2}"
+validation = "none: the sources give the method without an error statistic; HEC-HMS uses it for real-time forecasting"
+conventions = ["coordinates in metres of one projected system (EPSG:2180 in Poland); the weights depend only on ratios of distances, so any one unit gives the same estimate but for the threshold of a gauge at the point, 1e-10 of the unit", "every gauge given is used: HEC-HMS's nearest gauge per quadrant and a largest distance are choices of the caller; gauges at the point share it equally", "the weights from ln d relative to the nearest gauge, so d**-p neither overflows nor underflows to a zero sum"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/areal-precipitation-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+
+[properties.monotonic]
+precipitation_mm = 1
+
+[[properties.scalings]]
+name = "depth"
+
+[properties.scalings.inputs]
+precipitation_mm = 1.0
+
+[properties.scalings.outputs]
+point_precipitation_mm = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling the depths doubles every product exactly in binary; the sums round once, but for subnormal values"
+abs = 1e-300
+rel = 1e-15
+
+[[properties.scalings]]
+name = "coordinates"
+
+[properties.scalings.inputs]
+station_x_m = 1.0
+station_y_m = 1.0
+target_x_m = 1.0
+target_y_m = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "doubling every coordinate doubles the distances exactly; the logarithms of the doubled distances round differently"
+abs = 1e-12
+rel = 1e-12
+
+[[properties.limits]]
+name = "exact_decimal"
+text = "the estimate equals the weights d^-p computed at 50 digits"
+
+[[properties.limits]]
+name = "at_a_gauge"
+text = "at a gauge the estimate is the gauge's depth (Shepard 1968)"
+
+[[properties.conservation]]
+name = "weights_add_up"
+text = "the weights sum to one"
+
+[properties.conservation.tolerance]
+reason = "each weight is a quotient rounded once; a few units in the last place of one per weight, for up to a few hundred gauges"
+abs = 1e-12
+
+[[properties.symmetries]]
+name = "order"
+text = "the order of the gauges does not matter"
+
+[properties.symmetries.tolerance]
+reason = "the same terms summed in another order: correctly rounded sums of products that each round once"
+abs = 1e-12
+rel = 1e-12
+
+[[sources]]
+citation = "Indian Institute of Technology Roorkee, NPTEL course Hydrology (105107129), module 3, lecture 4, 3.6 Estimation of missing data"
+access = "open"
+locator = "eq. 3.12 (the distance power method, weights 1/D^2) and Example 3.7"
+url = "https://archive.nptel.ac.in/content/storage2/courses/105107129/module3/lecture4/lecture4.pdf"
+
+[[sources]]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual: Inverse distance gage weighting"
+access = "open"
+locator = "the weight of a gage, 1/d^2 over the sum of 1/d^2 of the gages"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/meteorology/precipitation/inverse-distance-gage-weighting"
+
+[[sources]]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "p. 79: the reciprocal-distance-squared method (Wei and McGuinness 1973); HEC-HMS's inverse distance gage weighting and Hydrolog's default use p = 2"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[sources]]
+citation = "Shepard, D. (1968). A two-dimensional interpolation function for irregularly-spaced data. Proceedings of the 1968 23rd ACM National Conference, 517-524"
+access = "author-provided"
+
+[[variables]]
+name = "station_x_m"
+symbol = "x_i"
+unit = "m"
+kind = "real_array"
+description = "Easting of each gauge."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -10000000.0
+test_high = 10000000.0
+test_reason = "the coordinates of a projected system lie within half the circumference of the Earth, 2e7 m, of its origin; 1e7 m tests it"
+
+[variables.typical]
+low = 545900.0
+low_inclusive = true
+high = 562900.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's catalog example of precip areal: three gauges near Kraków in EPSG:2180"
+access = "open"
+locator = "src/hydrolog/catalog/groups/precip.py, the examples of precip areal: x 545,900 to 562,900 m, y 229,400 to 249,700 m"
+
+[[variables]]
+name = "station_y_m"
+symbol = "y_i"
+unit = "m"
+kind = "real_array"
+description = "Northing of each gauge."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -10000000.0
+test_high = 10000000.0
+test_reason = "the coordinates of a projected system lie within half the circumference of the Earth, 2e7 m, of its origin; 1e7 m tests it"
+
+[variables.typical]
+low = 229400.0
+low_inclusive = true
+high = 249700.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's catalog example of precip areal: three gauges near Kraków in EPSG:2180"
+access = "open"
+locator = "src/hydrolog/catalog/groups/precip.py, the examples of precip areal: x 545,900 to 562,900 m, y 229,400 to 249,700 m"
+
+[[variables]]
+name = "precipitation_mm"
+symbol = "P_i"
+unit = "mm"
+kind = "real_array"
+description = "Depth at each gauge."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 6.96
+low_inclusive = true
+high = 341.27
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's areal PMAXTP depth (Thiessen cells of the PMAXTP grid points of a catchment) over the depths of Hydrolog's PMAXTP fixtures for Kamiennik and Warsaw (POT, recorded in November 2026)"
+access = "open"
+locator = "tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm"
+
+[[variables]]
+name = "target_x_m"
+symbol = "x"
+unit = "m"
+kind = "real"
+description = "Easting of the point."
+applicability = "unstated"
+
+[variables.physical]
+test_low = -10000000.0
+test_high = 10000000.0
+test_reason = "the coordinates of a projected system lie within half the circumference of the Earth, 2e7 m, of its origin; 1e7 m tests it"
+
+[variables.typical]
+low = 545900.0
+low_inclusive = true
+high = 562900.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's catalog example of precip areal: three gauges near Kraków in EPSG:2180"
+access = "open"
+locator = "src/hydrolog/catalog/groups/precip.py, the examples of precip areal: x 545,900 to 562,900 m, y 229,400 to 249,700 m"
+
+[[variables]]
+name = "target_y_m"
+symbol = "y"
+unit = "m"
+kind = "real"
+description = "Northing of the point."
+applicability = "unstated"
+
+[variables.physical]
+test_low = -10000000.0
+test_high = 10000000.0
+test_reason = "the coordinates of a projected system lie within half the circumference of the Earth, 2e7 m, of its origin; 1e7 m tests it"
+
+[variables.typical]
+low = 229400.0
+low_inclusive = true
+high = 249700.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's catalog example of precip areal: three gauges near Kraków in EPSG:2180"
+access = "open"
+locator = "src/hydrolog/catalog/groups/precip.py, the examples of precip areal: x 545,900 to 562,900 m, y 229,400 to 249,700 m"
+
+[[variables]]
+name = "power"
+symbol = "p"
+unit = "-"
+kind = "real"
+description = "Exponent of the distance."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 100.0
+test_reason = "p = 100 already gives the nearest gauge; fifty times the usual p = 2"
+
+[variables.typical]
+low = 2.0
+low_inclusive = true
+high = 2.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "p. 79: the reciprocal-distance-squared method (Wei and McGuinness 1973); HEC-HMS's inverse distance gage weighting and Hydrolog's default use p = 2"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[constraints]]
+name = "station_count"
+class = "precondition"
+text = "two coordinates and a depth for each gauge"
+
+[constraints.source]
+citation = "Indian Institute of Technology Roorkee, NPTEL course Hydrology (105107129), module 3, lecture 4, 3.6 Estimation of missing data"
+access = "open"
+locator = "eq. 3.12 (the distance power method, weights 1/D^2) and Example 3.7"
+url = "https://archive.nptel.ac.in/content/storage2/courses/105107129/module3/lecture4/lecture4.pdf"
+
+[[outputs]]
+name = "point_precipitation_mm"
+unit = "mm"
+kind = "real"
+symbol = "P"
+description = "Precipitation at the point."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "weights"
+unit = "-"
+kind = "real_array"
+symbol = "w_i"
+description = "Weight of each gauge, summing to one."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "limit at_a_gauge: a distance of 0 gives the gauge's depth, not 1/0"
+
+[[traps]]
+name = "exp_overflow"
+description = "exp of a scaled input at its test bound."
+test = "range case power-physical_high_test_bound: p = 100 over distances of kilometres stays finite"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases of every array, nan_element: a gap is refused"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "the sums by math.fsum"
+
+[[oracles]]
+kind = "exact"
+description = "the weights d^-p from square roots and logarithms at 50 digits (decimal)"
+test = "tests/unit/test_formulas_areal_precipitation.py (limit exact_decimal)"
+conventions = []

@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-11-19
+- Amended by [ADR-0070](0070-the-notice-outside-applicability.md) (2026-11-21): point 4, the notice's code is `outside_applicability`
 - Builds on: [ADR-0050](0050-formulas-declared-by-specs.md) (formulas declared by specs) and Nogat's computation
   standard (CMP-3.3, the notice of a violated applicability constraint; CMP-5.1, the notice of a formula without
   evidence)

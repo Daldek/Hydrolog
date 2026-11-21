@@ -334,7 +334,7 @@ class HydrographGenerator:
 
         Warns
         -----
-        OutsideTypicalRange
+        OutsideApplicability
             For a time step longer than its share of the time to peak of the unit
             hydrograph (method the unit hydrograph model, parameter
             ``timestep_min``; the range is relative to ``uh_time_to_peak_min``:

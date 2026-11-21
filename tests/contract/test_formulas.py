@@ -81,7 +81,7 @@ def test_spec_names_are_unique():
 
 
 def test_every_applicability_constraint_names_the_range_its_notice_gives():
-    """A violated applicability constraint is issued as ``outside_typical_range`` of
+    """A violated applicability constraint is issued as ``outside_applicability`` of
     the quantity it bounds, declared by ``hydrolog._formulas.constraint_range``."""
     declared = constraint_ranges()
     undeclared = [

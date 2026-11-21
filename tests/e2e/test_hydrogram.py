@@ -481,7 +481,7 @@ def test_the_worked_example_shows_the_result_of_the_mockup(tab: Tab) -> None:
     balance = page.locator(f'{RIGHT} [data-table="balance"] td:nth-child(2)')
     expect(balance).to_have_text(["105,00", "27,35", "49,53", "28,12", "136,77"])
     assert [notice["code"] for notice in envelope["notices"]] == [
-        "outside_typical_range"
+        "outside_applicability"
     ] * 3
     expect(page.locator(f"{RIGHT} .notes li[data-code]")).to_have_count(3)
 
@@ -521,11 +521,11 @@ def test_the_tc_method_amc_and_model_reproduce_the_mockups_runs(tab: Tab) -> Non
     check("scs", "nrcs", "II")
     method.select_option("giandotti")
     check("scs", "giandotti", "II")
-    notices = page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
+    notices = page.locator(f'{RIGHT} .notes li[data-code="outside_applicability"]')
     expect(notices).to_have_text(re.compile(r"giandotti: area_km2 = 37,22 poza"))
     expect(warning(page, "area_km2")).to_have_text(
-        "Poza typowym zakresem od 170 do 70\u00a0000 (giandotti)"
-        " · outside_typical_range"
+        "Poza zakresem stosowania od 170 do 70\u00a0000 (giandotti)"
+        " · outside_applicability"
     )
     method.select_option("kerby_kirpich")
     sent = check("scs", "kerby_kirpich", "II")
@@ -847,7 +847,7 @@ def test_a_value_outside_its_typical_range_is_a_warning_and_runs(tab: Tab) -> No
     assert {
         item["details"]["field"]: item["details"]["value"]
         for item in envelope["notices"]
-        if item["code"] == "outside_typical_range"
+        if item["code"] == "outside_applicability"
     } == {
         "area_km2": 37.22,
         "flow_path_length_km": 15.88,
@@ -855,20 +855,20 @@ def test_a_value_outside_its_typical_range_is_a_warning_and_runs(tab: Tab) -> No
     }
     expect(row).to_have_attribute("data-level", "warning")
     expect(warning(page, "flow_path_slope_m_per_m")).to_have_text(
-        "Poza typowym zakresem od 0,025 do 0,1 (kirpich) · outside_typical_range"
+        "Poza zakresem stosowania od 0,025 do 0,1 (kirpich) · outside_applicability"
     )
     expect(slope).to_have_attribute("aria-invalid", "false")
     # The run went on: the result is current, the notice is in Wyniki too
     shows_peak(
         page, {**KAMIENNIK, "watershed": {**SENT, "flow_path_slope_m_per_m": 0.2}}
     )
-    notices = page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
+    notices = page.locator(f'{RIGHT} .notes li[data-code="outside_applicability"]')
     expect(notices.filter(has_text="slope_m_per_m")).to_have_text(
-        re.compile(r"kirpich: slope_m_per_m = 0,2 poza typowym zakresem")
+        re.compile(r"kirpich: slope_m_per_m = 0,2 poza zakresem stosowania")
     )
     outside = page.locator(f'{LEFT} [data-summary="warnings"]')
     expect(outside).to_have_text(
-        "Poza typowym zakresem: Powierzchnia (krok 1), "
+        "Poza zakresem: Powierzchnia (krok 1), "
         "Długość najdłuższej drogi spływu (krok 1), "
         "Spadek najdłuższej drogi spływu (krok 1)"
     )
@@ -885,7 +885,7 @@ def test_a_value_outside_its_typical_range_is_a_warning_and_runs(tab: Tab) -> No
     expect(row.locator(".warn")).to_have_count(0)
     expect(notices.filter(has_text="slope_m_per_m")).to_have_count(0)
     expect(outside).to_have_text(
-        "Poza typowym zakresem: Powierzchnia (krok 1), "
+        "Poza zakresem: Powierzchnia (krok 1), "
         "Długość najdłuższej drogi spływu (krok 1)"
     )
 
@@ -893,7 +893,7 @@ def test_a_value_outside_its_typical_range_is_a_warning_and_runs(tab: Tab) -> No
     choose(page, "hg-uh-label", "Snyder")
     field(page, "snyder_ct").fill("2")
     expect(warning(page, "snyder_ct")).to_have_text(
-        "Poza typowym zakresem od 1,35 do 1,65 (snyder) · outside_typical_range"
+        "Poza zakresem stosowania od 1,35 do 1,65 (snyder) · outside_applicability"
     )
     expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
 
@@ -1753,7 +1753,7 @@ def test_the_fields_the_explanation_and_wyniki_agree_on_the_example(tab: Tab) ->
     notices = [
         notice
         for notice in answered.value.json()["notices"]
-        if notice["code"] == "outside_typical_range"
+        if notice["code"] == "outside_applicability"
     ]
     assert {notice["details"]["field"] for notice in notices} == outside
 
@@ -1769,7 +1769,7 @@ def test_the_fields_the_explanation_and_wyniki_agree_on_the_example(tab: Tab) ->
     )
     # Wyniki: the same notices; the GUI confirms nothing of Kirpich
     expect(
-        page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
+        page.locator(f'{RIGHT} .notes li[data-code="outside_applicability"]')
     ).to_have_count(len(notices))
     expect(
         page.locator(f'{RIGHT} [data-notes="gui"] li').filter(has_text="Kirpich")
@@ -1881,7 +1881,7 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
           const variant = (patch) => ({...base, ...patch});
           const check = (patch, last) => s.checkInputs(variant(patch), models, last);
           const slope = {
-            level: 'warning', code: 'outside_typical_range', message: '',
+            level: 'warning', code: 'outside_applicability', message: '',
             details: {method: 'kirpich', parameter: 'slope_m_per_m',
               field: 'flow_path_slope_m_per_m', value: 0.2,
               minimum: 0.025, maximum: 0.1},
@@ -2002,8 +2002,8 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
         "errors": {},
         "warnings": {
             "flow_path_slope_m_per_m": (
-                "Poza typowym zakresem od 0,025 do 0,1 (kirpich)"
-                " · outside_typical_range"
+                "Poza zakresem stosowania od 0,025 do 0,1 (kirpich)"
+                " · outside_applicability"
             )
         },
     }

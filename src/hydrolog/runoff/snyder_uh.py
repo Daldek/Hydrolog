@@ -783,7 +783,7 @@ SNYDER: Final = FormulaSpec(
         (
             "most watersheds of the ecosystem (the hand-offs' areas up to 250 km2) are "
             "smaller than Snyder's, 30 to 30,000 km2: they get the notice "
-            "outside_typical_range of snyder.area_km2"
+            "outside_applicability of snyder.area_km2"
         ),
     ),
     traps={
@@ -854,7 +854,7 @@ def snyder_parameters(
 
     Warns
     -----
-    OutsideTypicalRange
+    OutsideApplicability
         For the area, ``ct`` or ``cp`` outside the range of the method.
     """
     x = checked_inputs(
@@ -941,7 +941,7 @@ def _count(x: Values) -> int | None:
     extent = (total + step) / x.real("time_to_peak_min")
     if count > MAX_ORDINATES or not math.isfinite(extent):
         return None
-    if not (seconds >= _SMALLEST and math.isfinite(volume / seconds)):
+    if not (seconds >= _SMALLEST and _SMALLEST <= volume / seconds < math.inf):
         return None
     return count
 
@@ -1204,7 +1204,8 @@ SNYDER_SHAPE: Final = FormulaSpec(
             cls="precondition",
             check=_grid_representable,
             text="the grid has at most a million ordinates, and float64 holds (T + "
-            "dt) / tpR and the ordinate of 1 mm on one step, A x 1 mm / dt",
+            "dt) / tpR and, as a normal number, the ordinate of 1 mm on one step, A x "
+            "1 mm / dt",
             source=ORDINATES_SOURCE,
             satisfied={"timestep_min": 60.0},
             violated={"timestep_min": 1.0e-3},
@@ -1403,7 +1404,7 @@ class SnyderUH:
     that the specs check every input then (the constructor checks nothing): a
     refusal is an :class:`~hydrolog.exceptions.InvalidParameterError` with the
     standard's ``details.reason``, and a value outside the method's range warns
-    with :class:`~hydrolog._warnings.OutsideTypicalRange` at each call.
+    with :class:`~hydrolog._warnings.OutsideApplicability` at each call.
 
     Parameters
     ----------

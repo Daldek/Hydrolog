@@ -25,7 +25,7 @@ from hypothesis import given
 
 from hydrolog._formula_versions import recording
 from hydrolog._formulas import ERRORS
-from hydrolog._warnings import OutsideTypicalRange, UnreferencedFormula
+from hydrolog._warnings import OutsideApplicability, UnreferencedFormula
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.hydrometrics import rating_curve
 from hydrolog.hydrometrics.rating_curve import (
@@ -224,7 +224,7 @@ def test_the_fit_equals_r_nls_port(dataset):
     agree within the flatness of the optimum."""
     levels, discharges, start = NLS_SETS[dataset]
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", OutsideTypicalRange)
+        warnings.simplefilter("ignore", OutsideApplicability)
         fit = fit_rating_curve(levels, discharges, start)
     r = _nls(dataset)
     ours = _squares(levels, discharges, fit.a, fit.b, fit.h0)
@@ -258,7 +258,7 @@ def test_the_log_space_fit_of_wmo_is_another_curve():
     the fit on Q, which the spec states as its convention."""
     levels, discharges, start = NLS_SETS["doc_negative_stages"]
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", OutsideTypicalRange)
+        warnings.simplefilter("ignore", OutsideApplicability)
         fit = fit_rating_curve(levels, discharges, start)
     logarithmic = {
         row["statistic"]: float(row["value"])
@@ -286,7 +286,7 @@ def test_the_delegated_least_squares_recover_a_noise_free_curve():
 
 def test_three_pairs_are_the_smallest_sample():
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", OutsideTypicalRange)
+        warnings.simplefilter("ignore", OutsideApplicability)
         fit = fit_rating_curve([60.0, 120.0, 200.0], [1.0, 8.0, 25.0], 40.0)
         with pytest.raises(InvalidParameterError) as caught:
             fit_rating_curve([60.0, 120.0], [1.0, 8.0], 40.0)
@@ -359,7 +359,7 @@ def test_a_curve_at_its_bound_is_finite():
     levels = np.array([60.0, 70.0, 85.0, 100.0, 120.0, 150.0, 190.0, 240.0])
     discharges = 0.05 * (levels - 60.0) ** 1.5
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", OutsideTypicalRange)
+        warnings.simplefilter("ignore", OutsideApplicability)
         fit = fit_rating_curve(levels, discharges, 50.0)
 
     assert all(math.isfinite(v) for v in (fit.a, fit.b, fit.h0, fit.r_squared))
@@ -380,7 +380,7 @@ def test_levels_at_their_test_bounds_fit_or_are_refused():
     their test bounds fit; where the curve overflows the precondition refuses it."""
     levels = np.array([-1.0e4, -5.0e3, 0.0, 5.0e3, 1.0e4])
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", OutsideTypicalRange)
+        warnings.simplefilter("ignore", OutsideApplicability)
         fit = fit_rating_curve(levels, 1.0e-3 * (levels + 1.2e4) ** 1.5, -1.1e4)
         assert_within(fit.b, 1.5, rel=1e-6, reason="noise-free pairs over 20,000 cm")
         with pytest.raises(InvalidParameterError) as caught:
@@ -438,7 +438,7 @@ def test_a_large_mean_discharge_keeps_r_squared():
     levels = [300.0, 310.0, 320.0, 330.0, 340.0, 350.0, 360.0, 370.0]
     discharges = [1.0e6 + 0.5 * (h - 290.0) ** 1.2 for h in levels]
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", OutsideTypicalRange)
+        warnings.simplefilter("ignore", OutsideApplicability)
         fit = fit_rating_curve(levels, discharges, 280.0)
     exact = [Fraction(q) for q in discharges]
     mean = sum(exact, Fraction(0)) / len(exact)
@@ -464,9 +464,9 @@ def test_a_large_mean_discharge_keeps_r_squared():
 
 def test_a_fit_of_few_gaugings_says_so():
     """WMO-No. 1044's 12 to 15 gaugings: the notice of the applicability constraint."""
-    with pytest.warns(OutsideTypicalRange) as caught:
+    with pytest.warns(OutsideApplicability) as caught:
         fit_rating_curve(*NLS_SETS["doc_negative_stages"])
-    notices = [w.message for w in caught if isinstance(w.message, OutsideTypicalRange)]
+    notices = [w.message for w in caught if isinstance(w.message, OutsideApplicability)]
     assert [n.details for n in notices] == [
         {
             "method": "rating_curve_fit",
@@ -482,12 +482,12 @@ def test_a_fit_of_few_gaugings_says_so():
             "source": rating_curve._GAUGINGS.text(),
         }
     ]
-    assert "gaugings=6 is below its typical minimum 12" in str(notices[0])
+    assert "gaugings=6 is below its applicability range, from 12" in str(notices[0])
 
 
 def test_twelve_gaugings_give_no_notice():
     with warnings.catch_warnings():
-        warnings.simplefilter("error", OutsideTypicalRange)
+        warnings.simplefilter("error", OutsideApplicability)
         fit_rating_curve(PAIRS_H[:12], PAIRS_Q[:12], 41.2)
 
 

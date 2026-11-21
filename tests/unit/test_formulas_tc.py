@@ -15,7 +15,7 @@ from hypothesis import given
 
 from hydrolog._formula_versions import recording
 from hydrolog._formulas import ERRORS
-from hydrolog._warnings import OutsideTypicalRange
+from hydrolog._warnings import OutsideApplicability
 from hydrolog.morphometry import WatershedParameters
 from hydrolog.nogat_formulas import (
     Case,
@@ -139,7 +139,7 @@ def test_the_nrcs_constant_is_the_exact_metric_one(length_km, slope_m_per_m, cn)
     Y[%]**-0.5), must be the exact one.
     """
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", OutsideTypicalRange)
+        warnings.simplefilter("ignore", OutsideApplicability)
         tc_min = ConcentrationTime.nrcs(
             length_km=length_km, slope_m_per_m=slope_m_per_m, cn=cn
         )
@@ -179,7 +179,7 @@ def test_a_notice_on_a_watershed_names_the_field_of_the_input():
     found = {
         (item.message.details["parameter"], item.message.details["field"])
         for item in caught
-        if isinstance(item.message, OutsideTypicalRange)
+        if isinstance(item.message, OutsideApplicability)
     }
     assert found == {
         ("area_km2", "area_km2"),
@@ -190,7 +190,7 @@ def test_a_notice_on_a_watershed_names_the_field_of_the_input():
 
 def test_the_formulas_record_their_versions():
     with recording() as used, warnings.catch_warnings():
-        warnings.simplefilter("ignore", OutsideTypicalRange)
+        warnings.simplefilter("ignore", OutsideApplicability)
         ConcentrationTime.kirpich(length_km=1.0, slope_m_per_m=0.05)
         ConcentrationTime.nrcs(length_km=1.0, slope_m_per_m=0.05, cn=70)
         ConcentrationTime.giandotti(

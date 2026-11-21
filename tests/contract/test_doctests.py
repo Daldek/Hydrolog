@@ -4,8 +4,8 @@
 ``src/``; this test runs the examples of the modules listed below. A module joins
 the list once its examples pass; those of the visualisation modules and of
 ``reports.generator`` write files and stay out. Not listed, because some of their
-examples fail (2026-11-18): ``operations.config``, ``precipitation.interpolation``,
-``reports`` and the ``visualization`` modules.
+examples fail (2026-11-18): ``operations.config``, ``reports`` and the
+``visualization`` modules.
 """
 
 import doctest
@@ -33,6 +33,7 @@ MODULES = (
     "hydrolog.network.stream_order",
     "hydrolog.operations.meta",
     "hydrolog.precipitation.hietogram",
+    "hydrolog.precipitation.interpolation",
     "hydrolog.reports.formatters",
     "hydrolog.routing",
     "hydrolog.routing._layout",

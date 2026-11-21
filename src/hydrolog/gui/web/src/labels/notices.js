@@ -111,14 +111,14 @@ export const notices = {
       text: "Duży wynik: {size_chars} znaków (strona: {page_chars}).",
       plain: "Duży wynik.",
     },
-    outside_typical_range: {
-      text: "{method}: {parameter} = {value} poza typowym zakresem od {minimum} do {maximum}.",
+    outside_applicability: {
+      text: "{method}: {parameter} = {value} poza zakresem stosowania od {minimum} do {maximum}.",
       partial: [
         "{method}: {parameter} = {value}, mniej niż {minimum}: {constraint}.",
-        "{method}: {parameter} = {value} poniżej typowego zakresu, od {minimum}.",
-        "{method}: {parameter} = {value} powyżej typowego zakresu, do {maximum}.",
+        "{method}: {parameter} = {value} poniżej zakresu stosowania, od {minimum}.",
+        "{method}: {parameter} = {value} powyżej zakresu stosowania, do {maximum}.",
       ],
-      plain: "Parametr metody poza typowym zakresem.",
+      plain: "Parametr metody poza zakresem stosowania.",
       names: {
         method: { rating_curve_fit: "Krzywa przepływu" },
         parameter: { gaugings: "liczba par stan–przepływ" },
@@ -225,6 +225,10 @@ export const notices = {
       text: "Krok czasowy {timestep_min} min jest dłuższy niż {maximum_min} min, typowy zakres hydrogramu jednostkowego SCS: hydrogram policzono na {substeps} krokach pośrednich po {substep_min} min, z opadem każdego kroku rozłożonym na nie równo, i odczytano w chwilach kroków, więc zachowuje objętość 1 mm.",
       plain: "Krok czasowy jest dłuższy niż typowy zakres hydrogramu jednostkowego SCS: hydrogram policzono na krokach pośrednich, więc zachowuje objętość 1 mm.",
     },
+    iuh_peak_undefined: {
+      text: "Hydrogram jednostkowy chwilowy Nasha dla n = {n} zbiorników (K = {k_min} min) maleje od chwili opadu: dla n ≤ 1 nie ma szczytu po niej, więc czas do szczytu i rzędna szczytowa są nieokreślone (brak wartości).",
+      plain: "Hydrogram jednostkowy chwilowy Nasha dla n ≤ 1 nie ma szczytu: czas do szczytu i rzędna szczytowa są nieokreślone.",
+    },
     positions_ignored: {
       text: "{reason}; schemat ułożono automatycznie, bez podanych położeń węzłów.",
       plain: "Podanych położeń węzłów nie użyto: schemat ułożono automatycznie.",
@@ -244,14 +248,14 @@ export const notices = {
 
 /**
  * Whether a notice puts a value outside a two-sided typical range of Hydrolog: the code
- * `outside_typical_range`, or `outside_unverified_range` for a range to be verified
+ * `outside_applicability`, or `outside_unverified_range` for a range to be verified
  * (`verified` false in the served `typical_ranges`).
  *
  * @param {{code?: string}|null} notice a notice of hydrolog-result/1
  * @returns {boolean} true for either code
  */
 export function isRangeNotice(notice) {
-  return Boolean(notice) && (notice.code === "outside_typical_range" || notice.code === "outside_unverified_range");
+  return Boolean(notice) && (notice.code === "outside_applicability" || notice.code === "outside_unverified_range");
 }
 
 /**

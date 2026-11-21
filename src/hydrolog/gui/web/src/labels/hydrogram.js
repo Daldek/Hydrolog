@@ -114,7 +114,7 @@ export const hydrogram = {
     elevation: "Musi być większa od wysokości min. ({value} m n.p.m.)",
     lutz: "Nie może być większa od długości najdłuższej drogi spływu ({value} km): tego wymaga metoda Lutza",
   },
-  outOfRange: "Poza typowym zakresem od {minimum} do {maximum} ({method})",
+  outOfRange: "Poza zakresem stosowania od {minimum} do {maximum} ({method})",
   outOfRangeUnverified: "Poza typowym zakresem od {minimum} do {maximum} ({method}); zakres do weryfikacji",
   missingField: "Metoda {method} potrzebuje tej wartości",
   missingFieldPlain: "Hydrolog potrzebuje tej wartości",
@@ -139,7 +139,7 @@ export const hydrogram = {
   summary: {
     missing: "Brakuje:",
     invalid: "Popraw:",
-    warnings: "Poza typowym zakresem:",
+    warnings: "Poza zakresem:",
     ok: "Model ma wszystkie potrzebne dane.",
     step: "krok {step}",
     goTo: "Przejdź do pola „{field}” (krok {step})",
