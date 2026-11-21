@@ -8,7 +8,8 @@ app version) and nothing about the browser; the dialog closes 2 s after the than
 The admin panel (``admin/``, Nogat's kit shell, DEV-15.13) asks for the key and keeps
 it in the tab, lists the reports newest first with the count of unread ones, shows each
 one's context, marks it read and deletes it after a question; the markup of a report
-stays text; „Statystyki” shows the days of ``stats.jsonl`` and „Stan” the checks.
+stays text; „Statystyki” shows the days of ``stats.jsonl`` with what each column counts
+and „Stan” the checks.
 """
 
 import json
@@ -293,6 +294,13 @@ def test_the_admin_panel_lists_marks_and_deletes_reports_and_shows_stats_and_sta
     expect(table.locator("tbody tr")).to_have_count(1)
     expect(table.locator("tbody tr th")).to_have_text(yesterday)
     expect(table.locator("tfoot td").nth(1)).to_have_text("5")
+
+    # What each total counts (G08-4), folded under the table: every counted column
+    counts = page.locator(".hydrolog-admin-counts")
+    expect(counts.locator("dl")).to_be_hidden()
+    counts.get_by_text("Co liczą kolumny").click()
+    headings = table.locator("thead th").all_inner_texts()
+    expect(counts.locator("dt")).to_have_text(headings[1:])
 
     # „Stan”: the version and the two checks
     nav.get_by_role("link", name="Stan").click()

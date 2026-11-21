@@ -20,6 +20,8 @@ from hydrolog.catalog.groups._series import (
     HALF_YEAR_FILE,
     INPUT_FILE,
     PERIOD_OPTIONS,
+    SERIES_DOCUMENT,
+    SERIES_DOCUMENT_PL,
     VALUE_COLUMN,
     VALUES,
 )
@@ -1702,12 +1704,12 @@ COMMANDS: tuple[Command, ...] = (
                 description_pl=(
                     "Plik CSV (przecinek lub średnik, wiersz nagłówka) albo JSON z "
                     "szeregiem; wiersze w kolejności czasowej. Kolumny wskazują "
-                    "`value_column` i `year_column`."
+                    f"`value_column` i `year_column`. {SERIES_DOCUMENT_PL}"
                 ),
                 description=(
                     "CSV file (comma or semicolon, header row) or JSON file with the "
                     "series; rows in time order. The columns are named by "
-                    "`value_column` and `year_column`."
+                    f"`value_column` and `year_column`. {SERIES_DOCUMENT}"
                 ),
             ),
             VALUE_COLUMN,
@@ -1877,12 +1879,12 @@ COMMANDS: tuple[Command, ...] = (
                 description_pl=(
                     "Plik CSV (przecinek lub średnik, wiersz nagłówka) albo JSON z "
                     "szeregiem. Kolumny wskazują `value_column` oraz `date_column` "
-                    "albo `year_column`."
+                    f"albo `year_column`. {SERIES_DOCUMENT_PL}"
                 ),
                 description=(
                     "CSV file (comma or semicolon, header row) or JSON file with the "
                     "series. The columns are named by `value_column` and "
-                    "`date_column` or `year_column`."
+                    f"`date_column` or `year_column`. {SERIES_DOCUMENT}"
                 ),
             ),
             VALUE_COLUMN,

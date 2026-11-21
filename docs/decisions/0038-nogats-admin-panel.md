@@ -6,6 +6,8 @@
   `docs/plans/2026-11-13-admin-panel.md` (step 2)
 - Amends: [ADR-0016](0016-gui-feedback-and-data-dir.md) (the admin page and the answer of `PATCH`) and
   [ADR-0034](0034-a-public-gui-regulamin-limit-logs-totals.md) (the daily totals leave out the admin panel)
+- Amended by [ADR-0072](0072-the-admin-panel-says-what-each-daily-total-counts.md) (2026-11-21): the page loads
+  `admin.js`, which says under „Statystyki” what each daily total counts
 
 ## Context
 

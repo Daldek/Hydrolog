@@ -40,3 +40,12 @@ Archiwista writes the document („Kopiuj do Hydrologa”, „Plik przekazania�
 missing year), a daily series (its columns and complete hydrological years) and refused minima;
 `tests/contract/test_result_schemas.py` checks the schema. The section's file box no longer shows „undefined” for a
 session file: its missing text (`file.session`) is added.
+
+## Erratum (2026-11-21, G03-1)
+
+Point 2 made annual maxima the pasted values of the section, which carry no years: Statystyka przepływów showed the
+station, Q and the number of years but not the years from and to, and „Jednorodność ciągu” gave the split and the
+change point as positions (G03-1 of the scenario test of 2026-11-15/16). Annual maxima now become a file of the session
+too, `<subject>.csv` with the columns `year` and the variable (the years without a value left out), which the section
+reads as a person's file of annual maxima: its range in the breadcrumbs, the years of the ranked maxima and
+`year_column` for `stats homogeneity`. The browser test of that hand-off checks the file, the range and the split year.

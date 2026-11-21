@@ -1757,15 +1757,19 @@ read and delete once its reports are handled.
 
 **The admin panel** (Nogat DEV-15.13, ECO-067). `admin/` under the GUI's address
 (`http://127.0.0.1:8070/admin/`; `admin` without the slash answers `308` to it) is Nogat's kit
-panel `<nogat-admin>` (kit 1.0.0) alone: no footer, regulamin link or menu „Aplikacje”, and
-`noindex`. It asks for the key and keeps it in the browser tab only (`sessionStorage`,
-`hydrolog/admin-key/1`, until „Wyloguj”), then shows three sections:
+panel `<nogat-admin>` (kit 1.0.0) with Hydrolog's `admin.js` only: no footer, regulamin link or
+menu „Aplikacje”, and `noindex`. It asks for the key and keeps it in the browser tab only
+(`sessionStorage`, `hydrolog/admin-key/1`, until „Wyloguj”), then shows three sections:
 
 - „Zgłoszenia”: the reports, 50 a page and newest first, with the count of unread ones; each
   shows its text and, folded under „Kontekst”, its context (view, station, version and the
   view's parameters); „Oznacz jako przeczytane” and back, and „Usuń” after a question.
 - „Statystyki”: the daily totals of `stats.jsonl` (a public GUI's, below) for 7, 30 or 90 days
-  or the whole record, with their sum, and „Pobierz CSV”.
+  or the whole record, with their sum, and „Pobierz CSV”; folded under the table, „Co liczą
+  kolumny” says what each total counts (as „Daily totals” below): why a visitor may have no page
+  view (a tab opened the day before, or restored by the browser from its cache, which the
+  server never sees) and why the computations outnumber the page views (each section computes
+  when the page opens and at every change).
 - „Stan”: the version, when the server started and for how long, the data directory
   `<data_dir>/hydrolog`, the free space of its disk, and the checks `data_dir` (the directory
   can be written; before the first report, the directory above it, where the first write makes
@@ -1844,6 +1848,21 @@ WantedBy=multi-user.target
 `curl -sI http://127.0.0.1:8070/` answers `200` with the `Content-Security-Policy` header when the
 server runs. Hosting the GUI inside another application (Nogat's GUI platform) is in
 [INTEGRATION.md](INTEGRATION.md#web-gui-a-module-of-nogats-gui-platform).
+
+A deployment that runs the GUI from a checkout of this repository (its own `.venv`, `uv sync
+--locked --no-editable`) must reinstall Hydrolog after pulling a new commit: uv decides by the
+version whether the installed project is current, and commits between releases share one
+version (`0.9.0.devN`), so a plain `uv sync --locked --no-editable` keeps the old code without a
+word. Update with
+
+```bash
+git pull --ff-only
+uv sync --locked --no-editable --all-extras --reinstall-package hydrolog
+systemctl --user restart hydrolog-gui   # or systemctl restart for a system unit
+```
+
+`--reinstall-package hydrolog` rebuilds the project from the checkout every time, whatever its
+version (E7-13).
 
 ### Logs
 
@@ -1942,12 +1961,15 @@ request_window = 60
   `visitors`: distinct HMAC-SHA-256 of the client address and the `User-Agent` of the counted
   requests but the admin panel's, under a 32-byte salt drawn at the start and at every midnight
   UTC, kept in memory only (after a restart a visitor counts again); `page_views`: the app (`/`),
-  its guide (`instrukcja/`) and the regulamin served, not the admin panel; `stations_opened`:
-  stations' series from a hand-off opened in Statystyka przepływów; `analyses_run`: computations
-  the server ran and answered (`api/run`, not the plans of `check`); `downloads`: files the page
-  saved on the person's disk (exports, the report, hand-off files, outputs of the server). The
-  page tells the server of the last two (`POST api/stats/station`, `POST api/stats/download`, no
-  body). The admin panel's „Statystyki” shows them.
+  its guide (`instrukcja/`) and the regulamin served (200 or 304), not the admin panel, not a
+  section opened inside the page and not a page the browser shows from its own cache (a tab it
+  restores), so a visitor may have computations and no page view; `stations_opened`: stations'
+  series from a hand-off opened in Statystyka przepływów; `analyses_run`: computations the server
+  ran and answered (`api/run`, not the plans of `check`), about six at each page load, since
+  every section computes its stored inputs; `downloads`: files the page saved on the person's
+  disk (exports, the report, hand-off files, outputs of the server). The page tells the server
+  of the last two (`POST api/stats/station`, `POST api/stats/download`, no body). The admin
+  panel's „Statystyki” shows them and says what each counts.
 - **The admin panel is the operator's.** Put it behind a sign-in, for example a Cloudflare Access
   application on exactly the paths `/admin`, `/admin/*` and `/api/admin/*` of the GUI's hostname
   (Nogat DEV-15.13); the rest stays public. The admin key still guards the API, and the panel's

@@ -42,13 +42,17 @@ _INPUT_FILE = replace(
         "Plik CSV albo JSON z szeregiem dobowym stacji, np. eksport Obserwatora "
         "(`obserwator series export`): kolumny `date`, `P [mm]`, `P_flag`, "
         "`Tmax [degC]`, `Tmin [degC]`, `Tmean [degC]`, `snow_cover [cm]`, "
-        "`fresh_snow [cm]`, znajdowane przez opcje `*_column`."
+        "`fresh_snow [cm]`, znajdowane przez opcje `*_column`. Szereg dobowy "
+        "`hydrolog-series/1` (sam albo w przekazaniu `nogat-handoff/1`) ma kolumny "
+        "`date` i swojej zmiennej (np. `P`)."
     ),
     description=(
         "CSV or JSON file with the station's daily series, e.g. Obserwator's export "
         "(`obserwator series export`): the columns `date`, `P [mm]`, `P_flag`, "
         "`Tmax [degC]`, `Tmin [degC]`, `Tmean [degC]`, `snow_cover [cm]`, "
-        "`fresh_snow [cm]`, found by the `*_column` options."
+        "`fresh_snow [cm]`, found by the `*_column` options. A daily "
+        "`hydrolog-series/1` (alone or in a hand-off `nogat-handoff/1`) has the "
+        "columns `date` and its variable (e.g. `P`)."
     ),
 )
 _DATE_COLUMN = Option(

@@ -71,11 +71,13 @@ COMMANDS: tuple[Command, ...] = (
                 path_role="input",
                 description_pl=(
                     "Plik CSV (przecinek lub średnik, wiersz nagłówka) albo JSON "
-                    "z wysokościami opadu w krokach [mm]."
+                    "z wysokościami opadu w krokach [mm], także szereg "
+                    "`hydrolog-series/1` (jego wartości)."
                 ),
                 description=(
                     "CSV file (comma or semicolon, header row) or JSON file with "
-                    "precipitation depths per step [mm]."
+                    "precipitation depths per step [mm], also a `hydrolog-series/1` "
+                    "(its values)."
                 ),
             ),
             Option(
