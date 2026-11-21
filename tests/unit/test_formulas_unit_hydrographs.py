@@ -128,6 +128,20 @@ def test_scs_properties(inputs):
 
 
 @given(inputs=strategies(CONVOLUTION))
+@example(  # subnormal products: 0.5 x 5e-324 rounds to 0, the volume to none
+    inputs={
+        "effective_precip_mm": np.array([0.5]),
+        "unit_hydrograph_m3s": np.array([5e-324, 5e-324]),
+        "timestep_min": 5.0,
+    }
+)
+@example(  # subnormal products: 5e-324 x 1.5 rounds up to 1e-323, the volume by 1/3
+    inputs={
+        "effective_precip_mm": np.array([5e-324]),
+        "unit_hydrograph_m3s": np.array([1.5, 1.5]),
+        "timestep_min": 5.0,
+    }
+)
 def test_convolution_properties(inputs):
     function = as_standard(convolve_discrete)
     assert_property_contract(CONVOLUTION, function, inputs, ERRORS)

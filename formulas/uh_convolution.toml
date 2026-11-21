@@ -77,10 +77,10 @@ text = "every ordinate equals its sum of products in exact rational arithmetic"
 
 [[properties.conservation]]
 name = "volume"
-text = "the volume is the excess times the unit hydrograph's volume, sum(Q) dt = sum(Pe) sum(U) dt"
+text = "the volume is the excess times the unit hydrograph's volume, sum(Q) dt = sum(Pe) sum(U) dt, but for the rounding of the products Pe_m U_k below the smallest normal float, half the subnormal step of 5e-324 each"
 
 [properties.conservation.tolerance]
-reason = "np.convolve's float64 products and pairwise sums against two fsum totals: a few units in the last place per term, relative"
+reason = "np.convolve's float64 products and pairwise sums against two fsum totals: a few units in the last place per term, relative; the residual takes off the absolute slack of the products that round to the subnormal step"
 abs = 1e-12
 
 [[sources]]

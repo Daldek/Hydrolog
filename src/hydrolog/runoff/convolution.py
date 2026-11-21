@@ -118,15 +118,28 @@ def _convolution(x: Values) -> dict[str, object]:
     }
 
 
+_SUBNORMAL_STEP: Final = math.ulp(0.0)
+"""The spacing of float64 below the smallest normal number, 2^-1074 (5e-324)."""
+
+
 def _volume_kept(x: Values, out: Values) -> float:
-    """Return the relative difference of the volume from sum(Pe) sum(UH) dt."""
-    expected = (
-        math.fsum(x.array("effective_precip_mm"))
-        * math.fsum(x.array("unit_hydrograph_m3s"))
-        * convert(x.real("timestep_min"), "min", "s")
-    )
-    volume = out.real("total_volume_m3")
-    return (volume - expected) / expected if expected > 0.0 else volume
+    """Return the relative difference of the volume from sum(Pe) sum(UH) dt.
+
+    A product Pe_m U_k below the smallest normal float, 2.2e-308, rounds to a
+    multiple of the subnormal step of 5e-324, by up to half the step: an absolute
+    error that no relative tolerance holds (0.5 mm on two ordinates of 5e-324 gives
+    no runoff). The difference within the slack of the M K products, of the product
+    of the two totals and of the two multiplications by dt counts as 0, and beyond
+    it is reduced by it.
+    """
+    depths = x.array("effective_precip_mm")
+    ordinates = x.array("unit_hydrograph_m3s")
+    seconds = convert(x.real("timestep_min"), "min", "s")
+    expected = math.fsum(depths) * math.fsum(ordinates) * seconds
+    slack = ((depths.size * ordinates.size + 1) * seconds + 2.0) * _SUBNORMAL_STEP / 2
+    gap = out.real("total_volume_m3") - expected
+    excess = math.copysign(max(abs(gap) - slack, 0.0), gap)
+    return excess / expected if expected > 0.0 else excess
 
 
 _EXACT_POINTS: Final = (
@@ -336,13 +349,16 @@ CONVOLUTION: Final = FormulaSpec(
             Conservation(
                 name="volume",
                 text="the volume is the excess times the unit hydrograph's volume, "
-                "sum(Q) dt = sum(Pe) sum(U) dt",
+                "sum(Q) dt = sum(Pe) sum(U) dt, but for the rounding of the products "
+                "Pe_m U_k below the smallest normal float, half the subnormal step of "
+                "5e-324 each",
                 residual=_volume_kept,
                 tolerance=Tolerance(
                     abs=1e-12,
                     reason="np.convolve's float64 products and pairwise sums against "
                     "two fsum totals: a few units in the last place per term, "
-                    "relative",
+                    "relative; the residual takes off the absolute slack of the "
+                    "products that round to the subnormal step",
                 ),
             ),
         ),
