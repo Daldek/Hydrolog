@@ -254,7 +254,7 @@ locator = "a million ordinates: the routing of a hydrograph refuses a longer one
 [[constraints]]
 name = "representable"
 class = "precondition"
-text = "float64 holds T / K, 1 / K and 1 mm over the watershed per second of D, A x 1 mm / D, and K and D are normal numbers"
+text = "float64 holds T / K, 1 / K and 1 mm over the watershed per second of D, A x 1 mm / D, and n, K and D are normal numbers (SciPy's incomplete gamma of a subnormal n is not monotonic)"
 
 [constraints.source]
 citation = "IEEE 754 double precision (float64)"

@@ -23,6 +23,7 @@ from hydrolog._warnings import (
     DistributionLeftOut,
     HydrologWarning,
     IncompleteYears,
+    IuhPeakUndefined,
     KsTestApproximate,
     NegativeQuantiles,
     OutsideSupport,
@@ -114,6 +115,7 @@ SAMPLES = {
         "substeps": 93,
         "substep_min": 15.4839,
     },
+    IuhPeakUndefined: {"n": 0.5, "k_min": 30.0},
     PositionsIgnored: {"reason": "partial", "node_id": "R3"},
     UnreferencedFormula: {
         "formula": "rybczynski_zones",
@@ -166,6 +168,7 @@ class TestLibraryWarnings:
             "unknown_hietogram_type",
             "uh_model_mismatch",
             "uh_substeps",
+            "iuh_peak_undefined",
             "positions_ignored",
             "unreferenced_formula",
         ]

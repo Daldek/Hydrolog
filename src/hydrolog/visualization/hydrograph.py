@@ -185,6 +185,7 @@ def plot_unit_hydrograph(
     times = result.times_min
 
     # Determine if this is IUH (dimensionless) or UH (dimensional)
+    peak_value: float | None
     if isinstance(result, (IUHResult, ClarkIUHResult)):
         ordinates = result.ordinates_per_min
         ylabel = "Rzędne IUH [1/min]"
@@ -193,6 +194,8 @@ def plot_unit_hydrograph(
         ordinates = result.ordinates_m3s
         ylabel = get_label("discharge_unit")
         peak_value = result.peak_discharge_m3s
+    if peak_value is None:  # Nash's IUH of n <= 1 has no peak after t = 0
+        peak_value = float(np.max(ordinates))
 
     # Determine color
     if color is None:
@@ -246,11 +249,13 @@ def _get_uh_stats(result: UHResultType) -> dict[str, Any]:
     stats = {}
 
     if isinstance(result, (IUHResult, ClarkIUHResult)):
-        stats["up"] = f"{result.peak_ordinate_per_min:.4f} 1/min"
+        up = result.peak_ordinate_per_min
+        stats["up"] = "brak (n ≤ 1)" if up is None else f"{up:.4f} 1/min"
     else:
         stats["Qp"] = f"{result.peak_discharge_m3s:.3f} m³/s/mm"
 
-    stats["tp"] = f"{result.time_to_peak_min:.1f} min"
+    tp = result.time_to_peak_min
+    stats["tp"] = "brak (n ≤ 1)" if tp is None else f"{tp:.1f} min"
 
     # Model-specific parameters
     if isinstance(result, (NashUHResult, IUHResult)):

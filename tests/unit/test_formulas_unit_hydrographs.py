@@ -53,7 +53,12 @@ from hydrolog.runoff.clark_iuh import (
     clark_unit_hydrograph,
 )
 from hydrolog.runoff.convolution import CONVOLUTION, convolve_discrete
-from hydrolog.runoff.nash_iuh import NASH_IUH, nash_unit_hydrograph
+from hydrolog.runoff.nash_iuh import (
+    NASH_IUH,
+    NASH_IUH_PEAK,
+    nash_iuh_peak,
+    nash_unit_hydrograph,
+)
 from hydrolog.runoff.snyder_uh import (
     SNYDER,
     SNYDER_SHAPE,
@@ -80,6 +85,7 @@ FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
     (CLARK, clark_unit_hydrograph),
     (CLARK_LAG, clark_lag_time),
     (NASH_IUH, nash_unit_hydrograph),
+    (NASH_IUH_PEAK, nash_iuh_peak),
     (CONVOLUTION, convolve_discrete),
 )
 
@@ -389,6 +395,21 @@ def test_nash_properties(inputs):
     assert_properties(NASH_IUH, function, inputs, ERRORS)
 
 
+@given(inputs=strategies(NASH_IUH_PEAK))
+def test_nash_peak_properties(inputs):
+    function = as_standard(nash_iuh_peak)
+    assert_property_contract(NASH_IUH_PEAK, function, inputs, ERRORS)
+    assert_properties(NASH_IUH_PEAK, function, inputs, ERRORS)
+
+
+def test_the_nash_peak_is_refused_for_n_up_to_1():
+    """Precondition peak_defined: the IUH of n <= 1 decreases from t = 0."""
+    for n in (1.0, 0.5):
+        with pytest.raises(InvalidParameterError) as caught:
+            nash_iuh_peak(n, 30.0)
+        assert caught.value.details["constraint"] == "peak_defined"
+
+
 def test_nash_a_million_ordinates_hold_their_volume():
     """Trap many_small_terms: a million ordinates of a 2^-10 min step.
 
@@ -438,18 +459,27 @@ def test_the_delegated_incomplete_gamma_is_the_closed_form():
 
 
 def test_the_nash_wrapper_computes_through_the_spec():
-    """NashIUH fills the length 5 n K + D, and max(5 n K, 10 K) for its IUH."""
+    """NashIUH fills the length 5 n K + D, and max(5 n K, 10 K) for its IUH, and
+    takes the IUH's peak from the spec nash_iuh_peak."""
     cascade = NashIUH(n=3.0, k_min=30.0)
     with recording() as used:
         result = cascade.to_unit_hydrograph(area_km2=45.0, duration_min=30.0)
         iuh = cascade.generate_iuh(timestep_min=5.0)
     found = nash_unit_hydrograph(3.0, 30.0, 45.0, 5.0, 30.0, 450.0 + 30.0)
+    peak = nash_iuh_peak(3.0, 30.0)
 
-    assert used == {"nash_iuh": NASH_IUH.formula_version}
+    assert used == {
+        "nash_iuh": NASH_IUH.formula_version,
+        "nash_iuh_peak": NASH_IUH_PEAK.formula_version,
+    }
     assert np.array_equal(result.ordinates_m3s, found.ordinates_m3s)
     assert result.lag_time_min == cascade.lag_time_min == 90.0
     assert iuh.times_min[-1] == 450.0
     assert iuh.ordinates_per_min[12] == cascade.ordinate(60.0)
+    assert (iuh.time_to_peak_min, iuh.peak_ordinate_per_min) == (
+        peak.time_to_peak_min,
+        peak.peak_ordinate_per_min,
+    )
 
 
 def test_uh_nash_records_the_version_of_its_formula():

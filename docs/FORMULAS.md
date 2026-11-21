@@ -26,6 +26,7 @@
 | [Time of concentration by the Kerby-Kirpich method (Roussel et al. 2005)](#kerby_kirpich) | `hydrolog.time.concentration.ConcentrationTime.kerby_kirpich` | referenced | 1 | not measured |
 | [Equal-area slope of a longitudinal profile (the line through the outlet with equal areas above and below it)](#equal_area_slope) | `hydrolog.morphometry.profile.equal_area_slope` | oracle only | 1 | not measured |
 | [Nash's instantaneous unit hydrograph and its unit hydrograph of a duration](#nash_iuh) | `hydrolog.runoff.nash_iuh.nash_unit_hydrograph` | referenced | 1 | not measured |
+| [Time to peak and peak ordinate of Nash's instantaneous unit hydrograph](#nash_iuh_peak) | `hydrolog.runoff.nash_iuh.nash_iuh_peak` | referenced | 1 | not measured |
 | [Nash's n and K of an ungauged watershed by Lutz's method (KZGW 2017)](#lutz) | `hydrolog.runoff.nash_iuh.lutz_parameters` | referenced | 1 | not measured |
 | [Nash's n and K of an urbanized watershed by the regression of Rao, Delleur and Sarma (1972)](#nash_urban_regression) | `hydrolog.runoff.nash_iuh.urban_regression_parameters` | oracle only | 1 | not measured |
 | [SCS (NRCS) dimensionless unit hydrograph of a unit duration](#scs) | `hydrolog.runoff.unit_hydrograph.scs_unit_hydrograph` | referenced | 1 | not measured |
@@ -1620,7 +1621,7 @@ Plain text: `u(t) = (t / K)^(n - 1) e^(-t / K) / (K Gamma(n)) for t > 0, u(0) = 
 | Constraint | Class | Condition | Source |
 |---|---|---|---|
 | `length_bounded` | precondition | the grid has at most a million ordinates | Hydrolog's bound of a hydrograph's length (hydrolog.routing.reach.MAX_ORDINATES), a million ordinates: the routing of a hydrograph refuses a longer one |
-| `representable` | precondition | float64 holds T / K, 1 / K and 1 mm over the watershed per second of D, A x 1 mm / D, and K and D are normal numbers | IEEE 754 double precision (float64), normal numbers from 2.2e-308 to 1.8e308 |
+| `representable` | precondition | float64 holds T / K, 1 / K and 1 mm over the watershed per second of D, A x 1 mm / D, and n, K and D are normal numbers (SciPy's incomplete gamma of a subnormal n is not monotonic) | IEEE 754 double precision (float64), normal numbers from 2.2e-308 to 1.8e308 |
 
 **Outputs**
 
@@ -1673,6 +1674,78 @@ Plain text: `u(t) = (t / K)^(n - 1) e^(-t / K) / (K Gamma(n)) for t > 0, u(0) = 
 - algorithm: the S-curve of a fractional n as the integral of the IUH by adaptive Gauss-Kronrod quadrature (scipy.integrate.quad, SciPy 1.18.1) (`tests/unit/test_formulas_unit_hydrographs.py (limit quadrature)`)
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="nash_iuh_peak"></a>
+### Time to peak and peak ordinate of Nash's instantaneous unit hydrograph
+
+`hydrolog.runoff.nash_iuh.nash_iuh_peak` · family `empirical` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+t_p = (n - 1) K;\quad u_p = \frac{(n-1)^{n-1} e^{-(n-1)}}{K\,\Gamma(n)}
+$$
+
+Plain text: `tp = (n - 1) K; up = (n - 1)^(n - 1) e^-(n - 1) / (K Gamma(n)), n > 1`
+
+**Sources**
+
+- KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), annex 2, section 3.1.2, p. 96: eqs. 6.14 (tp) and 6.16 (up) (open) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+- Sikorska, A.E., Scheidegger, A., Banasik, K., Rieckermann, J. (2012). Bayesian uncertainty assessment of flood predictions in ungauged urban basins for conceptual rainfall-runoff models. Hydrology and Earth System Sciences 16, 1221-1236, eqs. 9-10, p. 1225: tp and up of the IUH of the cascade (open) <https://hess.copernicus.org/articles/16/1221/2012/hess-16-1221-2012.pdf>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `n` | $n$ | - | real | (0.0, inf), test bound high 100.0 (a hundred reservoirs, more than ten times the last row of KZGW's Table C.2 (N = 7.99)) | unstated | [1.1, 8.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), Table C.2, pp. 132-133: N from 1.10 to 7.99, the cascades the method reads off |
+| `k_min` | $K$ | min | real | (0.0, inf), test bound high 2700.0 (ten times the largest K the estimations give for the hand-offs (264 min)) | unstated | [0.8, 270.0]: Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: K of 0.87 to 264.3 min by the spec lutz for the shortest and the longest flow path, 23.7 to 107.4 min by the spec nash_urban_regression for its points; KZGW Ex. 6.2: 42 min |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `peak_defined` | precondition | n > 1: for n <= 1 the IUH decreases from t = 0, where it is 1 / K (n = 1) or unbounded (n < 1), so it has no peak inside t > 0 | KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), p. 96, eq. 6.14: tp = (N - 1) k, positive for N > 1 |
+| `representable` | precondition | K is a normal number and float64 holds 1 / K, the bound of the peak | IEEE 754 double precision (float64), normal numbers from 2.2e-308 to 1.8e308 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `time_to_peak_min` | min | real | (0.0, inf) | 4 ulp of the bound |
+| `peak_ordinate_per_min` | 1/min | real | (0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- tp in min from the instant of the rainfall, up in 1/min
+- NashIUH.time_to_peak_min and peak_ordinate_per_min are null for n <= 1, with the notice iuh_peak_undefined, where versions up to 0.8.1 gave 0 and 1 / K
+
+**Assumptions**
+
+- the IUH of a cascade of n equal linear reservoirs (spec nash_iuh)
+
+**Validation:** none: exact properties of the gamma density of Nash (1957); the sources give no error statistic
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: range cases n-physical_low_* and the constraint case peak_defined at n = 1: (n - 1) ln(n - 1) tends to 0 as n tends to 1, and n <= 1 is refused by the precondition peak_defined
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `n` increasing, `k_min` increasing
+- scaling `time`: inputs times 2^e (`k_min` e = 1.0) give outputs times 2^e (`time_to_peak_min` e = 1.0, `peak_ordinate_per_min` e = -1.0)
+- limit `gamma_mode`: tp is the mode of the gamma density of shape n and scale K and up its value there (scipy.stats.gamma); the density is lower on either side
+- limit `table_c2`: tp up = (N - 1)^N e^-(N - 1) / Gamma(N), KZGW's f(N), matches Table C.2 from N = 1.10 to 7.99
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/unit-hydrographs-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- established: scipy.stats.gamma (SciPy 1.18.1): the density of shape n and scale K at its mode (n - 1) K (`tests/unit/test_formulas_unit_hydrographs.py (limit gamma_mode)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
 <a id="lutz"></a>
 ### Nash's n and K of an ungauged watershed by Lutz's method (KZGW 2017)

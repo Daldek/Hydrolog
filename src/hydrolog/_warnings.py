@@ -32,6 +32,7 @@ __all__ = [
     "DistributionLeftOut",
     "HydrologWarning",
     "IncompleteYears",
+    "IuhPeakUndefined",
     "KsTestApproximate",
     "NegativeQuantiles",
     "OutsideSupport",
@@ -559,6 +560,23 @@ class UhSubsteps(HydrologWarning):
     keys = ("timestep_min", "maximum_min", "substeps", "substep_min")
 
 
+class IuhPeakUndefined(HydrologWarning):
+    """Nash's IUH of n <= 1 reservoirs has no peak after the rainfall.
+
+    Its density decreases from t = 0, where it is 1 / K for n = 1 and unbounded for
+    n < 1: the time to peak and the peak ordinate of the spec ``nash_iuh_peak`` are
+    undefined, and ``NashIUH`` gives them as None (null). Details: ``n`` and
+    ``k_min``.
+    """
+
+    template = (
+        "Nash's IUH of n = {n:g} reservoirs (K = {k_min:g} min) decreases from the "
+        "instant of the rainfall: for n <= 1 it has no peak after it, so its time to "
+        "peak and peak ordinate are undefined (null)."
+    )
+    keys = ("n", "k_min")
+
+
 class PositionsIgnored(HydrologWarning):
     """The positions of a network's nodes cannot be drawn: its layout is computed.
 
@@ -589,6 +607,7 @@ LIBRARY_WARNINGS: Final[tuple[type[HydrologWarning], ...]] = (
     UnknownHietogramType,
     UhModelMismatch,
     UhSubsteps,
+    IuhPeakUndefined,
     PositionsIgnored,
     UnreferencedFormula,
 )

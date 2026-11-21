@@ -683,5 +683,34 @@
    "N read from table C.2 to two decimals and k = 1.09 / 1.55 h printed as 0.70 h: the inputs as printed"
   ],
   "status": "single_source"
+ },
+ {
+  "formula": "nash_iuh_peak",
+  "case_id": "kzgw2017-ex6-2-tp-up-from-n-k",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 6.2 (the Niedźwiadka at km 3+450), steps 8-10, pp. 99-100: tp = 1.09 h and up = 0.433 1/h give f(N) = tp up = 0.471, N = 2.55 (table C.2) and k = tp / (N - 1) = 0.70 h, eqs. 6.14 and 6.16 read backwards"
+  },
+  "inputs": {
+   "n": 2.55,
+   "k_min": 42.0
+  },
+  "expected": {
+   "time_to_peak_min": 65.4,
+   "peak_ordinate_per_min": 0.00721666666667
+  },
+  "printed_precision": {
+   "n": 0.01,
+   "k_min": 0.6,
+   "time_to_peak_min": 0.6,
+   "peak_ordinate_per_min": 0.0000166666666667
+  },
+  "conventions": [
+   "tp in h and up in 1/h in the source, here in min (60 min/h) and 1/min",
+   "the example's N and k, read from table C.2 and printed to two decimals, as inputs"
+  ],
+  "status": "single_source"
  }
 ]

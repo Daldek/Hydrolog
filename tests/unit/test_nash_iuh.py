@@ -1,8 +1,11 @@
 """Tests for Nash Instantaneous Unit Hydrograph (IUH)."""
 
+import warnings
+
 import numpy as np
 import pytest
 
+from hydrolog._warnings import IuhPeakUndefined, OutsideUnverifiedRange
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.runoff import IUHResult, NashIUH, NashUHResult
 
@@ -61,25 +64,23 @@ class TestNashIUHProperties:
         # tp = (n-1) × K = 2 × 30 = 60 min
         assert iuh.time_to_peak_min == 60.0
 
-    def test_time_to_peak_n_equals_1(self):
-        """Test time to peak for n = 1 (exponential decay)."""
-        iuh = NashIUH(n=1.0, k_min=30.0)
+    @pytest.mark.parametrize("n", [0.5, 1.0])
+    def test_the_peak_of_n_up_to_1_is_undefined(self, n):
+        """For n <= 1 the IUH decreases from t = 0 (unbounded there for n < 1): no
+        time to peak and no peak ordinate, where up to 0.8.1 they were 0 and 1/K."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", OutsideUnverifiedRange)  # n = 0.5
+            iuh = NashIUH(n=n, k_min=30.0)
 
-        # For n <= 1, peak is at t = 0
-        assert iuh.time_to_peak_min == 0.0
+        with pytest.warns(IuhPeakUndefined) as caught:
+            assert iuh.peak_ordinate_per_min is None
+            assert iuh.time_to_peak_min is None
 
-    def test_time_to_peak_n_less_than_1(self):
-        """Test time to peak for n < 1."""
-        iuh = NashIUH(n=0.5, k_min=30.0)
-
-        assert iuh.time_to_peak_min == 0.0
-
-    def test_peak_ordinate_n_equals_1(self):
-        """Test peak ordinate for n = 1."""
-        iuh = NashIUH(n=1.0, k_min=30.0)
-
-        # For n = 1, up = 1/K
-        assert abs(iuh.peak_ordinate_per_min - 1.0 / 30.0) < 1e-10
+        assert caught[0].message.details == {"n": n, "k_min": 30.0}
+        with pytest.warns(IuhPeakUndefined):
+            result = iuh.generate_iuh(timestep_min=5.0)
+        assert result.to_dict()["peak_ordinate_per_min"] is None
+        assert result.to_dict()["time_to_peak_min"] is None
 
     def test_peak_ordinate_n_greater_than_1(self):
         """Test peak ordinate for n > 1."""

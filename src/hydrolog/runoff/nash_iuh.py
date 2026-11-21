@@ -26,6 +26,7 @@ maksymalnych. Załącznik 2, Tabela C.2.
 """
 
 import math
+import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal, localcontext
@@ -39,6 +40,7 @@ from scipy.special import gamma, gammainc
 from hydrolog._formulas import checked_inputs, checked_outputs
 from hydrolog._ranges import warn_if_outside
 from hydrolog._serialization import JsonResultMixin
+from hydrolog._warnings import IuhPeakUndefined
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.nogat_formulas import (
     Constant,
@@ -155,18 +157,19 @@ class IUHResult(JsonResultMixin):
         Number of reservoirs (shape parameter).
     k_min : float
         Reservoir storage constant [min].
-    time_to_peak_min : float
-        Time to peak discharge [min].
-    peak_ordinate_per_min : float
-        Peak IUH ordinate (rzędna szczytowa) [1/min].
+    time_to_peak_min : float or None
+        Time to the peak of the IUH, (n - 1) K [min] (spec ``nash_iuh_peak``);
+        None for n <= 1, whose IUH has no peak after the rainfall.
+    peak_ordinate_per_min : float or None
+        Peak IUH ordinate (rzędna szczytowa) [1/min]; None for n <= 1.
     """
 
     times_min: NDArray[np.float64]
     ordinates_per_min: NDArray[np.float64]
     n: float
     k_min: float
-    time_to_peak_min: float
-    peak_ordinate_per_min: float
+    time_to_peak_min: float | None
+    peak_ordinate_per_min: float | None
 
     @property
     def n_steps(self) -> int:
@@ -251,10 +254,10 @@ class NashIUH:
             \cdot \left(\frac{t}{K}\right)^{n-1} \cdot e^{-t/K}
 
     Key properties:
-    - Lag time (first moment): tlag = n × K
+    - Lag time (first moment): tlag = n × K (spec ``nash_iuh``)
     - Variance (second moment): σ² = n × K²
-    - Time to peak: tp = (n-1) × K  (for n > 1)
-    - Peak ordinate: up = (n-1)^(n-1) × e^(-(n-1)) / (K × Γ(n))
+    - Time to peak and peak ordinate of the IUH (spec ``nash_iuh_peak``),
+      defined for n > 1 only
 
     The parameters n and K can be estimated from:
     - Time of concentration and lag time
@@ -363,37 +366,35 @@ class NashIUH:
         """
         return self.n * self.k_min
 
-    @property
-    def time_to_peak_min(self) -> float:
-        """
-        Time to peak of IUH [min].
-
-        Notes
-        -----
-        Formula: tp = (n-1) × K for n > 1
-        For n <= 1, the peak is at t = 0.
-        """
-        if self.n <= 1:
-            return 0.0
-        return (self.n - 1) * self.k_min
+    def _peak(self) -> "NashPeak | None":
+        """Return the peak of the IUH, or None with a warning for n <= 1."""
+        if not _peak_defined(self.n):
+            warnings.warn(IuhPeakUndefined(n=self.n, k_min=self.k_min), stacklevel=3)
+            return None
+        return nash_iuh_peak(self.n, self.k_min)
 
     @property
-    def peak_ordinate_per_min(self) -> float:
+    def time_to_peak_min(self) -> float | None:
         """
-        Peak ordinate of IUH [1/min].
+        Time to peak of IUH [min], spec ``nash_iuh_peak``.
 
-        Notes
-        -----
-        Formula: up = (n-1)^(n-1) × e^(-(n-1)) / (K × Γ(n)) for n > 1
-        For n = 1, up = 1/K (exponential decay).
+        None for n <= 1, whose IUH decreases from t = 0: the warning
+        :class:`~hydrolog._warnings.IuhPeakUndefined` (notice
+        ``iuh_peak_undefined``) says so.
         """
-        if self.n <= 1:
-            return 1.0 / self.k_min
+        peak = self._peak()
+        return None if peak is None else peak.time_to_peak_min
 
-        n_minus_1 = self.n - 1
-        numerator = (n_minus_1**n_minus_1) * np.exp(-n_minus_1)
-        denominator = self.k_min * gamma(self.n)
-        return float(numerator / denominator)
+    @property
+    def peak_ordinate_per_min(self) -> float | None:
+        """
+        Peak ordinate of IUH [1/min], spec ``nash_iuh_peak``.
+
+        None for n <= 1, whose IUH is 1 / K at t = 0 (n = 1) or unbounded there
+        (n < 1), with the warning :class:`~hydrolog._warnings.IuhPeakUndefined`.
+        """
+        peak = self._peak()
+        return None if peak is None else peak.peak_ordinate_per_min
 
     def ordinate(self, t_min: float) -> float:
         """
@@ -514,13 +515,14 @@ class NashIUH:
         shape = nash_unit_hydrograph(
             self.n, self.k_min, _UNIT_AREA_KM2, timestep_min, timestep_min, total
         )
+        peak = self._peak()
         return IUHResult(
             times_min=shape.times_min,
             ordinates_per_min=shape.iuh_ordinates_per_min,
             n=self.n,
             k_min=self.k_min,
-            time_to_peak_min=self.time_to_peak_min,
-            peak_ordinate_per_min=self.peak_ordinate_per_min,
+            time_to_peak_min=None if peak is None else peak.time_to_peak_min,
+            peak_ordinate_per_min=None if peak is None else peak.peak_ordinate_per_min,
         )
 
     def to_unit_hydrograph(
@@ -950,7 +952,7 @@ def _nash_representable(x: Values) -> bool:
     """Return whether float64 holds T / K, 1 / K and 1 mm over A per second of D."""
     k = x.real("k_min")
     seconds = convert(x.real("duration_min"), "min", "s")
-    if not (k >= _SMALLEST and seconds >= _SMALLEST):
+    if not (x.real("n") >= _SMALLEST and k >= _SMALLEST and seconds >= _SMALLEST):
         return False
     ratios = (x.real("total_duration_min") / k, 1.0 / k)
     volume = _unit_volume_m3(x.real("area_km2")) / seconds
@@ -1274,7 +1276,8 @@ NASH_IUH: Final = FormulaSpec(
             cls="precondition",
             check=_nash_representable,
             text="float64 holds T / K, 1 / K and 1 mm over the watershed per second of "
-            "D, A x 1 mm / D, and K and D are normal numbers",
+            "D, A x 1 mm / D, and n, K and D are normal numbers (SciPy's incomplete "
+            "gamma of a subnormal n is not monotonic)",
             source=Source(
                 citation="IEEE 754 double precision (float64)",
                 locator="normal numbers from 2.2e-308 to 1.8e308",
@@ -1461,6 +1464,253 @@ def nash_unit_hydrograph(
         k_min=x.real("k_min"),
         iuh_ordinates_per_min=out.array("iuh_ordinates_per_min"),
         lag_time_min=out.real("lag_time_min"),
+    )
+
+
+# --- the peak of Nash's IUH: the spec nash_iuh_peak -----------------------------------
+
+
+def _peak_defined(n: float) -> bool:
+    """Return whether the IUH of n reservoirs has its peak inside t > 0: n > 1."""
+    return n > 1.0
+
+
+def _iuh_peak(n: float, k: float) -> tuple[float, float]:
+    """Return (n - 1) K and the density there, through logarithms, for n > 1."""
+    shape = n - 1.0
+    peak = math.exp(shape * math.log(shape) - shape - math.lgamma(n)) / k
+    return shape * k, peak
+
+
+def _gamma_mode(run: Callable[..., Values]) -> None:
+    from scipy import stats
+
+    for n, k in (
+        (1.05, 42.0),
+        (2.55, 42.0),
+        (3.75659, 42.2491),
+        (7.99, 0.87),
+        (100.0, 1.0),
+    ):
+        out = run(n=n, k_min=k)
+        density = stats.gamma(a=n, scale=k)
+        assert_within(
+            out.real("peak_ordinate_per_min"),
+            float(density.pdf(out.real("time_to_peak_min"))),
+            rel=1e-13,
+            reason="SciPy's gamma density at the mode, through its logarithm: a few "
+            "units in the last place of each",
+        )
+        assert_within(
+            out.real("time_to_peak_min"),
+            (n - 1.0) * k,
+            rel=0.0,
+            abs=0.0,
+            reason="the mode of the gamma density of shape n and scale K, (n - 1) K, "
+            "is one product",
+        )
+        for side in (0.999, 1.001):
+            assert float(density.pdf(side * out.real("time_to_peak_min"))) < (
+                out.real("peak_ordinate_per_min")
+            ), "the density is lower beside its mode"
+
+
+_TABLE_C2: Final = (
+    (1.10, 0.076),
+    (1.50, 0.242),
+    (2.00, 0.368),
+    (2.55, 0.471),
+    (3.00, 0.541),
+    (4.00, 0.672),
+    (5.00, 0.781),
+    (6.00, 0.877),
+    (7.00, 0.964),
+    (7.99, 1.042),
+)
+"""N and f(N) = tp up of KZGW (2017), Table C.2, pp. 132-133, printed to 3 decimals."""
+
+
+def _table_c2(run: Callable[..., Values]) -> None:
+    for n, printed in _TABLE_C2:
+        out = run(n=n, k_min=42.0)
+        assert_within(
+            out.real("time_to_peak_min") * out.real("peak_ordinate_per_min"),
+            printed,
+            abs=0.0005,
+            reason="half a unit of the table's third decimal: tp up does not depend "
+            "on K",
+        )
+
+
+NASH_IUH_PEAK: Final = FormulaSpec(
+    name="nash_iuh_peak",
+    title="Time to peak and peak ordinate of Nash's instantaneous unit hydrograph",
+    function="hydrolog.runoff.nash_iuh.nash_iuh_peak",
+    family="empirical",
+    equation="tp = (n - 1) K; up = (n - 1)^(n - 1) e^-(n - 1) / (K Gamma(n)), n > 1",
+    latex=(r"t_p = (n - 1) K;\quad u_p = \frac{(n-1)^{n-1} e^{-(n-1)}}{K\,\Gamma(n)}"),
+    variables=(NASH_IUH.variable("n"), NASH_IUH.variable("k_min")),
+    outputs=(
+        Output(
+            name="time_to_peak_min",
+            unit="min",
+            symbol="t_p",
+            description="Time of the peak of the instantaneous unit hydrograph, its "
+            "mode.",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+        Output(
+            name="peak_ordinate_per_min",
+            unit="1/min",
+            symbol="u_p",
+            description="Peak ordinate of the instantaneous unit hydrograph.",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+    ),
+    sources=(
+        _kzgw("annex 2, section 3.1.2, p. 96: eqs. 6.14 (tp) and 6.16 (up)"),
+        _sikorska("eqs. 9-10, p. 1225: tp and up of the IUH of the cascade"),
+    ),
+    constraints=(
+        Constraint(
+            name="peak_defined",
+            cls="precondition",
+            check=lambda x: _peak_defined(x.real("n")),
+            text="n > 1: for n <= 1 the IUH decreases from t = 0, where it is 1 / K "
+            "(n = 1) or unbounded (n < 1), so it has no peak inside t > 0",
+            source=_kzgw("p. 96, eq. 6.14: tp = (N - 1) k, positive for N > 1"),
+            satisfied={"n": 1.5},
+            violated={"n": 0.9},
+            boundary={"n": 1.0},
+            boundary_holds=False,
+        ),
+        Constraint(
+            name="representable",
+            cls="precondition",
+            check=lambda x: (
+                x.real("k_min") >= _SMALLEST and math.isfinite(1.0 / x.real("k_min"))
+            ),
+            text="K is a normal number and float64 holds 1 / K, the bound of the peak",
+            source=Source(
+                citation="IEEE 754 double precision (float64)",
+                locator="normal numbers from 2.2e-308 to 1.8e308",
+            ),
+            satisfied={"k_min": 42.0},
+            violated={"k_min": 1.0e-310},
+        ),
+    ),
+    properties=Properties(
+        units="homogeneous",
+        monotonic={"n": 1, "k_min": 1},
+        scalings=(
+            Scaling(
+                name="time",
+                inputs={"k_min": 1},
+                outputs={"time_to_peak_min": 1, "peak_ordinate_per_min": -1},
+                tolerance=Tolerance(
+                    rel=0.0,
+                    abs=1e-300,
+                    reason="doubling K doubles (n - 1) K and halves the density "
+                    "exactly in binary, but for subnormal values",
+                ),
+            ),
+        ),
+        limits=(
+            Limit(
+                name="gamma_mode",
+                text="tp is the mode of the gamma density of shape n and scale K and "
+                "up its value there (scipy.stats.gamma); the density is lower on "
+                "either side",
+                check=_gamma_mode,
+            ),
+            Limit(
+                name="table_c2",
+                text="tp up = (N - 1)^N e^-(N - 1) / Gamma(N), KZGW's f(N), matches "
+                "Table C.2 from N = 1.10 to 7.99",
+                check=_table_c2,
+                source=_kzgw("Table C.2, pp. 132-133"),
+            ),
+        ),
+    ),
+    validation=(
+        "none: exact properties of the gamma density of Nash (1957); the sources give "
+        "no error statistic"
+    ),
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "tp in min from the instant of the rainfall, up in 1/min",
+        (
+            "NashIUH.time_to_peak_min and peak_ordinate_per_min are null for n <= 1, "
+            "with the notice iuh_peak_undefined, where versions up to 0.8.1 gave 0 "
+            "and 1 / K"
+        ),
+    ),
+    assumptions=("the IUH of a cascade of n equal linear reservoirs (spec nash_iuh)",),
+    traps={
+        "singular_at_bound": "range cases n-physical_low_* and the constraint case "
+        "peak_defined at n = 1: (n - 1) ln(n - 1) tends to 0 as n tends to 1, and "
+        "n <= 1 is refused by the precondition peak_defined",
+    },
+    reference_cases=("tests/fixtures/formulas/unit-hydrographs-cases.json",),
+    oracles=(
+        Oracle(
+            kind="established",
+            description="scipy.stats.gamma (SciPy 1.18.1): the density of shape n and "
+            "scale K at its mode (n - 1) K",
+            test="tests/unit/test_formulas_unit_hydrographs.py (limit gamma_mode)",
+            conventions=("scale K in min, the density in 1/min",),
+        ),
+    ),
+    base={"n": 2.55, "k_min": 42.0},
+)
+
+
+@dataclass(frozen=True)
+class NashPeak(JsonResultMixin):
+    """The peak of Nash's IUH, spec nash_iuh_peak.
+
+    Attributes
+    ----------
+    time_to_peak_min : float
+        Time of the peak [min].
+    peak_ordinate_per_min : float
+        Peak ordinate [1/min].
+    """
+
+    time_to_peak_min: float
+    peak_ordinate_per_min: float
+
+
+def nash_iuh_peak(n: float, k_min: float) -> NashPeak:
+    """Return the time to peak and the peak of Nash's IUH, spec nash_iuh_peak.
+
+    Parameters
+    ----------
+    n : float
+        Number of reservoirs of the cascade [-].
+    k_min : float
+        Storage constant of each reservoir [min].
+
+    Returns
+    -------
+    NashPeak
+        Time to peak [min] and peak ordinate, the share of the unit per minute.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the spec refuses an input (``details.reason``), among them a cascade
+        whose IUH has no peak after the rainfall (precondition ``peak_defined``).
+    """
+    x = checked_inputs(NASH_IUH_PEAK, n=n, k_min=k_min)
+    time, peak = _iuh_peak(x.real("n"), x.real("k_min"))
+    out = checked_outputs(
+        NASH_IUH_PEAK, {"time_to_peak_min": time, "peak_ordinate_per_min": peak}
+    )
+    return NashPeak(
+        time_to_peak_min=out.real("time_to_peak_min"),
+        peak_ordinate_per_min=out.real("peak_ordinate_per_min"),
     )
 
 
@@ -2536,7 +2786,7 @@ def urban_regression_parameters(
     )
 
 
-SPECS: Final[tuple[FormulaSpec, ...]] = (NASH_IUH, LUTZ, URBAN)
+SPECS: Final[tuple[FormulaSpec, ...]] = (NASH_IUH, NASH_IUH_PEAK, LUTZ, URBAN)
 """The specs of the module, in the order of ``docs/FORMULAS.md``."""
 
 

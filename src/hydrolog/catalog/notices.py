@@ -35,6 +35,7 @@ from hydrolog._warnings import (
     DistributionLeftOut,
     HydrologWarning,
     IncompleteYears,
+    IuhPeakUndefined,
     KsTestApproximate,
     NegativeQuantiles,
     OutsideSupport,
@@ -332,6 +333,7 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
     _library(UnknownHietogramType),
     _library(UhModelMismatch),
     _library(UhSubsteps),
+    _library(IuhPeakUndefined),
     _library(PositionsIgnored),
     _library(UnreferencedFormula),
     NoticeSpec(

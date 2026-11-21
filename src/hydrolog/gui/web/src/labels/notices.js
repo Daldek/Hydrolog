@@ -225,6 +225,10 @@ export const notices = {
       text: "Krok czasowy {timestep_min} min jest dłuższy niż {maximum_min} min, typowy zakres hydrogramu jednostkowego SCS: hydrogram policzono na {substeps} krokach pośrednich po {substep_min} min, z opadem każdego kroku rozłożonym na nie równo, i odczytano w chwilach kroków, więc zachowuje objętość 1 mm.",
       plain: "Krok czasowy jest dłuższy niż typowy zakres hydrogramu jednostkowego SCS: hydrogram policzono na krokach pośrednich, więc zachowuje objętość 1 mm.",
     },
+    iuh_peak_undefined: {
+      text: "Hydrogram jednostkowy chwilowy Nasha dla n = {n} zbiorników (K = {k_min} min) maleje od chwili opadu: dla n ≤ 1 nie ma szczytu po niej, więc czas do szczytu i rzędna szczytowa są nieokreślone (brak wartości).",
+      plain: "Hydrogram jednostkowy chwilowy Nasha dla n ≤ 1 nie ma szczytu: czas do szczytu i rzędna szczytowa są nieokreślone.",
+    },
     positions_ignored: {
       text: "{reason}; schemat ułożono automatycznie, bez podanych położeń węzłów.",
       plain: "Podanych położeń węzłów nie użyto: schemat ułożono automatycznie.",
