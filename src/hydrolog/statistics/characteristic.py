@@ -1499,8 +1499,11 @@ def fisher_pearson_skewness(
     """
     x = checked_inputs(SKEWNESS, values=values)
     deviations, _, _ = _deviations(x.array("values"))
-    m2 = float(np.mean(deviations**2))
-    m3 = float(np.mean(deviations**3))
+    squares = deviations * deviations
+    # The cubes are products, rounded alike on every platform and negated exactly
+    # with the sample; numpy.power may call a vector pow that is neither.
+    m2 = float(np.mean(squares))
+    m3 = float(np.mean(squares * deviations))
     skewness = m3 / m2**1.5
     return checked_outputs(SKEWNESS, {"skewness": skewness}).real("skewness")
 

@@ -325,7 +325,9 @@ def _moments(data: NDArray[np.float64]) -> SampleMoments:
 
     The deviations are taken from the mean twice: the second pass removes the
     rounding of the first mean, which a large mean makes large next to a small
-    spread (the corrected two-pass algorithm).
+    spread (the corrected two-pass algorithm). The cubes are products, rounded
+    alike on every platform and negated exactly with the sample; ``numpy.power``
+    may call a vector pow that is neither.
     """
     scaled, exponent = _normalised(data)
     n = data.size
@@ -333,8 +335,9 @@ def _moments(data: NDArray[np.float64]) -> SampleMoments:
     deviations = scaled - centre
     residual = float(np.mean(deviations))
     deviations -= residual
-    m2 = float(np.mean(deviations**2))
-    m3 = float(np.mean(deviations**3))
+    squares = deviations * deviations
+    m2 = float(np.mean(squares))
+    m3 = float(np.mean(squares * deviations))
     skewness = math.sqrt(n * (n - 1)) / (n - 2) * m3 / m2**1.5
     std = math.sqrt(m2 * n / (n - 1))
     return SampleMoments(

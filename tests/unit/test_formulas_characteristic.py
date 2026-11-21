@@ -22,7 +22,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 from numpy.typing import NDArray
 from scipy.stats import skew, variation
 from scipy.stats import t as t_dist
@@ -129,6 +129,10 @@ def test_coefficient_of_variation_properties(inputs):
 
 
 @given(inputs=strategies(SKEWNESS))
+@example(inputs={"values": np.array([4.93359375, 5.0, 475711.0, 475711.0])}).via(
+    "discovered failure: numpy.power's vector pow cubed the deviations of the sample "
+    "and of its negation an ulp apart, of a skewness near 0 by cancellation"
+)
 def test_skewness_properties(inputs):
     assert_property_contract(SKEWNESS, fisher_pearson_skewness, inputs, ERRORS)
     assert_properties(SKEWNESS, fisher_pearson_skewness, inputs, ERRORS)

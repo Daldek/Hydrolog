@@ -167,6 +167,11 @@ def test_limits_and_oracles(spec: FormulaSpec, function):
 
 
 @given(inputs=strategies(MOMENTS))
+@example(inputs={"values": np.array([4.93359375, 5.0, 475711.0, 475711.0])}).via(
+    "discovered failure of fisher_pearson_skewness, whose cubes these are: "
+    "numpy.power's vector pow cubed the deviations of the sample and of its negation "
+    "an ulp apart, of a skewness near 0 by cancellation"
+)
 def test_moments_properties(inputs):
     assert_property_contract(MOMENTS, as_standard(sample_moments), inputs, ERRORS)
     assert_properties(MOMENTS, as_standard(sample_moments), inputs, ERRORS)
