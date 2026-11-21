@@ -35,7 +35,7 @@ from typing import Final, NamedTuple, cast
 import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import brentq
-from scipy.special import gamma, gammainc
+from scipy.special import gamma, gammainc, gammaincc
 
 from hydrolog._formulas import checked_inputs, checked_outputs
 from hydrolog._ranges import warn_if_outside
@@ -929,9 +929,25 @@ def _density(n: float, k: float, times: NDArray[np.float64]) -> NDArray[np.float
     return out
 
 
-def _s_curve(n: float, k: float, times: NDArray[np.float64]) -> NDArray[np.float64]:
-    """Return S(t) = P(n, t / K), the regularized lower incomplete gamma; 0 to t = 0."""
-    return np.where(times > 0.0, gammainc(n, np.maximum(times, 0.0) / k), 0.0)
+def _s_rise(
+    n: float, k: float, times: NDArray[np.float64], duration: float
+) -> NDArray[np.float64]:
+    """Return S(t) - S(t - D), S(t) = P(n, t / K) and 0 to t = 0, D the duration.
+
+    The difference is taken of P, the regularized lower incomplete gamma, where S(t) is
+    at most a half, and of Q = 1 - P, the upper one, beyond: values near 1 are then
+    differenced as their small complements, and SciPy's P of a tiny n, which is not
+    monotonic there, is not differenced.
+    """
+    now = np.maximum(times, 0.0) / k
+    before = np.maximum(times - duration, 0.0) / k
+    lower = gammainc(n, now)
+    rise = np.where(
+        lower <= 0.5,
+        lower - gammainc(n, before),
+        gammaincc(n, before) - gammaincc(n, now),
+    )
+    return np.asarray(rise, dtype=np.float64)
 
 
 def _nash_count(x: Values) -> int | None:
@@ -965,10 +981,10 @@ def _nash_hydrograph(x: Values) -> dict[str, object]:
     step, duration = x.real("timestep_min"), x.real("duration_min")
     count = cast(int, _nash_count(x))
     times = np.arange(count, dtype=np.float64) * step
-    rise = (_s_curve(n, k, times) - _s_curve(n, k, times - duration)) / duration
+    rise = _s_rise(n, k, times, duration) / duration
     per_minute = _unit_volume_m3(x.real("area_km2")) / convert(1.0, "min", "s")
     ordinates = rise * per_minute
-    peak = int(np.argmax(ordinates))
+    peak = int(np.argmax(rise))  # the shape's: subnormal ordinates round to ties
     return {
         "times_min": times,
         "iuh_ordinates_per_min": _density(n, k, times),
@@ -1364,6 +1380,12 @@ NASH_IUH: Final = FormulaSpec(
             "the unit hydrograph of D is the IUH averaged over D by the exact "
             "S-curve, KZGW's eqs. 6.22-6.23 for D = dt: D need not be a whole number "
             "of steps; a D far shorter than dt loses digits in S(t) - S(t - D)"
+        ),
+        (
+            "S(t) - S(t - D) is the difference of P where S(t) <= 1/2 and of Q = 1 - "
+            "P, the regularized upper incomplete gamma function, beyond: SciPy's P "
+            "is not monotonic in t for n of about 1e-12 and below (and exceeds 1 "
+            "below 1e-14), its Q is"
         ),
         (
             "the grid ends at T (NashIUH: 5 n K + D, and max(5 n K, 10 K) for the "

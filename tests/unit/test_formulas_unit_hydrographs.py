@@ -15,8 +15,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from hypothesis import given
-from scipy.special import gammainc
+from hypothesis import example, given
+from scipy.special import gammainc, gammaincc
 from scipy.stats import gamma
 
 from hydrolog._formula_versions import recording
@@ -142,6 +142,15 @@ def test_snyder_properties(inputs):
 
 
 @given(inputs=strategies(SNYDER_SHAPE))
+@example(  # 1 mm over a subnormal area: the volume of the ordinates is not held
+    inputs={
+        "area_km2": 5e-324,
+        "time_to_peak_min": 16.0,
+        "peak_discharge_m3s": 5e-324,
+        "timestep_min": 5.0,
+        "total_duration_min": 60.0,
+    }
+)
 def test_snyder_shape_properties(inputs):
     function = as_standard(snyder_shape)
     assert_property_contract(SNYDER_SHAPE, function, inputs, ERRORS)
@@ -326,6 +335,16 @@ def test_the_snyder_wrapper_computes_through_the_specs():
 
 
 @given(inputs=strategies(CLARK))
+@example(  # subnormal ordinates: the time of the largest one is that of the shape
+    inputs={
+        "tc_min": 1.0,
+        "r_min": 3.0,
+        "area_km2": 5e-324,
+        "timestep_min": 5.0,
+        "duration_min": 5.0,
+        "total_duration_min": 7.0,
+    }
+)
 def test_clark_properties(inputs):
     function = as_standard(clark_unit_hydrograph)
     assert_property_contract(CLARK, function, inputs, ERRORS)
@@ -389,6 +408,26 @@ def test_the_clark_wrapper_computes_through_the_spec():
 
 
 @given(inputs=strategies(NASH_IUH))
+@example(  # subnormal ordinates: the time of the largest one is that of the shape
+    inputs={
+        "n": 2.0,
+        "k_min": 3.0,
+        "area_km2": 5e-324,
+        "timestep_min": 5.0,
+        "duration_min": 7.0,
+        "total_duration_min": 9.0,
+    }
+)
+@example(  # a tiny n: SciPy's lower incomplete gamma is not monotonic, its upper one is
+    inputs={
+        "n": 1.7768199458011535e-99,
+        "k_min": 5.0,
+        "area_km2": 1.0,
+        "timestep_min": 6.0,
+        "duration_min": 5.0,
+        "total_duration_min": 9.0,
+    }
+)
 def test_nash_properties(inputs):
     function = as_standard(nash_unit_hydrograph)
     assert_property_contract(NASH_IUH, function, inputs, ERRORS)
@@ -435,12 +474,18 @@ def test_nash_a_million_ordinates_hold_their_volume():
 
 
 def test_the_delegated_incomplete_gamma_is_the_closed_form():
-    """DELEGATED incomplete_gamma: P(1, x) = 1 - e^-x, P(2, 1) = 1 - 2/e, P(1/2, x) =
-    erf(sqrt(x))."""
+    """DELEGATED incomplete_gamma: P(1, x) = 1 - e^-x, Q(1, x) = e^-x, P(2, 1) = 1 -
+    2/e, P(1/2, x) = erf(sqrt(x))."""
     for x in (0.25, 1.0, 7.5):
         assert_within(
             float(gammainc(1.0, x)),
             -math.expm1(-x),
+            rel=1e-15,
+            reason="a few units in the last place of SciPy's series",
+        )
+        assert_within(
+            float(gammaincc(1.0, x)),
+            math.exp(-x),
             rel=1e-15,
             reason="a few units in the last place of SciPy's series",
         )

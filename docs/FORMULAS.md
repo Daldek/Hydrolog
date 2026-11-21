@@ -1639,6 +1639,7 @@ Plain text: `u(t) = (t / K)^(n - 1) e^(-t / K) / (K Gamma(n)) for t > 0, u(0) = 
 - times in min from the beginning of the rainfall; the IUH in 1/min; ordinates in m3/s per mm
 - the IUH at t = 0 is 0 on the grid, also for n <= 1, where the density is 1 / K (n = 1) or unbounded (n < 1) as t tends to 0
 - the unit hydrograph of D is the IUH averaged over D by the exact S-curve, KZGW's eqs. 6.22-6.23 for D = dt: D need not be a whole number of steps; a D far shorter than dt loses digits in S(t) - S(t - D)
+- S(t) - S(t - D) is the difference of P where S(t) <= 1/2 and of Q = 1 - P, the regularized upper incomplete gamma function, beyond: SciPy's P is not monotonic in t for n of about 1e-12 and below (and exceeds 1 below 1e-14), its Q is
 - the grid ends at T (NashIUH: 5 n K + D, and max(5 n K, 10 K) for the IUH alone): the ordinates hold S(T) of the unit, short of 1 mm by the tail beyond T
 - n outside 1 to 10 or K outside 10 to 200 min given to NashIUH gives the notice outside_unverified_range (nash.n, nash.k_min): no source publishes those ranges
 
@@ -2165,7 +2166,7 @@ Plain text: `q(t) = qpR [(t / tpR) exp(1 - t / tpR)]^K with K > 0 the root of qp
 | Constraint | Class | Condition | Source |
 |---|---|---|---|
 | `root_bracketed` | precondition | the exponent K of the curve of 1 mm lies between 1e-12 and 1e12: qpR tpR / (A x 1 mm) between about 1e-12 and 4e5 | Hydrolog's bracket of the root of the volume of the curve, Brent's method on ln K from 1e-12 to 1e12 |
-| `grid_representable` | precondition | the grid has at most a million ordinates, and float64 holds (T + dt) / tpR and the ordinate of 1 mm on one step, A x 1 mm / dt | Hydrolog's bound of a hydrograph's length (hydrolog.routing.reach.MAX_ORDINATES), a million ordinates: the routing of a hydrograph refuses a longer one |
+| `grid_representable` | precondition | the grid has at most a million ordinates, and float64 holds (T + dt) / tpR and, as a normal number, the ordinate of 1 mm on one step, A x 1 mm / dt | Hydrolog's bound of a hydrograph's length (hydrolog.routing.reach.MAX_ORDINATES), a million ordinates: the routing of a hydrograph refuses a longer one |
 
 **Outputs**
 
@@ -8407,7 +8408,7 @@ None.
 | Computation | Library | Versions | Smoke case | Test |
 |---|---|---|---|---|
 | regularised_incomplete_beta | scipy.special.betainc (the block integrals of beta_hyetograph) | scipy>=1.10 (1.18.1 locked) | I_x(2, 5) at x = 1/4 is 1 - (3/4)^6 - 6 (1/4) (3/4)^5 = 1909/4096 within an ulp (spec beta_hyetograph) | `tests/unit/test_formulas_hyetographs.py::test_the_delegated_incomplete_beta_is_the_closed_form` |
-| incomplete_gamma | scipy.special.gammainc (the S-curve of nash_iuh) | scipy>=1.10 (1.18.1 locked) | P(1, x) = 1 - e^-x and P(1/2, x) = erf(sqrt(x)) at x = 0.25, 1 and 7.5, and P(2, 1) = 1 - 2/e, within 1e-15 relative (spec nash_iuh) | `tests/unit/test_formulas_unit_hydrographs.py::test_the_delegated_incomplete_gamma_is_the_closed_form` |
+| incomplete_gamma | scipy.special.gammainc and gammaincc (the S-curve of nash_iuh) | scipy>=1.10 (1.18.1 locked) | P(1, x) = 1 - e^-x, Q(1, x) = e^-x and P(1/2, x) = erf(sqrt(x)) at x = 0.25, 1 and 7.5, and P(2, 1) = 1 - 2/e, within 1e-15 relative (spec nash_iuh) | `tests/unit/test_formulas_unit_hydrographs.py::test_the_delegated_incomplete_gamma_is_the_closed_form` |
 | nash_shape_root | scipy.optimize.brentq | scipy>=1.10 (1.18.1 locked) | the root N of f(N) = (N-1)^N e^-(N-1) / Gamma(N) = f(2.55) on [1.1, 20] with xtol 1e-6 is 2.55 within 1e-6 (spec lutz) | `tests/unit/test_formulas_lutz.py::test_the_delegated_root_finder_finds_a_known_root` |
 | manning_normal_depth | scipy.optimize.brentq | scipy>=1.10 (1.18.1 locked) | the root ln y = 0 of ln K(e^u) - ln K(1) for Manning's conveyance A R^(2/3) of a rectangle 2 m wide on [-1, 1] with xtol 1e-15 is 0 within 1e-14 (spec manning_normal_flow) | `tests/unit/test_formulas_muskingum_cunge.py::test_the_delegated_root_finder_finds_a_known_root` |
 | kolmogorov_smirnov_test | scipy.stats.kstest (the K-S statistic and p-value of the flood and low-flow frequency analyses) | scipy>=1.10 (1.18.1 locked) | three values 0.05, 0.1 and 0.2 against the uniform distribution on [0, 1]: D = 0.8, the largest of i / n - u_i and u_i - (i - 1) / n, and the exact p = 2 (1 - D)^3 = 0.016 of D >= 2/3 | `tests/unit/test_formulas_flood_frequency.py::test_the_delegated_ks_test_gives_the_exact_statistic_and_p` |

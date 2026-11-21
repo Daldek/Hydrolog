@@ -225,7 +225,7 @@ locator = "Brent's method on ln K from 1e-12 to 1e12"
 [[constraints]]
 name = "grid_representable"
 class = "precondition"
-text = "the grid has at most a million ordinates, and float64 holds (T + dt) / tpR and the ordinate of 1 mm on one step, A x 1 mm / dt"
+text = "the grid has at most a million ordinates, and float64 holds (T + dt) / tpR and, as a normal number, the ordinate of 1 mm on one step, A x 1 mm / dt"
 
 [constraints.source]
 citation = "Hydrolog's bound of a hydrograph's length (hydrolog.routing.reach.MAX_ORDINATES)"

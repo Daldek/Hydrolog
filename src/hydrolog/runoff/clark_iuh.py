@@ -246,7 +246,7 @@ def _hydrograph(x: Values) -> dict[str, object]:
     rise = step * window + remainder * tail
     per_second = _volume_m3(x.real("area_km2")) / convert(duration, "min", "s")
     ordinates = rise * per_second
-    peak = int(np.argmax(ordinates))
+    peak = int(np.argmax(rise))  # the shape's: subnormal ordinates round to ties
     return {
         "times_min": times,
         "ordinates_m3s": ordinates,
