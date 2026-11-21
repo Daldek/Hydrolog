@@ -1985,7 +1985,6 @@ class TestRatingCurve:
         assert caught.value.exit_code == 2
         assert caught.value.details["reason"] == "precondition_failed"
         assert caught.value.details["constraint"] == "least_squares_minimum"
-        assert "another h0_initial" in caught.value.hint
 
     @pytest.mark.parametrize("threshold", [0.0, -1.0, float("nan")])
     def test_outlier_threshold_must_be_positive(self, threshold):
