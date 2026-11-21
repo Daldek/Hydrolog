@@ -101,6 +101,21 @@ Hydrologu; zawsze trzeba podać, którą się przyjęło.
 podaje ją jako `width_km`; Baścik (2006, s. 21) dzieli przez długość doliny $L_m$.
 
 <!-- spec:mean_width -->
+
+<a id="spec-mean_width"></a>
+
+> **Średnia szerokość zlewni** · wzór grupy B `mean_width` (Tier B, CMP-2.2)
+>
+> **Definicja:** W = A / L, średnia szerokość zlewni [km] (źr. 1)
+>
+> **Konwencja:** L jako `length_km` z `WatershedGeometry` (odcinek prosty albo najdłuższa droga spływu); B według Baścika dzieli powierzchnię przez długość doliny Lm
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, p. 21: średnia szerokość zlewni B = A / Lm <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+>
+> Funkcja `hydrolog.morphometry.geometric.WatershedGeometry.width_km`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:mean_width -->
 
 **Typowe błędy.** Mieszanie w jednym zestawieniu długości mierzonych różnymi metodami; liczenie
@@ -123,6 +138,51 @@ czyli średniej szerokości do długości (Horton 1932, cytowany za Bendjoudi i 
 PWr). Im mniejszy, tym zlewnia bardziej wydłużona.
 
 <!-- spec:form_factor -->
+
+<a id="spec-form_factor"></a>
+
+> **Wskaźnik formy zlewni według Hortona** · specyfikacja [`form_factor`](../FORMULAS.md#form_factor) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> C_f = \frac{A}{L^2}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $A$ | `area_km2` | Powierzchnia zlewni w rzucie poziomym | km² | (0; ∞) | nie podano w źródłach | [0,0003; 250] (źr. 3) |
+> | $L$ | `length_km` | Długość zlewni: odcinek prosty od ujścia do najdalszego punktu działu wodnego albo najdłuższa droga spływu przekazana przez Hydrograf | km | (0; ∞) | nie podano w źródłach | [0,05; 30] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $C_f$ | `form_factor` | Wskaźnik formy: powierzchnia podzielona przez kwadrat długości; pi/4 dla koła o średnicy L | – | [0; 3,141592653589793] |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | A <= pi L^2: zlewnia leży w kole o promieniu L wokół swojego ujścia, gdzie L to odcinek prosty do najdalszego punktu działu wodnego albo najdłuższa droga spływu, która nie jest krótsza | `within_reach` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 5) |
+>
+> **Konwencje**
+>
+> - L to odcinek prosty od ujścia do najdalszego punktu działu wodnego (Baścik 2006, s. 21), tak jak `WatershedGeometry` opisuje `length_km`; Hydrograf przekazuje najdłuższą drogę spływu, która nie jest krótsza, więc przy niej wskaźnik wydłużenia jest mniejszy (k większy) niż przy odcinku prostym; L Schumma (1956), czyli największy wymiar równoległy do głównej linii odpływu, oraz Lm Baścika, czyli długość doliny, to inne konwencje
+> - to, że A mieści się w kole o promieniu L wokół ujścia, ogranicza Cf z góry przez pi; przy L równym największemu wymiarowi zlewni (nierówność izodiametryczna) — przez pi/4, wartość dla koła
+>
+> **Zgodność z obserwacjami według źródeł:** brak: wskaźnik geometryczny, którego źródła nie porównują z żadnymi obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, p. 929: Horton's (1932) form factor, the area of the basin over the square of its length <https://doi.org/10.1080/02626660209493000>
+> 2. Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material, section 2: wskaźnik formy Cf = A / L^2 = B / L <https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf>
+> 3. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)
+> 4. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: lengths (longest flow paths) of 0.0566 to 28.88 km
+> 5. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, p. 21: the length of the watershed L is the straight line from the outlet to the farthest point of the divide; the maximum length Lm runs along the valley of the main river <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+>
+> Funkcja `hydrolog.morphometry.geometric.form_factor`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:form_factor -->
 
 ### Wskaźnik zwartości Graveliusa
@@ -136,6 +196,52 @@ szczegółowością pomiaru obwodu, więc zależy nie tylko od kształtu zlewni,
 nieregularności jej granicy.
 
 <!-- spec:compactness_coefficient -->
+
+<a id="spec-compactness_coefficient"></a>
+
+> **Wskaźnik zwartości zlewni według Graveliusa** · specyfikacja [`compactness_coefficient`](../FORMULAS.md#compactness_coefficient) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> C_z = \frac{P}{2\sqrt{\pi A}}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $A$ | `area_km2` | Powierzchnia zlewni w rzucie poziomym | km² | (0; ∞) | nie podano w źródłach | [0,0003; 250] (źr. 3) |
+> | $P$ | `perimeter_km` | Obwód zlewni, czyli długość jej działu wodnego | km | (0; ∞) | nie podano w źródłach | [0,17; 90] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $C_z$ | `compactness_coefficient` | Wskaźnik zwartości: obwód zlewni podzielony przez obwód koła o tej samej powierzchni; 1 dla koła | – | [1; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | P^2 >= 4 pi A: żaden obwód nie jest krótszy od obwodu koła o tej samej powierzchni (nierówność izoperymetryczna); krótszy oznacza, że A i P zmierzono na różnych obrysach | `isoperimetric` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 5) |
+> | P / (2 sqrt(pi A)) mieści się w zakresie float64: żadna zlewnia nie ma działu wodnego 10^150 razy dłuższego od swojej szerokości | `within_float64` | odmowa obliczeń: wzór jest nieokreślony | (źr. 5) |
+>
+> **Konwencje**
+>
+> - P to długość działu wodnego w wykreślonym przebiegu: rośnie wraz z rozdzielczością mapy lub NMT, ponieważ dział wodny jest nieregularny w każdej skali, a razem z nią rośnie wskaźnik (Bendjoudi i Hubert 2002, s. 924-928)
+> - A i P z tego samego obrysu: Hydrograf bierze A z komórek, a P z wygładzonej granicy, więc wartość bliską 1 należy interpretować ostrożnie
+>
+> **Zgodność z obserwacjami według źródeł:** brak: wskaźnik geometryczny, którego źródła nie porównują z żadnymi obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, eq. (1), p. 922: K = P / (2 sqrt(pi A)) = 0.28 P / sqrt(A) <https://doi.org/10.1080/02626660209493000>
+> 2. Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material, section 2: wskaźnik zwartości (Graveliusa) K = Oz / (2 sqrt(pi A)) <https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf>
+> 3. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)
+> 4. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: perimeters of 0.1756 to 84.46 km
+> 5. Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, pp. 921-922: the perimeter of any basin exceeds that of the circle of the same area, so K = P / (2 sqrt(pi A)) is at least 1, 1 for a circle <https://doi.org/10.1080/02626660209493000>
+>
+> Funkcja `hydrolog.morphometry.geometric.compactness_coefficient`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:compactness_coefficient -->
 
 ### Wskaźnik kolistości Millera
@@ -146,6 +252,51 @@ tę samą informację co wskaźnik Graveliusa (jest odwrotnością jego kwadratu
 której koło ma wartość największą.
 
 <!-- spec:circularity_ratio -->
+
+<a id="spec-circularity_ratio"></a>
+
+> **Wskaźnik kolistości zlewni według Millera** · specyfikacja [`circularity_ratio`](../FORMULAS.md#circularity_ratio) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> C_k = \frac{4\pi A}{P^2}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $A$ | `area_km2` | Powierzchnia zlewni w rzucie poziomym | km² | (0; ∞) | nie podano w źródłach | [0,0003; 250] (źr. 4) |
+> | $P$ | `perimeter_km` | Obwód zlewni, czyli długość jej działu wodnego | km | (0; ∞) | nie podano w źródłach | [0,17; 90] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $C_k$ | `circularity_ratio` | Wskaźnik kolistości: powierzchnia zlewni podzielona przez powierzchnię koła o tym samym obwodzie; 1 dla koła | – | [0; 1] |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | P^2 >= 4 pi A: żaden obwód nie jest krótszy od obwodu koła o tej samej powierzchni (nierówność izoperymetryczna); krótszy oznacza, że A i P zmierzono na różnych obrysach | `isoperimetric` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 6) |
+>
+> **Konwencje**
+>
+> - P to długość działu wodnego w wykreślonym przebiegu: rośnie wraz z rozdzielczością mapy lub NMT, ponieważ dział wodny jest nieregularny w każdej skali, a razem z nią rośnie wskaźnik (Bendjoudi i Hubert 2002, s. 924-928)
+>
+> **Zgodność z obserwacjami według źródeł:** brak: wskaźnik geometryczny, którego źródła nie porównują z żadnymi obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, eq. (2), p. 922: Miller's (1953) C = 4 pi A / P^2 <https://doi.org/10.1080/02626660209493000>
+> 2. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eq. (1.2.3): Ck = A / Ak = 4 pi A / P^2 <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+> 3. Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material, section 2: wskaźnik kolistości Ck = 4 pi A / Oz^2 <https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf>
+> 4. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)
+> 5. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: perimeters of 0.1756 to 84.46 km
+> 6. Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, pp. 921-922: the perimeter of any basin exceeds that of the circle of the same area, so K = P / (2 sqrt(pi A)) is at least 1, 1 for a circle <https://doi.org/10.1080/02626660209493000>
+>
+> Funkcja `hydrolog.morphometry.geometric.circularity_ratio`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:circularity_ratio -->
 
 ### Wskaźnik wydłużenia Schumma
@@ -155,6 +306,51 @@ długości zlewni (Schumm 1956, za Baścik 2006, wzór 1.2.2, gdzie w mianowniku
 $L_m$). Im mniejszy, tym zlewnia bardziej wydłużona.
 
 <!-- spec:elongation_ratio -->
+
+<a id="spec-elongation_ratio"></a>
+
+> **Wskaźnik wydłużenia zlewni według Schumma** · specyfikacja [`elongation_ratio`](../FORMULAS.md#elongation_ratio) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> C_e = \frac{2}{L}\sqrt{\frac{A}{\pi}}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $A$ | `area_km2` | Powierzchnia zlewni w rzucie poziomym | km² | (0; ∞) | nie podano w źródłach | [0,0003; 250] (źr. 3) |
+> | $L$ | `length_km` | Długość zlewni: odcinek prosty od ujścia do najdalszego punktu działu wodnego albo najdłuższa droga spływu przekazana przez Hydrograf | km | (0; ∞) | nie podano w źródłach | [0,05; 30] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $C_e$ | `elongation_ratio` | Wskaźnik wydłużenia: średnica koła o tej samej powierzchni podzielona przez długość zlewni; 1 dla koła o średnicy L | – | [0; 2] |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | A <= pi L^2: zlewnia leży w kole o promieniu L wokół swojego ujścia, gdzie L to odcinek prosty do najdalszego punktu działu wodnego albo najdłuższa droga spływu, która nie jest krótsza | `within_reach` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 5) |
+>
+> **Konwencje**
+>
+> - L to odcinek prosty od ujścia do najdalszego punktu działu wodnego (Baścik 2006, s. 21), tak jak `WatershedGeometry` opisuje `length_km`; Hydrograf przekazuje najdłuższą drogę spływu, która nie jest krótsza, więc przy niej wskaźnik wydłużenia jest mniejszy (k większy) niż przy odcinku prostym; L Schumma (1956), czyli największy wymiar równoległy do głównej linii odpływu, oraz Lm Baścika, czyli długość doliny, to inne konwencje
+> - to, że A mieści się w kole o promieniu L wokół ujścia, ogranicza Ce z góry przez 2; przy L równym największemu wymiarowi zlewni — przez 1, wartość dla koła
+>
+> **Zgodność z obserwacjami według źródeł:** brak: wskaźnik geometryczny, którego źródła nie porównują z żadnymi obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eq. (1.2.2): Cw = (2 / Lm) sqrt(A / pi), after Schumm (1956) <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+> 2. Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material, section 2: wskaźnik wydłużenia Cw = (2 / L) (A / pi)^0.5 <https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf>
+> 3. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)
+> 4. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: lengths (longest flow paths) of 0.0566 to 28.88 km
+> 5. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, p. 21: the length of the watershed L is the straight line from the outlet to the farthest point of the divide; the maximum length Lm runs along the valley of the main river <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+>
+> Funkcja `hydrolog.morphometry.geometric.elongation_ratio`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:elongation_ratio -->
 
 ### Wskaźnik lemniskaty Chorleya
@@ -167,6 +363,54 @@ $\pi$ razy mniejsze; nie jest to wskaźnik Chorleya. Hydrolog do wersji 0.8.1 w�
 właśnie ten wariant; wersja rozwojowa 0.9.0 liczy wskaźnik Chorleya, tak jak Hydrograf.
 
 <!-- spec:lemniscate_ratio -->
+
+<a id="spec-lemniscate_ratio"></a>
+
+> **Wskaźnik lemniskaty k zlewni według Chorleya** · specyfikacja [`lemniscate_ratio`](../FORMULAS.md#lemniscate_ratio) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> k = \frac{\pi L^2}{4A}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $A$ | `area_km2` | Powierzchnia zlewni w rzucie poziomym | km² | (0; ∞) | nie podano w źródłach | [0,0003; 250] (źr. 3) |
+> | $L$ | `length_km` | Długość zlewni: odcinek prosty od ujścia do najdalszego punktu działu wodnego albo najdłuższa droga spływu przekazana przez Hydrograf | km | (0; ∞) | nie podano w źródłach | [0,05; 30] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $k$ | `lemniscate_ratio` | Wskaźnik lemniskaty: powierzchnia koła o średnicy L podzielona przez powierzchnię zlewni; 1 dla tego koła, większy dla zlewni bardziej wydłużonych | – | [0,25; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | A <= pi L^2: zlewnia leży w kole o promieniu L wokół swojego ujścia, gdzie L to odcinek prosty do najdalszego punktu działu wodnego albo najdłuższa droga spływu, która nie jest krótsza | `within_reach` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 5) |
+> | pi L^2 / (4A) mieści się w zakresie float64: żadna zlewnia nie jest 10^150 razy dłuższa niż szeroka | `within_float64` | odmowa obliczeń: wzór jest nieokreślony | (źr. 6) |
+>
+> **Konwencje**
+>
+> - L to odcinek prosty od ujścia do najdalszego punktu działu wodnego (Baścik 2006, s. 21), tak jak `WatershedGeometry` opisuje `length_km`; Hydrograf przekazuje najdłuższą drogę spływu, która nie jest krótsza, więc przy niej wskaźnik wydłużenia jest mniejszy (k większy) niż przy odcinku prostym; L Schumma (1956), czyli największy wymiar równoległy do głównej linii odpływu, oraz Lm Baścika, czyli długość doliny, to inne konwencje
+> - k Chorleya z pi (pętla lemniskaty), a nie wariant L^2 / (4A) z niektórych źródeł wtórnych, który Hydrolog obliczał do wersji 0.8.1
+> - to, że A mieści się w kole o promieniu L wokół ujścia, ogranicza k z dołu przez 1/4; przy L równym największemu wymiarowi zlewni — przez 1, wartość dla koła
+>
+> **Zgodność z obserwacjami według źródeł:** brak: wskaźnik geometryczny, którego źródła nie porównują z żadnymi obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, eqs. (3)-(5), pp. 922-923: Chorley et al. (1957) compare the basin with one loop of the lemniscate rho = l cos(k theta), of area pi l^2 / (4k), so k = pi l^2 / (4A) <https://doi.org/10.1080/02626660209493000>
+> 2. Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material, section 2: wskaźnik lemniskaty Cl = pi L^2 / (4A) <https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf>
+> 3. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)
+> 4. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: lengths (longest flow paths) of 0.0566 to 28.88 km
+> 5. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, p. 21: the length of the watershed L is the straight line from the outlet to the farthest point of the divide; the maximum length Lm runs along the valley of the main river <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+> 6. Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930, eq. (5), p. 923 <https://doi.org/10.1080/02626660209493000>
+>
+> Funkcja `hydrolog.morphometry.geometric.lemniscate_ratio`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:lemniscate_ratio -->
 
 ### Jak czytać wskaźniki kształtu
@@ -246,6 +490,21 @@ wysokości najwyższej i najniższej i informuje o tym; to tylko przybliżenie (
 wzór 1.2.5).
 
 <!-- spec:midpoint_elevation -->
+
+<a id="spec-midpoint_elevation"></a>
+
+> **Średnia wysokość zlewni jako średnia wysokości skrajnych** · wzór grupy B `midpoint_elevation` (Tier B, CMP-2.2)
+>
+> **Definicja:** H_mean = (Hmin + Hmax) / 2, średnia wysokość przyjmowana przez `TerrainAnalysis`, gdy nie podano żadnej [m n.p.m.] (źr. 1)
+>
+> **Konwencja:** przybliżenie, z komunikatem `mean_elevation_approximated` tam, gdzie Hydrolog go zgłasza; należy preferować średnią z NMT ważoną powierzchnią (Baścik 2006, wzór 1.2.8, `HypsometricCurve.mean_elevation`)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eq. (1.2.5): the mean elevation approximated by the mean of the highest and the lowest <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+>
+> Funkcja `hydrolog.morphometry.terrain.TerrainAnalysis`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:midpoint_elevation -->
 
 **Wskaźnik rzeźby** (ang. *relief ratio*; Schumm 1956, „wskaźnik rzeźby” u Baścik 2006,
@@ -254,6 +513,60 @@ miałaby zlewnia, gdyby opadała równomiernie od najwyższego punktu do przekro
 go bezwymiarowo (m/m), Baścik i Wartalska w m/km, czyli w promilach.
 
 <!-- spec:relief_ratio -->
+
+<a id="spec-relief_ratio"></a>
+
+> **Wskaźnik rzeźby: deniwelacja zlewni podzielona przez długość (Schumm)** · specyfikacja [`relief_ratio`](../FORMULAS.md#relief_ratio) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> R_h = \frac{H_{max} - H_{min}}{L}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $H_{min}$ | `elevation_min_m` | Najniższa wysokość zlewni, czyli wysokość jej ujścia [m n.p.m.] | m | (−∞; ∞) | nie podano w źródłach | [100; 750] (źr. 3) |
+> | $H_{max}$ | `elevation_max_m` | Najwyższa wysokość zlewni [m n.p.m.] | m | (−∞; ∞) | nie podano w źródłach | [100; 750] (źr. 3) |
+> | $L$ | `length_km` | Długość zlewni: odcinek prosty od ujścia do najdalszego punktu działu wodnego albo najdłuższa droga spływu przekazana przez Hydrograf | km | (0; ∞) | nie podano w źródłach | [0,05; 30] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $R_h$ | `relief_ratio` | Wskaźnik rzeźby: deniwelacja podzielona przez długość zlewni | m/m | (0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | Hmax > Hmin: zlewnia odwadnia się do swojego ujścia, więc wznosi się ponad nie | `rises_above_outlet` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 1) |
+> | (Hmax - Hmin) / L mieści się w zakresie float64: żadna deniwelacja nie jest 10^300 razy większa od długości | `within_float64` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $100$ | `percent` | Mnożnik przeliczający stosunek m/m na procenty | 100 | % na m/m | (źr. 5) |
+>
+> **Konwencje**
+>
+> - Rh w m/m (bezwymiarowy): deniwelacja w m podzielona przez L przeliczone z km na m według tabeli jednostek; Baścik (2006) i Wartalska podają go w m/km (w promilach)
+> - deniwelacja całej zlewni, czyli jej najwyższy punkt minus ujście; Baścik (2006, s. 23) zauważa, że w praktyce hydrologicznej można przyjmować rzędną zwierciadła wody w ujściu
+> - L to `length_km` zlewni we wskaźniku rzeźby (L Schumma to największy wymiar równoległy do głównej linii odpływu, Lm Baścika to długość doliny); `TerrainAnalysis` podaje ten sam stosunek jako spadek zlewni, który nie jest średnim spadkiem terenu, a w odniesieniu do długości cieku jako spadek cieku głównego, którego różnicą wysokości jest wtedy deniwelacja zlewni, a nie różnica między źródłem a ujściem cieku
+>
+> **Zgodność z obserwacjami według źródeł:** brak: stosunek wielkości mierzonych, którego źródła nie porównują z żadnymi obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eq. (1.2.12): wskaźnik rzeźby Cs = (Hmax - Hmin) / Lm; eq. (1.2.15): the slope of a river, the drop from its source to its mouth over its length <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+> 2. Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material, section 2.3: wskaźnik rzeźby zlewni Strahlera Jd = dH / L <https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf>
+> 3. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: elevations of 100.0 to 722.68 m
+> 4. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: lengths (longest flow paths) of 0.0566 to 28.88 km
+> 5. BIPM (2019). The International System of Units (SI), 9th edition, version 4.01, section 5.4.7: the symbol % (percent) is the number 0.01; the slopes of TerrainAnalysis in percent <https://www.bipm.org/documents/20126/41483022/SI-Brochure-9-EN.pdf>
+>
+> Funkcja `hydrolog.morphometry.terrain.relief_ratio`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:relief_ratio -->
 
 Hydrolog nazywa ten sam stosunek **spadkiem zlewni** (`watershed_slope`), a deniwelację całej
@@ -321,6 +634,61 @@ wymaga metoda Lutza szacowania parametrów modelu Nasha (rozdział 5), opisana w
 (2017).
 
 <!-- spec:equal_area_slope -->
+
+<a id="spec-equal_area_slope"></a>
+
+> **Spadek uśredniony profilu podłużnego metodą równych pól (prosta przez przekrój z równymi polami nad nią i pod nią)** · specyfikacja [`equal_area_slope`](../FORMULAS.md#equal_area_slope) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> S = \frac{2A}{L^2},\quad A = \sum_{i} \frac{(x_{i+1} - x_i)\,(h_i + h_{i+1})}{2},\quad h_i = z_i - z_0,\quad L = x_n - x_0
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x$ | `distance_m` (ciąg) | Odległość wzdłuż profilu od przekroju (pierwszego punktu) w górę do każdego punktu; początek dowolny, bo liczą się tylko różnice | m | [0; ∞) | nie podano w źródłach | [0; 30 000] (źr. 4) |
+> | $z$ | `elevation_m` (ciąg) | Wysokość każdego punktu profilu, dna lub wypełnionego NMT wzdłuż drogi spływu; pierwsza to wysokość przekroju | m | (−∞; ∞) | nie podano w źródłach | [100; 750] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $S$ | `slope_m_per_m` | Spadek prostej przez przekrój, przy którym pola profilu nad nią i pod nią są równe | m/m | (0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | jedna wysokość dla każdej odległości | `same_length` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 3) |
+> | x[i+1] >= x[i]: profil biegnie od przekroju w górę; powtórzona odległość to pionowy uskok | `distance_not_decreasing` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 3) |
+> | 0 < 2 A / L**2 < inf: profil jako całość leży powyżej przekroju (A > 0) na długości L > 0, a float64 mieści obie wartości | `positive_area` | odmowa obliczeń: wzór jest nieokreślony | (źr. 2) |
+>
+> **Konwencje**
+>
+> - profil jest uporządkowany od przekroju w górę: x to odległość wzdłuż drogi spływu w m od dowolnego początku, bo liczą się tylko różnice, z to wysokość w m; L to ostatnia odległość minus pierwsza
+> - prosta przechodzi przez pierwszy punkt, czyli przekrój, na jego wysokości: TM61 prowadzi ją przez przekrój A, KZGW (2017, s. 97) z najniższego punktu profilu, którym jest przekrój drogi spływu na wypełnionym NMT; odcinek poniżej przekroju liczy się jako pole pod prostą, więc A to pole ze znakiem funkcji z - z[0]
+> - A metodą trapezów, profil prostoliniowy między punktami (Barbosa Jr., wzór 17); trójkąt pod prostą, L (S L) / 2, ma pole równe A, więc pola profilu nad prostą i pod nią są równe (TM61, Sa = 2Ad/L^2)
+> - S w m/m, nie w procentach ani promilach
+> - Jg Lutza (KZGW 2017, s. 97) to właśnie ten spadek profilu podłużnego cieku głównego od działu wodnego do przekroju, czyli najdłuższej drogi spływu (`WatershedParameters.flow_path_equal_area_slope_m_per_m`); spadek między końcami tej drogi (`flow_path_slope_m_per_m`), S Kirpicha, jest na profilu wklęsłym większy i nie może go zastąpić
+>
+> **Założenia**
+>
+> - punktami są te miejsca jednej drogi spływu, w których znana jest wysokość: komórki drogi D8 na wypełnionym NMT lub punkty pomierzone; ciąg punktów o równej wysokości można przerzedzić do jego końców bez zmiany A
+> - profil z wypełnionego NMT nie ma punktu poniżej przekroju; pomierzone dno może mieć poniżej niego przegłębienia, które zmniejszają A
+>
+> **Zgodność z obserwacjami według źródeł:** brak: spadek uśredniony metodą równych pól definiuje średni spadek profilu (TM61, załącznik A; KZGW 2017, s. 97); jego źródła nie porównują go z żadnymi obserwacjami, a TM61 (s. 12) zauważa, że w praktyce daje on wyniki w dużej mierze niezależne od osoby wykonującej obliczenia
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), p. 97, the legend of eq. 6.17: Jg, the averaged slope of the main stream, is the slope of the line from the lowest point of the longitudinal profile for which the areas between it and the profile, below and above it, are equal <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 2. Ministry of Works and Development, Water and Soil Division (1980). A method for estimating design peak discharge, Technical Memorandum No. 61, Wellington, appendix A, pp. 12-13: the equal-area method, line AC through the outlet A with equal areas X and Y; the area under the profile Ad equals the triangle ABC, so Sa = 2Ad/L^2 <https://web.archive.org/web/20170228021947/http://docs.niwa.co.nz/library/public/TM61_1980.pdf>
+> 3. Barbosa Jr., A.R. (2004). Hidrologia Aplicada CIV 226, Bacia Hidrográfica, Universidade Federal de Ouro Preto, lecture notes, section 3.4.4, eqs. 17-18, p. 14: the area under the profile Ap as a sum of trapezoids and S2 = 2Ap/L^2 - 2z_foz/L <https://professor.pucgoias.edu.br/SiteDocente/admin/arquivosUpload/17403/material/Cap2%20-%20Bacia%20Hidrografica_UFOP.pdf>
+> 4. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: flow paths of 0.0566 to 28.88 km
+> 5. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: elevations of 100.0 to 722.68 m
+>
+> Funkcja `hydrolog.morphometry.profile.equal_area_slope`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:equal_area_slope -->
 
 Hydrolog liczy spadek wyrównany funkcją `hydrolog.morphometry.equal_area_slope` z punktów profilu
@@ -364,6 +732,21 @@ Krzywe zlewni różnej wielkości i wysokości mieszczą się wtedy w kwadracie 
 porównywać.
 
 <!-- spec:hypsometric_curve -->
+
+<a id="spec-hypsometric_curve"></a>
+
+> **Krzywa hipsometryczna zlewni** · wzór grupy B `hypsometric_curve` (Tier B, CMP-2.2)
+>
+> **Definicja:** wysokości względne h/H = (t - min) / (max - min) na n równo rozmieszczonych progach t oraz względne powierzchnie a/A komórek położonych na wysokości każdego progu lub powyżej (źr. 1)
+>
+> **Konwencja:** przekroczenie (powierzchnia powyżej), czyli procentowa krzywa hipsometryczna Strahlera; pierwsza względna powierzchnia wynosi 1
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Strahler, A.N. (1952). Hypsometric (area-altitude) analysis of erosional topography. Geological Society of America Bulletin 63: 1117-1142, Fig. 3 and 'Integration of the hypsometric function': the integral is the area under the percentage hypsometric curve, relative area a/A above relative height h/H, over the unit square; the stages in the text with Fig. 7 (a copy of the article) <https://pdfcoffee.com/strahler-1952-hypsometry-pdf-pdf-free.html>
+>
+> Funkcja `hydrolog.morphometry.hypsometry.HypsometricCurve.generate_curve`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:hypsometric_curve -->
 
 **Całka hipsometryczna** HI (ang. *hypsometric integral*) to pole pod krzywą w tym kwadracie:
@@ -375,15 +758,93 @@ wartości dokładnej i jej granicę podaje ramka. Czy liczyć wartość dokładn
 pytaniem ADR-0065.
 
 <!-- spec:hypsometric_integral -->
+
+<a id="spec-hypsometric_integral"></a>
+
+> **Całka hipsometryczna zlewni obliczana metodą trapezów z krzywej hipsometrycznej (Strahler)** · specyfikacja [`hypsometric_integral`](../FORMULAS.md#hypsometric_integral) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> HI = \sum_{i=0}^{n-2} \frac{a_i + a_{i+1}}{2\,(n-1)},\quad a_i = \frac{\sum_{z_j \ge t_i} A_j}{\sum_j A_j},\quad t_i = z_{min} + \frac{i}{n-1}(z_{max} - z_{min})
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $z$ | `elevations_m` (ciąg) | Wysokość każdej komórki NMT zlewni [m n.p.m.] | m | (−∞; ∞) | nie podano w źródłach | [100; 750] (źr. 3) |
+> | $A_j$ | `cell_areas` (ciąg) | Powierzchnia każdej komórki w dowolnej jednej jednostce (liczą się tylko udziały) | – | (0; ∞) | nie podano w źródłach | [1; 1] (źr. 4) |
+> | $n$ | `n_points` (liczba całkowita) | Liczba równo rozmieszczonych wysokości względnych krzywej | – | [2; ∞) | nie podano w źródłach | [101; 101] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $HI$ | `hypsometric_integral` | Pole pod procentową krzywą hipsometryczną w kwadracie jednostkowym | – | [0; 1] |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | jedna powierzchnia na każdą wysokość | `same_length` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 1) |
+> | max(z) > min(z): wysokość względna h/H powstaje z dzielenia przez deniwelację | `positive_relief` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Konwencje**
+>
+> - krzywa względnej powierzchni a/A położonej na wysokości względnej h/H lub powyżej (przekroczenie), czyli procentowa krzywa hipsometryczna Strahlera, próbkowana na n równo rozmieszczonych wysokościach od najniższej do najwyższej komórki, h/H = 0 do 1
+> - HI metodą trapezów na n punktach krzywej, domyślnie n = 101; dokładna całka schodkowej krzywej komórek wynosi (mean - min) / (max - min) (Pike i Wilson 1971), a wynik metody trapezów odbiega od niej co najwyżej o (a(0) - a(1)) / (2 (n - 1)), czyli 0,005 dla n = 101, najbardziej tam, gdzie duża część powierzchni leży na wysokości ujścia
+> - stadia Strahlera (1952, tekst przy rys. 7): około 0,60 i więcej — stadium nierównowagi (młodości), od 0,35 do 0,60 — stadium równowagi (dojrzałości), poniżej 0,35 — faza monadnock (ostańców); Strahler podaje je jako przybliżone granice i zastępuje starość fazą monadnock
+> - powierzchnie komórek w dowolnej jednej jednostce: liczą się tylko ich udziały
+>
+> **Zgodność z obserwacjami według źródeł:** brak: całka opisuje powierzchnię terenu; Strahler (1952) wiąże jej wartości ze stadiami erozji, a nie z obserwacjami jakiejś wielkości
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Strahler, A.N. (1952). Hypsometric (area-altitude) analysis of erosional topography. Geological Society of America Bulletin 63: 1117-1142, Fig. 3 and 'Integration of the hypsometric function': the integral is the area under the percentage hypsometric curve, relative area a/A above relative height h/H, over the unit square; the stages in the text with Fig. 7 (a copy of the article) <https://pdfcoffee.com/strahler-1952-hypsometry-pdf-pdf-free.html>
+> 2. Pike, R.J. & Wilson, S.E. (1971). Elevation-relief ratio, hypsometric integral, and geomorphic area-altitude analysis. Geological Society of America Bulletin 82: 1079-1084, the elevation-relief ratio E = (mean - min) / (max - min) equals the hypsometric integral (not opened; the identity of the exceedance integral, integral of P(h >= x) dx over [0, 1] = E[h], is exact)
+> 3. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: elevations of 100.0 to 722.68 m
+> 4. Hydrolog's HypsometricCurve: cells of equal area unless cell_areas is given, as in every example and test of the project, src/hydrolog/morphometry/hypsometry.py; examples/04_morfometria.ipynb
+>
+> Funkcja `hydrolog.morphometry.hypsometry.hypsometric_integral`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:hypsometric_integral -->
 
 Krzywa daje też wysokości charakterystyczne: **wysokość średnią** (ważoną powierzchnią) i
 **wysokość środkową** (medianę), powyżej której leży połowa powierzchni.
 
 <!-- spec:area_weighted_mean_elevation -->
+
+<a id="spec-area_weighted_mean_elevation"></a>
+
+> **Średnia wysokość zlewni ważona powierzchnią** · wzór grupy B `area_weighted_mean_elevation` (Tier B, CMP-2.2)
+>
+> **Definicja:** średnia wysokość komórek ważona ich powierzchniami [m n.p.m.] (źr. 1)
+>
+> **Konwencja:** `numpy.average` z powierzchniami komórek jako wagami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eq. (1.2.8): the mean elevation weighted by the areas between contours <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+>
+> Funkcja `hydrolog.morphometry.hypsometry.HypsometricCurve.mean_elevation`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:area_weighted_mean_elevation -->
 
 <!-- spec:elevation_above_share -->
+
+<a id="spec-elevation_above_share"></a>
+
+> **Wysokość, powyżej której leży zadany udział powierzchni zlewni** · wzór grupy B `elevation_above_share` (Tier B, CMP-2.2)
+>
+> **Definicja:** wysokość pierwszej komórki, licząc od najwyższej w dół, przy której skumulowany udział powierzchni osiąga zadany procent [m n.p.m.] (źr. 1)
+>
+> **Konwencja:** wysokość środkowa (mediana) to ta, powyżej której leży połowa powierzchni; bez interpolacji między komórkami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Strahler, A.N. (1952). Hypsometric (area-altitude) analysis of erosional topography. Geological Society of America Bulletin 63: 1117-1142, Fig. 3 and 'Integration of the hypsometric function': the integral is the area under the percentage hypsometric curve, relative area a/A above relative height h/H, over the unit square; the stages in the text with Fig. 7 (a copy of the article) <https://pdfcoffee.com/strahler-1952-hypsometry-pdf-pdf-free.html>
+>
+> Funkcja `hydrolog.morphometry.hypsometry.HypsometricCurve.elevation_at_percentile`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:elevation_above_share -->
 
 **Interpretacja.** Strahler (1952) wiązał kształt krzywej ze stadium rozwoju rzeźby: krzywa
@@ -465,6 +926,48 @@ ramce). Dopływ niższego rzędu nie przerywa więc cieku: ciek rzędu 2, do kt�
 1, pozostaje jednym ciekiem rzędu 2, choć w programie GIS składa się z dwóch odcinków.
 
 <!-- spec:strahler_order -->
+
+<a id="spec-strahler_order"></a>
+
+> **Rząd cieku poniżej węzła według Strahlera** · specyfikacja [`strahler_order`](../FORMULAS.md#strahler_order) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> u = \begin{cases} 1 & \text{brak cieków powyżej} \\ \max u_i + 1 & \text{co najmniej dwa } u_i = \max u_i \\ \max u_i & \text{w pozostałych przypadkach} \end{cases}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $u_i$ | `upstream_orders` (ciąg) | Rzędy według Strahlera cieków wpadających do danego cieku; lista pusta dla cieku źródłowego | – | [1; ∞) | nie podano w źródłach | [1; 3] (źr. 3) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $u$ | `order` (liczba całkowita) | Rząd cieku poniżej węzła według Strahlera | – | [1; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | rzędy są liczbami całkowitymi | `whole_orders` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 1) |
+>
+> **Konwencje**
+>
+> - węzeł trzech lub więcej cieków podnosi rząd, gdy co najmniej dwa z nich mają rząd najwyższy
+> - innym uporządkowaniem jest magnituda Shreve'a, czyli suma magnitud cieków powyżej węzła (specyfikacja `shreve_magnitude`)
+>
+> **Zgodność z obserwacjami według źródeł:** brak: klasyfikacja cieków sieci rzecznej
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, p. 28: Strahler's orders: a source stream is of order 1, two streams of order u form one of order u + 1, and where streams of different orders join, the stream below keeps the higher order <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+> 2. Strahler, A.N. (1957). Quantitative analysis of watershed geomorphology. Transactions, American Geophysical Union 38(6): 913-920, stream orders, the numbers and mean lengths of the streams of each order and Horton's laws (not opened; the definitions as Baścik 2006 gives them) <https://doi.org/10.1029/TR038i006p00913>
+> 3. Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2, orders 1 to 3
+>
+> Funkcja `hydrolog.network.stream_order.strahler_order`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:strahler_order -->
 
 **Magnitudy Shreve'a** (ang. *magnitude*; Shreve 1966, cytowany za źródłami wtórnymi) liczą
@@ -472,7 +975,52 @@ ramce). Dopływ niższego rzędu nie przerywa więc cieku: ciek rzędu 2, do kt�
 sumują. Magnituda odcinka ujściowego to liczba wszystkich źródeł sieci. Hydrolog nadaje magnitudy
 poleceniem `network stats --method shreve`.
 
-<!-- TODO spec: Shreve's magnitude of a link, the sum of the magnitudes of the links that join at its upper node, a source link having the smallest (Shreve 1966, after secondary sources); computed by network stats --method shreve -->
+<!-- spec:shreve_magnitude -->
+
+<a id="spec-shreve_magnitude"></a>
+
+> **Magnituda odcinka cieku poniżej węzła według Shreve'a** · specyfikacja [`shreve_magnitude`](../FORMULAS.md#shreve_magnitude) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> M = \begin{cases} 1 & \text{brak odcinka powyżej} \\ \sum_i M_i & \text{w pozostałych przypadkach} \end{cases}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $M_i$ | `upstream_magnitudes` (ciąg) | Magnitudy według Shreve'a odcinków wpadających do danego odcinka; lista pusta dla odcinka źródłowego | – | [1; ∞) | nie podano w źródłach | [1; 4] (źr. 3) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $M$ | `magnitude` (liczba całkowita) | Magnituda odcinka poniżej węzła według Shreve'a, czyli liczba źródeł powyżej niego | – | [1; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | magnitudy są liczbami całkowitymi, liczbami źródeł | `whole_magnitudes` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 2) |
+> | suma magnitud jest mniejsza niż 2^53, do której float64 przedstawia dokładnie każdą liczbę całkowitą | `sum_exact` | odmowa obliczeń: wzór jest nieokreślony | (źr. 4) |
+>
+> **Konwencje**
+>
+> - magnitudy odcinków, czyli fragmentów cieków między węzłami, takich jak odcinki `StreamNetwork`
+> - `network stats --method shreve` liczy odcinki każdej magnitudy i nie podaje wskaźników Hortona, zdefiniowanych dla rzędów Strahlera
+>
+> **Zgodność z obserwacjami według źródeł:** brak: klasyfikacja odcinków sieci rzecznej
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Esri. How Stream Order works. ArcGIS Pro 3.8 documentation, Spatial Analyst, 'Shreve method': exterior links are of order 1 and the orders of interior links are additive, 1 and 1 give 2, 1 and 2 give 3, 2 and 3 give 5; the magnitude of a link is the number of upstream links (after Shreve 1966) <https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/how-stream-order-works.htm>
+> 2. Shreve, R.L. (1966). Statistical law of stream numbers. Journal of Geology 74(1): 17-37, the magnitude of a link, the number of sources upstream of it: a source link is of magnitude 1 and the magnitudes add at every junction (not opened; the definition as Esri's documentation gives it) <https://doi.org/10.1086/627137>
+> 3. Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2, magnitudes 1 to 4 meet
+> 4. IEEE 754 double precision (float64), 53-bit significand: whole numbers exact up to 2^53
+>
+> Funkcja `hydrolog.network.stream_order.shreve_magnitude`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
+<!-- /spec:shreve_magnitude -->
 
 ### Prawa Hortona
 
@@ -484,12 +1032,116 @@ cieków** (ang. *length ratio*), stosunek ich średnich długości. Oba są okre
 Strahlera; dla magnitud Shreve'a Hydrolog ich nie podaje.
 
 <!-- spec:streams_of_each_order -->
+
+<a id="spec-streams_of_each_order"></a>
+
+> **Liczba i długości cieków każdego rzędu** · wzór grupy B `streams_of_each_order` (Tier B, CMP-2.2)
+>
+> **Definicja:** liczba cieków każdego rzędu według Strahlera, ich łączne i średnie długości [km] oraz łączna długość sieci [km] (źr. 1)
+>
+> **Konwencja:** odcinek kontynuuje ciek odcinka położonego powyżej, jeśli ten ma ten sam rząd, a w przeciwnym razie zaczyna nowy ciek; średnia długość to łączna długość odcinków danego rzędu podzielona przez liczbę jego cieków
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, p. 28: Strahler's orders: a source stream is of order 1, two streams of order u form one of order u + 1, and where streams of different orders join, the stream below keeps the higher order <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+>
+> Funkcja `hydrolog.network.stream_order.StreamNetwork.get_statistics`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:streams_of_each_order -->
 
 <!-- spec:bifurcation_ratio -->
+
+<a id="spec-bifurcation_ratio"></a>
+
+> **Wskaźnik bifurkacji Hortona dla cieków dwóch kolejnych rzędów** · specyfikacja [`bifurcation_ratio`](../FORMULAS.md#bifurcation_ratio) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> R_b = \frac{N_u}{N_{u+1}}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $N_u$ | `n_lower` | Liczba cieków rzędu u według Strahlera | – | [2; ∞) | nie podano w źródłach | [2; 5] (źr. 3) |
+> | $N_{u+1}$ | `n_higher` | Liczba cieków rzędu u + 1 według Strahlera | – | [1; ∞) | nie podano w źródłach | [1; 2] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $R_b$ | `bifurcation_ratio` | Wskaźnik bifurkacji rzędów u i u + 1 | – | [2; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | N_u i N_(u+1) to liczby cieków, czyli liczby całkowite | `whole_numbers` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 1) |
+> | N_u >= 2 N_(u+1): każdy ciek rzędu u + 1 zaczyna się tam, gdzie kończą się co najmniej dwa cieki rzędu u, a każdy ciek kończy się tylko raz, więc Rb >= 2 | `two_streams_per_junction` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 5) |
+>
+> **Konwencje**
+>
+> - N_u liczy cieki według Strahlera — ciek rzędu u biegnie od miejsca, w którym zaczyna się ten rząd, do połączenia z ciekiem rzędu równego lub wyższego — a nie odcinki między węzłami (`StreamNetwork.get_statistics`)
+> - wskaźniki Hortona są zdefiniowane tylko dla rzędów Strahlera: dla magnitud Shreve'a nie wyznacza się ich
+>
+> **Zgodność z obserwacjami według źródeł:** brak: prawo liczby cieków Hortona sprawia, że Rb jest prawie stały w kolejnych rzędach; źródła podają zakresy Rb, a nie jego zgodność z jakąś wielkością
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eqs. (1.2.18)-(1.2.22): the density of the river network sum(L) / A, the bifurcation ratio N_u / N_(u+1), N_u the number of streams of order u, the ratio of the mean lengths of the streams of consecutive orders and the frequency of streams, the number of streams of all orders over A <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+> 2. Strahler, A.N. (1957). Quantitative analysis of watershed geomorphology. Transactions, American Geophysical Union 38(6): 913-920, stream orders, the numbers and mean lengths of the streams of each order and Horton's laws (not opened; the definitions as Baścik 2006 gives them) <https://doi.org/10.1029/TR038i006p00913>
+> 3. Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2, 5 and 2 streams of orders 1 and 2
+> 4. Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2, 2 and 1 streams of orders 2 and 3
+> 5. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, p. 28: Strahler's orders: a source stream is of order 1, two streams of order u form one of order u + 1, and where streams of different orders join, the stream below keeps the higher order <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+>
+> Funkcja `hydrolog.network.stream_order.bifurcation_ratio`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:bifurcation_ratio -->
 
 <!-- spec:length_ratio -->
+
+<a id="spec-length_ratio"></a>
+
+> **Wskaźnik długości cieków Hortona dla dwóch kolejnych rzędów** · specyfikacja [`length_ratio`](../FORMULAS.md#length_ratio) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> R_l = \frac{\bar L_{u+1}}{\bar L_u}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $\bar L_u$ | `mean_length_lower_km` | Średnia długość cieków rzędu u według Strahlera | km | (0; ∞) | nie podano w źródłach | [0,9; 5,2] (źr. 3) |
+> | $\bar L_{u+1}$ | `mean_length_higher_km` | Średnia długość cieków rzędu u + 1 według Strahlera | km | [0; ∞) | nie podano w źródłach | [0,9; 5,2] (źr. 3) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $R_l$ | `length_ratio` | Wskaźnik długości cieków rzędów u i u + 1 | – | [0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | średnia L_(u+1) / średnia L_u mieści się w zakresie float64 | `within_float64` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Konwencje**
+>
+> - średnie długości cieków według Strahlera: łączna długość odcinków danego rzędu podzielona przez liczbę jego cieków (`StreamNetwork.get_statistics`), km
+> - Rl ze średnich długości, czyli wskaźnik Hortona; nie stosunek długości łącznych
+>
+> **Zgodność z obserwacjami według źródeł:** brak: prawo długości cieków Hortona sprawia, że Rl jest prawie stały w kolejnych rzędach; źródła nie podają jego zgodności z żadną wielkością
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eqs. (1.2.18)-(1.2.22): the density of the river network sum(L) / A, the bifurcation ratio N_u / N_(u+1), N_u the number of streams of order u, the ratio of the mean lengths of the streams of consecutive orders and the frequency of streams, the number of streams of all orders over A <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+> 2. Strahler, A.N. (1957). Quantitative analysis of watershed geomorphology. Transactions, American Geophysical Union 38(6): 913-920, stream orders, the numbers and mean lengths of the streams of each order and Horton's laws (not opened; the definitions as Baścik 2006 gives them) <https://doi.org/10.1029/TR038i006p00913>
+> 3. Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2, mean lengths of 0.92, 1.45 and 5.2 km of orders 1-3
+>
+> Funkcja `hydrolog.network.stream_order.length_ratio`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:length_ratio -->
 
 Niski wskaźnik bifurkacji „świadczy o dużej koncentracji dopływów” (Baścik 2006, s. 28). Według
@@ -506,9 +1158,95 @@ Strahlera wszystkich rzędów na jednostkę powierzchni (Baścik 2006, wzory 1.2
 gęstość sieci oznacza krótką drogę wody po stoku do koryta i zwykle szybszą reakcję zlewni.
 
 <!-- spec:drainage_density -->
+
+<a id="spec-drainage_density"></a>
+
+> **Gęstość sieci rzecznej: długość cieków podzielona przez powierzchnię zlewni** · specyfikacja [`drainage_density`](../FORMULAS.md#drainage_density) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> D_d = \frac{\sum L}{A}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $\sum L$ | `total_length_km` | Łączna długość cieków zlewni | km | [0; ∞) | nie podano w źródłach | [0,7; 12,7] (źr. 3) |
+> | $A$ | `area_km2` | Powierzchnia zlewni w rzucie poziomym | km² | (0; ∞) | nie podano w źródłach | [0,0003; 250] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $D_d$ | `drainage_density` | Gęstość sieci rzecznej | km/km² | [0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | sum(L) / A mieści się w zakresie float64 | `within_float64` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Konwencje**
+>
+> - długość wszystkich cieków sieci podzielona przez powierzchnię zlewni, km/km²; sieć z NMT zależy od progowej powierzchni zlewni cieku, a sieć z mapy od jej skali, więc wartości można porównywać tylko przy tej samej metodzie
+>
+> **Zgodność z obserwacjami według źródeł:** brak: stosunek wielkości mierzonych; Baścik (2006) zauważa, że silnie zależy on od skali mapy i od progu wydzielania cieku
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eqs. (1.2.18)-(1.2.22): the density of the river network sum(L) / A, the bifurcation ratio N_u / N_(u+1), N_u the number of streams of order u, the ratio of the mean lengths of the streams of consecutive orders and the frequency of streams, the number of streams of all orders over A <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+> 2. Strahler, A.N. (1957). Quantitative analysis of watershed geomorphology. Transactions, American Geophysical Union 38(6): 913-920, stream orders, the numbers and mean lengths of the streams of each order and Horton's laws (not opened; the definitions as Baścik 2006 gives them) <https://doi.org/10.1029/TR038i006p00913>
+> 3. Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2, segments of 0.7 to 3.0 km, 12.7 km in all
+> 4. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)
+>
+> Funkcja `hydrolog.network.stream_order.drainage_density`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:drainage_density -->
 
 <!-- spec:stream_frequency -->
+
+<a id="spec-stream_frequency"></a>
+
+> **Wskaźnik częstości cieków: liczba cieków podzielona przez powierzchnię zlewni** · specyfikacja [`stream_frequency`](../FORMULAS.md#stream_frequency) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> F_s = \frac{\sum_u N_u}{A}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $\sum N_u$ | `n_streams` (liczba całkowita) | Liczba cieków wszystkich rzędów według Strahlera | – | [0; ∞) | nie podano w źródłach | [1; 8] (źr. 3) |
+> | $A$ | `area_km2` | Powierzchnia zlewni w rzucie poziomym | km² | (0; ∞) | nie podano w źródłach | [0,0003; 250] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $F_s$ | `stream_frequency` | Wskaźnik częstości cieków | 1/km² | [0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | sum(N_u) / A mieści się w zakresie float64 | `within_float64` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Konwencje**
+>
+> - cieki według Strahlera wszystkich rzędów (`StreamNetwork.n_streams`), a nie odcinki między węzłami; wskaźnik częstości cieków w Hydrografie liczy odcinki sieci BDOT10k i wyraźnie to zaznacza
+>
+> **Zgodność z obserwacjami według źródeł:** brak: stosunek wielkości zliczonych i zmierzonych
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34, eqs. (1.2.18)-(1.2.22): the density of the river network sum(L) / A, the bifurcation ratio N_u / N_(u+1), N_u the number of streams of order u, the ratio of the mean lengths of the streams of consecutive orders and the frequency of streams, the number of streams of all orders over A <https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content>
+> 2. Strahler, A.N. (1957). Quantitative analysis of watershed geomorphology. Transactions, American Geophysical Union 38(6): 913-920, stream orders, the numbers and mean lengths of the streams of each order and Horton's laws (not opened; the definitions as Baścik 2006 gives them) <https://doi.org/10.1029/TR038i006p00913>
+> 3. Hydrolog's example network tests/fixtures/network_segments.csv, the example of network stats in the catalog and docs/USAGE.md: 9 segments over 12 km2, 8 streams of orders 1-3
+> 4. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)
+>
+> Funkcja `hydrolog.network.stream_order.stream_frequency`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:stream_frequency -->
 
 Gęstość sieci zależy silnie od tego, co uznano za ciek: na mapie od jej skali, w sieci z NMT od

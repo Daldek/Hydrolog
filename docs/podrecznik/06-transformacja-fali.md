@@ -33,17 +33,71 @@ kroku, bez braków; Hydrolog niczego nie przepróbkowuje, a tabelę nieregularn�
 minuty, m³/s, m³ i km. Na początku odcinek jest w stanie ustalonym:
 
 <!-- spec:routing_initial_state -->
+
+<a id="spec-routing_initial_state"></a>
+
+> **Stan początkowy transformacji fali** · wzór grupy B `routing_initial_state` (Tier B, CMP-2.2)
+>
+> **Definicja:** odpływ w chwili pierwszej rzędnej: podany odpływ początkowy, a w przeciwnym razie pierwsza rzędna dopływu; każdy pododcinek, zbiornik lub zbiornik liniowy elementu startuje z tym odpływem w stanie ustalonym (spoczynku) (źr. 1)
+>
+> **Konwencja:** stan ustalony na początku (HEC-HMS inicjalizuje odcinek jego dopływem); podany odpływ początkowy jest skończony i nieujemny
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Hydrolog ADR-0008: routing conventions, docs/decisions/0008-routing-conventions.md, Initial condition
+>
+> Funkcja `hydrolog.routing.reach._initial_outflow`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:routing_initial_state -->
 
 Odpływ trwa dłużej niż dopływ, więc Hydrolog wydłuża oś czasu, utrzymując ostatnią wartość dopływu,
 dopóki odpływ się nie ustali (uwaga `tail_extended`; gdy to się nie udaje — `tail_truncated`):
 
 <!-- spec:routing_tail -->
+
+<a id="spec-routing_tail"></a>
+
+> **Wydłużenie osi czasu transformacji fali po końcu dopływu** · wzór grupy B `routing_tail` (Tier B, CMP-2.2)
+>
+> **Definicja:** najkrótsze wydłużenie osi czasu, przy utrzymanym ostatnim dopływie, po którym odpływ różni się od końcowego dopływu najwyżej o tolerancję (względem kulminacji dopływu), a woda zmagazynowana ponad ilość w stanie ustalonym nie przekracza tolerancji objętości dopływu (albo nadwyżki, z którą element startował, gdy jest ona większa); wydłużenie wynosi najwyżej dziesięciokrotność czasu trwania dopływu i co najmniej minimalną liczbę kroków (źr. 1)
+>
+> **Konwencja:** dopływ po jego ostatniej rzędnej jest równy ostatniej wartości; odpływ, który nie ustalił się do osiągnięcia limitu, daje ostrzeżenie `tail_truncated`
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | – | `tail_tolerance` | Względna tolerancja ustalenia odpływu i retencji | 0,001 | – | (źr. 2) |
+> | – | `min_extension_steps` | Minimalna liczba kroków wydłużenia osi czasu | 100 | – | (źr. 3) |
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Hydrolog ADR-0008: routing conventions, docs/decisions/0008-routing-conventions.md, Tail
+> 2. Hydrolog ADR-0008: routing conventions, 0.1 % of the peak
+> 3. Hydrolog ADR-0008: routing conventions, at least 100 steps
+>
+> Funkcja `hydrolog.routing.reach._settled`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:routing_tail -->
 
 Każdy wynik podaje objętość dopływu i odpływu, retencję na początku i na końcu oraz błąd bilansu:
 
 <!-- spec:routing_volume_balance -->
+
+<a id="spec-routing_volume_balance"></a>
+
+> **Błąd bilansu objętości transformacji fali** · wzór grupy B `routing_volume_balance` (Tier B, CMP-2.2)
+>
+> **Definicja:** objętość dopływu na wydłużonej osi czasu (z utrzymanym ostatnim dopływem) minus objętość odpływu minus retencja na końcu plus retencja na początku, każda objętość obliczona metodą trapezów (źr. 1)
+>
+> **Konwencja:** zero z dokładnością do zaokrągleń dla rekurencji na pierwotnym kroku; w pozostałych przypadkach błąd próbkowania metody trapezów po podziale na podkroki, błąd kwadratury ścisłego jądra (kaskada) albo interpolowanego opóźnienia
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Hydrolog ADR-0008: routing conventions, docs/decisions/0008-routing-conventions.md, Balance
+>
+> Funkcja `hydrolog.routing.reach.RoutingResult.balance_error_m3`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:routing_volume_balance -->
 
 Błąd bilansu jest zerowy z dokładnością do zaokrągleń, chyba że schemat liczono na krokach
@@ -76,6 +130,66 @@ przetworzone”.
 czas $\tau$ (ang. *lag*). Retencja odcinka to woda „w drodze”.
 
 <!-- spec:lag -->
+
+<a id="spec-lag"></a>
+
+> **Przesunięcie w czasie (lag): dopływ przesunięty o stały czas, liniowy między rzędnymi** · specyfikacja [`lag`](../FORMULAS.md#lag) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> O(t) = I(t - \tau),\quad O_j = (1 - f)\,I_{j-w} + f\,I_{j-w-1},\ \frac{\tau}{\Delta t} = w + f,\ 0 \le f < 1,\quad S(t) = \int_{t-\tau}^{t} I(s)\,ds
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $I_t$ | `inflow_m3s` (ciąg) | Dopływ w chwilach t = 0, dt, 2 dt, ...: hydrogram wpływający do odcinka, liniowy między rzędnymi | m³/s | [0; ∞) | nie podano w źródłach | [0; 100] (źr. 2) |
+> | $\Delta t$ | `timestep_min` | Krok czasowy dopływu i odpływu | min | (0; ∞) | nie podano w źródłach | [5; 720] (źr. 3) |
+> | $\tau$ | `lag_min` | Przesunięcie, czas przepływu przez odcinek | min | (0; ∞) | nie podano w źródłach | [5; 60] (źr. 4) |
+> | $O_0$ | `initial_outflow_m3s` | Odpływ w pierwszej rzędnej; odcinek startuje z nim w stanie ustalonym | m³/s | [0; ∞) | nie podano w źródłach | [0; 100] (źr. 2) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $O_t$ | `outflow_m3s` (ciąg) | Odpływ w rzędnych dopływu | m³/s | [0; ∞) |
+> | $S$ | `storage_start_m3` | Objętość wody w drodze przez odcinek w pierwszej rzędnej, lag O0 | m³ | [0; ∞) |
+> | $S$ | `storage_end_m3` | Objętość wody w drodze przez odcinek w ostatniej rzędnej, dopływ z ostatnich lag minut | m³ | [0; ∞) |
+> | $S$ | `storage_steady_m3` | Objętość wody w drodze przez odcinek w stanie ustalonym przy ostatnim dopływie, lag I[-1] | m³ | [0; ∞) |
+> | $w + f$ | `lag_steps` | Przesunięcie podzielone przez krok czasowy | – | [0; ∞) |
+> | $f$ | `lag_fraction` | Waga wcześniejszej rzędnej: część kroku, o którą przesunięcie odbiega od całkowitej liczby kroków | – | [0; 1) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | lag / dt i objętość wody w drodze lag max(I, O0) są skończone w float64 | `representable` | odmowa obliczeń: wzór jest nieokreślony | (źr. 5) |
+>
+> **Konwencje**
+>
+> - jednostki SI: przepływ w m³/s, czas w min, retencja w m³ (przesunięcie w min razy przepływ w m³/s razy 60 s minuty z tabeli jednostek)
+> - przed pierwszą rzędną dopływ jest równy odpływowi początkowemu (odcinek w stanie ustalonym, ADR-0008); HEC-HMS TRM, model Lag, wzór 1 przyjmuje zamiast tego O_t = I_t dla t < lag
+> - przesunięcie niebędące całkowitą liczbą kroków interpoluje dopływ liniowo między dwiema rzędnymi otaczającymi t - lag, co spłaszcza ostre kulminacje; jeden krok przed pierwszą rzędną dopływ wynosi O0, więc rzędne odpływu odpowiadają dopływowi rosnącemu liniowo od O0 do I[0] w tym kroku, podczas gdy objętości retencji przyjmują O0 aż do pierwszej rzędnej
+> - przesunięcie różniące się od całkowitej liczby kroków o nie więcej niż 1e-9 kroku liczy się jako całkowite (`LAG_ROUNDING`); objętości retencji zachowują przesunięcie w podanej postaci
+> - transformowane są tylko podane rzędne: `LagReach` wydłuża oś czasu o przesunięcie (Tier B, ADR-0008) i dodaje uwagę `lag_interpolated` dla przesunięcia niebędącego całkowitą liczbą kroków
+>
+> **Założenia**
+>
+> - odcinek przesuwa falę bez tłumienia, a czas przepływu jest stały w czasie wezbrania
+> - brak cofki: odpływ nie zależy od wody poniżej odcinka
+>
+> **Zgodność z obserwacjami według źródeł:** brak: przesunięcie to czas przepływu przez odcinek, ustalany z jego długości i prędkości fali albo kalibrowany (HEC-HMS TRM, model Lag); źródło nie podaje oceny zgodności z obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Lag Model, eq. 1: O_t = I_(t - lag) for t >= lag and O_t = I_t before; the lag suits short reaches with a predictable travel time <https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/lag-model>
+> 2. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s
+> 3. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), steps of 5 min (Hydrograf's networks, tests/fixtures/handoff_hydrograf_network*.json) to 12 h (the Iowa example and NEH 630 ch. 17 example 17-2, 0.5 d)
+> 4. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), lags of 5 to 30 min in tests/unit/test_routing_core.py and of 10 to 60 min in docs/USAGE.md (route lag, networks)
+> 5. IEEE 754 binary64, the float64 of NumPy: largest finite number 1.8e308, the lag over the step, and the water in transit lag max(I, O0)
+>
+> Funkcja `hydrolog.routing.formulas.lag.lag_route`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:lag -->
 
 **Zastosowanie.** Krótkie odcinki o znanym czasie przepływu, na których spłaszczenie jest pomijalne
@@ -108,6 +222,77 @@ wagowy** $X$ (ang. *weighting factor*). Wstawienie tej retencji do równania ci�
 wzorem trapezów daje rekurencję o trzech wagach:
 
 <!-- spec:muskingum -->
+
+<a id="spec-muskingum"></a>
+
+> **Transformacja fali metodą Muskingum w N jednakowych pododcinkach (retencja McCarthy'ego, ciągłość wzorem trapezów)** · specyfikacja [`muskingum`](../FORMULAS.md#muskingum) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> O_t = c_0 I_t + c_1 I_{t-1} + c_2 O_{t-1},\quad c_0 = \frac{\Delta t - 2kX}{D},\ c_1 = \frac{\Delta t + 2kX}{D},\ c_2 = \frac{2k(1-X) - \Delta t}{D},\ D = 2k(1-X) + \Delta t,\ k = \frac{K}{N}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $I_t$ | `inflow_m3s` (ciąg) | Dopływ w chwilach t = 0, dt, 2 dt, ...: hydrogram wpływający do odcinka, liniowy między rzędnymi | m³/s | [0; ∞) | nie podano w źródłach | [0; 100] (źr. 5) |
+> | $\Delta t$ | `timestep_min` | Krok czasowy dopływu i odpływu | min | (0; ∞) | nie podano w źródłach | [5; 720] (źr. 6) |
+> | $K$ | `k_min` | Czas przepływu przez cały odcinek, stała retencji K | min | (0; ∞) | nie podano w źródłach | [10; 1200] (źr. 7) |
+> | $X$ | `x` | Waga dopływu w retencji: 0 — zbiornik liniowy, 0,5 — fala nietłumiona | – | [0; 0,5] | [0; 0,5] (źr. 1) | [0,1; 0,3] (źr. 8) |
+> | $N$ | `subreaches` (liczba całkowita) | Liczba jednakowych pododcinków o stałej K / N połączonych szeregowo | – | [1; ∞) | nie podano w źródłach | [1; 10] (źr. 9) |
+> | $O_0$ | `initial_outflow_m3s` | Odpływ w pierwszej rzędnej; odcinek startuje z nim w stanie ustalonym | m³/s | [0; ∞) | nie podano w źródłach | [0; 100] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $O_t$ | `outflow_m3s` (ciąg) | Odpływ w rzędnych dopływu | m³/s | [0; ∞) |
+> | $c_0$ | `c_current` | Waga I[t] w jednym pododcinku | – | [0; 1] |
+> | $c_1$ | `c_previous` | Waga I[t-1] w jednym pododcinku | – | [0; 1] |
+> | $c_2$ | `c_outflow` | Waga O[t-1] w jednym pododcinku | – | [0; 1] |
+> | $S$ | `storage_start_m3` | Objętość wody w pododcinkach w pierwszej rzędnej | m³ | [0; ∞) |
+> | $S$ | `storage_end_m3` | Objętość wody w pododcinkach w ostatniej rzędnej | m³ | [0; ∞) |
+> | $S$ | `storage_steady_m3` | Objętość wody w pododcinkach w stanie ustalonym przy ostatnim dopływie, K I[-1] | m³ | [0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | dt, K / N i dt / (K / N) >= 2,2e-308, najmniejsza liczba znormalizowana float64, a 2 K [s] i objętość wody K max(I, O0) [m³] są skończone: poniżej tej granicy wagi zaokrąglają się do mniejszej liczby cyfr albo wagi dopływu ulegają niedomiarowi i wpływająca woda ginie; powyżej wagi są NaN | `representable` | odmowa obliczeń: wzór jest nieokreślony | (źr. 10) |
+> | 2 K X / N <= dt <= 2 K (1 - X) / N, każdy koniec z dokładnością do 1e-9 swojej wartości: każda waga jest nieujemna, więc nieujemny dopływ daje nieujemny odpływ | `nonnegative_weights` | odmowa obliczeń: wzór jest nieokreślony | (źr. 11) |
+>
+> **Konwencje**
+>
+> - jednostki SI: przepływ w m³/s, czas w min, retencja w m³ (K w min razy przepływ w m³/s razy 60 s minuty z tabeli jednostek)
+> - wagi nazwano według tego, co mnożą: `c_current` — I[t], `c_previous` — I[t-1], `c_outflow` — O[t-1]; NEH 630 i HEC-HMS nazywają je C2, C1 i C3, przykłady z Iowa i NPTEL — C1, C2 i C3
+> - ciągłość wzorem trapezów, (S[t] - S[t-1]) / dt = (I[t] + I[t-1]) / 2 - (O[t] + O[t-1]) / 2, przy S = k [X I + (1 - X) O] w każdym pododcinku
+> - N jednakowych pododcinków o stałej K / N połączonych szeregowo, z tym samym X (HEC-HMS); każdy pododcinek startuje w stanie ustalonym z odpływem O0, więc w pierwszej rzędnej wszystkie poza pierwszym są zasilane przez O0
+> - w granicach tolerancji okna waga, którą zaokrąglenie sprowadza poniżej zera, jest zerowana, a pozostałe dzieli się przez ich sumę (`hydrolog.routing._kernels.nonnegative_coefficients`)
+> - transformowane są tylko podane rzędne: `MuskingumReach` dobiera N (zaokrąglone K / dt) oraz podkroki kroku, dla którego nie ma okna, interpoluje między nimi dopływ liniowo i wydłuża oś czasu (Tier B, ADR-0008)
+>
+> **Założenia**
+>
+> - retencja odcinka jest liniową funkcją ważonego przepływu, S = K [X I + (1 - X) O], przy K i X stałych w czasie wezbrania
+> - brak cofki: odpływ nie zależy od wody poniżej odcinka
+>
+> **Zgodność z obserwacjami według źródeł:** brak: K i X kalibruje się na wezbraniach obserwowanych na odcinku (HEC-HMS TRM, model Muskingum; EM 1110-2-1417 rozdz. 9); źródła nie podają oceny zgodności samego schematu z obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum Model, equations of the storage and of the weights; X from 0 to 0.5; sub-reaches whose travel time is about the time step <https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-model>
+> 2. US Army Corps of Engineers (1994). Engineering and Design: Flood-Runoff Analysis, EM 1110-2-1417, chapter 9, eqs. 9-15 to 9-19, pp. 9-12 to 9-15 <https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-1417.pdf>
+> 3. USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), eqs. 17-6 to 17-11 and the Muskingum method, pp. 17-14 to 17-18 <https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf>
+> 4. McCarthy, G.T. (1938). The unit hydrograph and flood routing, Conference of the North Atlantic Division, US Army Corps of Engineers, New London, Conn. — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 5. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s
+> 6. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), steps of 5 min (Hydrograf's networks, tests/fixtures/handoff_hydrograf_network*.json) to 12 h (the Iowa example and NEH 630 ch. 17 example 17-2, 0.5 d)
+> 7. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), K of 10 to 60 min in the tests of the reach, 2.3 h (NPTEL) and 20 h (Iowa) in the published examples
+> 8. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), X of 0.2 in most tests of the reach, 0.15 (NPTEL) and 0.25 (Iowa) in the published examples; 0.1 to 0.3 for natural streams after Fread (1993), as Balaz, Danacova and Szolgay (2010, Slovak Journal of Civil Engineering 18(3)) cite it
+> 9. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 1 to 3 sub-reaches in the tests of the reach and in the published examples; K / dt rounded up to 10 in the network tests
+> 10. IEEE 754 binary64, the float64 of NumPy: largest finite number 1.8e308, smallest normal 2.2e-308, the ratio of the step to K / N in the weights, K in seconds in their denominator and the storage K max(I, O0)
+> 11. the signs of the numerators of the weights (Hydrolog ADR-0008); Ponce's form \|C - D\| <= 1 <= C + D, c_current >= 0 iff dt >= 2KX/N, c_previous >= 0 iff dt >= -2KX/N, c_outflow >= 0 iff dt <= 2K(1 - X)/N
+>
+> Funkcja `hydrolog.routing.formulas.muskingum.muskingum_route`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:muskingum -->
 
 Wagi sumują się do jedności, więc stan ustalony się utrzymuje. $X = 0$ to zbiornik liniowy
@@ -121,6 +306,21 @@ $K/N$ i tym samym $X$, tak aby fala przechodziła przez pododcinek mniej więcej
 z $N$: więcej pododcinków — mniejsze spłaszczenie. Hydrolog dobiera $N$ tak:
 
 <!-- spec:muskingum_subreaches -->
+
+<a id="spec-muskingum_subreaches"></a>
+
+> **Liczba pododcinków w metodzie Muskingum** · wzór grupy B `muskingum_subreaches` (Tier B, CMP-2.2)
+>
+> **Definicja:** liczby całkowite N jednakowych pododcinków, przy których wagi są nieujemne dla kroku dt, ceil(2KX/dt) <= N <= floor(2K(1 - X)/dt), każdy koniec z dokładnością do 1e-9 swojej wartości; `MuskingumReach` transformuje z N = K/dt zaokrąglonym (połowa w górę, co najmniej 1), które leży w oknie zawsze, gdy leży w nim jakakolwiek liczba całkowita, a krok, dla którego nie ma okna, dzieli na najmniejszą liczbę od 2 do 100 jednakowych podkroków, dla której okno istnieje, przy dopływie liniowym między rzędnymi (źr. 1)
+>
+> **Konwencja:** czas przepływu przez pododcinek wynosi około jednego kroku czasowego (HEC-HMS); liczby pododcinków podanej przez wywołującego nigdy się nie zmienia: poza oknem jest odrzucana (`unstable_timestep`, ADR-0008)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum Model, the number of subreaches: the travel time through a subreach approximately equal to the simulation time step <https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-model>
+>
+> Funkcja `hydrolog.routing.muskingum.subreach_window`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:muskingum_subreaches -->
 
 **Parametry.** $K$ i $X$ kalibruje się na parach zarejestrowanych hydrogramów dopływu i odpływu
@@ -154,6 +354,81 @@ zwierciadła** $T$ (ang. *top width*) przy przepływie odniesienia. Dla koryta p
 (ang. *normal depth*), w ruchu jednostajnym:
 
 <!-- spec:manning_normal_flow -->
+
+<a id="spec-manning_normal_flow"></a>
+
+> **Przepływ normalny w korycie trapezowym, prostokątnym lub trójkątnym ze wzoru Manninga, z kinematyczną prędkością fali dQ/dA** · specyfikacja [`manning_normal_flow`](../FORMULAS.md#manning_normal_flow) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> Q = \frac{1}{n} A R^{2/3} S^{1/2},\quad A = (b + z y) y,\ P = b + 2 y \sqrt{1 + z^2},\ R = \frac{A}{P};\quad T = b + 2 z y,\ V = \frac{Q}{A},\ c = \frac{dQ}{dA} = V \left(\frac{5}{3} - \frac{2}{3} \frac{A P'}{T P}\right)
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $Q$ | `discharge_m3s` | Przepływ, dla którego wyznacza się przepływ normalny | m³/s | (0; ∞) | nie podano w źródłach | [1; 300] (źr. 6) |
+> | $S$ | `slope_m_per_m` | Spadek dna, równy spadkowi linii energii przy przepływie jednostajnym | m/m | (0; ∞) | nie podano w źródłach | [0,0002; 0,02] (źr. 7) |
+> | $b$ | `bottom_width_m` | Szerokość dna przekroju; zero dla trójkąta | m | [0; ∞) | nie podano w źródłach | [0; 30] (źr. 8) |
+> | $z$ | `side_slope_m_per_m` | Odległość pozioma w metrach na metr wysokości obu skarp; zero dla prostokąta | m/m | [0; ∞) | nie podano w źródłach | [0; 2] (źr. 9) |
+> | $n$ | `manning_n` | Współczynnik szorstkości Manninga dla całego obwodu zwilżonego | $\mathrm{s/m^{1/3}}$ | (0; ∞) | nie podano w źródłach | [0,03; 0,05] (źr. 10) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $y$ | `depth_m` | Głębokość normalna | m | (0; ∞) |
+> | $A$ | `area_m2` | Pole przekroju przepływu przy głębokości normalnej | m² | (0; ∞) |
+> | $T$ | `top_width_m` | Szerokość zwierciadła wody przy głębokości normalnej | m | (0; ∞) |
+> | $V$ | `velocity_m_per_s` | Prędkość średnia Q / A | m/s | (0; ∞) |
+> | $c$ | `celerity_m_per_s` | Prędkość kinematycznej fali wezbraniowej, dQ/dA przy stałym spadku | m/s | (0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | b + z > 0: przekrój ma dno lub skarpy; bez żadnego z nich nie mieści wody | `has_width` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 3) |
+> | 2,2e-308 <= y, A, T, V, c < inf: float64 przechowuje przepływ normalny z dokładnością do szesnastu cyfr; przekrój tak wąski, płaski lub szorstki albo przepływ tak duży lub mały, że któraś z tych wielkości przekracza zakres lub trafia między liczby subnormalne, nie ma przepływu normalnego | `representable_flow` | odmowa obliczeń: wzór jest nieokreślony | (źr. 11) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $2/3$ | `radius_exponent` | Wykładnik promienia hydraulicznego | 2/3 | – | (źr. 1) |
+> | $1/2$ | `slope_exponent` | Wykładnik spadku linii energii | 1/2 | – | (źr. 1) |
+>
+> **Konwencje**
+>
+> - jednostki SI: Q w m³/s, długości w m, n w s/m^(1/3); postać w jednostkach amerykańskich mnoży przez 1,486, zaokrąglony pierwiastek sześcienny z liczby stóp w metrze (1,4859), tak jak HEC-RAS (USGS WSP 2339, wzór 1)
+> - spadek dna jest spadkiem linii energii (spadkiem tarcia): przepływ jest jednostajny
+> - prędkość fali to lokalna kinematyczna prędkość fali dQ/dA przy danej głębokości (HEC-HMS, wzór 4; NEH, wzór 17-25 z m = d ln Q / d ln A); przykład 17-4 z NEH przyjmuje m krzywej natężenia przepływu ważone przepływem od zera do Q (wzory 17-29, 17-30a), o 2 % większe od lokalnego (przypadek `mc_neh17_example17_4_from_section`)
+> - jedna szorstkość dla całego obwodu zwilżonego; trapez z obiema skarpami o nachyleniu z:1, prostokąt przy z = 0 i trójkąt przy b = 0; bez terenów zalewowych
+> - głębokość normalną wyznacza się metodą Brenta względem ln y (`scipy.optimize.brentq`, delegowane, CMP-1.2) w przedziale wyznaczonym z nachylenia ln K względem ln y, mieszczącego się między 1 a 10/3, z dokładnością do czterech jednostek 1e-16 wartości max(1, \|ln y\|)
+>
+> **Założenia**
+>
+> - przepływ ustalony jednostajny: głębokość jest głębokością normalną danego przepływu
+> - koryto pryzmatyczne, którego n nie zmienia się z głębokością
+> - przepływ mieści się w przekroju, który nie ma górnego ograniczenia
+>
+> **Zgodność z obserwacjami według źródeł:** brak: źródła podają wzór Manninga jako praktykę obliczeń ustalonego przepływu jednostajnego w korytach otwartych i nie podają własnej oceny zgodności z obserwacjami; n dobiera się z tabel albo kalibruje (USGS WSP 2339)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339, Introduction, eqs. 1 and 2 (the first page of the text): V = 1.486/n R^(2/3) Se^(1/2) and the conveyance K = 1.486/n A R^(2/3), in feet <https://pubs.usgs.gov/wsp/2339/report.pdf>
+> 2. US Army Corps of Engineers, Hydrologic Engineering Center. Water Surface Profile Calculations with HEC-RAS (training lesson 1.6, PROSPECT course), slides 'Cross Section Subdivision for Conveyance Calculations' (Q = 1.486/n A R^(2/3) Sf^(1/2), in feet) and 'Computational Procedure: Tolerances and trials' (water surface calculation tolerance 0.01 ft by default) <https://www.hec.usace.army.mil/confluence/prospect/files/124452884/124453107/1/1669663021202/1.6+L+-+Water+Surface+Profile+Calculations.pdf>
+> 3. US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum-Cunge Model, eq. 4, the flood wave celerity c = dQ/dA; Required Parameters: the reach's Manning's n and a rectangle, trapezoid or triangle by its bottom width and side slope <https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-cunge-model>
+> 4. USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), eqs. 17-24 and 17-25, c = dQ/dA = m Q / A, and 17-29 and 17-30a, the weighted m of a rating table; Table 17-16 and example 17-4, pp. 17-36 to 17-43 <https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf>
+> 5. Manning, R. (1891). On the flow of water in open channels and pipes, Transactions of the Institution of Civil Engineers of Ireland 20, 161-207 — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 6. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), reference discharges of 0.95 to 300.05 m3/s in the tests of the reach (tests/unit/test_routing_cunge.py), 12 m3/s in tests/fixtures/network_flood.json; NEH 630 examples 17-4 and 17-5, 684.18 and 3,385.4 ft3/s (19.4 and 95.9 m3/s)
+> 7. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 0.0002 to 0.002778 in the tests of the reach (tests/unit/test_routing_cunge.py), 0.00208 to 0.009859 on the reaches of Hydrograf's Nysa Szalona network from the DEM (tests/fixtures/handoff_hydrograf_network_nysa_szalona.json), 0.02 in tests/fixtures/handoff_hydrograf_network.json; 0.00091 in NEH 630 examples 17-4 and 17-5
+> 8. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 0 (a triangle) to 30 m in the tests of the section (tests/unit/test_routing_sections.py), 5 to 15 m in the tests of the reach, 8 m in tests/fixtures/network_flood.json; NEH 630 example 17-4, 15 ft (4.57 m)
+> 9. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 0 (a rectangle) to 2 (2:1 banks) in the tests of the section and of the reach, 2 in tests/fixtures/network_flood.json and NEH 630 example 17-4
+> 10. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 0.03 to 0.05 in the tests of the section and of the reach, 0.035 in docs/USAGE.md and tests/fixtures/network_flood.json; NEH 630 example 17-4, 0.04
+> 11. IEEE 754-2019, binary64: normal numbers of magnitude about 2.2e-308 to 1.8e308, with 53 significant bits; below them the subnormal numbers keep fewer, the depth, the area, the top width, the velocity and the celerity of a flow must be normal numbers to hold their sixteen digits
+>
+> Funkcja `hydrolog.routing.formulas.manning.normal_flow`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:manning_normal_flow -->
 
 Prędkość fali to prędkość, z jaką wzdłuż koryta przesuwa się dany przepływ; jest większa od średniej
@@ -194,6 +469,98 @@ silniej fala się rozmywa. $X$ może tu być ujemne — w tej metodzie to nie �
 dopasowania dyfuzji.
 
 <!-- spec:muskingum_cunge -->
+
+<a id="spec-muskingum_cunge"></a>
+
+> **Transformacja fali metodą Muskingum-Cunge ze stałymi współczynnikami na N jednakowych krokach przestrzennych (K i X według Cunge'a)** · specyfikacja [`muskingum_cunge`](../FORMULAS.md#muskingum_cunge) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> D = \frac{Q}{T S_0 c},\ \Delta x = \frac{L}{N},\ K = \frac{\Delta x}{c},\ X = \frac{1}{2}\left(1 - \frac{D}{\Delta x}\right);\quad O_t = c_0 I_t + c_1 I_{t-1} + c_2 O_{t-1};\quad C_g = \frac{c \Delta t}{\Delta x},\ D_g = \frac{D}{\Delta x} = 1 - 2X
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $I_t$ | `inflow_m3s` (ciąg) | Dopływ w chwilach t = 0, dt, 2 dt, ...: hydrogram wpływający do odcinka, liniowy między rzędnymi | m³/s | [0; ∞) | nie podano w źródłach | [0; 100] (źr. 5) |
+> | $\Delta t$ | `timestep_min` | Krok czasowy dopływu i odpływu | min | (0; ∞) | nie podano w źródłach | [5; 720] (źr. 6) |
+> | $L$ | `length_km` | Długość odcinka | km | (0; ∞) | nie podano w źródłach | [0,1; 23,4] (źr. 7) |
+> | $S_0$ | `slope_m_per_m` | Spadek dna odcinka | m/m | (0; ∞) | nie podano w źródłach | [0,0002; 0,02] (źr. 8) |
+> | $c$ | `celerity_m_per_s` | Prędkość fali wezbraniowej przy przepływie odniesienia | m/s | (0; ∞) | nie podano w źródłach | [0,2; 5] (źr. 9) |
+> | $T$ | `top_width_m` | Szerokość zwierciadła wody przy przepływie odniesienia | m | (0; ∞) | nie podano w źródłach | [10; 225] (źr. 10) |
+> | $Q$ | `reference_discharge_m3s` | Przepływ odniesienia, przy którym przyjmuje się prędkość fali i szerokość zwierciadła, wspólny dla całego obliczenia | m³/s | (0; ∞) | nie podano w źródłach | [1; 300] (źr. 11) |
+> | $N$ | `subreaches` (liczba całkowita) | Liczba jednakowych kroków przestrzennych dx = L / N | – | [1; ∞) | nie podano w źródłach | [1; 4] (źr. 12) |
+> | $O_0$ | `initial_outflow_m3s` | Odpływ w pierwszej rzędnej; odcinek startuje z nim w stanie ustalonym | m³/s | [0; ∞) | nie podano w źródłach | [0; 100] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $O_t$ | `outflow_m3s` (ciąg) | Odpływ w rzędnych dopływu | m³/s | [0; ∞) |
+> | $K$ | `k_min` | Czas przepływu L / c przez cały odcinek | min | (0; ∞) |
+> | $X$ | `x` | Współczynnik wagowy każdego kroku przestrzennego, (1 - Dg) / 2 | – | (−∞; 0,5] |
+> | $c_0$ | `c_current` | Waga I[t] w jednym kroku przestrzennego | – | [0; 1] |
+> | $c_1$ | `c_previous` | Waga I[t-1] w jednym kroku przestrzennego | – | [0; 1] |
+> | $c_2$ | `c_outflow` | Waga O[t-1] w jednym kroku przestrzennego | – | [0; 1] |
+> | $\Delta x$ | `dx_m` | Krok przestrzenny L / N | m | (0; ∞) |
+> | $C_g$ | `courant_number` | Liczba Couranta siatki, c dt / dx | – | (0; ∞) |
+> | $D_g$ | `grid_reynolds_number` | Siatkowa liczba Reynoldsa D / dx = 1 - 2X | – | (0; ∞) |
+> | $e^{2{,}3 C_g}$ | `grid_reynolds_limit` | Granica dokładności siatkowej liczby Reynoldsa według NEH, exp(2,3 Cg), ograniczona do exp(700) | – | [1; ∞) |
+> | $S$ | `storage_start_m3` | Objętość wody w schemacie w pierwszej rzędnej, suma K/N [X I + (1 - X) O] po krokach przestrzennych; ujemna, gdy X < 0, a dopływ dostatecznie przewyższa odpływ początkowy | m³ | (−∞; ∞) |
+> | $S$ | `storage_end_m3` | Objętość wody w schemacie w ostatniej rzędnej | m³ | (−∞; ∞) |
+> | $S$ | `storage_steady_m3` | Objętość wody w schemacie w stanie ustalonym przy ostatnim dopływie, K I[-1] | m³ | [0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | \|c dt - D\| <= L / N <= c dt + D przy D = Q / (T S0 c), każdy koniec z dokładnością do 1e-9 swojej wartości: każda waga jest nieujemna, więc nieujemny dopływ daje nieujemny odpływ | `nonnegative_weights` | odmowa obliczeń: wzór jest nieokreślony | (źr. 13) |
+> | L / c, c dt / dx, D / dx i N K (1 + 2\|X\|) max(I, O0) są skończone: float64 mieści siatkę i objętość wody, jaką może ona zatrzymać; fala tak powolna, krok tak krótki albo wezbranie tak duże, że któraś z tych wielkości przekracza zakres, nie ma siatki | `finite_grid` | odmowa obliczeń: wzór jest nieokreślony | (źr. 14) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $2{,}3$ | `accuracy_factor` | Współczynnik przy liczbie Couranta w wykładniku granicy dokładności NRCS | 2,3 | – | (źr. 1) |
+> | – | `limit_exponent_cap` | Górne ograniczenie wykładnika granicy dokładności | 700 | – | (źr. 14) |
+>
+> **Konwencje**
+>
+> - jednostki SI: przepływ w m³/s, czas w min, odcinek w km, krok przestrzenny i długość dyfuzji w m, prędkość fali w m/s, retencja w m³
+> - wagi nazwano według tego, co mnożą: `c_current` — I[t], `c_previous` — I[t-1], `c_outflow` — O[t-1]; NEH 630 i HEC-HMS nazywają je C2, C1 i C3
+> - jeden przepływ odniesienia, jedna prędkość fali i jedna szerokość zwierciadła dla wszystkich kroków przestrzennych i czasowych, więc współczynniki są stałe: WinTR-20 z NRCS przyjmuje kulminację na górnym końcu każdego kroku przestrzennego (NEH 630 przykład 17-5), a HEC-HMS przelicza współczynniki w każdym kroku czasu i drogi (metoda o zmiennych współczynnikach, Ponce 1986): przypadek `mc_neh17_example17_5_reach`
+> - X może być ujemne (NEH 630 przykład 17-4, X = -0,254); siatkę z ujemną wagą, którą NEH dopuszcza (przykład 17-5, C1 = -0,187), odrzuca warunek wstępny `nonnegative_weights` (Hydrolog ADR-0008)
+> - w granicach tolerancji okna waga, którą zaokrąglenie sprowadza poniżej zera, jest zerowana, a pozostałe dzieli się przez ich sumę (`hydrolog.routing._kernels.nonnegative_coefficients`)
+> - Dg oblicza się jako D / dx (NEH wzór 17-34), co z dokładnością do zaokrągleń równa się 1 - 2X (wzór 17-35); granicę dokładności exp(2,3 Cg) ogranicza się do exp(700), co przewyższa każde Dg <= 1 + Cg z okna
+> - brak dopływu bocznego: człon C4 q dx we wzorze 7 HEC-HMS jest równy zeru
+> - transformowana jest tylko podana siatka: `MuskingumCungeReach` przyjmuje kulminację dopływu jako przepływ odniesienia, o ile nie podano innego, dobiera N i podkroki kroku według reguł NEH 630 w obrębie okna, interpoluje między nimi dopływ liniowo, a tam, gdzie siatka nie istnieje, przechodzi na zbiorniki liniowe (Tier B, ADR-0008, ADR-0026)
+>
+> **Założenia**
+>
+> - fala dyfuzyjna: człony bezwładności w równaniu ruchu są pomijane, a równanie adwekcji–dyfuzji linearyzuje się przy przepływie odniesienia ze stałymi c i mu = Q / (2 T S0) (HEC-HMS wzory 1 do 5)
+> - odcinek pryzmatyczny o jednym spadku; brak cofki
+>
+> **Zgodność z obserwacjami według źródeł:** brak: źródła porównują schemat z modelami przepływu nieustalonego, a nie z obserwacjami (NEH 630 przykłady 17-4 i 17-5 w porównaniu z HEC-RAS: kulminacje zgodne w granicach 0,2 i 2,5 %); NRCS dopasował swoją granicę dokładności do 140 testowych transformacji (NEH 630 załącznik 17B)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), eqs. 17-20 to 17-22 (X, the distance step, K) and 17-31 to 17-36 (Cg, Dg and the accuracy limit, eq. 17-36 on p. 17-33); examples 17-4 and 17-5, pp. 17-36 to 17-51 <https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf>
+> 2. US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum-Cunge Model, eqs. 3 to 5 (the convective diffusion equation, c = dQ/dA, mu = Q / (2 B S0)), 6 to 10 (the weights) and 12 and 13 (K = dx / c, X = (1 - Q / (B S0 c dx)) / 2) <https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-cunge-model>
+> 3. US Army Corps of Engineers (1994). Engineering and Design: Flood-Runoff Analysis, EM 1110-2-1417, chapter 9, eq. 9-22 and the reference flow, p. 9-21 <https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-1417.pdf>
+> 4. Cunge, J.A. (1969). On the subject of a flood propagation computation method (Muskingum method), Journal of Hydraulic Research 7(2), 205-230 — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 5. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s
+> 6. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), steps of 5 min (Hydrograf's networks, tests/fixtures/handoff_hydrograf_network*.json) to 12 h (the Iowa example and NEH 630 ch. 17 example 17-2, 0.5 d)
+> 7. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 0.1 to 20 km in the tests of the reach (tests/unit/test_routing_cunge.py), 1.3 to 23.4 km on Hydrograf's Nysa Szalona network besides a 7 m connector (tests/fixtures/handoff_hydrograf_network_nysa_szalona.json); NEH 630 examples 17-4 and 17-5, 2,600 ft (0.79 km)
+> 8. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 0.0002 to 0.002778 in the tests of the reach (tests/unit/test_routing_cunge.py), 0.00208 to 0.009859 on the reaches of Hydrograf's Nysa Szalona network from the DEM (tests/fixtures/handoff_hydrograf_network_nysa_szalona.json), 0.02 in tests/fixtures/handoff_hydrograf_network.json; 0.00091 in NEH 630 examples 17-4 and 17-5
+> 9. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 0.2 to 5 m/s in the tests of the reach (tests/unit/test_routing_cunge.py); NEH 630 examples 17-4 and 17-5, 4.297 and 1.779 ft/s (1.31 and 0.54 m/s)
+> 10. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 10 to 200 m in the tests of the reach and of the networks (tests/unit/test_routing_cunge.py, tests/unit/test_operations_route_network.py); NEH 630 examples 17-4 and 17-5, 44.6 and 738.3 ft (13.6 and 225 m)
+> 11. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), reference discharges of 0.95 to 300.05 m3/s in the tests of the reach (tests/unit/test_routing_cunge.py), 12 m3/s in tests/fixtures/network_flood.json; NEH 630 examples 17-4 and 17-5, 684.18 and 3,385.4 ft3/s (19.4 and 95.9 m3/s)
+> 12. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 1 to 4 distance steps in the tests of the reach (tests/unit/test_routing_cunge.py); 1 and 2 in NEH 630 examples 17-4 and 17-5
+> 13. the signs of the numerators of the weights (Hydrolog ADR-0008); Ponce's form \|C - D\| <= 1 <= C + D, c_current >= 0 iff dx <= c dt + D, c_previous >= 0 iff dx >= D - c dt, c_outflow >= 0 iff dx >= c dt - D
+> 14. IEEE 754-2019, binary64: finite numbers of magnitude about 4.9e-324 to 1.8e308, the grid's scalars and the water it holds must be among them; exp(700), about 1.0e304, is one
+>
+> Funkcja `hydrolog.routing.formulas.cunge.muskingum_cunge_route`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:muskingum_cunge -->
 
 **Siatka.** Odcinek dzieli się na $N$ równych **kroków drogi** (ang. *distance steps*) $\Delta x$;
@@ -202,12 +569,42 @@ liczbę kroków NRCS albo najbliższą, przy której wszystkie wagi są nieujemn
 `subreaches_adjusted`):
 
 <!-- spec:muskingum_cunge_grid -->
+
+<a id="spec-muskingum_cunge_grid"></a>
+
+> **Siatka obliczeniowa metody Muskingum-Cunge** · wzór grupy B `muskingum_cunge_grid` (Tier B, CMP-2.2)
+>
+> **Definicja:** przepływem odniesienia jest kulminacja dopływu, o ile nie podano innego; krok przestrzenny NRCS dx_c = (c dt + D) / 2 przy D = Q / (T S0 c) daje ceil(L / dx_c) kroków, a liczbę tę zmienia się na najbliższą liczbę w oknie nieujemnych wag \|c dt - D\| <= L / N <= c dt + D, każdy koniec z dokładnością do 1e-9 swojej wartości (`hydrolog.routing.formulas.cunge.distance_step_window`); krok, dla którego w oknie nie ma liczby całkowitej, dzieli się na najmniejszą liczbę od 2 do 100 jednakowych podkroków, dla której taka liczba istnieje, przy dopływie liniowym między rzędnymi (uwagi `subreaches_adjusted`, `substeps_added`); uwaga `accuracy_limit` sygnalizuje siatkę NRCS, której Dg = D / dx przekracza exp(2,3 Cg) (źr. 1)
+>
+> **Konwencja:** jeden przepływ odniesienia dla wszystkich kroków przestrzennych, podczas gdy WinTR-20 przyjmuje kulminację na górnym końcu każdego z nich; siatka z ujemną wagą, którą NEH dopuszcza (przykład 17-5), jest zastępowana (ADR-0008); siatka wymagająca ponad miliona rzędnych jest odrzucana (`unstable_timestep`)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), steps 2 to 4 of the Muskingum-Cunge method and eqs. 17-21 and 17-36, pp. 17-32 to 17-33 <https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf>
+>
+> Funkcja `hydrolog.routing.cunge.MuskingumCungeReach._grid`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:muskingum_cunge_grid -->
 
 NEH 630 wymaga też odpowiedniej liczby kroków czasowych na wznoszącej gałęzi hydrogramu; krótszą
 gałąź Hydrolog zagęszcza krokami pośrednimi (uwaga `timestep_refined`):
 
 <!-- spec:muskingum_cunge_rise -->
+
+<a id="spec-muskingum_cunge_rise"></a>
+
+> **Czas wznoszenia fali w metodzie Muskingum-Cunge** · wzór grupy B `muskingum_cunge_rise` (Tier B, CMP-2.2)
+>
+> **Definicja:** liczba kroków od rzędnej poprzedzającej pierwszą rzędną powyżej 5 % kulminacji dopływu do pierwszej kulminacji wynoszącej co najmniej połowę kulminacji dopływu; wznoszenie trwające od 1 do 9 kroków powoduje podział każdego kroku siatki na ceil(10 / wznoszenie) jednakowych podkroków (co najwyżej 100), przy dopływie liniowym między rzędnymi (uwaga `timestep_refined`) (źr. 1)
+>
+> **Konwencja:** NEH 630 ponownie interpoluje hydrogram do dokładnie 10 przedziałów na wznoszeniu; Hydrolog dzieli krok na całkowitą liczbę podkroków, dając 10 przedziałów lub więcej, i zachowuje oryginalne rzędne; zbiorniki odcinka bez siatki są ścisłe przy każdym kroku i nie są zagęszczane
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), Muskingum-Cunge method, step 1: at least 10 time intervals from the point of 5 percent of the peak on the rise to the peak, p. 17-32 <https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf>
+>
+> Funkcja `hydrolog.routing.cunge.rise_steps`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:muskingum_cunge_rise -->
 
 **Liczby bezwymiarowe.** Wynik podaje **liczbę Couranta** $C_g$ (ang. *Courant number*) i
@@ -277,11 +674,88 @@ całkowite. Przy stałym $nK$ spłaszczenie rośnie, gdy $n$ maleje; bardzo duż
 przesunięcie.
 
 <!-- spec:linear_reservoir_cascade -->
+
+<a id="spec-linear_reservoir_cascade"></a>
+
+> **Kaskada n jednakowych zbiorników liniowych, ścisła dla dopływu liniowego między rzędnymi (Nash)** · specyfikacja [`linear_reservoir_cascade`](../FORMULAS.md#linear_reservoir_cascade) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> O(t) = O_0\,Q\!\left(n, \tfrac{t}{K}\right) + \int_0^t u(t-s)\,I(s)\,ds,\quad u(t) = \frac{1}{K\,\Gamma(n)}\left(\frac{t}{K}\right)^{n-1}e^{-t/K},\quad h_m = -\frac{V((m+1)a) - 2V(ma) + V((m-1)a)}{a},\ V(x) = x\,Q(n, x) + n\,P(n+1, x),\ a = \frac{\Delta t}{K}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $I_t$ | `inflow_m3s` (ciąg) | Dopływ w chwilach t = 0, dt, 2 dt, ...: hydrogram wpływający do odcinka, liniowy między rzędnymi | m³/s | [0; ∞) | nie podano w źródłach | [0; 100] (źr. 3) |
+> | $\Delta t$ | `timestep_min` | Krok czasowy dopływu i odpływu | min | (0; ∞) | nie podano w źródłach | [5; 720] (źr. 4) |
+> | $n$ | `n` | Liczba jednakowych zbiorników połączonych szeregowo; nie musi być całkowita | – | (0; ∞) | nie podano w źródłach | [1; 8] (źr. 5) |
+> | $K$ | `k_min` | Stała retencji jednego zbiornika | min | (0; ∞) | nie podano w źródłach | [5; 80] (źr. 6) |
+> | $O_0$ | `initial_outflow_m3s` | Odpływ w pierwszej rzędnej; odcinek startuje z nim w stanie ustalonym | m³/s | [0; ∞) | nie podano w źródłach | [0; 100] (źr. 3) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $O_t$ | `outflow_m3s` (ciąg) | Odpływ w rzędnych dopływu | m³/s | [0; ∞) |
+> | $S$ | `storage_start_m3` | Objętość wody w zbiornikach w pierwszej rzędnej | m³ | [0; ∞) |
+> | $S$ | `storage_end_m3` | Objętość wody w zbiornikach w ostatniej rzędnej | m³ | [0; ∞) |
+> | $S$ | `storage_steady_m3` | Objętość wody w zbiornikach w stanie ustalonym przy ostatnim dopływie, n K I[-1] | m³ | [0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | n >= 2,2e-308, 0 < dt / K, a siatka N dt / K, największy przepływ podzielony przez dt / K i retencja n K max(I, O0) są skończone w float64 | `representable` | odmowa obliczeń: wzór jest nieokreślony | (źr. 7) |
+>
+> **Konwencje**
+>
+> - jednostki SI: przepływ w m³/s, czas w min, retencja w m³ (K w min razy przepływ w m³/s razy 60 s minuty z tabeli jednostek)
+> - dopływ jest liniowy między rzędnymi, a przed pierwszą z nich równy odpływowi początkowemu: każdy zbiornik startuje w stanie ustalonym z odpływem O0, a w pierwszej rzędnej dopływ skacze do I[0]
+> - odpływ w rzędnej jest ścisłą odpowiedzią na taki dopływ, a nie krokiem metody trapezów czy Eulera; między rzędnymi nie jest liniowy, więc objętość odpływu liczona wzorem trapezów różni się od jego całki
+> - waga, którą zaokrąglenie sprowadza poniżej zera, jest zerowana; tak samo reszta n - V i odpływ, które zaokrąglenie sprowadza poniżej zera
+> - n nie musi być całkowite: Gamma(n) i P(n, x) z funkcji `gammainc` i `gammaincc` biblioteki SciPy
+> - transformowane są tylko podane rzędne: `CascadeReach` przyjmuje K albo K = L / (n c) z długości odcinka i prędkości fali oraz wydłuża oś czasu (Tier B, ADR-0008)
+>
+> **Założenia**
+>
+> - każdy zbiornik jest liniowy, S = K O, przy K stałym w czasie wezbrania
+> - brak cofki: odpływ nie zależy od wody poniżej odcinka
+>
+> **Zgodność z obserwacjami według źródeł:** brak: n i K kalibruje się na obserwowanych wezbraniach lub wyznacza z cech odcinka (Kalinin–Milukow); źródła nie podają oceny zgodności samej kaskady z obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Nash, J.E. (1957). The form of the instantaneous unit hydrograph, IAHS Publication 45, 114-121, the cascade of n equal linear reservoirs and its gamma impulse response — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 2. Ponce, V.M. (online). Linear reservoirs and numerical diffusion, San Diego State University, the Nash cascade and the Kalinin-Milyukov method: n reservoirs of S = K O in series, impulse response of mean n K <https://ponce.sdsu.edu/linear_reservoirs_and_numerical_diffusion.html>
+> 3. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s
+> 4. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), steps of 5 min (Hydrograf's networks, tests/fixtures/handoff_hydrograf_network*.json) to 12 h (the Iowa example and NEH 630 ch. 17 example 17-2, 0.5 d)
+> 5. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), n of 1 to 8 in tests/unit/test_routing_cascade.py and 2.5 in docs/USAGE.md (route cascade)
+> 6. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), K of 5 to 40 min in tests/unit/test_routing_cascade.py and 80 min in docs/USAGE.md (route cascade)
+> 7. IEEE 754 binary64, the float64 of NumPy: largest finite number 1.8e308, smallest normal 2.2e-308; SciPy's scipy.special.gammainc and gammaincc (1.18.1) give P(a, x) = 0 and Q(a, x) <= 0 for a subnormal shape a, x = m dt / K on the grid of the ordinates, the inflow over dt / K, the storage n K I, and n as the shape of P and Q
+>
+> Funkcja `hydrolog.routing.formulas.cascade.cascade_route`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:linear_reservoir_cascade -->
 
 Stałą $K$ podaje się wprost albo z długości odcinka i prędkości fali:
 
 <!-- spec:cascade_time_scale -->
+
+<a id="spec-cascade_time_scale"></a>
+
+> **Stała retencji kaskady z długości odcinka i prędkości fali** · wzór grupy B `cascade_time_scale` (Tier B, CMP-2.2)
+>
+> **Definicja:** stała retencji jednego zbiornika wyznaczona z długości L odcinka i prędkości c fali wezbraniowej, K = L / (n c): czas przepływu L / c jest średnim opóźnieniem n K kaskady; L w km i c w m/s przeliczane według tabeli jednostek (1 km = 1000 m, 1 min = 60 s) (źr. 1)
+>
+> **Konwencja:** K podaje się wprost albo wyznacza z L i c, nigdy oba naraz (`details.reason` `one_of`); Kalinin i Milukow przyjmują n jako L podzielone przez długość charakterystyczną Q / (T S0 c)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Ponce, V.M. (online). Linear reservoirs and numerical diffusion, San Diego State University, the Kalinin-Milyukov method: n = L / L_c reservoirs of K = L_c / c in series <https://ponce.sdsu.edu/linear_reservoirs_and_numerical_diffusion.html>
+>
+> Funkcja `hydrolog.routing.cascade.CascadeReach`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:cascade_time_scale -->
 
 **Metoda Kalinina–Milukowa** to ta sama kaskada z liczbą zbiorników równą stosunkowi długości odcinka
@@ -323,6 +797,85 @@ się z **krzywej roboczej** zbudowanej z tabeli: to **metoda Pulsa** w odmianie 
 (ang. *level pool routing*, *modified Puls*; USDA-NRCS 2014, rozdz. 17; HEC-HMS).
 
 <!-- spec:level_pool -->
+
+<a id="spec-level_pool"></a>
+
+> **Transformacja fali metodą zbiornikową z krzywą roboczą (zmodyfikowana metoda Pulsa) przez N jednakowych zbiorników** · specyfikacja [`level_pool`](../FORMULAS.md#level_pool) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> \frac{s_t}{\Delta t} + \frac{O_t}{2} = \frac{I_{t-1} + I_t}{2} + \frac{s_{t-1}}{\Delta t} - \frac{O_{t-1}}{2},\quad s = \frac{S(O)}{N}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $I_t$ | `inflow_m3s` (ciąg) | Dopływ w chwilach t = 0, dt, 2 dt, ...: hydrogram wpływający do odcinka, liniowy między rzędnymi | m³/s | [0; ∞) | nie podano w źródłach | [0; 100] (źr. 4) |
+> | $\Delta t$ | `timestep_min` | Krok czasowy dopływu i odpływu | min | (0; ∞) | nie podano w źródłach | [5; 720] (źr. 5) |
+> | $S_i$ | `table_storage_m3` (ciąg) | Retencja w każdym wierszu tabeli retencja–odpływ, niemalejąca; do odpływu wchodzą tylko jej różnice, więc jej poziom odniesienia jest dowolny | m³ | [0; ∞) | nie podano w źródłach | [0; 3 000 000] (źr. 6) |
+> | $O_i$ | `table_outflow_m3s` (ciąg) | Odpływ w każdym wierszu tabeli, niemalejący; zero poniżej korony przelewu | m³/s | [0; ∞) | nie podano w źródłach | [0; 300] (źr. 7) |
+> | $N$ | `subreaches` (liczba całkowita) | Liczba zbiorników połączonych szeregowo, z których każdy mieści S / N z tabeli przy tym samym odpływie | – | [1; ∞) | nie podano w źródłach | [1; 6] (źr. 8) |
+> | $O_0$ | `initial_outflow_m3s` | Odpływ w pierwszej rzędnej; odcinek startuje z nim w stanie ustalonym | m³/s | [0; ∞) | nie podano w źródłach | [0; 100] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $O_t$ | `outflow_m3s` (ciąg) | Odpływ w rzędnych dopływu | m³/s | [0; ∞) |
+> | $S_t$ | `storage_m3` (ciąg) | Objętość wody we wszystkich zbiornikach w każdej rzędnej | m³ | [0; ∞) |
+> | $s_t$ | `last_pool_storage_m3` (ciąg) | Objętość wody w ostatnim zbiorniku w każdej rzędnej, cała objętość przy N = 1 | m³ | [0; ∞) |
+> | $S$ | `storage_peak_m3` | Największa objętość wody we wszystkich zbiornikach | m³ | [0; ∞) |
+> | $S$ | `storage_steady_m3` | Objętość wody, jaką zbiorniki mieściłyby w stanie ustalonym przy ostatniej rzędnej dopływu | m³ | [0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | kolumny retencji i odpływu mają tyle samo wierszy | `table_columns_paired` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 9) |
+> | S[i] <= S[i+1] i O[i] <= O[i+1]: retencja i odpływ rosną razem z poziomem wody | `table_not_decreasing` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 10) |
+> | żaden wiersz nie powtarza poprzedniego: krzywa robocza rośnie z wiersza na wiersz | `table_rows_distinct` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 1) |
+> | O[0] <= O0 <= O[-1]: zbiorniki startują w stanie ustalonym odpowiadającym stanowi z tabeli | `initial_outflow_in_table` | odmowa obliczeń: wzór jest nieokreślony | (źr. 9) |
+> | dS > 0 na każdym odcinku tabeli, na którym rośnie odpływ, od stanu ustalonego przy najmniejszym przepływie obliczenia do pierwszego wiersza, który osiąga przepływ największy: na odcinku bez retencji żaden krok nie spełnia warunku kroku | `storage_where_outflow_rises` | odmowa obliczeń: wzór jest nieokreślony | (źr. 11) |
+> | dt <= 2 min(dS/dO) / N po odcinkach, do których obliczenie może dojść (od stanu ustalonego przy najmniejszym przepływie obliczenia do pierwszego wiersza, który osiąga przepływ największy), z dokładnością do 1e-9 swojej wartości: waga (2K - dt) / (2K + dt) stanu poprzedniego nie jest ujemna na żadnym z nich, więc odpływ pozostaje między najmniejszym a największym przepływem obliczenia | `timestep_within_limit` | odmowa obliczeń: wzór jest nieokreślony | (źr. 12) |
+> | S / (N dt) + O / 2 jest skończone i rośnie z wiersza na wiersz w float64: z tej krzywej odczytuje się odpływ | `working_curve_rises` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+> | żaden zbiornik nie napełnia się powyżej ostatniego wiersza (jego krzywa robocza nie przekracza wartości ostatniego wiersza o więcej niż 1e-9 tej wartości): tabela obejmuje wezbranie, nigdy nie stosuje się ekstrapolacji | `flood_below_table_top` | odmowa obliczeń: wzór jest nieokreślony | (źr. 9) |
+> | żaden zbiornik nie opróżnia się poniżej pierwszego wiersza (jego krzywa robocza nie spada poniżej wartości pierwszego wiersza o więcej niż 1e-9 wartości ostatniego wiersza): dopływ mniejszy niż pierwszy odpływ z tabeli nie może opróżnić zbiornika | `flood_above_table_bottom` | odmowa obliczeń: wzór jest nieokreślony | (źr. 9) |
+>
+> **Konwencje**
+>
+> - jednostki SI: przepływ w m³/s, retencja w m³, krok w min (S / dt z 60 s minuty z tabeli jednostek)
+> - odpływ odczytuje się z krzywej roboczej S / (N dt) + O / 2 interpolacją liniową między wierszami tabeli, bo tabela jest między nimi liniowa (NEH 630 interpoluje swoją tabelę roboczą, HEC-HMS rozwiązuje to samo równanie metodą prób i błędów)
+> - każdy z N zbiorników połączonych szeregowo mieści S / N przy tym samym odpływie (pododcinki HEC-HMS); każdy zbiornik startuje w stanie ustalonym z odpływem O0, przy największej retencji, dla której tabela daje ten odpływ, więc zbiornik ze strefą martwą poniżej korony przelewu startuje napełniony do korony
+> - poziom odniesienia kolumny retencji jest dowolny: do odpływu wchodzą tylko różnice retencji, a podawane retencje mierzy się od tego poziomu
+> - stan, który zaokrąglenie wyprowadza poza koniec tabeli o co najwyżej 1e-9 górnej wartości krzywej roboczej, utrzymuje się na tym końcu; przy większym przekroczeniu zbiornik wychodzi poza tabelę, co odrzucają warunki wstępne `flood_below_table_top` i `flood_above_table_bottom`
+> - retencję w stanie ustalonym przy ostatniej rzędnej dopływu odczytuje się w skrajnym wierszu tabeli, gdy przepływ wykracza poza ten wiersz
+> - transformowane są tylko podane rzędne: `LevelPoolReach` dzieli dłuższy krok na podkroki przy dopływie liniowym między rzędnymi, wydłuża oś czasu i odczytuje stan wody w ostatnim zbiorniku (Tier B, ADR-0008)
+>
+> **Założenia**
+>
+> - retencja jest jednoznaczną funkcją odpływu: poziome zwierciadło wody albo odcinek, którego retencja nadąża za odpływem, bez histerezy (NEH 630: zwierciadło wody jest poziome lub prawie poziome)
+> - dla koryta NEH 630 wymaga czasu przepływu przez odcinek nie większego niż około połowa czasu wznoszenia dopływu (nie jest to dana wejściowa: nie jest sprawdzane)
+> - dopływ jest liniowy między rzędnymi (wzór trapezów)
+>
+> **Zgodność z obserwacjami według źródeł:** brak: zależność retencja–odpływ odcinka lub zbiornika pochodzi z profili zwierciadła wody, topografii zbiornika lub obserwowanych wezbrań (HEC-HMS TRM, Modified Puls; NEH 630 rozdz. 17); źródła nie podają oceny zgodności samego schematu z obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), eqs. 17-1 to 17-3, pp. 17-9 to 17-10 (a working curve of O2 against S2/dt + O2/2 is necessary); examples 17-1 and 17-2, tables 17-5 to 17-12, pp. 17-11 to 17-25 <https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf>
+> 2. US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model, eq. 3; Required Parameters: the initial outflow, a storage vs. discharge relationship and the number of subreaches <https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/modified-puls-model>
+> 3. US Army Corps of Engineers (1994). Engineering and Design: Flood-Runoff Analysis, EM 1110-2-1417, chapter 9, modified Puls, eq. 9-12 <https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-1417.pdf>
+> 4. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s
+> 5. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), steps of 5 min (Hydrograf's networks, tests/fixtures/handoff_hydrograf_network*.json) to 12 h (the Iowa example and NEH 630 ch. 17 example 17-2, 0.5 d)
+> 6. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), tables up to 2.87e6 m3: NEH 630 ch. 17 example 17-2, 1,174.5 ft3/s-d; the catalog's pond, 255,000 m3 (tests/fixtures/pond_rating.csv)
+> 7. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), tables up to 283.2 m3/s: NEH 630 ch. 17 example 17-1, 10,000 ft3/s; the catalog's pond, 27.17 m3/s
+> 8. Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route), 1 (a pond or a reservoir, the default of LevelPoolReach) to 6 pools in the tests of the reach
+> 9. US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Modified Puls Model, Required Parameters: the storage vs. discharge relationship is a paired data object whose storages cover the entire range met in a simulation; the initial storage is computed from the initial outflow and that relationship <https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/modified-puls-model>
+> 10. USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), tables 17-4 and 17-9 to 17-11: storage and discharge accumulated with the elevation, both rising with it <https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf>
+> 11. USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), pp. 17-10 to 17-11: negative outflows whenever dt > 2 S2/O2 (O2/2 > S2/dt); a working curve with any part left of the line of equal values is discarded and computed again with a smaller dt, as WinTR-20 does internally <https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf>
+> 12. Hydrolog ADR-0008: routing conventions, docs/decisions/0008-routing-conventions.md, Stability: a level-pool step of at most twice the shortest dS/dO of the segments between the lowest and the highest flow of the run, over the number of sub-reaches; NEH's rule for the whole curve let the outflow exceed the inflow peak on 201 of 1,499 random tables
+>
+> Funkcja `hydrolog.routing.formulas.level_pool.level_pool_route`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:level_pool -->
 
 **Krok obliczeń.** NRCS wymaga, by krzywa robocza leżała po właściwej stronie linii równych wartości
@@ -332,6 +885,21 @@ przelaniu się wody przez próg przelewu, warunek NRCS przepuszcza krok, przy kt
 kulminację dopływu. Dłuższy krok Hydrolog dzieli na części (uwaga `timestep_refined`):
 
 <!-- spec:level_pool_substeps -->
+
+<a id="spec-level_pool_substeps"></a>
+
+> **Podział kroku czasowego w metodzie zbiornikowej** · wzór grupy B `level_pool_substeps` (Tier B, CMP-2.2)
+>
+> **Definicja:** najdłuższy krok, na jaki tabela retencja–odpływ pozwala w danym obliczeniu, 2 min(dS/dO) / N po odcinkach od stanu ustalonego przy najmniejszym przepływie obliczenia do pierwszego wiersza, który osiąga przepływ największy, w min (warunek wstępny `timestep_within_limit` specyfikacji `level_pool`); `LevelPoolReach` dzieli dłuższy krok na najmniejszą liczbę jednakowych podkroków, które go spełniają, każdy koniec z dokładnością do 1e-9 swojej wartości, przy dopływie liniowym między rzędnymi, i odczytuje odpływ z powrotem w oryginalnych rzędnych (uwaga `timestep_refined`) (źr. 1)
+>
+> **Konwencja:** warunek dla każdego odcinka tabeli jest ostrzejszy niż warunek NEH 630 dla całej krzywej, dt <= 2 S/O w każdym wierszu (krzywa robocza na prawo od linii równych wartości), który pozwala odpływowi przekroczyć kulminację dopływu przy tabeli o gwałtownie zmieniającym się nachyleniu (ADR-0008); ponad 100 podkroków lub więcej rzędnych niż limit jest odrzucane (`unstable_timestep`), podobnie jak odcinek bez retencji, do którego dochodzi obliczenie (`working_curve`)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014), pp. 17-10 to 17-11: negative outflows whenever dt > 2 S2/O2; a working curve left of the line of equal values is discarded and computed again with a smaller dt, which WinTR-20 adjusts internally <https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf>
+>
+> Funkcja `hydrolog.routing.level_pool.timestep_limit_min`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:level_pool_substeps -->
 
 **Zakres tabeli.** Hydrolog nigdy nie ekstrapoluje tabeli: fala, która napełnia zbiornik ponad
@@ -374,6 +942,21 @@ gotowy hydrogram albo liczy go z opadu metodą SCS-CN i hydrogramem jednostkowym
 (`outlet`) daje wynik. Cała sieć ma jeden krok czasowy i nic nie jest przepróbkowywane:
 
 <!-- spec:junction_sum -->
+
+<a id="spec-junction_sum"></a>
+
+> **Sumowanie hydrogramów w węźle sieci** · wzór grupy B `junction_sum` (Tier B, CMP-2.2)
+>
+> **Definicja:** hydrogram węzła: suma jego dopływów rzędna po rzędnej na najdłuższej z ich osi czasu, przy czym krótszy hydrogram przedłuża się jego ostatnią wartością (źr. 1)
+>
+> **Konwencja:** jeden krok czasowy i jeden początek dla wszystkich źródeł sieci, bez przepróbkowania; przedłużenie obciętego odpływu (`tail_truncated`) wartością większą od zera dodaje objętość poniżej węzła, o czym informuje ostrzeżenie z odcinka powyżej
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Hydrolog's computation paths, section 3.9.7, and ADR-0008, docs/COMPUTATION_PATHS.md, Time axes: a junction holds a shorter hydrograph at its last value; one step, nothing resampled
+>
+> Funkcja `hydrolog.routing.network._sum`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:junction_sum -->
 
 **Liniowość.** Dla metod liniowych — przesunięcia, Muskingum, kaskady, a także Muskingum–Cunge z
@@ -414,8 +997,8 @@ chwilach (od 310 do 570 min), a nie z powodu spłaszczenia w korytach.
 
 Uwagi wyniku warto przeczytać: dla odcinków R5 (7,1 m), R6 i R7 Hydrolog podzielił krok na kroki
 pośrednie (`substeps_added`), dla pięciu odcinków zmienił liczbę kroków drogi NRCS
-(`subreaches_adjusted`), a dla wielu zlewni zgłosił wartości spoza zakresów typowych wzorów
-(`outside_typical_range`), np. powierzchnię większą niż zalecana dla hydrogramu SCS. Wynik nie jest
+(`subreaches_adjusted`), a dla wielu zlewni zgłosił wartości spoza zakresów stosowania wzorów
+(`outside_applicability`), np. powierzchnię większą niż zalecana dla hydrogramu SCS. Wynik nie jest
 przepływem o prawdopodobieństwie 1 % w punkcie A: opad punktowy przyjęto bez redukcji obszarowej
 (rozdz. 2) w całej zlewni o powierzchni ponad 700 km², a czasu trwania opadu nie dobrano jako
 krytycznego (rozdz. 5). Przykład pokazuje mechanikę sieci, nie hydrogram projektowy dla punktu A.
@@ -470,6 +1053,21 @@ tutaj jeden zbiornik o $K$ = 15,34 min, kulminacja 51,95 m³/s po 430 min (�
 `diffusion_dominated`, że spłaszczenie jest przybliżone:
 
 <!-- spec:muskingum_cunge_fallback -->
+
+<a id="spec-muskingum_cunge_fallback"></a>
+
+> **Zastąpienie metody Muskingum-Cunge kaskadą zbiorników liniowych** · wzór grupy B `muskingum_cunge_fallback` (Tier B, CMP-2.2)
+>
+> **Definicja:** odcinek, dla którego nie ma siatki w granicach 100 podkroków, transformuje się jako n = L / D zbiorników liniowych (zaokrąglone, połowa w górę, co najmniej 1) o K = L / (n c) kaskadą `CascadeReach` (uwaga `diffusion_dominated`) (źr. 1)
+>
+> **Konwencja:** n zbiorników o średniej n K i wariancji n K^2 zachowuje średni czas przepływu L / c fali dyfuzyjnej oraz, na ile pozwala całkowite n, jej wariancję D L / c^2 = 2 mu L / c^3 przy mu = Q / (2 T S0) (HEC-HMS TRM, model Muskingum-Cunge, wzór 5)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Hydrolog ADR-0026: a reach without a Muskingum-Cunge grid, linear reservoirs with a warning, not a refusal, Decision, points 1 and 2 (docs/decisions/0026-a-reach-without-a-muskingum-cunge-grid.md)
+>
+> Funkcja `hydrolog.routing.cunge._reservoirs`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:muskingum_cunge_fallback -->
 
 ## 6.10. Jak wybrać metodę i jak czytać wynik

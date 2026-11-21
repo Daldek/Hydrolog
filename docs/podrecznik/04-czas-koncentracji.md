@@ -119,10 +119,10 @@ Każda zmienna w ramce ma trzy zakresy (standard obliczeń Nogat, CMP-1.3–1.5)
   `exclusive_minimum`, a droga spływu nie dłuższa od odcinka po stoku w metodzie Kerby'ego–Kirpicha —
   błędem z powodem `outside_physical_range` i nazwą naruszonego ograniczenia.
 - **Zakres stosowania** (ang. *applicability range*): wartości z danych, na których wzór wyprowadzono lub
-  sprawdzono, wraz ze źródłem, które je podaje. Poza nim Hydrolog liczy, ale dodaje ostrzeżenie. Kod tego
-  ostrzeżenia to wciąż `outside_typical_range`, choć standard nazywa je `outside_applicability`: nazwa zmieni
-  się jednocześnie w Hydrologu, Hydrografie, Obserwatorze i interfejsach graficznych
-  ([ADR-0064](../decisions/0064-notices-of-applicability-constraints-and-unreferenced-formulas.md)).
+  sprawdzono, wraz ze źródłem, które je podaje. Poza nim Hydrolog liczy, ale dodaje ostrzeżenie o kodzie
+  `outside_applicability`, nazwanym tak jak w standardzie od wersji 0.9.0; do wersji 0.8.1 nazywało się
+  `outside_typical_range`
+  ([ADR-0070](../decisions/0070-the-notice-outside-applicability.md)).
   Również pomoc poleceń (`hydrolog tc kirpich --help`) opisuje te przedziały słowem „typowo”; należy je
   czytać jako „w danych źródła”.
 - **Zakres typowy** (ang. *typical range*): wartości spotykane w praktyce, tu — w zlewniach, które Hydrograf
@@ -148,6 +148,65 @@ potęgową podali Rowe i Thomas (1942) (Mota i Kobiyama 2015). Stąd nazwa „po
 ramki.
 
 <!-- spec:kirpich -->
+
+<a id="spec-kirpich"></a>
+
+> **Czas koncentracji według wzoru Kirpicha (postać z Tennessee)** · specyfikacja [`kirpich`](../FORMULAS.md#kirpich) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> t_c = 0{,}0078\,L^{0{,}77}\,S^{-0{,}385},\quad L\ \mathrm{[ft]}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $L$ | `length_km` | Długość najdłuższej drogi spływu, od przekroju do punktu zlewni najdalszego hydraulicznie | km | (0; ∞) | [0,10668; 1,2192] (źr. 5) | [0,05; 30] (źr. 6) |
+> | $S$ | `slope_m_per_m` | Spadek najdłuższej drogi spływu: wysokość jej początku minus wysokość przekroju, podzielona przez jej długość | m/m | (0; ∞) | [0,025; 0,1] (źr. 7) | [0,002; 0,11] (źr. 8) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $t_c$ | `tc_min` | Czas koncentracji | min | (0; ∞) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $0{,}0078$ | `kirpich_coefficient` | Współczynnik wzoru Kirpicha | 0,0078 | $\mathrm{min\,ft^{-0{,}77}}$ | (źr. 9) |
+> | $0{,}77$ | `kirpich_length_exponent` | Wykładnik długości drogi spływu | 0,77 | – | (źr. 10) |
+> | $-0{,}385$ | `kirpich_slope_exponent` | Wykładnik spadku drogi spływu | −0,385 | – | (źr. 10) |
+>
+> **Konwencje**
+>
+> - postać z Tennessee w jednostkach źródła: L w stopach przez dokładny przelicznik 0,3048 m/ft z tabeli jednostek, tc w minutach; stałe SI 0,0195 (L w m; Roussel i in. 2005, TxDOT 2019) i 0,01947 (WR-D-71-1, 2023) są zaokrągleniami 0,0078 (1/0,3048)^0,77 = 0,019472, a stała Hydrologu 3,981 (L w km) do wersji 0.8.1 była o 0,136 % większa od dokładnej 3,97560
+> - L wzdłuż cieku od przekroju do najdalszego punktu zlewni, czyli najdłuższa droga spływu, a S to różnica wysokości jej końców podzielona przez L (Fang i in. 2005, wzór 3.14) — ani koryto do jego początku, ani średni spadek zlewni; Kirpich (1940) mierzył L do najwyższego punktu zlewni (Mota i Kobiyama 2015, s. 56)
+> - S w m/m (ft/ft), nie w procentach
+> - sam wzór nie ma poprawki małych spadków; Kerby–Kirpich stosuje ją w swojej części korytowej (Cleveland i in. 2012)
+>
+> **Założenia**
+>
+> - małe zlewnie wiejskie z wyraźnymi korytami, 1,25-112 akrów (0,005-0,45 km², sprawdzane przez `WatershedParameters.calculate_tc`), a więc głównie przepływ korytem; Kirpich stosował wzór do ok. 200 akrów (Roussel i in. 2005, s. 5); mnożniki 0,4 dla spływu po stoku po betonie lub asfalcie i 0,2 dla koryt betonowych z praktyki amerykańskiej (Fang i in. 2005, s. 22) nie są stosowane
+> - zlewnie Hydrografu (drogi spływu 0,05-30 km) leżą w większości poza zakresem danych Kirpicha (0,107-1,22 km): ich wyniki są ekstrapolacją, z uwagą
+>
+> **Zgodność z obserwacjami według źródeł:** Kirpich (1940) opublikował krzywe dla sześciu zlewni Ramsera (1927) koło Jackson w stanie Tennessee (z siedmiu pominięto zlewnię 2), a nie wzór; Mota i Kobiyama (2015, s. 57-58) otrzymują z własnego dopasowania do tych danych wyniki odbiegające od wzoru o 2 do 9 % w zakresie L 350-4 000 ft i S 0,025-0,1, a poza nim do 30 %
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University, eq. 3.14, p. 22 (L the channel length to the most remote point, S its drop over L) <https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf>
+> 2. Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University, eq. 7, p. 7; supplement, p. 29 (K = 0.0078 for feet) <https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf>
+> 3. Mota, A.A. and Kobiyama, M. (2015). Reconsiderações sobre a fórmula de Kirpich para o cálculo de tempo de concentração. Revista Brasileira de Recursos Hídricos 20(1), 55-59, pp. 56-58: Kirpich's curves and data of 1940, table 1; the formula published by Rowe and Thomas (1942) <https://revistas.abrhidro.org.br/article.php?Article=5027>
+> 4. Florida Department of Transportation (2024). Drainage Design Guide, chapter 2, eq. 2.2-9 <https://fdotwww.blob.core.windows.net/sitefinity/docs/default-source/roadway/drainage/files/drainagedesignguide/chapter2.pdf>
+> 5. Mota, A.A. and Kobiyama, M. (2015). Reconsiderações sobre a fórmula de Kirpich para o cálculo de tempo de concentração. Revista Brasileira de Recursos Hídricos 20(1), 55-59, p. 58: the data of Kirpich (1940), table 1, give the range of the formula, L between 350 and 4,000 ft <https://revistas.abrhidro.org.br/article.php?Article=5027>
+> 6. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: flow paths of 0.0566 to 28.88 km
+> 7. Mota, A.A. and Kobiyama, M. (2015). Reconsiderações sobre a fórmula de Kirpich para o cálculo de tempo de concentração. Revista Brasileira de Recursos Hídricos 20(1), 55-59, p. 58: the data of Kirpich (1940), table 1, give the range of the formula, S from 0.025 to 0.1 <https://revistas.abrhidro.org.br/article.php?Article=5027>
+> 8. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: flow path slopes of 0.00244 to 0.1055 m/m
+> 9. Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University, eq. 3.14, p. 22; the same in Roussel et al. (2005) eq. 7, Mota and Kobiyama (2015) and FDOT (2024) eq. 2.2-9 <https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf>
+> 10. Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University, eq. 3.14, p. 22; Mota and Kobiyama (2015); FDOT (2024) <https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf>
+>
+> Funkcja `hydrolog.time.concentration.ConcentrationTime.kirpich`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:kirpich -->
 
 **Jednostki.** Hydrolog liczy wzór w jednostkach źródła, z długością przeliczoną dokładnie na stopy, i
@@ -174,7 +233,7 @@ J = 0,025:
 hydrolog tc kirpich --length-km 1.55 --slope-m-per-m 0.025
 ```
 
-Hydrolog daje $t_c$ = 23,05 min (0,384 h); wytyczne podają 23 min. Uwaga `outside_typical_range` dotyczy
+Hydrolog daje $t_c$ = 23,05 min (0,384 h); wytyczne podają 23 min. Uwaga `outside_applicability` dotyczy
 długości: droga 1,55 km jest dłuższa niż drogi wody w zlewniach Kirpicha.
 
 **Interpretacja.** Czas rośnie z długością drogi i maleje ze spadkiem, potęgowo (wykładniki w ramce). Na
@@ -206,6 +265,71 @@ TR-55 (1986) tych równań nie zawiera
 ([ADR-0019](../decisions/0019-tc-from-the-inputs-its-source-defines.md)).
 
 <!-- spec:nrcs -->
+
+<a id="spec-nrcs"></a>
+
+> **Czas koncentracji z równania opóźnienia zlewni NRCS (Mockus 1961)** · specyfikacja [`nrcs`](../FORMULAS.md#nrcs) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> T_c = \frac{\ell^{0{,}8}\,(S + 1)^{0{,}7}}{1140\,Y^{0{,}5}},\quad S = \frac{1000}{CN} - 10,\quad \ell\ \mathrm{[ft]},\ S\ \mathrm{[in]},\ Y\ [\%]
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $\ell$ | `length_km` | Długość spływu: najdłuższa droga, którą woda spływa od działu wodnego do przekroju | km | (0; ∞) | nie podano w źródłach | [0,05; 30] (źr. 3) |
+> | $Y$ | `slope_m_per_m` | Średni spadek terenu zlewni, nie spadek drogi spływu | m/m | (0; ∞) | nie podano w źródłach | [0,04; 0,19] (źr. 4) |
+> | $CN$ | `cn` | Liczba CN dla AMC II, zastępująca współczynnik oporu cn' | – | [1; 100] | [50; 95] (źr. 5) | [51,8; 81,4] (źr. 6) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $t_c$ | `tc_min` | Czas koncentracji | min | (0; ∞) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $1140$ | `tc_denominator` | Mianownik wzoru na opóźnienie zlewni | 1140 | $\mathrm{ft^{0{,}8}\,in^{0{,}7}\,h^{-1}\,\%^{0{,}5}}$ | (źr. 7) |
+> | $0{,}8$ | `length_exponent` | Wykładnik długości spływu | 0,8 | – | (źr. 8) |
+> | $0{,}7$ | `retention_exponent` | Wykładnik członu z retencją maksymalną | 0,7 | – | (źr. 8) |
+> | $1$ | `retention_shift` | Składnik dodawany do retencji maksymalnej | 1 | in | (źr. 9) |
+> | $1000$ | `s_scale` | Licznik ilorazu przez cn' w retencji maksymalnej (w calach) | 1000 | in | (źr. 10) |
+> | $10$ | `s_offset` | Składnik odejmowany od ilorazu w retencji maksymalnej (w calach) | 10 | in | (źr. 10) |
+> | $100$ | `percent` | Przelicznik spadku z m/m na procenty | 100 | % na m/m | (źr. 11) |
+>
+> **Konwencje**
+>
+> - wzór 15-4b w jednostkach źródła: l w stopach i S w calach przez dokładne przeliczniki 0,3048 m/ft i 25,4 mm/cal z tabeli jednostek, Y w procentach (100 na m/m), Tc w godzinach, przeliczany na minuty; w SI ma postać 100 l[m]^0,8 (S[mm] + 25,4)^0,7 / (7068,86 Y^0,5), gdzie 100/7068,86 = 0,0141466, podczas gdy Hydrolog do wersji 0.8.1 stosował 0,01416 (+0,095 %, TRIAGE T8)
+> - Tc = lag / 0,6 (wzór 15-3, Mockus 1957; Simas 1996); hydrogram jednostkowy przyjmuje tp = D/2 + 0,6 Tc (USACE HEC-HMS Technical Reference Manual, hydrogram jednostkowy SCS, wzory 1 i 3); TR-55 (1986) nie podaje zależności dla opóźnienia
+> - l to najdłuższa droga spływu od działu wodnego do przekroju (s. 15-5); Y to średni spadek terenu zlewni, „nie mylić ze spadkiem drogi spływu” (s. 15-5)
+> - współczynnik oporu cn' to CN dla AMC II (s. 15-6: CN służy jako zamiennik cn'); S = 0 przy CN 100; ułamkowa CN, będąca średnią ważoną, jest używana bez zmian
+>
+> **Założenia**
+>
+> - przeciętne naturalne warunki zlewni z w przybliżeniu równomiernym rozkładem odpływu (wzór 15-3); powierzchnię 24 zlewni, 0,005-24 km², sprawdza `WatershedParameters.calculate_tc`
+> - drogi spływu Hydrografu (0,05-30 km) i CN jego zlewni (51,8-81,4) leżą w zakresie CN równania; CN poniżej 50 lub powyżej 95 daje uwagę
+>
+> **Zgodność z obserwacjami według źródeł:** NEH 630-15 (s. 15-6) podaje dane równania: 24 zlewnie od 1,3 akra do 9,2 mili kwadratowej, w większości poniżej 2 000 akrów (Mockus 1961), oraz to, że Folmar i Miller (2000) uznali za rozsądną górną granicę do 19 mil kwadratowych; tab. 15-4 pokazuje, że opóźnienie jednej zlewni zmienia się od opadu do opadu (Jones Falls, Maryland: od 4,16 do 6,91 h)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. USDA-NRCS (2010). National Engineering Handbook, Part 630 Hydrology, Chapter 15: Time of Concentration (210-VI-NEH, May 2010), eqs. 15-3, 15-4a and 15-4b and their variables, pp. 15-3 to 15-6; the example of the lag method, p. 15-12 <https://directives.nrcs.usda.gov/sites/default/files2/1712930617/14081.pdf>
+> 2. USDA-NRCS (2025). 210 NEH Part 630 Hydrology, Subpart F: Time of Concentration (amended June 2025), eqs. 630.15-3, 630.15-4a and 630.15-4b, the same equations and limits <https://directives.nrcs.usda.gov/sites/default/files2/1749749287/Subpart%20F%20%E2%80%93%20Time%20of%20Concentration.pdf>
+> 3. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: flow paths of 0.0566 to 28.88 km
+> 4. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: mean land slopes of 0.0500 to 0.1831 m/m
+> 5. USDA-NRCS (2010). National Engineering Handbook, Part 630 Hydrology, Chapter 15: Time of Concentration (210-VI-NEH, May 2010), p. 15-6: a CN of less than 50, or greater than 95 should not be used in the solution of equations 15-4a and 15-4b (Mockus 1961) <https://directives.nrcs.usda.gov/sites/default/files2/1712930617/14081.pdf>
+> 6. Hydrograf ADR-0075 (2026-11-08), the CN of soil-cover complexes of the 223 catchments of the Hydroni run h07 (2,941 km2), Consequences: CN of AMC II 51.8 to 81.4, median 70.8 <https://github.com/Daldek/Hydrograf/blob/develop/docs/decisions/0075-cn-of-soil-cover-complexes.md>
+> 7. USDA-NRCS (2010). National Engineering Handbook, Part 630 Hydrology, Chapter 15: Time of Concentration (210-VI-NEH, May 2010), eq. 15-4b, p. 15-5: eq. 15-4a (1,900) with L = 0.6 Tc <https://directives.nrcs.usda.gov/sites/default/files2/1712930617/14081.pdf>
+> 8. USDA-NRCS (2010). National Engineering Handbook, Part 630 Hydrology, Chapter 15: Time of Concentration (210-VI-NEH, May 2010), eqs. 15-4a and 15-4b, p. 15-5 <https://directives.nrcs.usda.gov/sites/default/files2/1712930617/14081.pdf>
+> 9. USDA-NRCS (2010). National Engineering Handbook, Part 630 Hydrology, Chapter 15: Time of Concentration (210-VI-NEH, May 2010), eqs. 15-4a and 15-4b, p. 15-5: S + 1 <https://directives.nrcs.usda.gov/sites/default/files2/1712930617/14081.pdf>
+> 10. USDA-NRCS (2010). National Engineering Handbook, Part 630 Hydrology, Chapter 15: Time of Concentration (210-VI-NEH, May 2010), p. 15-5: S = 1,000 / cn' - 10 <https://directives.nrcs.usda.gov/sites/default/files2/1712930617/14081.pdf>
+> 11. BIPM (2019). The International System of Units (SI), 9th edition, version 4.01, section 5.4.7: the symbol % (percent) is the number 0.01 <https://www.bipm.org/documents/20126/41483022/SI-Brochure-9-EN.pdf>
+>
+> Funkcja `hydrolog.time.concentration.ConcentrationTime.nrcs`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:nrcs -->
 
 **Dane.** Długość ℓ to najdłuższa droga spływu od działu wodnego do przekroju. Spadek Y to średni spadek
@@ -274,6 +398,60 @@ głównego i wyniesienia średniej wysokości zlewni nad przekrój. Giandotti (1
 Padu o wezbraniu projektowym (Autorità di bacino del fiume Po 2001, §6.1).
 
 <!-- spec:giandotti -->
+
+<a id="spec-giandotti"></a>
+
+> **Czas koncentracji według wzoru Giandottiego (1934)** · specyfikacja [`giandotti`](../FORMULAS.md#giandotti) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> t_c = \frac{4\sqrt{A} + 1{,}5\,L}{0{,}8\sqrt{H}}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $A$ | `area_km2` | Powierzchnia zlewni | km² | (0; ∞) | [170; 70 000] (źr. 3) | [0,0003; 250] (źr. 4) |
+> | $L$ | `length_km` | Długość cieku głównego | km | (0; ∞) | nie podano w źródłach | [0,007; 27] (źr. 5) |
+> | $H$ | `elevation_diff_m` | Średnia wysokość zlewni ponad przekrojem | m | (0; ∞) | nie podano w źródłach | [2,5; 210] (źr. 6) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $t_c$ | `tc_min` | Czas koncentracji | min | (0; ∞) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $4$ | `area_factor` | Współczynnik przy pierwiastku z powierzchni zlewni | 4 | $\mathrm{h\,km^{-1}\,m^{0{,}5}}$ | (źr. 1) |
+> | $1{,}5$ | `length_factor` | Współczynnik przy długości cieku głównego | 1,5 | $\mathrm{h\,km^{-1}\,m^{0{,}5}}$ | (źr. 1) |
+> | $0{,}8$ | `height_factor` | Współczynnik przy pierwiastku ze średniej wysokości zlewni ponad przekrojem | 0,8 | – | (źr. 1) |
+>
+> **Konwencje**
+>
+> - A w km², L w km i H w m, jak podają źródła; tc w godzinach przeliczany na minuty
+> - H to średnia wysokość zlewni minus wysokość przekroju, a nie deniwelacja (maksimum minus minimum) ani sama średnia wysokość
+> - L to ciek główny, pole `channel_length_km`, za Grimaldim i in. (2012, wzór 5); Autorità di bacino del Po (2001, §6.1: „percorso idraulicamente più lungo”) i Michailidi i in. (2018) przyjmują najdłuższą drogę spływu, dłuższą o odcinek spływu po stoku (Kamiennik: 14,78 wobec 15,88 km, +3,5 % w tc)
+>
+> **Założenia**
+>
+> - zlewnie środkowych i północnych Włoch o powierzchni 170-70 000 km² (Almeida i in. 2014, tab. 1); zlewnie Hydrografu, do 250 km², leżą w większości poniżej tego zakresu: ich wyniki są ekstrapolacją, z uwagą
+>
+> **Zgodność z obserwacjami według źródeł:** brak w otwartych źródłach (Giandotti 1934 nie jest dostępny otwarcie)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Autorità di bacino del fiume Po (2001). Piano stralcio per l'assetto idrogeologico (PAI), Direttiva sulla piena di progetto, §6.1, p. 9: tempo di corrivazione di Giandotti (1934, 1937) <https://www.adbpo.it/PAI/7%20-%20Norme%20di%20attuazione/7.2%20-%20Direttive%20di%20Piano/Direttiva2/DIRETTIVA/DIRETTIVA.PDF>
+> 2. Michailidi, E.M., Antoniadi, S., Koukouvinos, A., Bacchi, B. and Efstratiadis, A. (2018). Timing the time of concentration: shedding light on a paradox. Hydrological Sciences Journal 63(5), 721-740, doi:10.1080/02626667.2018.1450985, table 2 (the formula), table 3 (30 basins) <https://www.itia.ntua.gr/en/getfile/1777/2/documents/Timing_the_time_of_concentration_shedding_light_on_a_paradox_nNWG5Fq.pdf>
+> 3. Almeida, I.K., Almeida, A.K., Anache, J.A.A., Steffen, J.L. and Alves Sobrinho, T. (2014). Estimation on time of concentration of overland flow in watersheds: a review. Geociências 33(4), 661-671, table 1, Giandotti: basins of central and northern Italy, 170-70,000 km2 (after Giandotti 1940, Preti et al. 2011, Radice et al. 2012) <https://www.revistageociencias.com.br/geociencias-arquivos/33/volume33_4_files/33-4-artigo-9.pdf>
+> 4. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 135 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)
+> 5. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: main channels of 0.0071 to 26.18 km
+> 6. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: mean elevations of 2.89 to 204 m above the outlet
+>
+> Funkcja `hydrolog.time.concentration.ConcentrationTime.giandotti`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:giandotti -->
 
 **Dane.** A — powierzchnia zlewni; L — długość cieku głównego; H — średnia wysokość zlewni minus wysokość
@@ -323,6 +501,61 @@ rysunku 7 okólnika; późniejsze okólniki FAA go nie zawierają i liczą czas 
 NRCS (ramka, założenia).
 
 <!-- spec:faa -->
+
+<a id="spec-faa"></a>
+
+> **Czas spływu po stoku według wzoru FAA (AC 150/5320-5B, 1970)** · specyfikacja [`faa`](../FORMULAS.md#faa) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> T = \frac{1{,}8\,(1{,}1 - C)\,\sqrt{D}}{\sqrt[3]{S}},\quad D\ \mathrm{[ft]},\ S\ [\%]
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $L$ | `length_km` | Długość spływu po stoku (warstwą), od najdalszego punktu do wyraźnego koryta lub wpustu | km | (0; ∞) | nie podano w źródłach | [0,04; 0,7] (źr. 2) |
+> | $S$ | `slope_m_per_m` | Spadek powierzchni, po której spływa woda | m/m | (0; ∞) | nie podano w źródłach | [0,005; 0,19] (źr. 3) |
+> | $C$ | `runoff_coeff` | Współczynnik spływu metody racjonalnej | – | (0; 1] | [0; 0,95] (źr. 4) | [0,05; 0,95] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $t_c$ | `tc_min` | Czas koncentracji | min | (0; ∞) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $1{,}8$ | `faa_coefficient` | Współczynnik wzoru FAA | 1,8 | $\mathrm{min\,ft^{-0{,}5}\,\%^{1/3}}$ | (źr. 6) |
+> | $1{,}1$ | `c_offset` | Składnik, od którego odejmuje się współczynnik spływu | 1,1 | – | (źr. 6) |
+> | $100$ | `percent` | Przelicznik spadku z m/m na procenty | 100 | % na m/m | (źr. 7) |
+>
+> **Konwencje**
+>
+> - rys. 7 w jednostkach źródła: D w stopach przez dokładny przelicznik 0,3048 m/ft z tabeli jednostek, S w procentach (100 na m/m; krzywe opisano w procentach), T w minutach; stała Hydrologu 22,213 dla L w km i S w m/m do wersji 0.8.1 była zaokrągleniem 22,2125
+> - czas dopływu do wpustu: spływ po stoku „od najdalszego punktu zlewni cząstkowej do wpustu” (§6b), a nie czas koncentracji zlewni z korytem
+> - C z tab. I w przedziale (0, 1]: C = 0, które tablica podaje dla umiarkowanie przepuszczalnych gleb z darnią (0,00-0,10), jest odrzucane
+>
+> **Założenia**
+>
+> - „Wzoru należy używać dla odległości większych niż 800 stóp” (rys. 7): krzywe kończą się na 800 ft, a wzór służy dłuższym drogom; późniejsze okólniki AC 150/5320-5C (2006) i 5D (2013) liczą zamiast tego czas spływu metodą odcinków NRCS
+>
+> **Zgodność z obserwacjami według źródeł:** brak w źródle
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Federal Aviation Agency (1970). Airport Drainage. Advisory Circular AC 150/5320-5B, chapter 3, §6, figure 7 'Surface flow time curves', p. 11; table I, p. 10 <https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_150_5320-5B.pdf>
+> 2. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: overland segments of 0.0495 to 0.693 km
+> 3. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: overland slopes of 0.00594 to 0.1804 m/m
+> 4. Federal Aviation Agency (1970). Airport Drainage. Advisory Circular AC 150/5320-5B, table I, p. 10: the values of factor C, 0.00 to 0.95 <https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_150_5320-5B.pdf>
+> 5. Hydrolog's catalog: the coefficients of table I of AC 150/5320-5B, which the option runoff_coeff of tc faa quotes, without its 0.00, table I, p. 10: moderately pervious soils 0.05-0.20 to watertight roofs 0.75-0.95
+> 6. Federal Aviation Agency (1970). Airport Drainage. Advisory Circular AC 150/5320-5B, figure 7, p. 11 <https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_150_5320-5B.pdf>
+> 7. BIPM (2019). The International System of Units (SI), 9th edition, version 4.01, section 5.4.7: the symbol % (percent) is the number 0.01 <https://www.bipm.org/documents/20126/41483022/SI-Brochure-9-EN.pdf>
+>
+> Funkcja `hydrolog.time.concentration.ConcentrationTime.faa`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:faa -->
 
 **Dane.** Długość i spadek powierzchni, po której spływa woda (`overland_length_km`,
@@ -360,6 +593,71 @@ początku wyraźnego koryta, z uwzględnieniem oporu powierzchni. Kerby (1959) r
 o projektowaniu urządzeń odwadniających (Fang i in. 2005, s. 22).
 
 <!-- spec:kerby -->
+
+<a id="spec-kerby"></a>
+
+> **Czas spływu po stoku według wzoru Kerby'ego (1959)** · specyfikacja [`kerby`](../FORMULAS.md#kerby) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> t_c = \left(\frac{0{,}67\,N\,L}{\sqrt{S}}\right)^{0{,}467},\quad L\ \mathrm{[ft]},\quad S \to S + 0{,}0005\ \text{dla}\ S < 0{,}002
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $L$ | `length_km` | Długość spływu po stoku (warstwą), od najdalszego punktu do wyraźnego koryta lub wpustu | km | (0; ∞) | [0; 0,366] (źr. 5) | [0,04; 0,7] (źr. 6) |
+> | $S$ | `slope_m_per_m` | Spadek powierzchni, po której spływa woda | m/m | (0; ∞) | [0; 0,01] (źr. 7) | [0,005; 0,19] (źr. 8) |
+> | $N$ | `retardance` | Współczynnik oporu (retardacji) Kerby'ego dla powierzchni stoku, nie współczynnik Manninga n | – | (0; ∞) | [0,02; 0,8] (źr. 9) | [0,02; 0,8] (źr. 10) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $t_c$ | `tc_min` | Czas koncentracji | min | (0; ∞) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $0{,}67$ | `kerby_coefficient` | Współczynnik wzoru Kerby'ego | 0,67 | $\mathrm{min^{1/0{,}467}\,ft^{-1}}$ | (źr. 11) |
+> | $0{,}467$ | `kerby_exponent` | Wykładnik wzoru Kerby'ego | 0,467 | – | (źr. 12) |
+> | $0{,}002$ | `low_slope_threshold` | Próg małego spadku | 0,002 | m/m | (źr. 13) |
+> | $0{,}0005$ | `low_slope_offset` | Poprawka dodawana do małego spadku | 0,0005 | m/m | (źr. 14) |
+>
+> **Konwencje**
+>
+> - postać Kerby'ego w jednostkach źródła: L w stopach przez dokładny przelicznik 0,3048 m/ft z tabeli jednostek, tc w minutach; postaci K (L N)^0,467 S^-0,235 z TxDOT (K 0,828 dla ft, 1,44 dla m) zaokrąglają 0,67^0,467 i wykładnik 0,467/2 = 0,2335; stała Hydrologu 36,37 dla L w km do wersji 0.8.1 była zaokrągleniem 36,3699
+> - N to współczynnik oporu (retardacji) Kerby'ego dla powierzchni stoku (Roussel i in. 2005, suplement, s. 29), a nie współczynnik Manninga n; NEH 630-15, załącznik 15A, wzór 15A-2 drukuje (2,2 n l / S^0,5)^0,324, co jest błędnym zapisem tego wzoru
+> - poprawka małych spadków Clevelanda i in. (2012, wzory 1-2): spadek poniżej 0,002 przyjmuje się jako S + 0,0005; sam wzór rozstrzyga o niej według własnego spadku, podczas gdy Cleveland i in. rozstrzygają według spadku cieku głównego, którego sam spływ po stoku nie ma; przy 0,002 poprawka znika, więc tc rośnie o 5,35 %, gdy S dochodzi do 0,002 od dołu, i jest monotoniczny względem S tylko po każdej stronie 0,002
+>
+> **Założenia**
+>
+> - dane Kerby'ego: zlewnie poniżej 10 akrów (0,04 km², sprawdzane przez `WatershedParameters.calculate_tc`), spływ po stoku do 1 200 ft, spadki poniżej 1 %, N do 0,8 (Roussel i in. 2005, s. 5); tylko spływ po stoku (warstwą)
+> - N z tablicy Kerby'ego (Roussel i in. 2005, suplement, s. 29): nawierzchnia utwardzona 0,02; gładka, naga, ubita gleba 0,10; słaba trawa, uprawy rzędowe lub umiarkowanie szorstkie ubite powierzchnie 0,20; pastwisko, przeciętna trawa 0,40; las liściasty 0,60; gęsta trawa, las iglasty lub las liściasty z grubą ściółką 0,80
+> - odcinki spływu po stoku w Hydrografie (0,04-0,7 km przy 0,005-0,19 m/m) są w większości bardziej strome niż w danych Kerby'ego: ich wyniki są ekstrapolacją, z uwagą
+>
+> **Zgodność z obserwacjami według źródeł:** brak w otwartych źródłach (Kerby 1959 nie jest dostępny otwarcie)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University, eq. 3.12 and table 3.3, p. 22 <https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf>
+> 2. Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University, eq. 3, p. 5; supplement, p. 29 (the form K (L N)^0.467 S^-0.235) <https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf>
+> 3. Indiana Department of Transportation. Indiana Design Manual (metric, archived), Part IV, chapter 29: Hydrology, eq. 29-7.14, Kerby's formula in SI units with K = 1.44 <https://www.in.gov/dot/div/contracts/standards/dm-Archived/07%20Metric/Part%204%20Vol.%201/Ch%2029/Ch29.pdf>
+> 4. Cleveland, T.G., Thompson, D.B., Fang, X. and Li, M.-H. (2012). Guidance for estimation of time of concentration in Texas for low-slope conditions. TxDOT Product 0-6382-P1, Texas Tech University, low slope procedures and eq. 2, pp. 1-2 <https://rosap.ntl.bts.gov/view/dot/66537/dot_66537_DS1.pdf>
+> 5. Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University, supplement, p. 29: in the development of Kerby's equation the length of overland flow was as much as about 1,200 feet (366 meters), an upper limit <https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf>
+> 6. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: overland segments of 0.0495 to 0.693 km
+> 7. Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University, p. 5: the watersheds of Kerby (1959) have dimensionless slopes less than 0.01 <https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf>
+> 8. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: overland slopes of 0.00594 to 0.1804 m/m
+> 9. Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University, supplement, p. 29: Kerby's table of the retardance N, pavement 0.02 to dense grass, coniferous forest or deciduous forest with deep litter 0.80 <https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf>
+> 10. Hydrolog's catalog and GUI: Kerby's table of N (Roussel et al. 2005, supplement, p. 29), from which their users take N, option retardance of tc kerby and tc kerby-kirpich: 0.02 (pavement) to 0.80 (dense grass, coniferous forest)
+> 11. Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University, eq. 3.12, p. 22, (0.67 N L / S^0.5)^0.467 with L in ft; the same in Roussel et al. (2005) eq. 3 <https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf>
+> 12. Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University, eq. 3.12, p. 22; INDOT eq. 29-7.14 and TxDOT (2019) take the same exponent of L N <https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf>
+> 13. Cleveland, T.G., Thompson, D.B., Fang, X. and Li, M.-H. (2012). Guidance for estimation of time of concentration in Texas for low-slope conditions. TxDOT Product 0-6382-P1, Texas Tech University, low slope procedures, step 2(c), p. 2: a main channel slope less than 0.002 is low slope; TxDOT (2019), section 11 <https://rosap.ntl.bts.gov/view/dot/66537/dot_66537_DS1.pdf>
+> 14. Cleveland, T.G., Thompson, D.B., Fang, X. and Li, M.-H. (2012). Guidance for estimation of time of concentration in Texas for low-slope conditions. TxDOT Product 0-6382-P1, Texas Tech University, step 3 and eq. 1, p. 2: S_low slope = S0 + 0.0005; TxDOT (2019), section 11 <https://rosap.ntl.bts.gov/view/dot/66537/dot_66537_DS1.pdf>
+>
+> Funkcja `hydrolog.time.concentration.ConcentrationTime.kerby`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:kerby -->
 
 **Współczynnik N** Kerby'ego (ang. *retardance coefficient*) to opór powierzchni dla spływu warstwowego, od
@@ -404,6 +702,86 @@ sprawdzili metodę na zlewniach Teksasu, z dobrą zgodnością z czasami wyznacz
 (ramka, walidacja). Metodę opisuje podręcznik hydrauliczny TxDOT (2019, rozdz. 4, sekcja 11).
 
 <!-- spec:kerby_kirpich -->
+
+<a id="spec-kerby_kirpich"></a>
+
+> **Czas koncentracji metodą Kerby'ego–Kirpicha (Roussel i in. 2005)** · specyfikacja [`kerby_kirpich`](../FORMULAS.md#kerby_kirpich) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> t_c = \left(\frac{0{,}67\,N\,L_{ov}}{\sqrt{S_{ov}}}\right)^{0{,}467} + 0{,}0078\,(L_{fp} - L_{ov})^{0{,}77}\,S_{fp}^{-0{,}385},\quad L\ \mathrm{[ft]}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $L_{ov}$ | `overland_length_km` | Długość spływu po stoku (warstwą), od najdalszego punktu do wyraźnego koryta lub wpustu | km | (0; ∞) | [0; 0,366] (źr. 4) | [0,04; 0,7] (źr. 5) |
+> | $S_{ov}$ | `overland_slope_m_per_m` | Spadek powierzchni, po której spływa woda | m/m | (0; ∞) | nie podano w źródłach | [0,005; 0,19] (źr. 6) |
+> | $N$ | `retardance` | Współczynnik oporu (retardacji) Kerby'ego dla powierzchni stoku, nie współczynnik Manninga n | – | (0; ∞) | [0,02; 0,8] (źr. 7) | [0,02; 0,8] (źr. 8) |
+> | $L_{fp}$ | `flow_path_length_km` | Długość cieku głównego w rozumieniu metody: najdłuższa droga spływu od działu wodnego do przekroju, łącznie z odcinkiem po stoku | km | (0; ∞) | [1,6; 80] (źr. 9) | [0,05; 30] (źr. 10) |
+> | $S_{fp}$ | `flow_path_slope_m_per_m` | Spadek tej drogi: wysokość jej początku minus wysokość przekroju, podzielona przez jej długość | m/m | (0; ∞) | [0,002; 0,02] (źr. 11) | [0,002; 0,11] (źr. 12) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $t_c$ | `tc_min` | Czas koncentracji | min | (0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | flow_path_length_km > overland_length_km | `flow_path_longer_than_overland` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 13) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $0{,}67$ | `kerby_coefficient` | Współczynnik wzoru Kerby'ego | 0,67 | $\mathrm{min^{1/0{,}467}\,ft^{-1}}$ | (źr. 14) |
+> | $0{,}467$ | `kerby_exponent` | Wykładnik wzoru Kerby'ego | 0,467 | – | (źr. 15) |
+> | $0{,}002$ | `low_slope_threshold` | Próg małego spadku | 0,002 | m/m | (źr. 16) |
+> | $0{,}0005$ | `low_slope_offset` | Poprawka dodawana do małego spadku | 0,0005 | m/m | (źr. 17) |
+> | $0{,}0078$ | `kirpich_coefficient` | Współczynnik wzoru Kirpicha | 0,0078 | $\mathrm{min\,ft^{-0{,}77}}$ | (źr. 18) |
+> | $0{,}77$ | `kirpich_length_exponent` | Wykładnik długości drogi spływu we wzorze Kirpicha | 0,77 | – | (źr. 19) |
+> | $-0{,}385$ | `kirpich_slope_exponent` | Wykładnik spadku drogi spływu we wzorze Kirpicha | −0,385 | – | (źr. 19) |
+>
+> **Konwencje**
+>
+> - tc = t_overland + t_channel: `kerby` na odcinku spływu po stoku, `kirpich` na odcinku korytowym, czyli drodze spływu minus odcinek po stoku, przy spadku całej drogi od działu wodnego do przekroju (Roussel i in. 2005, suplement, s. 29-30), w jednostkach i ze stałymi tych specyfikacji
+> - odstępstwo od Clevelanda i in. (2012, s. 1-2): o poprawce małych spadków (S + 0,0005 poniżej 0,002) rozstrzyga się dla każdego odcinka według jego własnego spadku — spadku stoku dla Kerby'ego i spadku drogi spływu dla Kirpicha — podczas gdy Cleveland i in. rozstrzygają według spadku cieku głównego dla obu odcinków (poniżej 0,002 poprawka w obu, powyżej 0,003 w żadnym), a przedział 0,002-0,003 pozostawiają inżynierowi („przy niejednoznacznym kierunku spływu traktować jak mały spadek”); oba podejścia są zgodne, gdy oba spadki leżą po tej samej stronie 0,002, a różnią się dla płaskiego cieku głównego przy bardziej stromym odcinku po stoku (Cleveland i in. poprawiają także ten odcinek), dla stromego cieku głównego przy płaskim odcinku po stoku (Hydrolog poprawia ten odcinek) i w strefie przejściowej (Hydrolog nigdy nie poprawia tam koryta)
+> - przy spadku drogi spływu równym 0,002 część korytowa rośnie o 8,97 %, a przy spadku stoku równym 0,002 część po stoku o 5,35 %, gdy poprawka znika: tc nie jest monotoniczny względem żadnego z tych spadków
+>
+> **Założenia**
+>
+> - 92 zlewnie w Teksasie z pracy Roussela i in. (2005): 0,25-150 mil kwadratowych (0,65-388 km², sprawdzane przez `WatershedParameters.calculate_tc`), cieki główne o długości 1-50 mil i spadku 0,002-0,02; „w bazie danych, na której oparto metodę, nie ma zlewni o małych spadkach terenu” (suplement, s. 29)
+> - odcinek spływu po stoku do 1 200 ft, górnej granicy Kerby'ego (suplement, s. 29); metoda nie podaje zakresu spadku stoku, a jej własny przykład przyjmuje 2 %
+>
+> **Zgodność z obserwacjami według źródeł:** Roussel i in. (2005, suplement, s. 29) uznają szacunki metody Kerby'ego–Kirpicha za „zgodne z czasami zlewni wyznaczonymi niezależnie z rzeczywistych opadów i hydrogramów odpływu” dla swoich 92 zlewni w Teksasie
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University, supplement 'Guidance for estimation of time of concentration in Texas', pp. 29-30, and its example <https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf>
+> 2. Texas Department of Transportation (2019). Hydraulic Design Manual, chapter 4, section 11: Time of Concentration, eqs. 4-13 to 4-15 <https://www.txdot.gov/manuals/des/hyd/chapter-4--hydrology/section-11--time-of-concentration.html>
+> 3. Cleveland, T.G., Thompson, D.B., Fang, X. and Li, M.-H. (2012). Guidance for estimation of time of concentration in Texas for low-slope conditions. TxDOT Product 0-6382-P1, Texas Tech University, low slope procedures, eqs. 1-3, pp. 1-3, and its example <https://rosap.ntl.bts.gov/view/dot/66537/dot_66537_DS1.pdf>
+> 4. Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University, supplement, p. 29: in the development of Kerby's equation the length of overland flow was as much as about 1,200 feet (366 meters), an upper limit <https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf>
+> 5. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: overland segments of 0.0495 to 0.693 km
+> 6. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: overland slopes of 0.00594 to 0.1804 m/m
+> 7. Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University, supplement, p. 29: Kerby's table of the retardance N, pavement 0.02 to dense grass, coniferous forest or deciduous forest with deep litter 0.80 <https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf>
+> 8. Hydrolog's catalog and GUI: Kerby's table of N (Roussel et al. 2005, supplement, p. 29), from which their users take N, option retardance of tc kerby and tc kerby-kirpich: 0.02 (pavement) to 0.80 (dense grass, coniferous forest)
+> 9. Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University, supplement, p. 29: main channel lengths of the 92 Texas watersheds approximately 1 to 50 miles, from the outlet to the divide <https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf>
+> 10. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: flow paths of 0.0566 to 28.88 km
+> 11. Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University, supplement, p. 29: dimensionless main channel slopes approximately 0.002 to 0.02, from the divide to the outlet <https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf>
+> 12. Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2), tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: flow path slopes of 0.00244 to 0.1055 m/m
+> 13. Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G. and Garcia, C.A. (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT Research Report 0-4696-2, Lamar University, supplement, p. 30: the subtraction of the overland flow length from the overall main-channel length (watershed divide to outlet) is necessary <https://rosap.ntl.bts.gov/view/dot/88540/dot_88540_DS1.pdf>
+> 14. Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University, eq. 3.12, p. 22, (0.67 N L / S^0.5)^0.467 with L in ft; the same in Roussel et al. (2005) eq. 3 <https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf>
+> 15. Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University, eq. 3.12, p. 22; INDOT eq. 29-7.14 and TxDOT (2019) take the same exponent of L N <https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf>
+> 16. Cleveland, T.G., Thompson, D.B., Fang, X. and Li, M.-H. (2012). Guidance for estimation of time of concentration in Texas for low-slope conditions. TxDOT Product 0-6382-P1, Texas Tech University, low slope procedures, step 2(c), p. 2: a main channel slope less than 0.002 is low slope; TxDOT (2019), section 11 <https://rosap.ntl.bts.gov/view/dot/66537/dot_66537_DS1.pdf>
+> 17. Cleveland, T.G., Thompson, D.B., Fang, X. and Li, M.-H. (2012). Guidance for estimation of time of concentration in Texas for low-slope conditions. TxDOT Product 0-6382-P1, Texas Tech University, step 3 and eq. 1, p. 2: S_low slope = S0 + 0.0005; TxDOT (2019), section 11 <https://rosap.ntl.bts.gov/view/dot/66537/dot_66537_DS1.pdf>
+> 18. Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University, eq. 3.14, p. 22; the same in Roussel et al. (2005) eq. 7, Mota and Kobiyama (2015) and FDOT (2024) eq. 2.2-9 <https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf>
+> 19. Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B. and Malla, R. (2005). Literature review on timing parameters for hydrographs. TxDOT Research Report 0-4696-1, Lamar University, eq. 3.14, p. 22; Mota and Kobiyama (2015); FDOT (2024) <https://rosap.ntl.bts.gov/view/dot/88539/dot_88539_DS1.pdf>
+>
+> Funkcja `hydrolog.time.concentration.ConcentrationTime.kerby_kirpich`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:kerby_kirpich -->
 
 **Dane.** Odcinek po stoku: długość, spadek i N. Droga spływu: **cała** najdłuższa droga od działu wodnego

@@ -68,7 +68,7 @@ liczba: **liczba CN** (numer krzywej odpływu, ang. *runoff curve number*).
 - Nie stosuje się jej do roztopów ani do deszczu na zamarzniętym gruncie (TR-55, s. 2-11).
 - Przy małym ważonym CN źródło każe użyć innej metody, a przy małym odpływie uważa wynik za mniej
   dokładny (TR-55, s. 2-11; granice podają ramki). Hydrolog ostrzega o CN spoza zakresu
-  stosowalności uwagą `outside_typical_range`; o małym odpływie nie ostrzega.
+  stosowalności uwagą `outside_applicability`; o małym odpływie nie ostrzega.
 - Duży odpływ podpowierzchniowy i wysoki poziom wód gruntowych (często gleby grupy A i lasy)
   wymagają osądu projektanta (TR-55, s. 2-11).
 
@@ -80,6 +80,51 @@ opad z niej odpływa. Związek retencji z CN pochodzi z NEH 630 w calach; Hydrol
 milimetrach przez dokładne przeliczenie cala.
 
 <!-- spec:scs_cn_retention -->
+
+<a id="spec-scs_cn_retention"></a>
+
+> **Retencja maksymalna S w metodzie SCS-CN** · specyfikacja [`scs_cn_retention`](../FORMULAS.md#scs_cn_retention) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> S = 25{,}4\left(\frac{1000}{CN} - 10\right)
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $CN$ | `cn` | Liczba CN dla warunków wilgotnościowych poprzedzających przyjętych we wzorze | – | [1; 100] | nie podano w źródłach | [30; 98] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $S$ | `retention_mm` | Retencja maksymalna po rozpoczęciu odpływu | mm | [0; ∞) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $1000$ | `s_scale` | Licznik ilorazu przez CN (w calach) | 1000 | in | (źr. 5) |
+> | $10$ | `s_offset` | Składnik odejmowany od ilorazu (w calach) | 10 | in | (źr. 5) |
+>
+> **Konwencje**
+>
+> - S w mm z calowej postaci wzoru 10-12 NEH 630-10 przez dokładny przelicznik 25,4 mm/cal z tabeli jednostek, co daje wzór 10-13 (S = 25400/CN - 254)
+> - CN dla warunków wilgotnościowych poprzedzających przyjętych w obliczeniu: ARC (AMC) II, chyba że przeliczono ją przez `scs_cn_amc`
+>
+> **Zgodność z obserwacjami według źródeł:** brak: S jest definicją liczby CN (NEH 630-10, wzór 10-12)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004), eq. 10-12, p. 10-4 (S = 1000/CN - 10, in); eq. 10-13 (the same in mm) <https://www.hydrocad.net/neh/630ch10.pdf>
+> 2. USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986), eq. 2-4, p. 2-1 <https://www.hydrocad.net/pdf/TR-55%20Manual.pdf>
+> 3. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eq. 6.1, p. 88 <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 4. Hydrolog's table of TR-55 curve numbers (cn list), the CN its users take for soil-cover complexes, its least and largest CN, 30 (woods and brush, good, A) and 98 (impervious and water)
+> 5. USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004), eq. 10-12, p. 10-4 <https://www.hydrocad.net/neh/630ch10.pdf>
+>
+> Funkcja `hydrolog.runoff.scs_cn.potential_retention`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:scs_cn_retention -->
 
 Równanie jest jednorodne w jednostkach długości: przy tym samym CN wynik w milimetrach jest tyle
@@ -97,6 +142,61 @@ szybciej, a łączne straty zbliżają się do sumy strat początkowych i retenc
 jej nie przekraczając (NEH 630, rozdz. 10, wzór 10-16).
 
 <!-- spec:scs_cn_runoff -->
+
+<a id="spec-scs_cn_runoff"></a>
+
+> **Odpływ bezpośredni z opadu według metody SCS-CN** · specyfikacja [`scs_cn_runoff`](../FORMULAS.md#scs_cn_runoff) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> Q(P) = \begin{cases} \dfrac{(P - I_a)^2}{P - I_a + S} & P > I_a \\ 0 & P \le I_a \end{cases},\quad I_a = \lambda S,\quad q_i = Q(P_i) - Q(P_{i-1}),\quad C = \frac{Q}{P}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $\Delta P_i$ | `precipitation_mm` (ciąg) | Wysokość opadu w każdym kroku czasowym (suma to jeden krok) | mm | [0; ∞) | nie podano w źródłach | [0; 350] (źr. 4) |
+> | $CN$ | `cn` | Liczba CN dla warunków wilgotnościowych poprzedzających przyjętych we wzorze | – | [1; 100] | [40; 100] (źr. 5) | [30; 98] (źr. 6) |
+> | $\lambda$ | `ia_coefficient` | Współczynnik strat początkowych Ia / S | – | (0; 1] | nie podano w źródłach | [0,05; 0,2] (źr. 7) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $Q$ | `total_effective_mm` | Odpływ bezpośredni z całego opadu | mm | [0; ∞) |
+> | $q_i$ | `effective_mm` (ciąg) | Odpływ bezpośredni w każdym kroku | mm | [0; ∞) |
+> | $C$ | `runoff_coefficient` | Stosunek odpływu bezpośredniego do opadu | – | [0; 1] |
+> | $S$ | `retention_mm` | Retencja maksymalna S | mm | [0; ∞) |
+> | $I_a$ | `initial_abstraction_mm` | Straty początkowe Ia | mm | [0; ∞) |
+>
+> **Konwencje**
+>
+> - jednostki SI: wysokości w mm
+> - równanie stosuje się do sumy narastającej opadu, a odpływ w każdym kroku to różnica sum narastających odpływu (NEH 630-10, przykład 10-6; KZGW 2017, wzór 6.2); sumę opadu traktuje się jak opad o jednym kroku
+> - Ia = lambda S przy zadanym lambda; S z CN według `scs_cn_retention`
+> - CN dla ARC (AMC) II, chyba że przeliczono ją przez `scs_cn_amc`
+> - C = Q / P dla całego opadu, 0 przy braku opadu
+>
+> **Założenia**
+>
+> - wartości CN z tablic NRCS zakładają lambda = 0,2; inna wartość lambda wymaga CN dopasowanych do niej (NEH 630-10 s. 10-4; Woodward i in. 2003), a polecenie `scs effective` wydaje wtedy uwagę `ia_coefficient_nonstandard`
+> - odpływ bezpośredni z jednego opadu, a nie model infiltracji ani symulacja ciągła (NEH 630-10 s. 10-19); nie dla topnienia śniegu ani deszczu na zamarzniętym gruncie (TR-55 s. 2-11)
+> - TR-55 (s. 2-11) uznaje metodę za mniej dokładną dla odpływu poniżej 0,5 cala (12,7 mm); wynik poniżej tej granicy nie wywołuje uwagi
+>
+> **Zgodność z obserwacjami według źródeł:** NEH 630-9 (s. 9-1) wyprowadza liczby CN swoich tablic z rocznych wezbrań małych zlewni rolniczych o powierzchni na ogół poniżej 1 mili kwadratowej i z opadów trwających najwyżej jeden dzień; źródła nie podają żadnej miary błędu równania
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004), eqs. 10-9 to 10-11, pp. 10-2 to 10-4; example 10-6 and table 10-2, pp. 10-17 to 10-18 (cumulative rainfall of a storm) <https://www.hydrocad.net/neh/630ch10.pdf>
+> 2. USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986), eqs. 2-1 to 2-4, p. 2-1 <https://www.hydrocad.net/pdf/TR-55%20Manual.pdf>
+> 3. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eq. 6.2, p. 88 <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 4. Hydrolog's test fixtures: the PMAXTP depths of IMGW-PIB for Kamiennik (51.015 N, 15.890 E) and Warsaw (52.23 N, 21.01 E), POT, recorded in November 2026, tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm over durations of 5 min to 72 h and probabilities of 0.01 to 99.9 %
+> 5. USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986), chapter 2, limitations, p. 2-11: when the weighted CN is less than 40, use another procedure <https://www.hydrocad.net/pdf/TR-55%20Manual.pdf>
+> 6. Hydrolog's table of TR-55 curve numbers (cn list), the CN its users take for soil-cover complexes, its least and largest CN, 30 (woods and brush, good, A) and 98 (impervious and water)
+> 7. Hydrolog's command scs effective: the ratio 0.2 of the CN tables and 0.05 of Woodward et al. (2003), the two its catalog and GUI name, catalog option ia_coefficient
+>
+> Funkcja `hydrolog.runoff.scs_cn.runoff_depths`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:scs_cn_runoff -->
 
 **Hietogram.** Aby rozłożyć opad efektywny w czasie, równanie stosuje się do **sumy narastającej**
@@ -222,9 +322,100 @@ niezależnie i porównany (standard Nogat CMP-2.5; ADR-0051); w kodzie nie ma an
 CN.
 
 <!-- spec:tr55_cn -->
+
+<a id="spec-tr55_cn"></a>
+
+> **Liczba CN kompleksu glebowo-roślinnego z tablic TR-55** · specyfikacja [`tr55_cn`](../FORMULAS.md#tr55_cn) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> CN = T(\text{pokrycie terenu}, \text{stan hydrologiczny}, \text{HSG})
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $\text{HSG}$ | `hsg` (wybór) | Hydrologiczna grupa gleby | – | jedna z: `A`, `B`, `C`, `D` | – | – |
+> | $\text{pokrycie terenu}$ | `land_cover` (wybór) | Klasa pokrycia terenu w Hydrologu | – | jedna z: `fallow`, `row_crops`, `small_grain`, `pasture`, `meadow`, `brush`, `forest`, `herbaceous`, `woods_grass`, `farmstead`, `residential_low`, `residential_medium`, `residential_quarter_acre`, `residential_high`, `commercial`, `industrial`, `open_space`, `paved`, `paved_road_open_ditches`, `gravel`, `dirt`, `water` | – | – |
+> | $\text{stan hydrologiczny}$ | `condition` (wybór) | Stan hydrologiczny; brak dla pokrycia o jednym wierszu | – | jedna z: `poor`, `fair`, `good`, `none` | – | – |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $CN$ | `cn` (liczba całkowita) | Liczba CN dla ARC II i Ia = 0,2 S | – | [1; 100] |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | tablica ma wiersz danego pokrycia terenu w danym stanie hydrologicznym | `row_in_table` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Konwencje**
+>
+> - ARC (AMC) II i Ia = 0,2 S (TR-55, tab. 2-2a do 2-2c, przypis 1)
+> - `herbaceous` to wiersz „pastwisko, łąka lub wypas ekstensywny” (pasture, grassland or range) z tab. 2-2c, jak każe przypis 1 tab. 2-2d dla wypasu ekstensywnego w regionach wilgotnych; samej tab. 2-2d (pastwiska ekstensywne obszarów suchych i półsuchych) się nie używa
+> - uprawy rzędowe i zboża to wiersze „rzędy proste” (straight row) z tab. 2-2b, tylko w stanie złym i dobrym: TR-55 nie ma dla nich stanu średniego
+> - woda ma CN 98 (NEH 630-9 s. 9-1), a nie 100 jak w niektórych opracowaniach
+>
+> **Zgodność z obserwacjami według źródeł:** NEH 630-9 (s. 9-1) wyprowadza CN swoich kompleksów z rocznych wezbrań małych zlewni rolniczych o jednej grupie glebowej i jednym pokryciu; tablica nie podaje żadnej miary błędu
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986), tables 2-2a, 2-2b and 2-2c, pp. 2-5 to 2-7; table 2-2d, footnote 1, p. 2-8 <https://www.hydrocad.net/pdf/TR-55%20Manual.pdf>
+> 2. USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 9: Hydrologic Soil-Cover Complexes, p. 9-1: impervious and water surfaces are always assigned a CN of 98 <https://www.hydrocad.net/neh/630ch9.pdf>
+>
+> Funkcja `hydrolog.runoff.cn_lookup.table_curve_number`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:tr55_cn -->
 
 <!-- spec-table:tr55_cn -->
+
+> **Tablica `src/hydrolog/_data/tables/tr55_cn.csv`** · specyfikacja `tr55_cn` · SHA-256 `781fdd02b39aa868571ec09cb92516716a79c0d74a77640fe810e794cfd3a6e8`
+>
+> | Pokrycie terenu | Stan hydrologiczny | CN, grupa A | CN, grupa B | CN, grupa C | CN, grupa D | Źródło |
+> |---|---|---|---|---|---|---|
+> | fallow | – | 77 | 86 | 91 | 94 | TR-55 table 2-2b, p. 2-6 |
+> | row_crops | poor | 72 | 81 | 88 | 91 | TR-55 table 2-2b, p. 2-6 |
+> | row_crops | good | 67 | 78 | 85 | 89 | TR-55 table 2-2b, p. 2-6 |
+> | small_grain | poor | 65 | 76 | 84 | 88 | TR-55 table 2-2b, p. 2-6 |
+> | small_grain | good | 63 | 75 | 83 | 87 | TR-55 table 2-2b, p. 2-6 |
+> | pasture | poor | 68 | 79 | 86 | 89 | TR-55 table 2-2c, p. 2-7 |
+> | pasture | fair | 49 | 69 | 79 | 84 | TR-55 table 2-2c, p. 2-7 |
+> | pasture | good | 39 | 61 | 74 | 80 | TR-55 table 2-2c, p. 2-7 |
+> | meadow | – | 30 | 58 | 71 | 78 | TR-55 table 2-2c, p. 2-7 |
+> | brush | poor | 48 | 67 | 77 | 83 | TR-55 table 2-2c, p. 2-7 |
+> | brush | fair | 35 | 56 | 70 | 77 | TR-55 table 2-2c, p. 2-7 |
+> | brush | good | 30 | 48 | 65 | 73 | TR-55 table 2-2c, p. 2-7 |
+> | forest | poor | 45 | 66 | 77 | 83 | TR-55 table 2-2c, p. 2-7 |
+> | forest | fair | 36 | 60 | 73 | 79 | TR-55 table 2-2c, p. 2-7 |
+> | forest | good | 30 | 55 | 70 | 77 | TR-55 table 2-2c, p. 2-7 |
+> | herbaceous | poor | 68 | 79 | 86 | 89 | TR-55 table 2-2c, p. 2-7, pasture, grassland or range (table 2-2d, footnote 1: for range in humid regions, use table 2-2c) |
+> | herbaceous | fair | 49 | 69 | 79 | 84 | TR-55 table 2-2c, p. 2-7, pasture, grassland or range (table 2-2d, footnote 1: for range in humid regions, use table 2-2c) |
+> | herbaceous | good | 39 | 61 | 74 | 80 | TR-55 table 2-2c, p. 2-7, pasture, grassland or range (table 2-2d, footnote 1: for range in humid regions, use table 2-2c) |
+> | woods_grass | poor | 57 | 73 | 82 | 86 | TR-55 table 2-2c, p. 2-7 |
+> | woods_grass | fair | 43 | 65 | 76 | 82 | TR-55 table 2-2c, p. 2-7 |
+> | woods_grass | good | 32 | 58 | 72 | 79 | TR-55 table 2-2c, p. 2-7 |
+> | farmstead | – | 59 | 74 | 82 | 86 | TR-55 table 2-2c, p. 2-7 |
+> | residential_low | – | 46 | 65 | 77 | 82 | TR-55 table 2-2a, p. 2-5 |
+> | residential_medium | – | 57 | 72 | 81 | 86 | TR-55 table 2-2a, p. 2-5 |
+> | residential_quarter_acre | – | 61 | 75 | 83 | 87 | TR-55 table 2-2a, p. 2-5 |
+> | residential_high | – | 77 | 85 | 90 | 92 | TR-55 table 2-2a, p. 2-5 |
+> | commercial | – | 89 | 92 | 94 | 95 | TR-55 table 2-2a, p. 2-5 |
+> | industrial | – | 81 | 88 | 91 | 93 | TR-55 table 2-2a, p. 2-5 |
+> | open_space | poor | 68 | 79 | 86 | 89 | TR-55 table 2-2a, p. 2-5 |
+> | open_space | fair | 49 | 69 | 79 | 84 | TR-55 table 2-2a, p. 2-5 |
+> | open_space | good | 39 | 61 | 74 | 80 | TR-55 table 2-2a, p. 2-5 |
+> | paved | – | 98 | 98 | 98 | 98 | TR-55 table 2-2a, p. 2-5 |
+> | paved_road_open_ditches | – | 83 | 89 | 92 | 93 | TR-55 table 2-2a, p. 2-5 |
+> | gravel | – | 76 | 85 | 89 | 91 | TR-55 table 2-2a, p. 2-5 |
+> | dirt | – | 72 | 82 | 87 | 89 | TR-55 table 2-2a, p. 2-5 |
+> | water | – | 98 | 98 | 98 | 98 | NEH 630 ch. 9, p. 9-1: impervious and water surfaces are always assigned a CN of 98 |
+>
+> Źródło (w brzmieniu specyfikacji): USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986), tables 2-2a, 2-2b and 2-2c, pp. 2-5 to 2-7; table 2-2d, footnote 1, p. 2-8 <https://www.hydrocad.net/pdf/TR-55%20Manual.pdf>. Dwie niezależne transkrypcje porównano: tests/oracles/tr55_cn_text_layer.csv (transcribed from the PDF's text layer by tests/oracles/transcribe_tr55_cn.py) against tests/oracles/tr55_cn_hydrolog_0_8_1.csv (typed for Hydrolog 0.8.1), compared by tests/unit/test_formulas_cn_table.py
+>
+> Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec-table:tr55_cn -->
 
 Kilka zasad tablicy Hydrologu:
@@ -308,6 +499,21 @@ wzór 6.3); polecenie `cn weighted` liczy ją z powierzchni albo udziałów czę
 ułamkowy i tak przekazuje się go dalej, bez zaokrąglania.
 
 <!-- spec:weighted_cn -->
+
+<a id="spec-weighted_cn"></a>
+
+> **Liczba CN ważona powierzchnią** · wzór grupy B `weighted_cn` (Tier B, CMP-2.2)
+>
+> **Definicja:** CN_w = sum(A_j CN_j) / sum(A_j), średnia ważona powierzchnią liczb CN części zlewni (źr. 1)
+>
+> **Konwencja:** powierzchnie lub udziały w dowolnej, ale jednej jednostce; część o zerowej powierzchni nie wnosi nic
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10, example 10-4, p. 10-12 (also KZGW 2017 eq. 6.3) <https://www.hydrocad.net/neh/630ch10.pdf>
+>
+> Funkcja `hydrolog.runoff.cn_lookup.calculate_weighted_cn`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:weighted_cn -->
 
 Szczególnym przypadkiem jest teren zabudowany o znanym udziale powierzchni nieprzepuszczalnych
@@ -370,6 +576,60 @@ i Hawkins 1996), dopasowanymi do tej tabeli przez stały stosunek retencji w war
 do retencji w warunkach II, i zaokrągla wynik do liczby całkowitej, jak tabela.
 
 <!-- spec:scs_cn_amc -->
+
+<a id="spec-scs_cn_amc"></a>
+
+> **Liczba CN dla warunków wilgotnościowych poprzedzających I lub III (Hawkins i in. 1985)** · specyfikacja [`scs_cn_amc`](../FORMULAS.md#scs_cn_amc) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> CN_x = \operatorname{round}\frac{CN}{k_x + (1 - k_x)\,CN/100},\quad k_{I} = 2{,}281,\ k_{III} = 0{,}427
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $CN$ | `cn` | Liczba CN dla warunków wilgotnościowych poprzedzających przyjętych we wzorze | – | [1; 100] | [55; 95] (źr. 3) | [51,8; 81,4] (źr. 4) |
+> | $ARC$ | `amc` (wybór) | Warunki wilgotnościowe poprzedzające, na które przelicza się CN: I suche, III wilgotne | – | jedna z: `I`, `III` | – | – |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $CN_x$ | `cn_adjusted` (liczba całkowita) | Liczba CN dla tych warunków | – | [1; 100] |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $k_{I}$ | `ratio_i` | Stosunek retencji maksymalnej w warunkach I do retencji w warunkach II | 2,281 | – | (źr. 5) |
+> | $k_{III}$ | `ratio_iii` | Stosunek retencji maksymalnej w warunkach III do retencji w warunkach II | 0,427 | – | (źr. 6) |
+> | $100$ | `cn_scale` | Liczba CN przy zerowej retencji maksymalnej | 100 | – | (źr. 7) |
+>
+> **Konwencje**
+>
+> - dopasowanie Hawkinsa i in. (1985) do krzywych NRCS, a nie sama tab. 10-1 NEH 630-10 (NEH 630-10 s. 10-6; podaje tę tablicę) ani wzory 5.5.7-5.5.8 Chowa i in. (1988), będące innym dopasowaniem
+> - zaokrąglana do najbliższej liczby całkowitej, tak jak drukuje je tab. 10-1, połowa do liczby parzystej; co najmniej 1
+> - dla ARC II CN pozostaje taka, jak podano: bez wzoru
+>
+> **Założenia**
+>
+> - NEH 630-10 (s. 10-5, 10-7) nie stwierdził związku między opadem z pięciu poprzedzających dni a CN: warunki wybiera inżynier
+>
+> **Zgodność z obserwacjami według źródeł:** Ponce i Hawkins (1996, s. 15) podają dopasowania S_I = 2,281 S_II (r2 0,999, błąd standardowy 0,206 cala) i S_III = 0,427 S_II (r2 0,994, 0,088 cala) do tab. 10-1 NEH oraz błędy standardowe 1,0 CN (wzór 15) i 0,7 CN (wzór 16); względem tej tablicy przy CN od 55 do 95 zaokrąglone przeliczenie różni się najwyżej o 2 CN dla ARC I i o 1 CN dla ARC III (bez zaokrąglenia najwyżej 2,45 CN dla ARC I przy CN 92 i 1,19 CN dla ARC III przy CN 79)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Ponce, V.M. and Hawkins, R.H. (1996). Runoff curve number: has it reached maturity? Journal of Hydrologic Engineering 1(1), 11-19, reporting Hawkins, R.H., Hjelmfelt, A.T. and Zevenbergen, A.W. (1985), Journal of Irrigation and Drainage Engineering 111(4), 330-340, eqs. 13-16, p. 15 (S_I = 2.281 S_II, S_III = 0.427 S_II) <https://www.uvm.edu/~bwemple/HydroModel/ponce1996.pdf>
+> 2. Banasik, K., Rutkowska, A. and Kohnová, S. (2014). Retention and curve number variability in a small agricultural catchment: the probabilistic approach. Water 6(5), 1118-1133, doi:10.3390/w6051118, eqs. 12-13, p. 1124 (eq. 12 misprints 0.01381 for 0.01281) <https://mdpi-res.com/d_attachment/water/water-06-01118/article_deploy/water-06-01118.pdf>
+> 3. Ponce, V.M. and Hawkins, R.H. (1996). Runoff curve number: has it reached maturity? Journal of Hydrologic Engineering 1(1), 11-19, reporting Hawkins, R.H., Hjelmfelt, A.T. and Zevenbergen, A.W. (1985), Journal of Irrigation and Drainage Engineering 111(4), 330-340, p. 15: eqs. 15-16 applicable in the range 55 <= CN <= 95 <https://www.uvm.edu/~bwemple/HydroModel/ponce1996.pdf>
+> 4. Hydrograf ADR-0075 (2026-11-08), the CN of soil-cover complexes of the 223 catchments of the Hydroni run h07 (2,941 km2), Consequences: CN of AMC II 51.8 to 81.4, median 70.8 <https://github.com/Daldek/Hydrograf/blob/develop/docs/decisions/0075-cn-of-soil-cover-complexes.md>
+> 5. Ponce, V.M. and Hawkins, R.H. (1996). Runoff curve number: has it reached maturity? Journal of Hydrologic Engineering 1(1), 11-19, reporting Hawkins, R.H., Hjelmfelt, A.T. and Zevenbergen, A.W. (1985), Journal of Irrigation and Drainage Engineering 111(4), 330-340, eq. 13, p. 15 (r2 = 0.999); Banasik et al. (2014) eq. 12 <https://www.uvm.edu/~bwemple/HydroModel/ponce1996.pdf>
+> 6. Ponce, V.M. and Hawkins, R.H. (1996). Runoff curve number: has it reached maturity? Journal of Hydrologic Engineering 1(1), 11-19, reporting Hawkins, R.H., Hjelmfelt, A.T. and Zevenbergen, A.W. (1985), Journal of Irrigation and Drainage Engineering 111(4), 330-340, eq. 14, p. 15 (r2 = 0.994); Banasik et al. (2014) eq. 13 <https://www.uvm.edu/~bwemple/HydroModel/ponce1996.pdf>
+> 7. USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004), eq. 10-11, p. 10-4: CN = 1000/(10 + S), 100 at S = 0 <https://www.hydrocad.net/neh/630ch10.pdf>
+>
+> Funkcja `hydrolog.runoff.scs_cn.amc_curve_number`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:scs_cn_amc -->
 
 Konwencji przeliczania jest kilka: tabela NRCS, dopasowanie Hawkinsa i in. (1985), inne
@@ -382,7 +642,7 @@ podawaj, której użyłeś.
 druku w literaturze: we wzorze 12 artykułu Banasika i in. (2014) wydrukowano błędnie jeden ze
 współczynników (poprawną postać podają źródła ramki), a w internetowym wydaniu artykułu Ponce'a i
 Hawkinsa wzór 16 ma znak minus zamiast plusa; przeliczanie CN poza zakresem stosowalności wzorów
-(Hydrolog ostrzega uwagą `outside_typical_range`); przeliczanie CN poszczególnych kompleksów i
+(Hydrolog ostrzega uwagą `outside_applicability`); przeliczanie CN poszczególnych kompleksów i
 dopiero potem ważenie — przeliczenie jest nieliniowe, więc Hydrolog i Hydrograf przeliczają CN
 ważony zlewni.
 
@@ -474,9 +734,111 @@ plik danych: każdy warunek klasy to nierówność liniowa względem udziałów 
 granicą włączoną albo wyłączoną tak, jak brzmi tekst podręcznika (ADR-0066).
 
 <!-- spec:usda_texture -->
+
+<a id="spec-usda_texture"></a>
+
+> **Klasa uziarnienia gleby USDA według zawartości iłu, piasku i pyłu** · specyfikacja [`usda_texture`](../FORMULAS.md#usda_texture) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> \mathrm{class} = C \iff \exists j\ \forall (a, b, c, \sim, k) \in T_{C,j}:\ 100\,(a\,m_\mathrm{clay} + b\,m_\mathrm{sand} + c\,m_\mathrm{silt}) \sim k\,(m_\mathrm{clay} + m_\mathrm{sand} + m_\mathrm{silt})
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $m_\mathrm{clay}$ | `clay` | Zawartość iłu (< 0,002 mm) w częściach ziemistych, w dowolnej jednostce wspólnej dla trzech zawartości (procent, g/kg); nie muszą one sumować się do 100 | wspólna | [0; ∞) | nie podano w źródłach | [0; 1000] (źr. 2) |
+> | $m_\mathrm{sand}$ | `sand` | Zawartość piasku (0,05 do 2 mm) w częściach ziemistych, w dowolnej jednostce wspólnej dla trzech zawartości (procent, g/kg); nie muszą one sumować się do 100 | wspólna | [0; ∞) | nie podano w źródłach | [0; 1000] (źr. 2) |
+> | $m_\mathrm{silt}$ | `silt` | Zawartość pyłu (0,002 do 0,05 mm) w częściach ziemistych, w dowolnej jednostce wspólnej dla trzech zawartości (procent, g/kg); nie muszą one sumować się do 100 | wspólna | [0; ∞) | nie podano w źródłach | [0; 1000] (źr. 2) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $\mathrm{class}$ | `texture_class` (wybór) | Klasa uziarnienia USDA, jedna z dwunastu klas Soil Survey Manual | – | jedna z: `sand`, `loamy_sand`, `sandy_loam`, `loam`, `silt_loam`, `silt`, `sandy_clay_loam`, `clay_loam`, `silty_clay_loam`, `sandy_clay`, `silty_clay`, `clay` |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | clay + sand + silt > 0 | `positive_total` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Konwencje**
+>
+> - zawartości w dowolnej jednostce wspólnej dla trzech frakcji (procent, g/kg), odnoszone do ich sumy: klasa zależy tylko od udziałów w sumie ił + piasek + pył, która nie musi wynosić 100 % (materia organiczna i żwir leżą poza częściami ziemistymi)
+> - frakcje USDA: piasek 0,05 do 2 mm, pył 0,002 do 0,05 mm, ił poniżej 0,002 mm (polska klasyfikacja PTG 2008 przyjmuje te same granice); dwanaście klas pokrywa każdy skład w trójkącie, więc żadna zawartość nie ma zakresu stosowalności (niepodany)
+> - „od X do mniej niż Y procent” to X <= udział < Y, „więcej niż X” to > X, „X lub więcej” to >= X, „X lub mniej” to <= X, „więcej niż 20 do 45 procent piasku” (glina ilasta) to 20 < sand <= 45, zgodnie z brzmieniem opisu każdej klasy w Soil Survey Manual
+> - zakresy piasku, które Soil Survey Manual podaje także słownie — piaski „więcej niż 85 procent piasku” i piaski gliniaste „od 70 do 90 procent piasku” — wynikają z pozostałych nierówności tych klas (silt + 1,5 clay < 15 daje sand > 85; silt + 1,5 clay >= 15 oraz silt + 2 clay < 30 dają 70 < sand <= 90) i nie są wierszami tabeli
+> - obliczenia w całości we float64, po wcześniejszym przeskalowaniu zawartości przez jedną potęgę dwójki; wynik dokładny dla zawartości całkowitych (suma poniżej 10**13); inne zawartości odległe od granicy klasy o kilka jednostek na ostatnim miejscu mogą trafić po dowolnej jej stronie, a gdy zaokrąglenie dopuszcza dwie klasy, przyjmowana jest pierwsza w kolejności tabeli
+> - zerowa suma nie ma uziarnienia i jest odrzucana (warunek wstępny `positive_total`); wariant tablicowy przypisuje jej glinę jako brak danych (wzór Tier B `usda_texture_codes`)
+>
+> **Założenia**
+>
+> - zawartości dotyczą części ziemistych (< 2 mm) gleby mineralnej; podklasy Soil Survey Manual według wielkości ziaren piasku (piasek gruboziarnisty, glina piaszczysta drobnoziarnista, ...) nie są wyznaczane
+>
+> **Zgodność z obserwacjami według źródeł:** brak: klasy są zdefiniowane w podręczniku Soil Survey Manual, a nie dopasowane do obserwacji
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC, ch. 3, 'Definitions of Soil Texture Classes and Subclasses', pp. 122-124 (sands and loamy sands p. 122, sandy loams p. 123, loam to clay p. 124); the textural triangle, Fig. 3-7, p. 125 <https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf>
+> 2. ISRIC - World Soil Information (2026). SoilGrids FAQ, 'Which soil properties are predicted': clay, sand and silt of the fine earth in g/kg, the data Kartograf downloads for Hydrolog's soil hsg: integers 0 to 1000 g/kg; soil texture takes percent (0 to 100) or g/kg <https://www.isric.org/explore/soilgrids/faq-soilgrids>
+>
+> Funkcja `hydrolog.soil.texture.classify_usda_texture`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:usda_texture -->
 
 <!-- spec-table:usda_texture -->
+
+> **Tablica `src/hydrolog/_data/tables/usda_texture_classes.csv`** · specyfikacja `usda_texture` · SHA-256 `b957a339f36ec7c0ee82ec1f25e286e401f26afeffa85dcccca24f9a4e61c381`
+>
+> | Klasa uziarnienia (USDA) | Wariant | Mnożnik iłu | Mnożnik piasku | Mnożnik pyłu | Relacja | Próg [%] | Strona | Brzmienie w źródle (ang.) |
+> |---|---|---|---|---|---|---|---|---|
+> | sand | 1 | 1,5 | 0 | 1 | < | 15 | 122 | the percentage of silt plus 1.5 times the percentage of clay is less than 15 |
+> | loamy_sand | 1 | 1,5 | 0 | 1 | >= | 15 | 122 | the percentage of silt plus 1.5 times the percentage of clay is 15 or more |
+> | loamy_sand | 1 | 2 | 0 | 1 | < | 30 | 122 | the percentage of silt plus twice the percentage of clay is less than 30 |
+> | sandy_loam | 1 | 1 | 0 | 0 | >= | 7 | 123 | 7 to less than 20 percent clay |
+> | sandy_loam | 1 | 1 | 0 | 0 | < | 20 | 123 | 7 to less than 20 percent clay |
+> | sandy_loam | 1 | 0 | 1 | 0 | > | 52 | 123 | more than 52 percent sand |
+> | sandy_loam | 1 | 2 | 0 | 1 | >= | 30 | 123 | the percentage of silt plus twice the percentage of clay is 30 or more |
+> | sandy_loam | 2 | 1 | 0 | 0 | < | 7 | 123 | less than 7 percent clay |
+> | sandy_loam | 2 | 0 | 0 | 1 | < | 50 | 123 | less than 50 percent silt |
+> | sandy_loam | 2 | 2 | 0 | 1 | >= | 30 | 123 | the percentage of silt plus twice the percentage of clay is 30 or more |
+> | loam | 1 | 1 | 0 | 0 | >= | 7 | 124 | 7 to less than 27 percent clay |
+> | loam | 1 | 1 | 0 | 0 | < | 27 | 124 | 7 to less than 27 percent clay |
+> | loam | 1 | 0 | 0 | 1 | >= | 28 | 124 | 28 to less than 50 percent silt |
+> | loam | 1 | 0 | 0 | 1 | < | 50 | 124 | 28 to less than 50 percent silt |
+> | loam | 1 | 0 | 1 | 0 | <= | 52 | 124 | 52 percent or less sand |
+> | silt_loam | 1 | 0 | 0 | 1 | >= | 50 | 124 | 50 percent or more silt |
+> | silt_loam | 1 | 1 | 0 | 0 | >= | 12 | 124 | 12 to less than 27 percent clay |
+> | silt_loam | 1 | 1 | 0 | 0 | < | 27 | 124 | 12 to less than 27 percent clay |
+> | silt_loam | 2 | 0 | 0 | 1 | >= | 50 | 124 | 50 to less than 80 percent silt |
+> | silt_loam | 2 | 0 | 0 | 1 | < | 80 | 124 | 50 to less than 80 percent silt |
+> | silt_loam | 2 | 1 | 0 | 0 | < | 12 | 124 | less than 12 percent clay |
+> | silt | 1 | 0 | 0 | 1 | >= | 80 | 124 | 80 percent or more silt |
+> | silt | 1 | 1 | 0 | 0 | < | 12 | 124 | less than 12 percent clay |
+> | sandy_clay_loam | 1 | 1 | 0 | 0 | >= | 20 | 124 | 20 to less than 35 percent clay |
+> | sandy_clay_loam | 1 | 1 | 0 | 0 | < | 35 | 124 | 20 to less than 35 percent clay |
+> | sandy_clay_loam | 1 | 0 | 0 | 1 | < | 28 | 124 | less than 28 percent silt |
+> | sandy_clay_loam | 1 | 0 | 1 | 0 | > | 45 | 124 | more than 45 percent sand |
+> | clay_loam | 1 | 1 | 0 | 0 | >= | 27 | 124 | 27 to less than 40 percent clay |
+> | clay_loam | 1 | 1 | 0 | 0 | < | 40 | 124 | 27 to less than 40 percent clay |
+> | clay_loam | 1 | 0 | 1 | 0 | > | 20 | 124 | more than 20 to 45 percent sand |
+> | clay_loam | 1 | 0 | 1 | 0 | <= | 45 | 124 | more than 20 to 45 percent sand |
+> | silty_clay_loam | 1 | 1 | 0 | 0 | >= | 27 | 124 | 27 to less than 40 percent clay |
+> | silty_clay_loam | 1 | 1 | 0 | 0 | < | 40 | 124 | 27 to less than 40 percent clay |
+> | silty_clay_loam | 1 | 0 | 1 | 0 | <= | 20 | 124 | 20 percent or less sand |
+> | sandy_clay | 1 | 1 | 0 | 0 | >= | 35 | 124 | 35 percent or more clay |
+> | sandy_clay | 1 | 0 | 1 | 0 | > | 45 | 124 | more than 45 percent sand |
+> | silty_clay | 1 | 1 | 0 | 0 | >= | 40 | 124 | 40 percent or more clay |
+> | silty_clay | 1 | 0 | 0 | 1 | >= | 40 | 124 | 40 percent or more silt |
+> | clay | 1 | 1 | 0 | 0 | >= | 40 | 124 | 40 percent or more clay |
+> | clay | 1 | 0 | 1 | 0 | <= | 45 | 124 | 45 percent or less sand |
+> | clay | 1 | 0 | 0 | 1 | < | 40 | 124 | less than 40 percent silt |
+>
+> Źródło (w brzmieniu specyfikacji): Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC, ch. 3, 'Definitions of Soil Texture Classes and Subclasses', pp. 122-124 (sands and loamy sands p. 122, sandy loams p. 123, loam to clay p. 124); the textural triangle, Fig. 3-7, p. 125 <https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf>. Dwie niezależne transkrypcje porównano: tests/oracles/usda_texture_classes_first.csv (typed from the Manual's text by the author of the spec) against tests/oracles/usda_texture_classes_second.csv (typed independently by a second agent from the same pages), compared with the data file by tests/unit/test_formulas_texture.py
+>
+> Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec-table:usda_texture -->
 
 Klasa zależy tylko od udziałów frakcji w ich sumie: zawartości można podać w procentach albo w
@@ -526,9 +888,72 @@ przekształconych (np. przy urbanizacji), uzupełniona o typowe uziarnienie grup
 (rozdz. 7, s. 7-2).
 
 <!-- spec:texture_hsg -->
+
+<a id="spec-texture_hsg"></a>
+
+> **Grupa hydrologiczna gleby według klasy uziarnienia USDA** · specyfikacja [`texture_hsg`](../FORMULAS.md#texture_hsg) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> \mathrm{HSG} = G(\mathrm{class})
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $\mathrm{class}$ | `texture_class` (wybór) | Klasa uziarnienia USDA (specyfikacja `usda_texture`) | – | jedna z: `sand`, `loamy_sand`, `sandy_loam`, `loam`, `silt_loam`, `silt`, `sandy_clay_loam`, `clay_loam`, `silty_clay_loam`, `sandy_clay`, `silty_clay`, `clay` | – | – |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $\mathrm{HSG}$ | `hsg` (wybór) | Grupa hydrologiczna gleby, od A (mały potencjał odpływu) do D (duży) | – | jedna z: `A`, `B`, `C`, `D` |
+>
+> **Konwencje**
+>
+> - załącznik A TR-55 podaje grupy dla przekształconych profili glebowych (tereny zurbanizowane, bez istotnego zagęszczenia); tabela stosuje je do wszystkich gleb
+> - udokumentowane odstępstwa od załącznika A TR-55: glina piaszczysta B (w TR-55 A), glina ilasta i glina pylasto-ilasta C (w TR-55 D), ponieważ NEH 630 rozdz. 7 s. 7-2 wymienia typowe uziarnienia grup B i C (Kartograf ADR-025, decyzja b): surowiej niż TR-55 dla gliny piaszczystej, łagodniej dla obu glin ilastych
+> - pył, którego TR-55 nie wymienia, otrzymuje grupę pyłu gliniastego, B; NEH 630 rozdz. 7 s. 7-2 zalicza dobrze zagregowany pył do grupy B
+> - według NEH 630 rozdz. 7 glina i pył gliniasty (a ze względu na Ksat także pył) należałyby do grupy C, a piasek gliniasty do B; tabela zachowuje dla nich grupy TR-55 (otwarta kwestia ADR-0066)
+>
+> **Założenia**
+>
+> - grupa wynika z samego uziarnienia: bez uwzględnienia zwierciadła wody gruntowej, warstwy nieprzepuszczalnej, odłamków skalnych, gęstości objętościowej ani struktury gleby (NEH 630 rozdz. 7, tab. 7-1)
+>
+> **Zgodność z obserwacjami według źródeł:** brak (źródła jej nie podają): TR-55 wyprowadza grupy dla klas uziarnienia z pracy Brakensieka i Rawlsa (1983) dla profili przekształconych; NEH 630 rozdz. 7 podaje typowe uziarnienia, a nie dopasowanie
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986), appendix A, p. A-1, 'Disturbed soil profiles': HSG by soil texture, after Brakensiek and Rawls (1983) <https://www.hydrocad.net/pdf/TR-55%20Manual.pdf>
+> 2. USDA-NRCS (2009). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups (210-VI-NEH, January 2009), p. 7-2: the textures groups A to D 'typically' have; group B 'loamy sand or sandy loam', group C 'loam, silt loam, sandy clay loam, clay loam, and silty clay loam', well aggregated silt may be B <https://www.hydrocad.net/neh/630ch7.pdf>
+>
+> Funkcja `hydrolog.soil.texture.texture_to_hsg`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:texture_hsg -->
 
 <!-- spec-table:texture_hsg -->
+
+> **Tablica `src/hydrolog/_data/tables/texture_hsg.csv`** · specyfikacja `texture_hsg` · SHA-256 `f8e1d4b427ae6bb4c0abf7afbbbf9a70f3c32c42de0b5fe5a0ee2157daebef4a`
+>
+> | Klasa uziarnienia (USDA) | Grupa HSG | Źródło |
+> |---|---|---|
+> | sand | A | TR-55 (1986) appendix A, p. A-1 |
+> | loamy_sand | A | TR-55 (1986) appendix A, p. A-1 |
+> | sandy_loam | B | NEH 630 ch. 7 (2009), p. 7-2: group B typically loamy sand or sandy loam (TR-55: A) |
+> | loam | B | TR-55 (1986) appendix A, p. A-1 |
+> | silt_loam | B | TR-55 (1986) appendix A, p. A-1 |
+> | silt | B | the group of silt loam (TR-55 has no silt; NEH 630 ch. 7, p. 7-2, puts well aggregated silt in B) |
+> | sandy_clay_loam | C | TR-55 (1986) appendix A, p. A-1 |
+> | clay_loam | C | NEH 630 ch. 7 (2009), p. 7-2: group C typically clay loam (TR-55: D) |
+> | silty_clay_loam | C | NEH 630 ch. 7 (2009), p. 7-2: group C typically silty clay loam (TR-55: D) |
+> | sandy_clay | D | TR-55 (1986) appendix A, p. A-1 |
+> | silty_clay | D | TR-55 (1986) appendix A, p. A-1 |
+> | clay | D | TR-55 (1986) appendix A, p. A-1 |
+>
+> Źródło (w brzmieniu specyfikacji): USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986), appendix A, p. A-1, 'Disturbed soil profiles': HSG by soil texture, after Brakensiek and Rawls (1983) <https://www.hydrocad.net/pdf/TR-55%20Manual.pdf>. Dwie niezależne transkrypcje porównano: tests/oracles/tr55_hsg_text_layer.csv (read from the PDF's text layer by tests/oracles/transcribe_tr55_hsg.py) and tests/oracles/kartograf_0_8_2_texture_hsg.csv (Kartograf 0.8.2's table), compared with the data file by tests/unit/test_formulas_texture_hsg.py
+>
+> Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec-table:texture_hsg -->
 
 Tablica jest więc mieszana: dla gliny piaszczystej surowsza od TR-55, dla glin ilastych i
@@ -545,12 +970,57 @@ SoilGrids (ISRIC), które pobiera Kartograf: `soil hsg` klasyfikuje każdą kom�
 hsg-stats` liczy powierzchnie grup, które są wagami dla `cn weighted`.
 
 <!-- spec:hsg_of_amounts -->
+
+<a id="spec-hsg_of_amounts"></a>
+
+> **Grupa hydrologiczna gleby z zawartości iłu, piasku i pyłu** · wzór grupy B `hsg_of_amounts` (Tier B, CMP-2.2)
+>
+> **Definicja:** grupa ze specyfikacji `texture_hsg` dla klasy ze specyfikacji `usda_texture`, komórka po komórce, w postaci kodu rastra 1-4 dla A-D (źr. 1)
+>
+> **Konwencja:** 0 (brak danych) dla komórki z wartością NaN lub z nieskończoną zawartością, z zawartością równą znacznikowi nodata jej danych wejściowych albo ze wszystkimi trzema zawartościami równymi zeru (luka w SoilGrids); ujemna zawartość w komórce z danymi jest odrzucana
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Kartograf ADR-025 (HSG from SoilGrids clay, sand and silt), ported to Hydrolog 0.8.0, raster codes uint8, 0 no data, 1-4 the groups A-D
+>
+> Funkcja `hydrolog.soil.hsg.classify_hsg`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:hsg_of_amounts -->
 
 <!-- spec:usda_texture_codes -->
+
+<a id="spec-usda_texture_codes"></a>
+
+> **Kody klas uziarnienia USDA w rastrze** · wzór grupy B `usda_texture_codes` (Tier B, CMP-2.2)
+>
+> **Definicja:** klasa ze specyfikacji `usda_texture`, komórka po komórce, w postaci jej kodu 1-12 (`TEXTURE_CLASSES`) (źr. 1)
+>
+> **Konwencja:** komórka bez danych glebowych — o zerowej sumie, z wartością NaN lub z nieskończoną zawartością — otrzymuje kod gliny (4) jako wartość zastępczą, którą `classify_hsg` maskuje jako brak danych; ujemna zawartość jest odrzucana
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC, ch. 3, 'Definitions of Soil Texture Classes and Subclasses', pp. 122-124 (sands and loamy sands p. 122, sandy loams p. 123, loam to clay p. 124); the textural triangle, Fig. 3-7, p. 125 <https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf>
+>
+> Funkcja `hydrolog.soil.texture.classify_usda_texture_array`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:usda_texture_codes -->
 
 <!-- spec:texture_hsg_codes -->
+
+<a id="spec-texture_hsg_codes"></a>
+
+> **Kody grup hydrologicznych gleby z kodów klas uziarnienia** · wzór grupy B `texture_hsg_codes` (Tier B, CMP-2.2)
+>
+> **Definicja:** grupa ze specyfikacji `texture_hsg` dla każdego kodu uziarnienia, w postaci kodu rastra 1-4 dla A-D (źr. 1)
+>
+> **Konwencja:** kod uziarnienia 0 (brak danych) daje 0; kod spoza zakresu 0-12 jest odrzucany
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986), appendix A, p. A-1, 'Disturbed soil profiles': HSG by soil texture, after Brakensiek and Rawls (1983) <https://www.hydrocad.net/pdf/TR-55%20Manual.pdf>
+>
+> Funkcja `hydrolog.soil.texture.texture_to_hsg_array`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:texture_hsg_codes -->
 
 ```bash

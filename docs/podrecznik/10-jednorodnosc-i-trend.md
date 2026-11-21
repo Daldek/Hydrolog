@@ -60,6 +60,72 @@ znaków różnic, pojedyncza wartość odstająca ma na niego mały wpływ. Wykr
 liniowy.
 
 <!-- spec:mann_kendall -->
+
+<a id="spec-mann_kendall"></a>
+
+> **Test trendu Manna–Kendalla: S, Var(S) z poprawką na wiązania, Z i dwustronne p** · specyfikacja [`mann_kendall`](../FORMULAS.md#mann_kendall) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> S = \sum_{i<j} \operatorname{sgn}(x_j - x_i),\quad \operatorname{Var}(S) = \frac{n(n-1)(2n+5) - \sum_p t_p(t_p-1)(2t_p+5)}{18},\quad Z = \frac{S - \operatorname{sgn} S}{\sqrt{\operatorname{Var}(S)}},\quad p = \begin{cases} P(|S'| \ge |S|) & n < n_0 \\ 2\,P(Z' > |Z|) & n \ge n_0 \end{cases}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_i$ | `values` (ciąg) | Szereg uporządkowany w czasie, po jednej wartości na krok czasowy: maksima, średnie lub minima roczne, sumy lub liczebności, w dowolnej jednostce | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 7) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $S$ | `s` (liczba całkowita) | Statystyka S Kendalla: liczba par rosnących pomniejszona o liczbę par malejących | – | (−∞; ∞) |
+> | $\operatorname{Var}(S)$ | `var_s` | Wariancja S przy braku trendu, z poprawką na grupy wartości równych; 0 dla szeregu wartości równych | – | [0; ∞) |
+> | $Z$ | `z` | Standaryzowana statystyka z poprawką na ciągłość równą jeden | – | (−∞; ∞) |
+> | $p$ | `p_value` | Dwustronna wartość p hipotezy braku trendu; wartość mniejszą od najmniejszej dodatniej liczby zmiennoprzecinkowej zastępuje się tą liczbą | – | (0; 1] |
+> | – | `p_value_method` (wybór) | Sposób wyznaczenia p: dokładny poniżej n0 wartości, przybliżenie normalne od n0 | – | jedna z: `exact`, `normal` |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | n >= 3 | `enough_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 4) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $n_0$ | `exact_below` | Liczba wartości, od której wartość p wyznacza się z przybliżenia normalnego | 10 | wartości | (źr. 8) |
+>
+> **Konwencje**
+>
+> - wartości są wiązane, gdy są dokładnie równe (szereg liczony w arytmetyce zmiennoprzecinkowej należy najpierw zaokrąglić do jego dokładności); sgn(0) = 0, jak definiuje KZGW (2017) we wzorze 1.2, choć w podanych tam przykładach obliczeniowych parę wiązaną liczy się jako -1
+> - Var(S) z poprawką na grupy wartości wiązanych (Gilbert, wzór 16.3; Hirsch i in., wzór 3b; pakiet R trend); KZGW (2017, s. 11) pomija tę poprawkę
+> - Z z poprawką na ciągłość o jeden w stronę 0 oraz Z = 0 dla S = 0 (Gilbert, wzór 16.4; KZGW, wzór 1.4)
+> - wartość p jest dwustronna: poniżej n0 wartości — dokładne P(\|S'\| >= \|S\|) po wszystkich różnych uporządkowaniach wartości, jednakowo prawdopodobnych przy braku trendu, z uwzględnieniem wiązań (współczynniki q-wielomianowe, MacMahon 1916); od n0 wartości — 2 P(Z' > \|Z\|) z górnego ogona rozkładu normalnego (`norm.sf` z scipy, jak pakiet R trend), co zachowuje cyfry znaczące przy silnym trendzie
+> - wartość p mniejszą od najmniejszej dodatniej liczby zmiennoprzecinkowej (\|Z\| powyżej około 38,5) zastępuje się tą liczbą, końcem fizycznego przedziału (0, 1]
+> - szereg w dowolnej jednostce: statystyki są bezwymiarowe
+>
+> **Założenia**
+>
+> - wartości są niezależne i mają jednakowy rozkład przy braku trendu (Gilbert 1987, s. 213; KZGW 2017, s. 10): autokorelacja, np. przepływów dobowych lub miesięcznych, sprawia, że test zbyt często odrzuca hipotezę
+> - wartości są uporządkowane w czasie, po jednej na krok czasowy; luki w zapisie nie wchodzą do testu
+>
+> **Zgodność z obserwacjami według źródeł:** brak: test hipotezy o braku trendu; jego źródła nie porównują go z obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, eqs. 16.1 to 16.4, pp. 209-211: S, Var(S) corrected for ties, Z with a continuity correction of one; section 16.4.1 and table A18: the exact probabilities of S below n = 10 <https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf>
+> 2. Hirsch, R.M., Slack, J.R., Smith, R.A. (1981). Techniques of trend analysis for monthly water quality data. U.S. Geological Survey Open-File Report 81-488 (Water Resources Research 18(1), 107-121, 1982), eqs. 1, 2, 3b and 4, PDF pp. 6-7: S, its variance with ties after Kendall (1975) and Z; 'even for n = 10 the normal approximation is excellent, provided one uses a continuity correction of one unit' <https://pubs.usgs.gov/of/1981/0488/report.pdf>
+> 3. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 1.1 to 1.4, pp. 10-11: S with sgn(0) = 0, its variance without the correction for ties, u = (S - sgn S) / sigma, the normal approximation 'już dla N >= 10' <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 4. Pohlert, T. trend: Non-Parametric Trend Tests and Change-Point Detection, R package version 1.1.10, CRAN, R/mk.test.R: at least 3 values ('x' must have at least 3 elements), S, varS corrected for ties, z = sgn(S) (\|S\| - 1) / sigma, the two-sided p 2 min(0.5, P(Z > \|z\|)) <https://cran.r-project.org/package=trend>
+> 5. Mann, H.B. (1945). Nonparametric tests against trend. Econometrica 13, 245-259 — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 6. Kendall, M.G. (1975). Rank Correlation Methods, 4th ed. Griffin, London, p. 55: the normal approximation of S from n = 10 (quoted by Gilbert 1987, p. 211) — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 7. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 8. Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.4.2, p. 211: the normal approximation from n = 10 after Kendall (1975, p. 55), as KZGW (2017, p. 11) and Hirsch et al. (1981, PDF p. 7) state it; section 16.4.1 and table A18: the exact probabilities below <https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf>
+>
+> Funkcja `hydrolog.statistics.stationarity.mann_kendall`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:mann_kendall -->
 
 **Konwencje Hydrologa.** Wartości równe (*ties*) to wartości dokładnie równe; szereg policzony w arytmetyce
@@ -72,6 +138,21 @@ jednakowo prawdopodobnych przy braku trendu – a od $n_0$ wartości z przybliż
 opisuje ramka:
 
 <!-- spec:trend_decision -->
+
+<a id="spec-trend_decision"></a>
+
+> **Decyzja o istnieniu i kierunku trendu w teście Manna–Kendalla** · wzór grupy B `trend_decision` (Tier B, CMP-2.2)
+>
+> **Definicja:** `trend_detected` to p < alpha; `trend_direction` to `increasing` dla S > 0 i `decreasing` dla S < 0, gdy wykryto trend, w przeciwnym razie `none`; przedział Sena jest podawany od dziesięciu wartości, a poniżej nich lub gdy ranga wypada poza zakres nachyleń — null (źr. 1)
+>
+> **Konwencja:** test dwustronny na poziomie alpha podanym przez wywołującego, przedział na poziomie 1 - alpha; czasy muszą ściśle rosnąć (jedna wartość na krok czasowy)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, eqs. 16.1 to 16.4, pp. 209-211: S, Var(S) corrected for ties, Z with a continuity correction of one; section 16.4.1 and table A18: the exact probabilities of S below n = 10 <https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf>
+>
+> Funkcja `hydrolog.statistics.stationarity.mann_kendall_test`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:trend_decision -->
 
 **Zakres stosowania.** Wartości roczne, niezależne, w kolejności czasowej, po jednej na rok; brakujące lata nie
@@ -176,6 +257,64 @@ Helsel i in. 2020, rozdz. 10.1). Mediana sprawia, że wartości odstające mają
 regresji liniowej. Wyraz wolny prostej to wyraz Conovera (Conover 1980), czyli wartość prostej w chwili zerowej.
 
 <!-- spec:sen_slope -->
+
+<a id="spec-sen_slope"></a>
+
+> **Nachylenie Sena szeregu z wyrazem wolnym Conovera** · specyfikacja [`sen_slope`](../FORMULAS.md#sen_slope) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> b = \operatorname*{median}_{t_i < t_j} \frac{x_j - x_i}{t_j - t_i},\quad a = \operatorname{median}(x) - b \operatorname{median}(t)
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_i$ | `values` (ciąg) | Szereg, po jednej wartości na każdy czas z times, w dowolnej jednostce; nachylenie ma jednostkę szeregu na jednostkę czasu | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 5) |
+> | $t_i$ | `times` (ciąg) | Czas każdej kolejnej wartości: jej rok albo krok 0, 1, 2 … szeregu; kilka wartości może mieć ten sam czas. Nachylenie jest wyrażone na jednostkę tych czasów | a | (−∞; ∞) | nie podano w źródłach | [1965; 2005] (źr. 6) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $b$ | `slope` | Nachylenie Sena: mediana nachyleń par o różnych czasach, w jednostce wartości na jednostkę czasu | m³/s/a | (−∞; ∞) |
+> | $a$ | `intercept` | Wyraz wolny Conovera: wartość prostej w czasie 0 (w roku 0 przy latach) | m³/s | (−∞; ∞) |
+> | $N'$ | `n_slopes` (liczba całkowita) | Liczba par o różnych czasach | – | [1; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | jeden czas na każdą wartość | `same_length` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 1) |
+> | t[i+1] >= t[i]: wartości uporządkowane w czasie, dopuszczalne kilka wartości z jednego czasu | `times_in_order` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 1) |
+> | t[-1] > t[0]: nachylenie wymaga dwóch wartości o różnych czasach | `two_times` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+> | 2 (max x - min x) / (najmniejszy krok t) oraz prosta (max x - min x) / (najmniejszy krok t) max\|t\| + max\|x\| są skończone w float64: tak samo każde nachylenie, różnica dwóch nachyleń i wyraz wolny | `slopes_in_float64` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Konwencje**
+>
+> - nachylenia tylko par o różnych czasach: kilka wartości z jednego czasu (przypadek wzoru 16.5 Gilberta) nie daje nachylenia między sobą
+> - na jednostkę podanych czasów: na rok przy latach, na krok przy krokach 0, 1, 2 … szeregu; pakiety R trend i modifiedmk liczą nachylenia na krok indeksu, co daje to samo, gdy lata następują po sobie
+> - mediana parzystej liczby nachyleń jest średnią dwóch środkowych
+> - wyraz wolny Conovera median(x) - b median(t) (Helsel i in. 2020, wzór 10.3), czyli wartość prostej w t = 0; alternatywą w winiecie pakietu trend jest mediana reszt
+> - co najwyżej 5 000 wartości: wszystkie nachylenia są przechowywane w pamięci, po osiem bajtów każde, 100 MB przy 5 000 wartości; estymator jest przeznaczony dla wartości niezależnych, rocznych lub miesięcznych, których najdłuższe serie liczą kilkaset lat
+>
+> **Założenia**
+>
+> - liniowy trend wartości w czasie; estymator jest odporny na wartości odstające, nie na autokorelację wartości (podobnie jak test Manna–Kendalla)
+>
+> **Zgodność z obserwacjami według źródeł:** brak: estymator nachylenia trendu monotonicznego; jego źródła nie porównują go z obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.5, eqs. 16.8 and 16.9, p. 218: the N' slopes (x_i' - x_i) / (i' - i) of the pairs of data i' > i of different times (several values of one time give no slope among themselves), their median; Example 16.5, p. 219 <https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf>
+> 2. Helsel, D.R., Hirsch, R.M., Ryberg, K.R., Archfield, S.A., Gilroy, E.J. (2020). Statistical Methods in Water Resources. U.S. Geological Survey Techniques and Methods 4-A3, section 10.1.1, eqs. 10.1 to 10.3, pp. 266-268: the Theil-Sen slope, the median of all pairwise slopes, and the intercept b0 = y_med - b1 x_med (Conover 1999) <https://pubs.usgs.gov/tm/04/a03/tm4a3.pdf>
+> 3. Sen, P.K. (1968). Estimates of the regression coefficient based on Kendall's tau. Journal of the American Statistical Association 63, 1379-1389 — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 4. Conover, W.J. (1980). Practical Nonparametric Statistics, 2nd ed. Wiley, New York, the intercept median(x) - slope median(t) — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 5. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 6. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: the years 1965 to 2005 <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+>
+> Funkcja `hydrolog.statistics.stationarity.sen_line`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:sen_slope -->
 
 Przedział ufności (*confidence interval*) nachylenia wyznacza się z rang uporządkowanych nachyleń, przesuniętych o wielkość zależną od wariancji
@@ -185,6 +324,67 @@ procent. Przedział ma ten sam poziom ufności $1 - \alpha$ co test, a dla szere
 podawany, bo opiera się na przybliżeniu normalnym $S$ (ADR-0049).
 
 <!-- spec:sen_interval -->
+
+<a id="spec-sen_interval"></a>
+
+> **Przedział ufności nachylenia Sena według Gilberta** · specyfikacja [`sen_interval`](../FORMULAS.md#sen_interval) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> C = z_{1-\alpha/2}\sqrt{\operatorname{Var}(S)},\quad M_1 = \frac{N' - C}{2},\quad M_2 = \frac{N' + C}{2},\quad b_L = Q_{(M_1)},\quad b_U = Q_{(M_2+1)}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_i$ | `values` (ciąg) | Szereg, po jednej wartości na każdy czas z times, w dowolnej jednostce | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 4) |
+> | $t_i$ | `times` (ciąg) | Czas każdej kolejnej wartości: jej rok albo krok 0, 1, 2 … szeregu; kilka wartości może mieć ten sam czas. Nachylenie jest wyrażone na jednostkę tych czasów | a | (−∞; ∞) | nie podano w źródłach | [1965; 2005] (źr. 5) |
+> | $\operatorname{Var}(S)$ | `var_s` | Wariancja statystyki S Kendalla, na której opiera się przedział: wariancja z testu Manna–Kendalla tych wartości, z poprawką na wiązania (wzór 16.3 Gilberta albo wzór 16.5 przy kilku wartościach z jednego czasu) | – | [0; ∞) | nie podano w źródłach | [3139; 7921] (źr. 6) |
+> | $\alpha$ | `alpha` | Poziom istotności: przedział ufności obejmuje 1 - alpha | – | (0; 1) | nie podano w źródłach | [0,05; 0,05] (źr. 7) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $b_L$ | `lower` | Dolna granica przedziału nachylenia | m³/s/a | (−∞; ∞) |
+> | $b_U$ | `upper` | Górna granica przedziału nachylenia | m³/s/a | (−∞; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | jeden czas na każdą wartość | `same_length` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 1) |
+> | t[i+1] >= t[i]: wartości uporządkowane w czasie, dopuszczalne kilka wartości z jednego czasu | `times_in_order` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 1) |
+> | t[-1] > t[0]: nachylenie wymaga dwóch wartości o różnych czasach | `two_times` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+> | 2 (max x - min x) / (najmniejszy krok t) oraz prosta (max x - min x) / (najmniejszy krok t) max\|t\| + max\|x\| są skończone w float64: tak samo każde nachylenie, różnica dwóch nachyleń i wyraz wolny | `slopes_in_float64` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+> | 1 <= M1 oraz M2 + 1 <= N': obie rangi leżą wśród N' uporządkowanych nachyleń (C <= N' - 2) | `ranks_within_slopes` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Konwencje**
+>
+> - liniowa interpolacja między rangami według Gilberta (jego przykład 16.5 i podprogram CONINT, załącznik B); pakiet R trend zaokrągla rangi (round(), połówki do parzystej), a Helsel i in. (2020, wzory 10.6–10.7) przyjmują rangi całkowite, co przesuwa granice nawet o 5 % wartości granicy przy n <= 34 (zamrożona wyrocznia testowa, ADR-0063)
+> - Var(S) testu tych samych wartości, podawana przez wywołującego; Gilbert w ćwiczeniu 16.3 celowo buduje ją bez poprawki na wiązania
+> - z(1 - alpha/2) standardowego rozkładu normalnego (`norm.ppf` z scipy); dla alpha, przy którym 1 - alpha/2 zaokrągla się do 1, przedział nie istnieje
+> - `stats mann-kendall` podaje przedział od dziesięciu wartości (Gilbert 1987, s. 218: przedział opiera się na przybliżeniu normalnym S), poniżej — null
+> - co najwyżej 5 000 wartości, jak nachylenie Sena
+>
+> **Założenia**
+>
+> - S ma w przybliżeniu rozkład normalny przy braku trendu, od około dziesięciu wartości, chyba że jest wiele wiązań (Gilbert 1987, s. 218)
+>
+> **Zgodność z obserwacjami według źródeł:** brak: nieparametryczny przedział ufności nachylenia (Gilbert 1987, § 16.5); jego źródła nie porównują go z obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.5, steps 1 to 4, p. 218: C = Z(1 - alpha/2) [Var(S)]^(1/2), M1 = (N' - C)/2, M2 = (N' + C)/2, the limits the M1-th and the (M2 + 1)-th of the ordered slopes, 'for n as small as 10 unless there are many ties'; Example 16.5, p. 219, interpolates between ranks, as subroutine CONINT, appendix B, p. 289 <https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf>
+> 2. Helsel, D.R., Hirsch, R.M., Ryberg, K.R., Archfield, S.A., Gilroy, E.J. (2020). Statistical Methods in Water Resources. U.S. Geological Survey Techniques and Methods 4-A3, section 10.1.1, eqs. 10.1 to 10.3, pp. 266-268: the Theil-Sen slope, the median of all pairwise slopes, and the intercept b0 = y_med - b1 x_med (Conover 1999) <https://pubs.usgs.gov/tm/04/a03/tm4a3.pdf>
+> 3. Sen, P.K. (1968). Estimates of the regression coefficient based on Kendall's tau. Journal of the American Statistical Association 63, 1379-1389 — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 4. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 5. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: the years 1965 to 2005 <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 6. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: n = 30 to 41 with ties, Var(S) 3,139.7 to 7,920.7 <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 7. Obserwator 3.1.0.dev0, analysis registry (src/obserwator/store/analysis_registry.py), the stored analyses mann_kendall.* of stats mann-kendall; KZGW (2017), p. 11, options alpha = 0.05; the significance level 0.05 of KZGW's test
+>
+> Funkcja `hydrolog.statistics.stationarity.sen_interval`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:sen_interval -->
 
 **Jak czytać.** Nachylenie ma jednostkę szeregu na rok (z latami) albo na krok szeregu (bez lat). Przedział
@@ -213,6 +413,21 @@ ze znanego zdarzenia – oddania zbiornika do użytku, przeniesienia wodowskazu,
 obejrzeniem danych (Helsel i in. 2020, rozdz. 12.6.1). Bez takiego roku Hydrolog dzieli szereg na połowy.
 
 <!-- spec:homogeneity_split -->
+
+<a id="spec-homogeneity_split"></a>
+
+> **Podział szeregu na dwie części w testach jednorodności** · wzór grupy B `homogeneity_split` (Tier B, CMP-2.2)
+>
+> **Definicja:** pierwsza część to pierwsze n // 2 wartości albo wartości z lat przed `split_year`; druga część to pozostałe (źr. 1)
+>
+> **Konwencja:** `split_year` oraz `change_point_year` testu Pettitta wskazują rok pierwszej wartości drugiej części (ADR-0022)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Hydrolog, ADR-0022 (2026-11-06): homogeneity tests of annual maxima, decisions 2 and 5 <docs/decisions/0022-homogeneity-tests.md>
+>
+> Funkcja `hydrolog.statistics.homogeneity.homogeneity_tests`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:homogeneity_split -->
 
 **Nie wybieraj roku podziału z tych samych danych.** Analityk, który widzi „skok” w szeregu i dzieli szereg w tym
@@ -244,6 +459,61 @@ przykładu 5.1 Helsela i in. (2020) $p$ maleje przez to z 0,0524 do 0,0478, a de
 odwraca.
 
 <!-- spec:ks_exact -->
+
+<a id="spec-ks_exact"></a>
+
+> **Dokładna dwustronna wartość p statystyki D dwupróbkowego testu Kołmogorowa–Smirnowa z uwzględnieniem wiązań** · specyfikacja [`ks_exact`](../FORMULAS.md#ks_exact) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> D = \max_x |F_1(x) - F_2(x)|,\quad p = 1 - \frac{\#\{\text{ścieżek z } |i n - j m| < m n D \text{ na końcach grup wartości równych}\}}{\binom{m + n}{m}}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x$ | `first` (ciąg) | Pierwsza próba, np. wartości przed podziałem | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 3) |
+> | $y$ | `second` (ciąg) | Druga próba, w jednostce pierwszej | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 3) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $D$ | `d` | Największa odległość między dystrybuantami prób | – | [0; 1] |
+> | $p$ | `p_value` | Dokładna dwustronna wartość p hipotezy, że obie próby pochodzą z jednego rozkładu | – | (0; 1] |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | m n < 10000, granica testu dokładnego w R: ścieżki są liczone na siatce m n punktów | `exact_size` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $m n$ | `exact_product` | Graniczny iloczyn liczebności prób dla testu dokładnego | 10 000 | – | (źr. 1) |
+>
+> **Konwencje**
+>
+> - dwustronna; D wyznacza się tylko tam, gdzie kończy się grupa równych wartości, bo tam dystrybuanty empiryczne mają skoki
+> - `homogeneity_tests` stosuje ją dla prób z wartościami wiązanymi i m n < 10000; bez wiązań oraz powyżej tej granicy — `ks_2samp` z scipy, dokładny dla rozkładu ciągłego (zachowawczy przy wiązaniach: Helsel i in. 2020, przykład 5.1: 0,0524 wobec 0,0478)
+> - próby w dowolnej jednostce: D i p są bezwymiarowe
+>
+> **Założenia**
+>
+> - wartości niezależne; przy jednorodności każdy podział połączonych wartości jest jednakowo prawdopodobny
+>
+> **Zgodność z obserwacjami według źródeł:** brak: dokładny rozkład statystyki testowej przy hipotezie zerowej; jego źródła nie porównują go z obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. R Core Team. R: A Language and Environment for Statistical Computing, version 4.4.3, package stats, function ks.test, help page ks.test, Details: in the two-sample case an exact p-value is computed if the product of the sample sizes is less than 10000, with or without ties (the algorithm of Schröer and Trenkler 1995); Examples: with ties, D = 3/7, p = 8/33 <https://stat.ethz.ch/R-manual/R-devel/library/stats/html/ks.test.html>
+> 2. Schröer, G., Trenkler, D. (1995). Exact and randomization distributions of Kolmogorov-Smirnov tests two or three samples. Computational Statistics & Data Analysis 20(2), 185-202 — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 3. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1, 1.2, 3.10 and 3.13 (pp. 11-56): the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+>
+> Funkcja `hydrolog.statistics.homogeneity.ks_exact`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:ks_exact -->
 
 ### Test Pettitta
@@ -254,6 +524,58 @@ Helsel i in. 2020, rozdz. 12.6.3). Jego $p$ jest przybliżone i zachowawcze – 
 uwzględnia to, że punkt zmiany wybrano z danych.
 
 <!-- spec:pettitt -->
+
+<a id="spec-pettitt"></a>
+
+> **Test punktu zmiany Pettitta: K, punkt zmiany i przybliżone p** · specyfikacja [`pettitt`](../FORMULAS.md#pettitt) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> U_t = 2\sum_{i \le t} r_i - t(n + 1),\quad K = \max_{1 \le t < n} |U_t|,\quad p = \min\left(1,\ 2 e^{-6K^2/(n^3 + n^2)}\right)
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_i$ | `values` (ciąg) | Szereg uporządkowany w czasie, np. maksima roczne, w dowolnej jednostce | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $K$ | `k` (liczba całkowita) | Statystyka Pettitta, największe \|U_t\| | – | [0; ∞) |
+> | $p$ | `p_value` | Przybliżona dwustronna wartość p hipotezy braku zmiany; wartość mniejszą od najmniejszej dodatniej liczby zmiennoprzecinkowej zastępuje się tą liczbą | – | (0; 1] |
+> | $t$ | `change_point_index` (liczba całkowita) | Podział t, przy którym występuje K: liczba wartości przed zmianą | – | [1; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | n >= 2: podział t z zakresu 1 … n - 1 | `enough_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 2) |
+> | min(x) < max(x): równe wartości dają U_t = 0 dla każdego t, bez punktu zmiany | `values_not_all_equal` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Konwencje**
+>
+> - rangi środkowe wartości wiązanych (`rankdata` z scipy, `rank` w R)
+> - K po t = 1 … n - 1 (pakiet R trend uwzględnia także t = n, gdzie U_n = 0); punktem zmiany jest pierwsze t, przy którym występuje K (pakiet R trend zwraca wszystkie takie t), czyli liczba wartości przed zmianą, która w `homogeneity_tests` wskazuje rok pierwszej wartości po zmianie
+> - p to przybliżenie Pettitta 2 exp(-6 K^2 / (n^3 + n^2)), ograniczone do 1, dobre dla p <= 0,5 (pakiet R trend); dla krótkich szeregów jest zachowawcze: dziesięć rosnących wartości daje 0,066, podczas gdy dokładne p permutacyjne wynosi 2 / C(10, 5) = 0,0079
+> - wartość p mniejszą od najmniejszej dodatniej liczby zmiennoprzecinkowej zastępuje się tą liczbą, końcem fizycznego przedziału (0, 1]
+>
+> **Założenia**
+>
+> - wartości niezależne, z co najwyżej jedną zmianą położenia rozkładu
+>
+> **Zgodność z obserwacjami według źródeł:** brak: test hipotezy o braku zmiany; jego źródła nie porównują go z obserwacjami
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Pohlert, T. trend: Non-Parametric Trend Tests and Change-Point Detection, R package version 1.1.10, CRAN, R/pettitt.test.R and its help page: U_k = 2 sum_{i<=k} r_i - k (n + 1) of the ranks, U* = max \|U_k\|, the change point where \|U_k\| is largest, p = min(1, 2 exp(-6 U*^2 / (n^3 + n^2))), 'good for p <= 0.5' (after Verstraeten et al. 2006) <https://cran.r-project.org/package=trend>
+> 2. Hussain, M.M. pyHomogeneity: a Python package for homogeneity tests of time series data, version 1.1, GitHub mmhs013/pyHomogeneity, pyhomogeneity.py, __pettitt and pettitt_test: U = 2 cumsum(r) - k (n + 1) over k = 1 … n - 1, the first k of max \|U\|, p = 2 exp(-6 U^2 / (n^3 + n^2)) <https://github.com/mmhs013/pyHomogeneity>
+> 3. Pettitt, A.N. (1979). A non-parametric approach to the change-point problem. Journal of the Royal Statistical Society, Series C (Applied Statistics) 28(2), 126-135 — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 4. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1, 1.2, 3.10 and 3.13 (pp. 11-56): the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+>
+> Funkcja `hydrolog.statistics.homogeneity.pettitt`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:pettitt -->
 
 **Jak Hydrolog nazywa punkt zmiany.** `change_point_index` to liczba wartości przed zmianą, a `change_point_year` –
@@ -261,6 +583,21 @@ rok pierwszej wartości po zmianie. Ten rok można więc podać wprost jako `--s
 Manna–Whitneya i Kołmogorowa–Smirnowa jest zaniżone (wyżej i przykład 3).
 
 <!-- spec:homogeneity_decision -->
+
+<a id="spec-homogeneity_decision"></a>
+
+> **Decyzja o jednorodności szeregu** · wzór grupy B `homogeneity_decision` (Tier B, CMP-2.2)
+>
+> **Definicja:** test uznaje szereg za jednorodny, gdy jego wartość p wynosi co najmniej alpha; U Manna–Whitneya to `mannwhitneyu` z scipy, wartość p Kołmogorowa–Smirnowa — `ks_2samp` z scipy bez wiązań lub przy m n >= 10000, w przeciwnym razie specyfikacja `ks_exact` (źr. 1)
+>
+> **Konwencja:** testy dwustronne na poziomie alpha podanym przez wywołującego
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Hydrolog, ADR-0022 (2026-11-06): homogeneity tests of annual maxima, decision 6 <docs/decisions/0022-homogeneity-tests.md>
+>
+> Funkcja `hydrolog.statistics.homogeneity.homogeneity_tests`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:homogeneity_decision -->
 
 **Zakres stosowania.** Wartości niezależne; test Pettitta zakłada co najwyżej jedną zmianę położenia. Testy nie

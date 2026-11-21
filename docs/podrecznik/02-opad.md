@@ -65,6 +65,41 @@ Każdy posterunek ma tę samą wagę. Metoda wystarcza, gdy posterunki są rozmi
 jest płaski; nie bierze pod uwagę ani położenia posterunków względem zlewni, ani rzeźby terenu.
 
 <!-- spec:areal_mean_precipitation -->
+
+<a id="spec-areal_mean_precipitation"></a>
+
+> **Opad obszarowy jako średnia arytmetyczna z posterunków** · specyfikacja [`areal_mean_precipitation`](../FORMULAS.md#areal_mean_precipitation) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> \bar{P} = \frac{1}{n}\sum_{i=1}^{n} P_i
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $P_i$ | `precipitation_mm` (ciąg) | Wysokość opadu na każdym posterunku | mm | [0; ∞) | nie podano w źródłach | [6,96; 341,27] (źr. 2) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $\bar{P}$ | `areal_precipitation_mm` | Średni opad w zlewni | mm | [0; ∞) |
+>
+> **Konwencje**
+>
+> - wysokości w mm; podaje się tylko posterunki leżące w zlewni (Chow i in. 1988 pomijają posterunki poza nią)
+> - sumę liczy `math.fsum`, z poprawnym zaokrągleniem
+>
+> **Zgodność z obserwacjami według źródeł:** Chow i in. (1988, s. 78) uznają metodę za zadowalającą, gdy posterunki są rozmieszczone równomiernie na terenie płaskim; brak statystyki błędu
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, Fig. 3.4.3(a), p. 78: the arithmetic mean of the gauges within the watershed <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+> 2. Hydrograf's areal PMAXTP depth (Thiessen cells of the PMAXTP grid points of a catchment) over the depths of Hydrolog's PMAXTP fixtures for Kamiennik and Warsaw (POT, recorded in November 2026), tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm
+>
+> Funkcja `hydrolog.precipitation.interpolation.areal_mean_precipitation`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:areal_mean_precipitation -->
 
 ### Wieloboki Thiessena
@@ -78,6 +113,53 @@ zrezygnował z niej przy mapach PMAXTP, bo wiele punktów pomiarowych leży w te
 (Ozga-Zieliński red. 2022, s. 9).
 
 <!-- spec:thiessen_precipitation -->
+
+<a id="spec-thiessen_precipitation"></a>
+
+> **Opad obszarowy metodą wieloboków Thiessena** · specyfikacja [`thiessen_precipitation`](../FORMULAS.md#thiessen_precipitation) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> \bar{P} = \frac{\sum_i A_i P_i}{\sum_i A_i},\quad w_i = \frac{A_i}{\sum_j A_j}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $P_i$ | `precipitation_mm` (ciąg) | Wysokość opadu na każdym posterunku | mm | [0; ∞) | nie podano w źródłach | [6,96; 341,27] (źr. 4) |
+> | $A_i$ | `polygon_areas_km2` (ciąg) | Powierzchnia wieloboku każdego posterunku w granicach zlewni | km² | [0; ∞) | nie podano w źródłach | [0,22; 4,02] (źr. 1) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $\bar{P}$ | `areal_precipitation_mm` | Średni opad w zlewni | mm | [0; ∞) |
+> | $w_i$ | `weights` (ciąg) | Waga każdego posterunku; wagi sumują się do jedności | – | [0; 1] |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | jedna powierzchnia wieloboku na każdy posterunek | `gauge_count` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+> | sum(A_i) > 0: wieloboki pokrywają choć część zlewni | `area_positive` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Konwencje**
+>
+> - wysokości w mm, powierzchnie w km² (każda jedna jednostka daje tę samą średnią)
+> - wagi to powierzchnie podzielone przez ich sumę: KZGW (2017, wzór 2.1) dzieli przez powierzchnię zlewni, co daje to samo, gdy wieloboki pokrywają zlewnię
+> - wieloboki są dane; ich wyznaczenie nie należy do wzoru
+>
+> **Zgodność z obserwacjami według źródeł:** brak: Chow i in. (1988, s. 78) opisują metodę jako dokładniejszą od średniej arytmetycznej, gdy posterunki są rozmieszczone nierównomiernie, ale nie podają statystyki błędu
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, eq. 3.4.1 and Fig. 3.4.3(b), pp. 78-79: the polygons of the example, 0.22 to 4.02 km2 <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+> 2. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), ch. II.1, eq. 2.1, pp. 15-16: metoda wieloboków równego opadu (after Byczkowski 1996) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 3. Thiessen, A.H. (1911). Precipitation averages for large areas. Monthly Weather Review 39(7), 1082-1084 — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 4. Hydrograf's areal PMAXTP depth (Thiessen cells of the PMAXTP grid points of a catchment) over the depths of Hydrolog's PMAXTP fixtures for Kamiennik and Warsaw (POT, recorded in November 2026), tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm
+>
+> Funkcja `hydrolog.precipitation.interpolation.thiessen_precipitation`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:thiessen_precipitation -->
 
 ### Odwrotne odległości (IDW)
@@ -89,7 +171,77 @@ siatki pokrywającej zlewnię i uśredniając; Hydrolog przyjmuje taką siatkę 
 a pojedynczy punkt w `--target-x` i `--target-y`.
 
 <!-- spec:idw_precipitation -->
+
+<a id="spec-idw_precipitation"></a>
+
+> **Opad w punkcie metodą odwrotnych odległości (IDW) z posterunków** · specyfikacja [`idw_precipitation`](../FORMULAS.md#idw_precipitation) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> P = \sum_i w_i P_i,\quad w_i = \frac{d_i^{-p}}{\sum_j d_j^{-p}},\quad d_i = \sqrt{(x_i - x)^2 + (y_i - y)^2}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_i$ | `station_x_m` (ciąg) | Współrzędna wschodnia (easting) każdego posterunku | m | (−∞; ∞) | nie podano w źródłach | [545 900; 562 900] (źr. 5) |
+> | $y_i$ | `station_y_m` (ciąg) | Współrzędna północna (northing) każdego posterunku | m | (−∞; ∞) | nie podano w źródłach | [229 400; 249 700] (źr. 5) |
+> | $P_i$ | `precipitation_mm` (ciąg) | Wysokość opadu na każdym posterunku | mm | [0; ∞) | nie podano w źródłach | [6,96; 341,27] (źr. 6) |
+> | $x$ | `target_x_m` | Współrzędna wschodnia punktu | m | (−∞; ∞) | nie podano w źródłach | [545 900; 562 900] (źr. 5) |
+> | $y$ | `target_y_m` | Współrzędna północna punktu | m | (−∞; ∞) | nie podano w źródłach | [229 400; 249 700] (źr. 5) |
+> | $p$ | `power` | Wykładnik potęgi odległości | – | (0; ∞) | nie podano w źródłach | [2; 2] (źr. 3) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $P$ | `point_precipitation_mm` | Opad w punkcie | mm | [0; ∞) |
+> | $w_i$ | `weights` (ciąg) | Waga każdego posterunku; wagi sumują się do jedności | – | [0; 1] |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | dwie współrzędne i wysokość opadu dla każdego posterunku | `station_count` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Konwencje**
+>
+> - współrzędne w metrach jednego układu odwzorowania (w Polsce EPSG:2180); wagi zależą tylko od stosunków odległości, więc każda jedna jednostka daje to samo oszacowanie, z wyjątkiem progu, poniżej którego posterunek leży w punkcie, 1e-10 jednostki
+> - używa się każdego podanego posterunku: najbliższy posterunek w każdej ćwiartce i największa odległość z HEC-HMS to wybory wywołującego; posterunki leżące w punkcie dzielą go między siebie po równo
+> - wagi liczy się z ln d względem najbliższego posterunku, więc d**-p ani nie przekracza zakresu float, ani nie zanika do sumy zerowej
+>
+> **Zgodność z obserwacjami według źródeł:** brak: źródła podają metodę bez statystyki błędu; HEC-HMS stosuje ją w prognozach w czasie rzeczywistym
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Indian Institute of Technology Roorkee, NPTEL course Hydrology (105107129), module 3, lecture 4, 3.6 Estimation of missing data, eq. 3.12 (the distance power method, weights 1/D^2) and Example 3.7 <https://archive.nptel.ac.in/content/storage2/courses/105107129/module3/lecture4/lecture4.pdf>
+> 2. US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual: Inverse distance gage weighting, the weight of a gage, 1/d^2 over the sum of 1/d^2 of the gages <https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/meteorology/precipitation/inverse-distance-gage-weighting>
+> 3. Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, p. 79: the reciprocal-distance-squared method (Wei and McGuinness 1973); HEC-HMS's inverse distance gage weighting and Hydrolog's default use p = 2 <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+> 4. Shepard, D. (1968). A two-dimensional interpolation function for irregularly-spaced data. Proceedings of the 1968 23rd ACM National Conference, 517-524 — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 5. Hydrolog's catalog example of precip areal: three gauges near Kraków in EPSG:2180, src/hydrolog/catalog/groups/precip.py, the examples of precip areal: x 545,900 to 562,900 m, y 229,400 to 249,700 m
+> 6. Hydrograf's areal PMAXTP depth (Thiessen cells of the PMAXTP grid points of a catchment) over the depths of Hydrolog's PMAXTP fixtures for Kamiennik and Warsaw (POT, recorded in November 2026), tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm
+>
+> Funkcja `hydrolog.precipitation.interpolation.idw_precipitation`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:idw_precipitation -->
+
+<!-- spec:idw_grid_mean -->
+
+<a id="spec-idw_grid_mean"></a>
+
+> **Opad obszarowy jako średnia oszacowań IDW w węzłach siatki** · wzór grupy B `idw_grid_mean` (Tier B, CMP-2.2)
+>
+> **Definicja:** opad obszarowy zlewni jako średnia arytmetyczna oszacowań IDW (`idw_precipitation`) w punktach siatki (źr. 1)
+>
+> **Konwencja:** średnia z punktów jest średnią w zlewni tylko dla regularnej siatki punktów leżących w jej granicach; w każdym punkcie używa się każdego posterunku
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, p. 79: an areal mean from values interpolated at grid points by the reciprocal-distance-squared method <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+>
+> Funkcja `hydrolog.precipitation.interpolation.areal_precipitation_idw`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
+<!-- /spec:idw_grid_mean -->
 
 ### Izohiety
 
@@ -101,6 +253,50 @@ izohiet (`--isohyet-values-mm`) i udziały pasów (`--area-fractions`); pas skra
 umowną, dla której średnia granic równa się oszacowanemu opadowi pasa (ADR-0046, za Chow i in. 1988).
 
 <!-- spec:isohyet_precipitation -->
+
+<a id="spec-isohyet_precipitation"></a>
+
+> **Opad obszarowy metodą izohiet** · specyfikacja [`isohyet_precipitation`](../FORMULAS.md#isohyet_precipitation) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> \bar{P} = \frac{\sum_i A_i \frac{v_i + v_{i+1}}{2}}{\sum_i A_i}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $v_i$ | `isohyet_values_mm` (ciąg) | Wartości kolejnych izohiet ograniczających pasy | mm | [0; ∞) | nie podano w źródłach | [10; 50] (źr. 1) |
+> | $A_i$ | `zone_areas_km2` (ciąg) | Powierzchnia każdego pasa między dwiema kolejnymi izohietami | km² | [0; ∞) | nie podano w źródłach | [0,2; 3,01] (źr. 1) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $\bar{P}$ | `areal_precipitation_mm` | Średni opad w zlewni | mm | [0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | n izohiet ogranicza n - 1 pasów | `zone_count` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+> | sum(A_i) > 0: pasy pokrywają choć część zlewni | `area_positive` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Konwencje**
+>
+> - wysokości w mm, powierzchnie w km² (każda jedna jednostka daje tę samą średnią, więc także udziały w powierzchni zlewni)
+> - opad pasa to średnia jego dwóch izohiet (KZGW 2017, wzór 2.2); pas skrajny dostaje granicę umowną, dla której ta średnia równa się oszacowanemu dla niego opadowi (Chow i in. 1988, rys. 3.4.3c: granice 0 i 56 mm dla 5 i 53 mm)
+> - powierzchnie dzieli się przez ich sumę, czyli powierzchnię zlewni, gdy pasy ją pokrywają
+>
+> **Zgodność z obserwacjami według źródeł:** brak: Chow i in. (1988, s. 80) nazywają metodę najdokładniejszą z trzech, gdy izohiety kreśli się zgodnie z rzeźbą terenu; brak statystyki błędu
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 3.4, Fig. 3.4.3(c), p. 80: the isohyets 10 to 50 mm and the zones of 0.20 to 3.01 km2 of the example <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+> 2. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), ch. II.1, eq. 2.2, pp. 16-17: metoda izohiet, the mean between neighbouring isohyets times the area between them (after Byczkowski 1996) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+>
+> Funkcja `hydrolog.precipitation.interpolation.isohyet_precipitation`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:isohyet_precipitation -->
 
 Krigingu (metody geostatystycznej) Hydrolog nie liczy.
@@ -265,6 +461,24 @@ polecenie Hydrologa, które korzysta z sieci ([ADR-0018](../decisions/0018-pmaxt
 regulamin danych PMAXTP każe umieścić w każdym produkcie: źródło danych, informację o ich przetworzeniu i
 monografię; trzeba je przenieść do obliczeń, w których wysokość zostanie użyta (opcja `--attribution`).
 
+<!-- spec:pmaxtp_depth -->
+
+<a id="spec-pmaxtp_depth"></a>
+
+> **Wysokość opadu z tablic PMAXTP** · wzór grupy B `pmaxtp_depth` (Tier B, CMP-2.2)
+>
+> **Definicja:** wysokość z tablicy PMAXTP IMGW-PIB dla punktu, czasu trwania i prawdopodobieństwa przewyższenia z tablic, metodą POT albo AMP, wraz z wysokościami 16 czasów trwania przy tym prawdopodobieństwie: krzywa wysokość–czas trwania dla `euler_ii_hyetograph`; nic nie jest liczone ani interpolowane (źr. 1)
+>
+> **Konwencja:** p to prawdopodobieństwo przewyższenia w procentach (w praktyce odczytuje się T = 100 / p lat; IMGW-PIB nie dokumentuje przeliczenia POT na prawdopodobieństwa roczne); wysokość zwracana jest tak, jak podaje ją IMGW-PIB (0,01 mm); tylko czasy trwania i prawdopodobieństwa z tablic; domyślnie POT, które IMGW-PIB zaleca dla p >= 50 % i poniżej uznaje za równoważne AMP (s. 23). Wiersz jest zadeklarowany tutaj: hydrolog._pmaxtp nie importuje żadnej biblioteki numerycznej
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, p. 10 (16 durations of 5 min to 72 h, 27 probabilities of 0.01 to 99.9 %), p. 23 (POT and AMP) <https://klimat.imgw.pl/opady-maksymalne/>
+>
+> Funkcja `hydrolog._pmaxtp.fetch_depth`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
+<!-- /spec:pmaxtp_depth -->
+
 ### Przykład 2.3. Opady projektowe w przekroju Kamiennika
 
 Punkt przekroju zamykającego (51,01544° N, 15,88984° E), czas trwania 720 min, $p$ = 1 %, metoda POT:
@@ -350,6 +564,56 @@ natężenia: maksimum pięciominutowe jest równe średniej, więc w małych, sz
 zwykle niższe kulminacje niż deszcze ze szczytem.
 
 <!-- spec:block_hyetograph -->
+
+<a id="spec-block_hyetograph"></a>
+
+> **Blokowy hietogram projektowy (o stałym natężeniu)** · specyfikacja [`block_hyetograph`](../FORMULAS.md#block_hyetograph) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> P_j = \frac{P}{n},\quad n = \frac{T_d}{\Delta t},\quad t_j = j\,\Delta t
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $P$ | `total_mm` | Całkowita wysokość deszczu | mm | (0; ∞) | nie podano w źródłach | [6,96; 341,27] (źr. 3) |
+> | $T_d$ | `duration_min` | Czas trwania deszczu, całkowita liczba kroków | min | (0; ∞) | nie podano w źródłach | [5; 4320] (źr. 4) |
+> | $\Delta t$ | `timestep_min` | Krok czasowy: długość każdego bloku deszczu | min | (0; ∞) | nie podano w źródłach | [5; 60] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $P_j$ | `intensities_mm` (ciąg) | Wysokość opadu w każdym kroku (pole zachowuje nazwę z wcześniejszych wersji; natężenie podaje pole wyniku intensity_mm_per_h) | mm | [0; ∞) |
+> | $t_j$ | `times_min` (ciąg) | Koniec każdego kroku liczony od początku deszczu | min | (0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | dt <= Td: deszcz obejmuje co najmniej jeden krok | `step_within_duration` | odmowa obliczeń: wzór jest nieokreślony | (źr. 2) |
+> | Td / dt <= 1 000 000: najwyżej milion kroków | `steps_representable` | odmowa obliczeń: wzór jest nieokreślony | (źr. 6) |
+> | Td = n dt dla całkowitego n, z dokładnością do 1e-9 Td: deszcz składa się z całych kroków | `whole_steps` | odmowa obliczeń: wzór jest nieokreślony | (źr. 2) |
+>
+> **Konwencje**
+>
+> - wysokości w mm na krok; t_j to koniec kroku j, krok j obejmuje ((j - 1) dt, j dt]
+> - deszcz składa się z całych kroków: Td = n dt (ADR-0046)
+>
+> **Zgodność z obserwacjami według źródeł:** brak: deszcz blokowy jest konwencją projektową, nie modelem deszczy obserwowanych
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Wachulec, K., Licznar, P., Zaleski, J. and Wójcik, R. (2016). Przegląd Naukowy Inżynieria i Kształtowanie Środowiska 71, p. 74: the block rain of constant intensity, the design rain most often taken by designers of drainage systems
+> 2. Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+> 3. Hydrolog's test fixtures: the PMAXTP depths of IMGW-PIB for Kamiennik (51.015 N, 15.890 E) and Warsaw (52.23 N, 21.01 E), POT, recorded in November 2026, tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm over durations of 5 min to 72 h and probabilities of 0.01 to 99.9 %
+> 4. Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, ISBN 978-83-64979-48-4, p. 10: the tables give 16 durations, 5 min to 72 h <https://klimat.imgw.pl/opady-maksymalne/>
+> 5. The steps of the design storms of the sources: 5 min (DWD, Malitz 2009, slide 17; the shortest duration of the PMAXTP tables) to 1 h (KZGW 2017, example 6.1, p. 92), Malitz 2009 slide 17; KZGW 2017 p. 92
+> 6. Hydrolog, ADR-0067: the precipitation formulas by specs, docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3
+>
+> Funkcja `hydrolog.precipitation.hietogram.block_hyetograph`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:block_hyetograph -->
 
 **Przykład.** Deszcz projektowy Kamiennika (101,82 mm, 720 min) z krokiem 10 min:
@@ -372,6 +636,63 @@ do wersji 0.8.1 wagi kroków liczono z wartości trójkąta na ich końcach, prz
 zawsze 1/2, 1 i 1/2, niezależnie od $r$.
 
 <!-- spec:triangular_hyetograph -->
+
+<a id="spec-triangular_hyetograph"></a>
+
+> **Trójkątny hietogram projektowy Yena i Chowa: całki trójkąta w blokach** · specyfikacja [`triangular_hyetograph`](../FORMULAS.md#triangular_hyetograph) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> h = \frac{2P}{T_d},\quad t_a = r\,T_d,\quad F(u) = \begin{cases} u^2/r & u \le r \\ 1 - (1-u)^2/(1-r) & u > r \end{cases},\quad P_j = P\left[F\left(\tfrac{j}{n}\right) - F\left(\tfrac{j-1}{n}\right)\right]
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $P$ | `total_mm` | Całkowita wysokość deszczu | mm | (0; ∞) | nie podano w źródłach | [6,96; 341,27] (źr. 3) |
+> | $T_d$ | `duration_min` | Czas trwania deszczu, całkowita liczba kroków | min | (0; ∞) | nie podano w źródłach | [5; 4320] (źr. 4) |
+> | $\Delta t$ | `timestep_min` | Krok czasowy: długość każdego bloku deszczu | min | (0; ∞) | nie podano w źródłach | [5; 60] (źr. 5) |
+> | $r$ | `peak_position` | Współczynnik wyprzedzenia burzy: czas do szczytu jako ułamek czasu trwania | – | (0; 1) | nie podano w źródłach | [0,294; 0,5] (źr. 6) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $P_j$ | `intensities_mm` (ciąg) | Wysokość opadu w każdym kroku (pole zachowuje nazwę z wcześniejszych wersji; natężenie podaje pole wyniku intensity_mm_per_h) | mm | [0; ∞) |
+> | $t_j$ | `times_min` (ciąg) | Koniec każdego kroku liczony od początku deszczu | min | (0; ∞) |
+> | $h$ | `peak_intensity_mm_per_h` | Natężenie w szczycie trójkąta | mm/h | [0; ∞) |
+> | $t_a$ | `peak_time_min` | Chwila szczytu liczona od początku deszczu | min | [0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | dt <= Td: deszcz obejmuje co najmniej jeden krok | `step_within_duration` | odmowa obliczeń: wzór jest nieokreślony | (źr. 7) |
+> | Td / dt <= 1 000 000: najwyżej milion kroków | `steps_representable` | odmowa obliczeń: wzór jest nieokreślony | (źr. 8) |
+> | Td = n dt dla całkowitego n, z dokładnością do 1e-9 Td: deszcz składa się z całych kroków | `whole_steps` | odmowa obliczeń: wzór jest nieokreślony | (źr. 7) |
+> | 2 P / Td jest skończonym natężeniem w float64 (deszcz trwający ułamek sekundy, o wysokości 1e-300 mm lub większej, przekracza ten zakres) | `peak_intensity_finite` | odmowa obliczeń: wzór jest nieokreślony | (źr. 8) |
+>
+> **Konwencje**
+>
+> - wysokości w mm na krok; t_j to koniec kroku j; h w mm/h według tabeli jednostek
+> - każdy krok zawiera wysokość, jaką przypisuje mu ciągły trójkąt, czyli różnicę udziału skumulowanego na jego końcach (ADR-0046); trójkąta się nie próbkuje
+> - deszcz składa się z całych kroków: Td = n dt (ADR-0046)
+>
+> **Zgodność z obserwacjami według źródeł:** Chow i in. (1988, s. 464) podają w tabeli r dopasowane do deszczy w miastach USA, Indii i Kanady; sam trójkąt jest kształtem projektowym, a źródła nie podają dla niego statystyki błędu
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.3 Triangular hyetograph method, eqs. 14.3.1 to 14.3.3, Example 14.3.1, pp. 462-465 (after Yen and Chow 1980) <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+> 2. Yen, B.C. and Chow, V.T. (1980). Design hyetographs for small drainage structures. Journal of the Hydraulics Division, ASCE 106(HY6), 1055-1076 — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 3. Hydrolog's test fixtures: the PMAXTP depths of IMGW-PIB for Kamiennik (51.015 N, 15.890 E) and Warsaw (52.23 N, 21.01 E), POT, recorded in November 2026, tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm over durations of 5 min to 72 h and probabilities of 0.01 to 99.9 %
+> 4. Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, ISBN 978-83-64979-48-4, p. 10: the tables give 16 durations, 5 min to 72 h <https://klimat.imgw.pl/opady-maksymalne/>
+> 5. The steps of the design storms of the sources: 5 min (DWD, Malitz 2009, slide 17; the shortest duration of the PMAXTP tables) to 1 h (KZGW 2017, example 6.1, p. 92), Malitz 2009 slide 17; KZGW 2017 p. 92
+> 6. Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, Table 14.3.2, p. 464: storm advancement coefficients r of 0.294 to 0.480 for cities of the USA, India and Canada; Hydrolog's default 0.5 puts the peak at the centre <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+> 7. Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+> 8. Hydrolog, ADR-0067: the precipitation formulas by specs, docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3
+>
+> Funkcja `hydrolog.precipitation.hietogram.triangular_hyetograph`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:triangular_hyetograph -->
 
 **Przykład (Chow i in. 1988, przykład 14.3.1).** Urbana w stanie Illinois, deszcz 15-minutowy o okresie
@@ -402,6 +723,65 @@ maksimum w jednej piątej czasu trwania. To tylko kształt: nazywanie go „desz
 nie ma źródła.
 
 <!-- spec:beta_hyetograph -->
+
+<a id="spec-beta_hyetograph"></a>
+
+> **Hietogram projektowy Beta: całki gęstości rozkładu beta w blokach** · specyfikacja [`beta_hyetograph`](../FORMULAS.md#beta_hyetograph) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> P_j = P\left[I_{j/n}(\alpha, \beta) - I_{(j-1)/n}(\alpha, \beta)\right],\quad I_u(\alpha, \beta) = \frac{1}{B(\alpha, \beta)}\int_0^u s^{\alpha - 1}(1 - s)^{\beta - 1}\,ds
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $P$ | `total_mm` | Całkowita wysokość deszczu | mm | (0; ∞) | nie podano w źródłach | [6,96; 341,27] (źr. 3) |
+> | $T_d$ | `duration_min` | Czas trwania deszczu, całkowita liczba kroków | min | (0; ∞) | nie podano w źródłach | [5; 4320] (źr. 4) |
+> | $\Delta t$ | `timestep_min` | Krok czasowy: długość każdego bloku deszczu | min | (0; ∞) | nie podano w źródłach | [5; 60] (źr. 5) |
+> | $\alpha$ | `alpha` | Pierwszy parametr kształtu (r w KZGW): narastanie deszczu | – | (0; ∞) | nie podano w źródłach | [1; 10] (źr. 6) |
+> | $\beta$ | `beta` | Drugi parametr kształtu (s w KZGW): zanikanie deszczu | – | (0; ∞) | nie podano w źródłach | [2; 10] (źr. 6) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $P_j$ | `intensities_mm` (ciąg) | Wysokość opadu w każdym kroku (pole zachowuje nazwę z wcześniejszych wersji; natężenie podaje pole wyniku intensity_mm_per_h) | mm | [0; ∞) |
+> | $t_j$ | `times_min` (ciąg) | Koniec każdego kroku liczony od początku deszczu | min | (0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | dt <= Td: deszcz obejmuje co najmniej jeden krok | `step_within_duration` | odmowa obliczeń: wzór jest nieokreślony | (źr. 7) |
+> | Td / dt <= 1 000 000: najwyżej milion kroków | `steps_representable` | odmowa obliczeń: wzór jest nieokreślony | (źr. 8) |
+> | Td = n dt dla całkowitego n, z dokładnością do 1e-9 Td: deszcz składa się z całych kroków | `whole_steps` | odmowa obliczeń: wzór jest nieokreślony | (źr. 7) |
+>
+> **Konwencje**
+>
+> - wysokości w mm na krok; t_j to koniec kroku j
+> - każdy krok zawiera całkę gęstości po swoim przedziale (ADR-0046); KZGW (2017, wzór 2.20) liczy gęstość na końcach kroków, co przesuwa deszcz o pół kroku, i tego Hydrolog nie naśladuje
+> - deszcz składa się z całych kroków: Td = n dt (ADR-0046)
+>
+> **Założenia**
+>
+> - KZGW (2017) dzieli sumę dobową na kroki godzinowe hipotetycznego wezbrania; Hydrolog przyjmuje dowolny czas trwania i krok
+>
+> **Zgodność z obserwacjami według źródeł:** KZGW (2017, s. 26) dobiera alfa i beta tak, by kulminacja hydrogramu z tego deszczu była równa przepływowi o tym samym prawdopodobieństwie; źródła nie podają statystyki błędu kształtu względem deszczy obserwowanych
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), ch. II.3, eqs. 2.20-2.22, p. 25 (after Węglarczyk 1993); Fig. 2.7, p. 26 <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 2. Węglarczyk, S. (1993), as cited by KZGW (2017) — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 3. Hydrolog's test fixtures: the PMAXTP depths of IMGW-PIB for Kamiennik (51.015 N, 15.890 E) and Warsaw (52.23 N, 21.01 E), POT, recorded in November 2026, tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm over durations of 5 min to 72 h and probabilities of 0.01 to 99.9 %
+> 4. Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, ISBN 978-83-64979-48-4, p. 10: the tables give 16 durations, 5 min to 72 h <https://klimat.imgw.pl/opady-maksymalne/>
+> 5. The steps of the design storms of the sources: 5 min (DWD, Malitz 2009, slide 17; the shortest duration of the PMAXTP tables) to 1 h (KZGW 2017, example 6.1, p. 92), Malitz 2009 slide 17; KZGW 2017 p. 92
+> 6. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), Fig. 2.7, p. 26: typical Beta shapes (1, 10), (2, 10), (6, 6) and (10, 2); Hydrolog's default (2, 5) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 7. Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+> 8. Hydrolog, ADR-0067: the precipitation formulas by specs, docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3
+>
+> Funkcja `hydrolog.precipitation.hietogram.beta_hyetograph`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:beta_hyetograph -->
 
 **Przykład.** Deszcz projektowy Kamiennika:
@@ -435,7 +815,97 @@ polskiej normy rozstrzygającej ten wybór nie znaleziono. Sposób interpolacji 
 15, 30, 45, 60 … min) pozostaje pytaniem otwartym w dokumentacji Hydrologa.
 
 <!-- spec:euler_ii_hyetograph -->
+
+<a id="spec-euler_ii_hyetograph"></a>
+
+> **Deszcz modelowy Eulera typu II według ATV-DVWK-A 118 z krzywej wysokość–czas trwania** · specyfikacja [`euler_ii_hyetograph`](../FORMULAS.md#euler_ii_hyetograph) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> \Delta h_j = h(j\,\Delta t) - h((j-1)\,\Delta t),\quad k = \lfloor 0{,}3\,n \rfloor,\quad P_{k-i} = \Delta h_{i+1}\ (i = 0..k),\quad P_{i-1} = \Delta h_i\ (i = k+2..n)
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $D_i$ | `durations_min` (ciąg) | Czasy trwania punktów krzywej wysokość–czas trwania, rosnące | min | (0; ∞) | nie podano w źródłach | [5; 4320] (źr. 4) |
+> | $h_i$ | `depths_mm` (ciąg) | Wysokości krzywej dla tych czasów trwania, jednego prawdopodobieństwa | mm | [0; ∞) | nie podano w źródłach | [6,96; 341,27] (źr. 5) |
+> | $T_d$ | `duration_min` | Czas trwania deszczu, całkowita liczba kroków | min | (0; ∞) | nie podano w źródłach | [5; 4320] (źr. 4) |
+> | $\Delta t$ | `timestep_min` | Krok czasowy: długość każdego bloku deszczu | min | (0; ∞) | nie podano w źródłach | [5; 60] (źr. 6) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $P_j$ | `intensities_mm` (ciąg) | Wysokość opadu w każdym kroku (pole zachowuje nazwę z wcześniejszych wersji; natężenie podaje pole wyniku intensity_mm_per_h) | mm | [0; ∞) |
+> | $t_j$ | `times_min` (ciąg) | Koniec każdego kroku liczony od początku deszczu | min | (0; ∞) |
+> | $h(T_d)$ | `total_mm` | Całkowita wysokość deszczu, wysokość krzywej dla Td | mm | [0; ∞) |
+> | $k\,\Delta t$ | `peak_start_min` | Początek przedziału szczytu liczony od początku deszczu | min | [0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | h_(i+1) >= h_i: wysokość dla dłuższego czasu trwania nigdy nie jest mniejsza | `depths_not_decreasing` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 2) |
+> | jedna wysokość dla każdego czasu trwania krzywej | `curve_lengths` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+> | D_(i+1) > D_i: każdy czas trwania krzywej raz, w kolejności rosnącej | `durations_increasing` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+> | dt <= Td: deszcz obejmuje co najmniej jeden krok | `step_within_duration` | odmowa obliczeń: wzór jest nieokreślony | (źr. 7) |
+> | Td / dt <= 1 000 000: najwyżej milion kroków | `steps_representable` | odmowa obliczeń: wzór jest nieokreślony | (źr. 8) |
+> | Td = n dt dla całkowitego n, z dokładnością do 1e-9 Td: deszcz składa się z całych kroków | `whole_steps` | odmowa obliczeń: wzór jest nieokreślony | (źr. 7) |
+> | D_1 <= dt i D_m >= Td: krzywa sięga od kroku do czasu trwania deszczu, niczego się nie ekstrapoluje | `curve_covers` | odmowa obliczeń: wzór jest nieokreślony | (źr. 8) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $0{,}3$ | `peak_start_share` | Ułamek czasu trwania, od którego zaczyna się przedział największego natężenia | 3/10 | – | (źr. 1) |
+>
+> **Konwencje**
+>
+> - wysokości w mm na krok; t_j to koniec kroku j
+> - przyrosty zachowują kolejność swoich czasów trwania i nie są sortowane, więc m kroków kończących się szczytem zawiera h(m dt) także tam, gdzie interpolacja sprawia, że przyrost rośnie (ADR-0042, jak program itwh); dla krzywej o malejących przyrostach jest to posortowany układ z A 118 i DWD
+> - szczyt zaczyna się w 0,3 Td zaokrąglonym w dół do całego kroku (A 118 w cytowanej postaci: do wielokrotności 5 min); program itwh umieszcza szczyt deszczu 15-minutowego w drugim kroku, a Kaźmierczak i Kotowski (2012) kończą go w Td / 3, krok później dla Td równego 165 i 180 min
+> - suma to h(Td) krzywej; krzywa dotyczy jednego prawdopodobieństwa
+> - deszcz składa się z całych kroków: Td = n dt (ADR-0046)
+>
+> **Założenia**
+>
+> - A 118 wymaga czasu trwania co najmniej dwukrotnie dłuższego od najdłuższego czasu przepływu; polskie deszcze modelowe Wartalskiej i Kotowskiego (2020) obejmują od 30 do 180 min; źródła nie podają zakresu danych wejściowych wzoru, więc żadna dana nie wywołuje uwagi
+>
+> **Zgodność z obserwacjami według źródeł:** brak: deszcz projektowy do wymiarowania odwodnienia (A 118); Licznar i Szeląg (2014, streszczenie) stwierdzają, że jego kształt odbiega od deszczy obserwowanych powyżej 180 min
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. ATV-DVWK (2001). Arbeitsblatt ATV-DVWK-A 118, Kap. 5.2.2.1, as quoted by Thewes, K. (2005). Diplomarbeit, Fachhochschule Trier, p. 10: the interval of the highest intensity begins at 0.3 of the duration rounded down to a multiple of 5 min; the next lower intervals follow to the left back to t = 0, the others to the right <https://www.hochschule-trier.de/fileadmin/Hauptcampus/Fachbereich_BL/BI/Personen/Erzmann/Abschlussarbeiten/DA-Thewes.pdf>
+> 2. Malitz, G. (2009). Stark- und Extremniederschlag im Kurzzeitbereich. Deutscher Wetterdienst, Hydrometeorologie; slides of the 2. Trierer Workshop zur Niederschlag-Abfluss-Modellierung, slide 17: the highest 5-min value at position 4, the three next higher to its left, the rest decreasing to its right, the sum of the three largest the depth of 15 min; slides 18 and 19: two storms of 60 min <https://www.uni-trier.de/fileadmin/fb6/prof/PHY/PDF-Dateien/AG_ModSim/N-A-Workshop_2009/Malitz.pdf>
+> 3. Kaźmierczak, B. and Kotowski, A. (2012). Weryfikacja przepustowości kanalizacji deszczowej w modelowaniu hydrodynamicznym. Oficyna Wydawnicza Politechniki Wrocławskiej, Wrocław, pp. 31-32 (the construction); Tab. 4.6, pp. 65-66 (eight storms of 75 to 180 min) <https://www.dbc.wroc.pl/Content/19608/PDF/kazmierczak_weryfikacja.pdf>
+> 4. Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, ISBN 978-83-64979-48-4, p. 10: the tables give 16 durations, 5 min to 72 h <https://klimat.imgw.pl/opady-maksymalne/>
+> 5. Hydrolog's test fixtures: the PMAXTP depths of IMGW-PIB for Kamiennik (51.015 N, 15.890 E) and Warsaw (52.23 N, 21.01 E), POT, recorded in November 2026, tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm over durations of 5 min to 72 h and probabilities of 0.01 to 99.9 %
+> 6. The steps of the design storms of the sources: 5 min (DWD, Malitz 2009, slide 17; the shortest duration of the PMAXTP tables) to 1 h (KZGW 2017, example 6.1, p. 92), Malitz 2009 slide 17; KZGW 2017 p. 92
+> 7. Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York, sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt <https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf>
+> 8. Hydrolog, ADR-0067: the precipitation formulas by specs, docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3
+>
+> Funkcja `hydrolog.precipitation.hietogram.euler_ii_hyetograph`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:euler_ii_hyetograph -->
+
+<!-- spec:depth_duration_interpolation -->
+
+<a id="spec-depth_duration_interpolation"></a>
+
+> **Interpolacja krzywej wysokość–czas trwania** · wzór grupy B `depth_duration_interpolation` (Tier B, CMP-2.2)
+>
+> **Definicja:** wysokość krzywej wysokość–czas trwania dla czasu trwania między dwoma jej punktami D_i <= D <= D_(i+1): h = h_i + (h_(i+1) - h_i) ln(D / D_i) / ln(D_(i+1) / D_i); czas trwania odległy od punktu o mniej niż 1e-9 przyjmuje jego wysokość; poza krzywą wartości nie ma (źr. 1)
+>
+> **Konwencja:** liniowo względem ln D (ADR-0042): tak odtwarza się wydruki itwh KOSTRA-DWD 2010R dla Göllheim z dokładnością 0,07 mm z wysokości drukowanych z dokładnością 0,1 mm, a interpolacja liniowa względem D chybia o 0,16 mm; narzędzie DWA MDMS interpoluje liniowo względem D, a HEC-HMS w skali log-log; niczego się nie ekstrapoluje
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. itwh KOSTRA-DWD 2010R 3.2.3, model rains of Göllheim (T = 5 a), Anhang III of a planning procedure of Rhineland-Palatinate, pp. 2-5 (storms of 15 to 90 min) against p. 6 (depths hN) <https://upload.open.rlp.de/dataset/2420cfcf-294f-400f-8b82-93f2537feef6/resource/f7ac269a-d9c3-40ce-b926-ee7cafa9a4ab/download/merged-anhang-iii.pdf>
+>
+> Funkcja `hydrolog.precipitation.hietogram.EulerIIHietogram.depth_mm`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
+<!-- /spec:depth_duration_interpolation -->
 
 **Zastosowanie.** „Najczęściej używane w modelowaniu hydrodynamicznym sieci kanalizacyjnych w Polsce opady
 modelowe” to rozkłady Eulera typu II i DVWK (Licznar 2021). Krzywą $h(D)$ bierze się z PMAXTP, z atlasu

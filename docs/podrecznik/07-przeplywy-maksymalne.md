@@ -46,6 +46,27 @@ Maksima liczy się w latach hydrologicznych, nie kalendarzowych: wezbranie rozto
 i wiosny należy wtedy w całości do jednego roku.
 
 <!-- spec:hydrological_year -->
+
+<a id="spec-hydrological_year"></a>
+
+> **Rok hydrologiczny daty** · wzór grupy B `hydrological_year` (Tier B, CMP-2.2)
+>
+> **Definicja:** Rok hydrologiczny daty: jej rok kalendarzowy, a dla listopada i grudnia rok następny. (źr. 1)
+>
+> **Konwencja:** Rok IMGW-PIB trwa od 1 listopada do 31 października i nosi nazwę roku kalendarzowego, w którym się kończy (2016 = 1.11.2015–31.10.2016); w ČHMÚ tak samo (Hydrologická ročenka České republiky 2010, wstęp).
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | – | `first_month` | Pierwszy miesiąc roku hydrologicznego | 11 | mies. | (źr. 1) |
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. IMGW-PIB, public hydrological data: hydrologia_info_ogolne.txt (file of 2020-06-23), 'rok hydrologiczny 2016 to okres od 1.11.2015 r. do 31.10.2016 r.'; 'półrocze zimowe odpowiada okresowi 1.11.2015-30.04.2016, natomiast półrocze letnie - okresowi 1.05.2016-31.10.2016' <https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/hydrologia_info_ogolne.txt>
+>
+> Funkcja `hydrolog.statistics._hydrological_year.hydrological_year`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:hydrological_year -->
 
 IMGW-PIB publikuje przepływy charakterystyczne półroczy (zimowego XI–IV i letniego V–X) wyznaczone ze
@@ -54,12 +75,42 @@ maksimum roczne większe z maksimów obu półroczy, a rok z jednym półroczem 
 półrocze mogło zawierać wezbranie:
 
 <!-- spec:half_year_annual_extremes -->
+
+<a id="spec-half_year_annual_extremes"></a>
+
+> **Ekstrema roczne z charakterystyk półroczy** · wzór grupy B `half_year_annual_extremes` (Tier B, CMP-2.2)
+>
+> **Definicja:** Maksima (minima) roczne z charakterystyk półroczy IMGW-PIB: większa (mniejsza) z wartości półrocza zimowego i letniego każdego roku, który ma obie. (źr. 1)
+>
+> **Konwencja:** Przy równości przyjmuje się wartość zimową, z datą z jej półrocza; rok z tylko jednym półroczem jest pomijany i wymieniony w `incomplete_years`.
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. IMGW-PIB, public hydrological data: POLR_publiczne_format.txt (file of 2026-04-29), PLWSKP 13 winter half-year XI-IV, 14 summer half-year V-X, 15 year; PLWSKEX 1 minimum, 2 mean, 3 maximum; a value 99999.999 or NULL is a break in observations <https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/polroczne_i_roczne/POLR_publiczne_format.txt>
+>
+> Funkcja `hydrolog.statistics.characteristic.annual_extremes_from_half_years`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:half_year_annual_extremes -->
 
 Z szeregu dobowego (np. eksportu Obserwatora) maksimum roku jest największym średnim przepływem dobowym,
 i to tylko z lat, w których każdy dzień ma wartość:
 
 <!-- spec:complete_year_extremes -->
+
+<a id="spec-complete_year_extremes"></a>
+
+> **Ekstrema roczne lat kompletnych** · wzór grupy B `complete_year_extremes` (Tier B, CMP-2.2)
+>
+> **Definicja:** Maksimum albo minimum każdego kompletnego roku hydrologicznego, czyli takiego, który ma wartość w każdym ze swoich 365 albo 366 dni. (źr. 1)
+>
+> **Konwencja:** Rok z dniem bez wartości jest pomijany i zgłaszany (jego ekstremum mogło przypaść na ten dzień); data podana dwukrotnie liczy się raz.
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. IMGW-PIB, public hydrological data: POLR_publiczne_format.txt (file of 2026-04-29), 'Wartość stanu wody/przepływu/temperatury wody równa 99999.999 albo NULL oznacza przerwy w obserwacjach': no characteristic of a period with a break <https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/polroczne_i_roczne/POLR_publiczne_format.txt>
+>
+> Funkcja `hydrolog.statistics._hydrological_year.annual_extremes`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:complete_year_extremes -->
 
 Średnia dobowa spłaszcza kulminację, tym bardziej, im szybciej reaguje zlewnia. Polska metodyka
@@ -97,6 +148,56 @@ positions*), które pozwalają nanieść próbę na siatkę prawdopodobieństwa 
 Hydrolog daje je w bloku `empirical` wyniku `stats flood-frequency`.
 
 <!-- spec:plotting_positions -->
+
+<a id="spec-plotting_positions"></a>
+
+> **Pozycje wykreślne maksimów rocznych: prawdopodobieństwa przewyższenia i okresy powtarzalności** · specyfikacja [`plotting_positions`](../FORMULAS.md#plotting_positions) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> p_i = \frac{i - a}{n + 1 - 2a},\qquad T_i = \frac{1}{p_i}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_{(i)}$ | `values` (ciąg) | Próba: maksima roczne przepływu lub stanu wody | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 4) |
+> | $a$ | `method` (wybór) | Formuła pozycji wykreślnej: Weibulla, Hazena lub Cunnane'a | – | jedna z: `weibull`, `hazen`, `cunnane` | – | – |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $x_{(i)}$ | `values_sorted` (ciąg) | Wartości uporządkowane malejąco | m³/s | (−∞; ∞) |
+> | $p_i$ | `exceedance_prob` (ciąg) | Prawdopodobieństwo przewyższenia każdej wartości | – | (0; 1) |
+> | $T_i$ | `return_periods` (ciąg) | Okres powtarzalności każdej wartości, przewyższanej raz na T lat | lata | (1; ∞) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $a$ | `a_weibull` | Parametr a formuły pozycji wykreślnej Weibulla | 0 | – | (źr. 1) |
+> | $a$ | `a_hazen` | Parametr a formuły pozycji wykreślnej Hazena | 1/2 | – | (źr. 1) |
+> | $a$ | `a_cunnane` | Parametr a formuły pozycji wykreślnej Cunnane'a | 2/5 | – | (źr. 1) |
+>
+> **Konwencje**
+>
+> - prawdopodobieństwo przewyższenia i-tej co do wielkości wartości, ranga 1 to wartość największa (WMO-No. 168, § 5.6.1; KZGW 2017, wzór 3.7, polskie p_i = i / (N + 1)); okres powtarzalności T = 1 / p, jak dla kwantyli maksimów
+> - postać ogólna (i - a) / (n + 1 - 2a) z WMO-No. 1029, wzór 7.3, z wartościami a z WMO-No. 168, § 5.6.1; bez wzoru Gringortena
+> - wartości wiązane otrzymują kolejne rangi, każda z własną pozycją, tak jak w KZGW 2017, tab. 3.13, kolejne rangi mają dwie wartości 10,3 i dwie wartości 7,88 m³/s
+> - próba w dowolnej jednostce: pozycje zależą tylko od rang
+>
+> **Zgodność z obserwacjami według źródeł:** brak: oszacowanie prawdopodobieństwa każdej wartości uporządkowanej próby
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the exceedance probability p_i of the ith largest flood x(i) by the Weibull formula i / (n + 1), the Cunnane formula (i - 0.40) / (n + 0.2) and the Hazen formula (i - 0.5) / n <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+> 2. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eq. 3.7, p. 29: p_i = i / (N + 1) 100 %, the empirical exceedance probability of the ith largest annual maximum; example 3.4, table 3.13, pp. 54-55 <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 3. WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.3, eq. 7.3, p. 59: P_i = (i - a) / (n + 1 - 2a), the non-exceedance probability of the ith smallest of n events; p. 60: the Weibull formula is a = 0; sect. 7.8, step I, p. 65: the AM(7) values ranked ascending, the smallest rank 1, and the Weibull formula <https://library.wmo.int/idurl/4/32176>
+> 4. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+>
+> Funkcja `hydrolog.statistics._types.compute_plotting_positions`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:plotting_positions -->
 
 Domyślny wzór Weibulla jest wzorem polskiej metodyki (KZGW 2017). Wzory Hazena i Cunnane’a różnią się
@@ -113,6 +214,56 @@ Rozkład dopasowuje się do kilku liczb opisujących próbę. Momenty zwykłe (a
 średnia, odchylenie standardowe i współczynnik skośności:
 
 <!-- spec:sample_moments -->
+
+<a id="spec-sample_moments"></a>
+
+> **Średnia, odchylenie standardowe i skośność próby (momenty zwykłe)** · specyfikacja [`sample_moments`](../FORMULAS.md#sample_moments) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> \bar{x} = \frac{1}{n}\sum_i x_i,\quad s = \sqrt{\frac{\sum_i (x_i - \bar{x})^2}{n - 1}},\quad G = \frac{\sqrt{n(n - 1)}}{n - 2}\,\frac{m_3}{m_2^{3/2}},\quad m_k = \frac{1}{n}\sum_i (x_i - \bar{x})^k
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_i$ | `values` (ciąg) | Próba: maksima lub minima roczne | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $\bar{x}$ | `mean` | Średnia arytmetyczna | m³/s | (−∞; ∞) |
+> | $s$ | `std` | Odchylenie standardowe z dzielnikiem n - 1 | m³/s | [0; ∞) |
+> | $G$ | `skewness` | Skorygowany współczynnik skośności Fishera–Pearsona | – | (−∞; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | n >= 3 | `enough_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 5) |
+> | min(x) < max(x) | `values_not_all_equal` | odmowa obliczeń: wzór jest nieokreślony | (źr. 6) |
+>
+> **Konwencje**
+>
+> - odchylenie standardowe z dzielnikiem n - 1 (Bulletin 17B, wzór 3a; WMO-No. 1029, wzór 7.8)
+> - skośność G z Bulletin 17B, wzór 4a, N sum((X - mean)**3) / ((N - 1)(N - 2) S**3), czyli skorygowany współczynnik Fishera–Pearsona G1 funkcji scipy.stats.skew z bias=False; WMO-No. 1029, wzór 7.9, podaje obciążony m3 / m2**1.5, czyli G (n - 2) / sqrt(n (n - 1))
+> - próba w dowolnej jednostce: średnia i odchylenie standardowe w jej jednostce, skośność bezwymiarowa
+> - momenty odchyleń od średniej (wzory 3a i 4a, które według Bulletin 17B, s. 10, są mniej wrażliwe na liczbę zachowanych cyfr niż sumy potęg ze wzorów 3b i 4b), centrowane dwukrotnie, na próbie podzielonej przez potęgę dwójki
+>
+> **Zgodność z obserwacjami według źródeł:** brak: definicje statystyk z próby
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eqs. 2, 3a and 4a (equal to 3b and 4b), pp. 9-10; appendix 12, example 1, table 12-2 and eqs. 12-1 to 12-3 <https://pubs.usgs.gov/unnumbered/70275162/report.pdf>
+> 2. WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.6.1, eqs. 7.7 and 7.8, p. 63 (its eq. 7.9 is the biased skewness m3 / m2**1.5); table 7.1, p. 64 <https://library.wmo.int/idurl/4/32176>
+> 3. Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.skew with bias=False: the adjusted Fisher-Pearson standardized moment coefficient G1 = sqrt(n (n - 1)) / (n - 2) m3 / m2**1.5 <https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.skew.html>
+> 4. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 5. Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 4a: the skewness divides by (N - 1)(N - 2) <https://pubs.usgs.gov/unnumbered/70275162/report.pdf>
+> 6. Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 4a: the skewness divides by S cubed, 0 for equal values <https://pubs.usgs.gov/unnumbered/70275162/report.pdf>
+>
+> Funkcja `hydrolog.statistics.frequency.sample_moments`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:sample_moments -->
 
 L-momenty (ang. *L-moments*; Hosking 1990) są liniowymi kombinacjami uporządkowanych wartości. Pierwszy
@@ -120,6 +271,59 @@ jest średnią, drugi miarą rozrzutu w jednostce przepływu, a ich iloraz z trz
 bez jednostki:
 
 <!-- spec:sample_l_moments -->
+
+<a id="spec-sample_l_moments"></a>
+
+> **L-momenty i L-skośność próby (nieobciążone momenty ważone prawdopodobieństwem)** · specyfikacja [`sample_l_moments`](../FORMULAS.md#sample_l_moments) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> b_r = \frac{1}{n}\binom{n - 1}{r}^{-1}\sum_{j=1}^{n}\binom{j - 1}{r}x_{(j)},\quad \lambda_1 = b_0,\quad \lambda_2 = 2b_1 - b_0,\quad \tau_3 = \frac{6b_2 - 6b_1 + b_0}{\lambda_2}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_i$ | `values` (ciąg) | Próba: maksima lub minima roczne | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 6) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $\lambda_1$ | `l1` | Pierwszy L-moment, średnia | m³/s | (−∞; ∞) |
+> | $\lambda_2$ | `l2` | Drugi L-moment, połowa średniej różnicy dwóch wartości | m³/s | [0; ∞) |
+> | $\tau_3$ | `t3` | L-skośność; 1 (lub -1), gdy wszystkie wartości poza największą (najmniejszą) są równe | – | [−1; 1] |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | n >= 3 | `enough_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 7) |
+> | min(x) < max(x) | `values_not_all_equal` | odmowa obliczeń: wzór jest nieokreślony | (źr. 8) |
+>
+> **Konwencje**
+>
+> - nieobciążone momenty ważone prawdopodobieństwem b_r próby uporządkowanej rosnąco (Hosking 1990; lmom samlmu; lmomco pwm.ub), a nie obciążone estymatory oparte na pozycjach wykreślnych
+> - L-skośność t3 = lambda3 / lambda2 (WMO-No. 168, tab. II.5.4)
+> - próba w dowolnej jednostce: l1 i l2 w jej jednostce, t3 bezwymiarowe
+> - lambda2 i lambda3 jako sumy ważone uporządkowanych odchyleń od średniej, które tworzą b_r (z wagami zsumowanymi najpierw), na próbie podzielonej przez potęgę dwójki; l1 to średnia centrowana dwukrotnie
+> - \|t3\| = 1, gdy wszystkie wartości poza największą lub najmniejszą są równe; sumy ważone n wartości mają błąd zaokrąglenia do n ulp, więc t3 przekraczające 1 lub -1 o nie więcej niż 1e-9 ustawia się na tę granicę (tolerancja brzegowa)
+>
+> **Zgodność z obserwacjami według źródeł:** brak: definicje statystyk z próby
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Hosking, J.R.M. (1990). L-moments: analysis and estimation of distributions using linear combinations of order statistics. Journal of the Royal Statistical Society, Series B 52(1), 105-124, sect. 2: probability-weighted moments and the sample L-moments of their unbiased estimators — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 2. Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), samlmu: the sample L-moments of Hosking (1990) from the unbiased probability-weighted moments <https://cran.r-project.org/package=lmom>
+> 3. Asquith, W.H. lmomco: L-moments, censored L-moments, trimmed L-moments, L-comoments, and many distributions, R package version 2.5.8, CRAN, pwm.ub: beta_r = n^-1 C(n - 1, r)^-1 sum C(j - 1, r) x(j:n); lmoms <https://cran.r-project.org/package=lmomco>
+> 4. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.5.1, eqs. 5.25 to 5.27 and table II.5.4, pp. II.5-11 to II.5-12 <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+> 5. WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.6.2, eqs. 7.11 and 7.12, p. 64; table 7.1, p. 64 <https://library.wmo.int/idurl/4/32176>
+> 6. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 7. Asquith, W.H. lmomco: L-moments, censored L-moments, trimmed L-moments, L-comoments, and many distributions, R package version 2.5.8, CRAN, pwm.ub: b2 divides by C(n - 1, 2), 0 for n < 3 <https://cran.r-project.org/package=lmomco>
+> 8. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.4: the L-skewness is lambda3 / lambda2, and lambda2 is 0 for equal values <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+>
+> Funkcja `hydrolog.statistics.frequency.sample_l_moments`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:sample_l_moments -->
 
 Ponieważ wartości wchodzą do L-momentów liniowo, a nie w drugiej i trzeciej potędze, pojedyncze duże
@@ -140,6 +344,48 @@ Rozkład GEV (ang. *generalized extreme value*) wynika z teorii wartości ekstre
 rozkładem maksimów z dużej liczby zdarzeń (Coles 2001). Jego parametr kształtu decyduje o górnym ogonie.
 
 <!-- spec:gev_quantiles -->
+
+<a id="spec-gev_quantiles"></a>
+
+> **Kwantyle uogólnionego rozkładu wartości ekstremalnych (GEV) dla okresów powtarzalności** · specyfikacja [`gev_quantiles`](../FORMULAS.md#gev_quantiles) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> Q_T = \xi + \alpha\,\frac{1 - y^{c}}{c},\quad y = -\ln\left(1 - \frac{1}{T}\right);\qquad Q_T = \xi - \alpha \ln y \ \ (c = 0)
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $c$ | `shape` | Parametr kształtu c: górne ograniczenie dla c > 0, ciężki górny ogon dla c < 0 | – | (−∞; ∞) | nie podano w źródłach | [−0,6; 0] (źr. 4) |
+> | $\xi$ | `loc` | Parametr położenia | m³/s | (−∞; ∞) | nie podano w źródłach | [2; 22,2] (źr. 4) |
+> | $\alpha$ | `scale` | Parametr skali | m³/s | (0; ∞) | nie podano w źródłach | [1; 19,5] (źr. 4) |
+> | $T$ | `return_periods_years` (ciąg) | Okresy powtarzalności: kwantyl T-letni jest przewyższany z prawdopodobieństwem 1/T w roku | lata | (1; ∞) | nie podano w źródłach | [2; 5000] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $Q_T$ | `quantiles` (ciąg) | Przepływy o danych okresach powtarzalności | m³/s | (−∞; ∞) |
+>
+> **Konwencje**
+>
+> - parametr kształtu c funkcji genextreme biblioteki scipy, równy k u Hoskinga i kappa w WMO-No. 168 i WMO-No. 1029 oraz -xi u Colesa (2001): przy c > 0 rozkład ma górne ograniczenie loc + scale/c, przy c < 0 — ciężki górny ogon
+> - kwantyl okresu powtarzalności T przy rocznym prawdopodobieństwie przewyższenia 1/T, czyli nieprzewyższenia 1 - 1/T (polskie Q_p% z p = 100/T %, KZGW 2017, wzór 3.7; WMO-No. 168, § 5.6.1), liczony z odwrotnej funkcji przeżycia w punkcie 1/T, która zachowuje cyfry znaczące dla długich okresów powtarzalności
+> - loc i scale w jednostce próby; wzór jest jednorodny
+>
+> **Zgodność z obserwacjami według źródeł:** brak: funkcja kwantylowa rozkładu
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.2, p. II.5-5 (the GEV of Stedinger et al. 1993, F(x) = exp{-[1 - kappa (x - xi) / alpha]^(1/kappa)}); sect. 5.6.1, p. II.5-14 <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+> 2. WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.5, eq. 7.5, p. 62 (the same GEV, kappa > 0 bounded above) <https://library.wmo.int/idurl/4/32176>
+> 3. Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.genextreme, lognorm, pearson3 and weibull_min: isf, the inverse of the survival function <https://docs.scipy.org/doc/scipy/reference/stats.html>
+> 4. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 5. Rozporządzenie Ministra Środowiska z dnia 20 kwietnia 2007 r. w sprawie warunków technicznych, jakim powinny odpowiadać budowle hydrotechniczne i ich usytuowanie (Dz.U. 2007 nr 86 poz. 579); Dz.U. 2026 poz. 692 repeats its values, załącznik nr 4: the control flood of a structure of class I at p = 0.02 %, 5,000 years; Hydrolog's default return periods start at 2 years <https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=WDU20070860579>
+>
+> Funkcja `hydrolog.statistics.frequency.gev_quantiles`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:gev_quantiles -->
 
 Uwaga na znak parametru kształtu. Hydrolog używa parametru $c$ biblioteki SciPy, równego $k$ Hoskinga
@@ -154,6 +400,48 @@ Rozkład logarytmiczno-normalny (ang. *log-normal*): logarytm przepływu pomniej
 ograniczenie $\epsilon$ ma rozkład normalny.
 
 <!-- spec:log_normal_quantiles -->
+
+<a id="spec-log_normal_quantiles"></a>
+
+> **Kwantyle rozkładu logarytmiczno-normalnego dla okresów powtarzalności** · specyfikacja [`log_normal_quantiles`](../FORMULAS.md#log_normal_quantiles) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> Q_T = \epsilon + e^{\mu} \exp\left(\sigma\,\Phi^{-1}\left(1 - \frac{1}{T}\right)\right)
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $\sigma$ | `shape` | Odchylenie standardowe logarytmów x - loc | – | (0; ∞) | nie podano w źródłach | [0,6; 0,9] (źr. 4) |
+> | $\epsilon$ | `loc` | Dolne ograniczenie: 0 dla rozkładu dwuparametrowego dopasowywanego w Hydrologu | m³/s | (−∞; ∞) | nie podano w źródłach | [0; 0,4] (źr. 4) |
+> | $e^{\mu}$ | `scale` | Funkcja wykładnicza (exp) średniej logarytmów | m³/s | (0; ∞) | nie podano w źródłach | [2,4; 27] (źr. 4) |
+> | $T$ | `return_periods_years` (ciąg) | Okresy powtarzalności: kwantyl T-letni jest przewyższany z prawdopodobieństwem 1/T w roku | lata | (1; ∞) | nie podano w źródłach | [2; 5000] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $Q_T$ | `quantiles` (ciąg) | Przepływy o danych okresach powtarzalności | m³/s | (−∞; ∞) |
+>
+> **Konwencje**
+>
+> - lognorm(s, loc, scale) biblioteki scipy: s = sigma, loc = epsilon (dolne ograniczenie z KZGW 2017, wzór 3.35), scale = exp(mu)
+> - kwantyl okresu powtarzalności T przy rocznym prawdopodobieństwie przewyższenia 1/T, czyli nieprzewyższenia 1 - 1/T (polskie Q_p% z p = 100/T %, KZGW 2017, wzór 3.7; WMO-No. 168, § 5.6.1), liczony z odwrotnej funkcji przeżycia w punkcie 1/T, która zachowuje cyfry znaczące dla długich okresów powtarzalności
+> - loc i scale w jednostce próby; wzór jest jednorodny
+>
+> **Zgodność z obserwacjami według źródeł:** brak: funkcja kwantylowa rozkładu
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 3.35 and 3.40, p. 46 (Q_p = epsilon + exp(mu + sigma u_p)); example 3.3, table 3.12, p. 51 <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 2. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.2, p. II.5-5 and its note a (the three-parameter log-normal with Y = ln(X - xi)) <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+> 3. Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.genextreme, lognorm, pearson3 and weibull_min: isf, the inverse of the survival function <https://docs.scipy.org/doc/scipy/reference/stats.html>
+> 4. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 5. Rozporządzenie Ministra Środowiska z dnia 20 kwietnia 2007 r. w sprawie warunków technicznych, jakim powinny odpowiadać budowle hydrotechniczne i ich usytuowanie (Dz.U. 2007 nr 86 poz. 579); Dz.U. 2026 poz. 692 repeats its values, załącznik nr 4: the control flood of a structure of class I at p = 0.02 %, 5,000 years; Hydrolog's default return periods start at 2 years <https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=WDU20070860579>
+>
+> Funkcja `hydrolog.statistics.frequency.log_normal_quantiles`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:log_normal_quantiles -->
 
 Analiza częstości w Hydrologu (`stats flood-frequency`) dopasowuje wersję dwuparametrową, z dolnym
@@ -167,6 +455,49 @@ Trójparametrowy rozkład gamma (ang. *Pearson type III*) jest podstawowym rozk�
 (KZGW 2017) i amerykańskiego Bulletin 17B (IACWD 1982, tam dla logarytmów przepływów).
 
 <!-- spec:pearson3_quantiles -->
+
+<a id="spec-pearson3_quantiles"></a>
+
+> **Kwantyle rozkładu Pearsona typu III dla okresów powtarzalności** · specyfikacja [`pearson3_quantiles`](../FORMULAS.md#pearson3_quantiles) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> Q_T = \mu + K_{\gamma}\!\left(1 - \frac{1}{T}\right)\sigma
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $\gamma$ | `skew` | Skośność rozkładu | – | (−∞; ∞) | nie podano w źródłach | [1,3; 2,7] (źr. 4) |
+> | $\mu$ | `loc` | Średnia rozkładu | m³/s | (−∞; ∞) | nie podano w źródłach | [3; 35,4] (źr. 4) |
+> | $\sigma$ | `scale` | Odchylenie standardowe rozkładu | m³/s | (0; ∞) | nie podano w źródłach | [2; 29,6] (źr. 4) |
+> | $T$ | `return_periods_years` (ciąg) | Okresy powtarzalności: kwantyl T-letni jest przewyższany z prawdopodobieństwem 1/T w roku | lata | (1; ∞) | nie podano w źródłach | [2; 5000] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $Q_T$ | `quantiles` (ciąg) | Przepływy o danych okresach powtarzalności | m³/s | (−∞; ∞) |
+>
+> **Konwencje**
+>
+> - pearson3(skew, loc, scale) biblioteki scipy jest parametryzowany średnią, odchyleniem standardowym i skośnością, jak w Bulletin 17B i rozkładzie PE3 pakietu lmom (mu, sigma, gamma); parametry (epsilon, alpha, lambda) z KZGW 2017 dają skew = 2 / sqrt(lambda), loc = epsilon + lambda / alpha oraz scale = sqrt(lambda) / alpha
+> - przy dodatniej skośności rozkład ma dolne ograniczenie loc - 2 scale / skew, przy ujemnej — górne ograniczenie loc - 2 scale / skew
+> - kwantyl okresu powtarzalności T przy rocznym prawdopodobieństwie przewyższenia 1/T, czyli nieprzewyższenia 1 - 1/T (polskie Q_p% z p = 100/T %, KZGW 2017, wzór 3.7; WMO-No. 168, § 5.6.1), liczony z odwrotnej funkcji przeżycia w punkcie 1/T, która zachowuje cyfry znaczące dla długich okresów powtarzalności
+> - loc i scale w jednostce próby; wzór jest jednorodny
+>
+> **Zgodność z obserwacjami według źródeł:** brak: funkcja kwantylowa rozkładu
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 1, p. 9 (log Q = X + K S) and appendix 3, pp. 3-1 to 3-10 (the frequency factors K of Harter 1969 for skews of -9 to 9) <https://pubs.usgs.gov/unnumbered/70275162/report.pdf>
+> 2. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 3.1 and 3.3, p. 28 (Q_p = epsilon + the gamma quantile of 1 - p with lambda and 1/alpha); example 3.2, table 3.9, p. 44 <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 3. Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.genextreme, lognorm, pearson3 and weibull_min: isf, the inverse of the survival function <https://docs.scipy.org/doc/scipy/reference/stats.html>
+> 4. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 5. Rozporządzenie Ministra Środowiska z dnia 20 kwietnia 2007 r. w sprawie warunków technicznych, jakim powinny odpowiadać budowle hydrotechniczne i ich usytuowanie (Dz.U. 2007 nr 86 poz. 579); Dz.U. 2026 poz. 692 repeats its values, załącznik nr 4: the control flood of a structure of class I at p = 0.02 %, 5,000 years; Hydrolog's default return periods start at 2 years <https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=WDU20070860579>
+>
+> Funkcja `hydrolog.statistics.frequency.pearson3_quantiles`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:pearson3_quantiles -->
 
 Hydrolog parametryzuje go średnią, odchyleniem standardowym i skośnością; ramka podaje przeliczenie na
@@ -179,6 +510,55 @@ nieskończona na tej granicy, metoda największej wiarygodności przestaje dzia�
 Rozkład Weibulla ograniczony od dołu stosuje KZGW (2017) „w uzasadnionych przypadkach”.
 
 <!-- spec:weibull_quantiles -->
+
+<a id="spec-weibull_quantiles"></a>
+
+> **Kwantyle trójparametrowego rozkładu Weibulla dla okresów powtarzalności** · specyfikacja [`weibull_quantiles`](../FORMULAS.md#weibull_quantiles) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> Q_T = \epsilon + \frac{1}{\alpha_W}\left(\ln T\right)^{1/\beta_W}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $\beta_W$ | `shape` | Parametr kształtu k rozkładu | – | (0; ∞) | nie podano w źródłach | [0,7; 1,4] (źr. 4) |
+> | $\epsilon$ | `loc` | Dolne ograniczenie | m³/s | (−∞; ∞) | nie podano w źródłach | [−1; 4,9] (źr. 4) |
+> | $1/\alpha_W$ | `scale` | Parametr skali | m³/s | (0; ∞) | nie podano w źródłach | [1,5; 37] (źr. 4) |
+> | $T$ | `return_periods_years` (ciąg) | Okresy powtarzalności: kwantyl T-letni jest przewyższany z prawdopodobieństwem 1/T w roku | lata | (1; ∞) | nie podano w źródłach | [2; 5000] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $Q_T$ | `quantiles` (ciąg) | Przepływy o danych okresach powtarzalności | m³/s | (−∞; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | ln(scale) + ln(ln T) / k < 708,78 dla każdego T: scale (ln T)**(1/k) poniżej e**-1 największej liczby float64 | `finite_quantiles` | odmowa obliczeń: wzór jest nieokreślony | (źr. 6) |
+>
+> **Konwencje**
+>
+> - weibull_min(k, loc, scale) biblioteki scipy, rozkład Weibulla z dolnym ograniczeniem dopasowywany do maksimów jak w KZGW 2017, wzór 3.52 (epsilon = loc, alpha_W = 1/scale, beta_W = k), i w pakiecie lmom (zeta, beta, delta)
+> - kwantyl okresu powtarzalności T przy rocznym prawdopodobieństwie przewyższenia 1/T, czyli nieprzewyższenia 1 - 1/T (polskie Q_p% z p = 100/T %, KZGW 2017, wzór 3.7; WMO-No. 168, § 5.6.1), liczony z odwrotnej funkcji przeżycia w punkcie 1/T, która zachowuje cyfry znaczące dla długich okresów powtarzalności
+> - loc i scale w jednostce próby; wzór jest jednorodny
+>
+> **Zgodność z obserwacjami według źródeł:** brak: funkcja kwantylowa rozkładu
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 3.52 and 3.55, pp. 53-54 (P(Q >= x) = exp(-[alpha_W (x - epsilon)]^beta_W)); example 3.4, table 3.15, p. 60 <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 2. WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.5, eq. 7.6, p. 62 (F(x) = 1 - exp[-((x - xi) / alpha)^kappa]) and eq. 7.13, p. 64 <https://library.wmo.int/idurl/4/32176>
+> 3. Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.genextreme, lognorm, pearson3 and weibull_min: isf, the inverse of the survival function <https://docs.scipy.org/doc/scipy/reference/stats.html>
+> 4. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 5. Rozporządzenie Ministra Środowiska z dnia 20 kwietnia 2007 r. w sprawie warunków technicznych, jakim powinny odpowiadać budowle hydrotechniczne i ich usytuowanie (Dz.U. 2007 nr 86 poz. 579); Dz.U. 2026 poz. 692 repeats its values, załącznik nr 4: the control flood of a structure of class I at p = 0.02 %, 5,000 years; Hydrolog's default return periods start at 2 years <https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=WDU20070860579>
+> 6. Harris, C.R. et al. (2020). Array programming with NumPy. Nature 585, 357-362, numpy.finfo(numpy.float64).max, about 1.8e308, the largest IEEE 754 binary64 number <https://numpy.org/doc/stable/reference/generated/numpy.finfo.html>
+>
+> Funkcja `hydrolog.statistics.frequency.weibull_quantiles`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:weibull_quantiles -->
 
 W Hydrologu kształt to $\beta_W$ KZGW, położenie to dolne ograniczenie $\epsilon$, a skala to odwrotność
@@ -201,6 +581,81 @@ niespełnionego warunku (ramki: `enough_values`, `values_not_all_equal`, `positi
 Parametry dobiera się tak, by L-momenty rozkładu były równe L-momentom próby (Hosking i Wallis 1997).
 
 <!-- spec:fit_l_moments -->
+
+<a id="spec-fit_l_moments"></a>
+
+> **Parametry rozkładu maksimów rocznych metodą L-momentów** · specyfikacja [`fit_l_moments`](../FORMULAS.md#fit_l_moments) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> \tau_3 = \frac{2(1 - 3^{-c})}{1 - 2^{-c}} - 3,\quad \alpha = \frac{\lambda_2 c}{(1 - 2^{-c})\Gamma(1 + c)},\quad \xi = \lambda_1 - \alpha\frac{1 - \Gamma(1 + c)}{c};\qquad s = 2\,\mathrm{erf}^{-1}\frac{\lambda_2}{\lambda_1};\qquad \sigma = \lambda_2\sqrt{\pi a}\,\frac{\Gamma(a)}{\Gamma(a + 1/2)},\ G = \frac{2\,\mathrm{sign}\,\tau_3}{\sqrt{a}}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_i$ | `annual_maxima` (ciąg) | Próba: maksima roczne lub dowolna próba z danego rozkładu | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 4) |
+> | $F$ | `distribution` (wybór) | Rozkład: logarytmiczno-normalny o parametrze położenia 0, GEV, Pearsona typu III lub trójparametrowy rozkład Weibulla z scipy.stats | – | jedna z: `log_normal`, `gev`, `pearson3`, `weibull` | – | – |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $k$ | `shape` | Parametr kształtu: s rozkładu logarytmiczno-normalnego, c rozkładu GEV (znak jak w scipy, k Hoskinga, -xi Colesa), skośność rozkładu Pearsona III, parametr kształtu rozkładu Weibulla | – | (−∞; ∞) |
+> | $\xi$ | `loc` | Parametr położenia: 0 dla rozkładu logarytmiczno-normalnego, średnia rozkładu Pearsona III, dolne ograniczenie rozkładu Weibulla | m³/s | (−∞; ∞) |
+> | $\alpha$ | `scale` | Parametr skali; wartość, która uległaby niedomiarowi, zastępuje się najmniejszą liczbą float64 (tolerancja brzegowa) | m³/s | (0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | n >= 3 | `enough_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 5) |
+> | min(x) < max(x) | `values_not_all_equal` | odmowa obliczeń: wzór jest nieokreślony | (źr. 6) |
+> | min(x) > 0 dla rozkładu logarytmiczno-normalnego (parametr położenia 0) | `positive_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 7) |
+> | l2 < l1 (rozkład logarytmiczno-normalny); -1 < t3 < 1 (GEV, Pearson III); -0,1699 < t3 < 1 (Weibull) | `l_moments_within_distribution` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $A_1$ | `a1` | Współczynnik liniowy licznika aproksymacji wymiernej parametru alfa rozkładu Pearsona III przy małej L-skośności | 0,2906 | – | (źr. 1) |
+> | $A_2$ | `a2` | Współczynnik kwadratowy mianownika aproksymacji wymiernej parametru alfa rozkładu Pearsona III przy małej L-skośności | 0,1882 | – | (źr. 1) |
+> | $A_3$ | `a3` | Współczynnik sześcienny mianownika aproksymacji wymiernej parametru alfa rozkładu Pearsona III przy małej L-skośności | 0,0442 | – | (źr. 1) |
+> | $B_1$ | `b1` | Współczynnik liniowy licznika aproksymacji wymiernej parametru alfa rozkładu Pearsona III przy dużej L-skośności | 0,36067 | – | (źr. 1) |
+> | $B_2$ | `b2` | Współczynnik kwadratowy licznika aproksymacji wymiernej parametru alfa rozkładu Pearsona III przy dużej L-skośności | −0,59567 | – | (źr. 1) |
+> | $B_3$ | `b3` | Współczynnik sześcienny licznika aproksymacji wymiernej parametru alfa rozkładu Pearsona III przy dużej L-skośności | 0,25361 | – | (źr. 1) |
+> | $C_1$ | `b4` | Współczynnik liniowy mianownika aproksymacji wymiernej parametru alfa rozkładu Pearsona III przy dużej L-skośności | −2,78861 | – | (źr. 1) |
+> | $C_2$ | `b5` | Współczynnik kwadratowy mianownika aproksymacji wymiernej parametru alfa rozkładu Pearsona III przy dużej L-skośności | 2,56096 | – | (źr. 1) |
+> | $C_3$ | `b6` | Współczynnik sześcienny mianownika aproksymacji wymiernej parametru alfa rozkładu Pearsona III przy dużej L-skośności | −0,77045 | – | (źr. 1) |
+> | $\tau_{3,0}$ | `normal_below` | Wartość bezwzględna L-skośności, poniżej której rozkład Pearsona III przyjmuje się za normalny | 1·10⁻⁶ | – | (źr. 1) |
+> | $\tau_{3,G}$ | `gumbel_l_skewness` | L-skośność rozkładu Gumbela, granica zanegowanej L-skośności przy dopasowaniu rozkładu Weibulla | 0,1699250014423126 | – | (źr. 8) |
+>
+> **Konwencje**
+>
+> - nieobciążone L-momenty próby ze wzoru `sample_l_moments`
+> - parametry w konwencji scipy: parametr kształtu c rozkładu GEV to k Hoskinga i -xi Colesa; parametry (loc, scale, shape) rozkładu Pearsona III to jego średnia, odchylenie standardowe i skośność; rozkład logarytmiczno-normalny ma parametr położenia 0
+> - parametr kształtu GEV wyznaczany dokładnie metodą brentq w przedziale -1 < c <= 50 (funkcja pelgev pakietu lmom używa przybliżenia Donaldsona, zgodnego z nim z dokładnością do 2e-7); t3 poza L-skośnością odpowiadającą końcowi tego przedziału daje ten koniec
+> - rozkład Weibulla jako GEV zanegowanych L-momentów, jak w funkcji pelwei pakietu lmom
+>
+> **Założenia**
+>
+> - maksima roczne są niezależne i mają jednakowy rozkład
+>
+> **Zgodność z obserwacjami według źródeł:** brak: estymator daje rozkład o L-momentach próby; Hosking i Wallis (1997) podają jego efektywność dla prób symulowanych
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), lmoments.f, routines PELGEV (the GEV of the L-moments), PELPE3 (Pearson III: alpha from \|t3\| by rational approximations, relative accuracy better than 3e-5) and PELLN3 (the log-normal of a given bound); R pelwei, the GEV of the negated L-moments <https://cran.r-project.org/package=lmom>
+> 2. Hosking, J.R.M. and Wallis, J.R. (1997). Regional Frequency Analysis: An Approach Based on L-Moments. Cambridge University Press, appendix A.5 (GEV), A.8 (log-normal), A.9 (Pearson type III, the rational approximations of alpha from \|t3\|) — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 3. Hosking, J.R.M. (1990). L-moments: analysis and estimation of distributions using linear combinations of order statistics. Journal of the Royal Statistical Society, Series B 52(1), 105-124, sect. 2: probability-weighted moments and the sample L-moments of their unbiased estimators — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 4. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 5. Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), samlmu: t3 needs 3 values <https://cran.r-project.org/package=lmom>
+> 6. Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelgev, pelpe3: l2 must be positive <https://cran.r-project.org/package=lmom>
+> 7. Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0 <https://cran.r-project.org/package=lmom>
+> 8. Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelwei: the GEV of the negated L-moments, which needs -t3 below the Gumbel's L-skewness 2 ln 3 / ln 2 - 3 = 0.1699 <https://cran.r-project.org/package=lmom>
+>
+> Funkcja `hydrolog.statistics.frequency.fit_l_moments`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:fit_l_moments -->
 
 Metoda jest odporna na pojedyncze skrajne wartości i stabilna w krótkich ciągach, dlatego jest domyślna.
@@ -214,6 +669,71 @@ W metodzie momentów (ang. *method of moments*) średnia, odchylenie standardowe
 równe tym z próby.
 
 <!-- spec:fit_moments -->
+
+<a id="spec-fit_moments"></a>
+
+> **Parametry rozkładu maksimów rocznych metodą momentów** · specyfikacja [`fit_moments`](../FORMULAS.md#fit_moments) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> \sigma_l = \sqrt{\ln(1 + C_v^2)},\ e^{\mu} = \frac{\bar{x}}{\sqrt{1 + C_v^2}};\qquad (\gamma, \mu, \sigma) = (G, \bar{x}, s);\qquad \gamma_{GEV}(c) = G,\ \alpha = \frac{s}{\sigma_{GEV}(c)},\ \xi = \bar{x} - \alpha\,\mu_{GEV}(c)
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_i$ | `annual_maxima` (ciąg) | Próba: maksima roczne lub dowolna próba z danego rozkładu | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 4) |
+> | $F$ | `distribution` (wybór) | Rozkład: logarytmiczno-normalny o parametrze położenia 0, GEV, Pearsona typu III lub trójparametrowy rozkład Weibulla z scipy.stats | – | jedna z: `log_normal`, `gev`, `pearson3`, `weibull` | – | – |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $k$ | `shape` | Parametr kształtu: s rozkładu logarytmiczno-normalnego, c rozkładu GEV (znak jak w scipy, k Hoskinga, -xi Colesa), skośność rozkładu Pearsona III, parametr kształtu rozkładu Weibulla | – | (−∞; ∞) |
+> | $\xi$ | `loc` | Parametr położenia: 0 dla rozkładu logarytmiczno-normalnego, średnia rozkładu Pearsona III, dolne ograniczenie rozkładu Weibulla | m³/s | (−∞; ∞) |
+> | $\alpha$ | `scale` | Parametr skali; wartość, która uległaby niedomiarowi, zastępuje się najmniejszą liczbą float64 (tolerancja brzegowa) | m³/s | (0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | n >= 3 | `enough_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 5) |
+> | min(x) < max(x) | `values_not_all_equal` | odmowa obliczeń: wzór jest nieokreślony | (źr. 6) |
+> | min(x) > 0 dla rozkładu logarytmiczno-normalnego (parametr położenia 0) | `positive_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 7) |
+> | G > -1,1395 dla rozkładu Weibulla — skośność odwróconego rozkładu Gumbela | `skewness_within_distribution` | odmowa obliczeń: wzór jest nieokreślony | (źr. 8) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $\gamma_G$ | `gumbel_skewness` | Skośność rozkładu Gumbela | 1,1395470994046488 | – | (źr. 8) |
+>
+> **Konwencje**
+>
+> - momenty próby ze wzoru `sample_moments`: s z dzielnikiem n - 1, G — skorygowany współczynnik Fishera–Pearsona
+> - rozkład logarytmiczno-normalny o parametrze położenia 0 ze średniej i Cv samych wartości, a nie ich logarytmów
+> - parametry w konwencji scipy: parametr kształtu c rozkładu GEV to k Hoskinga i -xi Colesa; parametry (loc, scale, shape) rozkładu Pearsona III to jego średnia, odchylenie standardowe i skośność
+> - parametr kształtu GEV wyznaczany metodą brentq w przedziale -1/3 < c <= 50 (skośność istnieje powyżej -1/3); rozkład Weibulla jako GEV zanegowanych momentów, z c w przedziale 0 < c <= 50
+>
+> **Założenia**
+>
+> - maksima roczne są niezależne i mają jednakowy rozkład
+>
+> **Zgodność z obserwacjami według źródeł:** brak: estymator daje rozkład o momentach próby
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, pp. 9-10 and appendix 12, example 1: the log-Pearson type III distribution of the mean, standard deviation and skewness of the logarithms (eqs. 2, 3a, 4a) <https://pubs.usgs.gov/unnumbered/70275162/report.pdf>
+> 2. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.5 and table II.5.2, pp. II.5-5 to II.5-12: the method of moments and the moments of the GEV, log-normal, Pearson type III and Weibull distributions <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+> 3. Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.genextreme, lognorm, pearson3 and weibull_min: isf, the inverse of the survival function <https://docs.scipy.org/doc/scipy/reference/stats.html>
+> 4. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 5. Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 4a: the skewness divides by (N - 1)(N - 2) <https://pubs.usgs.gov/unnumbered/70275162/report.pdf>
+> 6. Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 4a: the skewness divides by S cubed, 0 for equal values <https://pubs.usgs.gov/unnumbered/70275162/report.pdf>
+> 7. Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0 <https://cran.r-project.org/package=lmom>
+> 8. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.2, p. II.5-5: the Gumbel (EV1) distribution, of skewness 1.1396, 12 sqrt(6) zeta(3) / pi**3 <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+>
+> Funkcja `hydrolog.statistics.frequency.fit_moments`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:fit_moments -->
 
 Dla rozkładu Pearsona III to wprost trzy momenty próby. Skośność próby jest silnie obciążona
@@ -225,6 +745,64 @@ sprzeczną z obserwacjami.
 Parametry maksymalizują logarytm funkcji wiarygodności (ang. *maximum likelihood*).
 
 <!-- spec:fit_maximum_likelihood -->
+
+<a id="spec-fit_maximum_likelihood"></a>
+
+> **Parametry rozkładu maksimów rocznych metodą największej wiarygodności** · specyfikacja [`fit_maximum_likelihood`](../FORMULAS.md#fit_maximum_likelihood) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> (\hat{k}, \hat{\xi}, \hat{\alpha}) = \arg\max \sum_i \ln f(x_i; k, \xi, \alpha);\qquad \hat{\mu} = \frac{1}{n}\sum_i \ln x_i,\ \hat{s}^2 = \frac{1}{n}\sum_i (\ln x_i - \hat{\mu})^2
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_i$ | `annual_maxima` (ciąg) | Próba: maksima roczne lub dowolna próba z danego rozkładu | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 4) |
+> | $F$ | `distribution` (wybór) | Rozkład: logarytmiczno-normalny o parametrze położenia 0, GEV, Pearsona typu III lub trójparametrowy rozkład Weibulla z scipy.stats | – | jedna z: `log_normal`, `gev`, `pearson3`, `weibull` | – | – |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $k$ | `shape` | Parametr kształtu: s rozkładu logarytmiczno-normalnego, c rozkładu GEV (znak jak w scipy, k Hoskinga, -xi Colesa), skośność rozkładu Pearsona III, parametr kształtu rozkładu Weibulla | – | (−∞; ∞) |
+> | $\xi$ | `loc` | Parametr położenia: 0 dla rozkładu logarytmiczno-normalnego, średnia rozkładu Pearsona III, dolne ograniczenie rozkładu Weibulla | m³/s | (−∞; ∞) |
+> | $\alpha$ | `scale` | Parametr skali; wartość, która uległaby niedomiarowi, zastępuje się najmniejszą liczbą float64 (tolerancja brzegowa) | m³/s | (0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | n > p, liczba parametrów: n >= 3 dla rozkładu logarytmiczno-normalnego, n >= 4 dla pozostałych | `enough_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 5) |
+> | min(x) < max(x) | `values_not_all_equal` | odmowa obliczeń: wzór jest nieokreślony | (źr. 6) |
+> | min(x) > 0 dla rozkładu logarytmiczno-normalnego (parametr położenia 0) | `positive_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 7) |
+> | wiarygodność ma maksimum wewnątrz przeszukiwanego zakresu parametru kształtu: poszukiwanie nie kończy się bliżej niż 1e-3 od kształtów, przy których gęstość jest nieskończona na granicy nośnika (GEV c >= 1, Pearson III \|G\| >= 2, kształt Weibulla <= 1), ani od GEV c = -1 (brak średniej) lub kształtu Weibulla 50, ani przy parametrze skali równym milionowej części odchylenia standardowego; przy GEV najwyżej połowa wartości to wartości wiązane równe najmniejszej; poszukiwanie się stabilizuje | `likelihood_has_a_maximum` | odmowa obliczeń: wzór jest nieokreślony | (źr. 8) |
+>
+> **Konwencje**
+>
+> - gęstości i parametry w konwencji scipy: parametr kształtu c rozkładu GEV to -xi Colesa (evd, extRemes, ismev)
+> - poszukiwanie prowadzi się na próbie standaryzowanej (x / 2**e - mean) / sd, startując z oszacowania metodą L-momentów; metodę Neldera–Meada (xatol 1e-10, fatol 1e-12) uruchamia się ponownie od jej punktu końcowego, aż przebieg zwiększy logarytm wiarygodności najwyżej o 1e-9, przy najwyżej 21 przebiegach
+> - rozkład logarytmiczno-normalny o parametrze położenia 0 w postaci jawnej (lognorm.fit biblioteki scipy z floc=0)
+>
+> **Założenia**
+>
+> - maksima roczne są niezależne i mają jednakowy rozkład
+>
+> **Zgodność z obserwacjami według źródeł:** brak: estymator daje najbardziej wiarygodny rozkład dla próby
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Coles, S. (2001). An Introduction to Statistical Modeling of Extreme Values. Springer, sect. 3.3.2 (the likelihood of the GEV) and 3.4.1 (Port Pirie) — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 2. Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, the likelihood of a three-parameter distribution has no maximum where its density is infinite at the bound of its support — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 3. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.5, p. II.5-11: the method of maximum likelihood; sect. 5.3.2.3: the Weibull density goes to infinity at its bound for k < 1 <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+> 4. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 5. Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, n values fit n parameters exactly, where the likelihood has no maximum — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 6. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.5: the likelihood of values all equal grows without limit as the scale falls to 0 <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+> 7. Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0 <https://cran.r-project.org/package=lmom>
+> 8. Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, the bound placed at the closest value makes the likelihood grow without limit — *źródło niedostępne publicznie (dostarczone przez autora)*
+>
+> Funkcja `hydrolog.statistics.frequency.fit_maximum_likelihood`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:fit_maximum_likelihood -->
 
 Dla rozkładów trójparametrowych z ograniczonym nośnikiem wiarygodność może rosnąć bez końca, gdy granica
@@ -249,6 +827,71 @@ Metoda najmniejszych kwadratów (ang. *least squares*) dobiera parametry tak, by
 między uporządkowanymi maksimami a kwantylami rozkładu w pozycjach Weibulla była najmniejsza.
 
 <!-- spec:fit_least_squares -->
+
+<a id="spec-fit_least_squares"></a>
+
+> **Parametry rozkładu maksimów rocznych metodą najmniejszych kwadratów na pozycjach wykreślnych** · specyfikacja [`fit_least_squares`](../FORMULAS.md#fit_least_squares) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> (\hat{k}, \hat{\xi}, \hat{\alpha}) = \arg\min \sum_{j=1}^{n}\left(x_{(j)} - Q\left(\frac{j}{n + 1}; k, \xi, \alpha\right)\right)^2
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_i$ | `annual_maxima` (ciąg) | Próba: maksima roczne lub dowolna próba z danego rozkładu | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 3) |
+> | $F$ | `distribution` (wybór) | Rozkład: logarytmiczno-normalny o parametrze położenia 0, GEV, Pearsona typu III lub trójparametrowy rozkład Weibulla z scipy.stats | – | jedna z: `log_normal`, `gev`, `pearson3`, `weibull` | – | – |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $k$ | `shape` | Parametr kształtu: s rozkładu logarytmiczno-normalnego, c rozkładu GEV (znak jak w scipy, k Hoskinga, -xi Colesa), skośność rozkładu Pearsona III, parametr kształtu rozkładu Weibulla | – | (−∞; ∞) |
+> | $\xi$ | `loc` | Parametr położenia: 0 dla rozkładu logarytmiczno-normalnego, średnia rozkładu Pearsona III, dolne ograniczenie rozkładu Weibulla | m³/s | (−∞; ∞) |
+> | $\alpha$ | `scale` | Parametr skali; wartość, która uległaby niedomiarowi, zastępuje się najmniejszą liczbą float64 (tolerancja brzegowa) | m³/s | (0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | n >= 3 | `enough_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 4) |
+> | min(x) < max(x) | `values_not_all_equal` | odmowa obliczeń: wzór jest nieokreślony | (źr. 5) |
+> | min(x) > 0 dla rozkładu logarytmiczno-normalnego (parametr położenia 0) | `positive_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 6) |
+> | G > -1,1395 dla rozkładu Weibulla: poszukiwanie startuje z oszacowania metodą momentów | `skewness_within_distribution` | odmowa obliczeń: wzór jest nieokreślony | (źr. 7) |
+> | suma kwadratów ma minimum wewnątrz przeszukiwanych kształtów (logarytmiczno-normalny s < 5, GEV -1 < c < 50, Pearson III \|G\| < 9, kształt Weibulla < 50), na którym poszukiwanie się stabilizuje | `squares_have_a_minimum` | odmowa obliczeń: wzór jest nieokreślony | (źr. 8) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $\gamma_G$ | `gumbel_skewness` | Skośność rozkładu Gumbela | 1,1395470994046488 | – | (źr. 7) |
+>
+> **Konwencje**
+>
+> - pozycje wykreślne Weibulla j / (n + 1) próby uporządkowanej rosnąco, reszty bez wag w jednostce próby
+> - parametry w konwencji scipy, jak w `fit_moments`
+> - poszukiwanie prowadzi się na próbie standaryzowanej (dla rozkładu logarytmiczno-normalnego o parametrze położenia 0 próbę tylko dzieli się przez jej odchylenie standardowe), startując z oszacowania metodą momentów; metodę Neldera–Meada (xatol 1e-10, fatol 1e-12) uruchamia się ponownie od jej punktu końcowego, aż przebieg poprawi wynik najwyżej o 1e-9, przy najwyżej 21 przebiegach
+>
+> **Założenia**
+>
+> - maksima roczne są niezależne i mają jednakowy rozkład
+>
+> **Zgodność z obserwacjami według źródeł:** brak: estymator daje rozkład najbliższy naniesionej próbie
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1, p. II.5-14: the Weibull plotting position i / (n + 1) of the graphical fit of a distribution to the ordered sample <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+> 2. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eq. 3.7: the empirical probability m / (N + 1) of the ordered annual maxima <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 3. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 4. Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, eq. 4a: the moments of the start divide by (N - 1)(N - 2) <https://pubs.usgs.gov/unnumbered/70275162/report.pdf>
+> 5. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.1: values all equal have no spread to fit <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+> 6. Hosking, J.R.M. lmom: L-moments, R package version 3.3, CRAN (the Fortran routines of Hosking and Wallis 1997), pelln3 with bound 0: the distribution of ln(x - 0), defined for x > 0 <https://cran.r-project.org/package=lmom>
+> 7. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, table II.5.2, p. II.5-5: the Gumbel (EV1) distribution, of skewness 1.1396, 12 sqrt(6) zeta(3) / pi**3 <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+> 8. Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia, appendix 3: the frequency factors of Pearson type III, tabulated for skews of -9 to 9 <https://pubs.usgs.gov/unnumbered/70275162/report.pdf>
+>
+> Funkcja `hydrolog.statistics.frequency.fit_least_squares`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:fit_least_squares -->
 
 Różnice są w m³/s, a największe maksima leżą najdalej od siebie, więc to one decydują o dopasowaniu.
@@ -262,6 +905,65 @@ Statystyka $A^2$ (ang. *Anderson–Darling*) mierzy odległość dystrybuanty do
 z większą wagą w ogonach niż test Kołmogorowa–Smirnowa.
 
 <!-- spec:anderson_darling -->
+
+<a id="spec-anderson_darling"></a>
+
+> **Statystyka A² Andersona–Darlinga dla próby względem dopasowanego rozkładu** · specyfikacja [`anderson_darling`](../FORMULAS.md#anderson_darling) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> A^2 = -n - \sum_{i=1}^{n} \frac{2i - 1}{n}\left[\ln F(x_{(i)}) + \ln\left(1 - F(x_{(n+1-i)})\right)\right]
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_i$ | `annual_maxima` (ciąg) | Próba: maksima roczne lub dowolna próba z danego rozkładu | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 4) |
+> | $F$ | `distribution` (wybór) | Rozkład: logarytmiczno-normalny o parametrze położenia 0, GEV, Pearsona typu III lub trójparametrowy rozkład Weibulla z scipy.stats | – | jedna z: `log_normal`, `gev`, `pearson3`, `weibull` | – | – |
+> | $k$ | `shape` | Parametr kształtu: s rozkładu logarytmiczno-normalnego, c rozkładu GEV (znak jak w scipy, k Hoskinga, -xi Colesa), skośność rozkładu Pearsona III, parametr kształtu rozkładu Weibulla | – | (−∞; ∞) | nie podano w źródłach | [−0,6; 2,7] (źr. 5) |
+> | $\xi$ | `loc` | Parametr położenia | m³/s | (−∞; ∞) | nie podano w źródłach | [−1; 35,4] (źr. 5) |
+> | $\alpha$ | `scale` | Parametr skali | m³/s | (0; ∞) | nie podano w źródłach | [1; 37] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $A^2$ | `a_squared` | Statystyka: n razy całka z kwadratu różnicy dystrybuanty empirycznej i dopasowanej, ważona przez 1 / (F (1 - F)) | – | [0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | shape > 0 dla rozkładu logarytmiczno-normalnego (s) i Weibulla (k) | `shape_of_the_distribution` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 6) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $\epsilon$ | `cdf_clip` | Margines obcięcia dystrybuanty F od zera i od jedności | 1·10⁻¹⁰ | – | (źr. 7) |
+>
+> **Konwencje**
+>
+> - statystyka dla rozkładu zadanego z góry (przypadek 0 u Stephensa 1974), tu liczona przy parametrach oszacowanych z tej samej próby: jej wartości krytyczne nie są wartościami przypadku 0
+> - wartości krytyczne, które FloodFrequencyAnalysis podaje dla dopasowania metodą L-momentów, pochodzą z parametrycznego bootstrapu tego dopasowania (ADR-0048): 999 prób po n wartości wylosowanych z niego z ziarnem 20261118, każda dopasowana ponownie metodą L-momentów; dopasowanie inną metodą nie ma wartości krytycznych
+> - F obcięte do [cdf_clip, 1 - cdf_clip], więc wartość poza nośnikiem rozkładu dodaje duży skończony składnik zamiast nieskończonego
+> - F z scipy.stats przy parametrach jego rozkładów lognorm, genextreme, pearson3 lub weibull_min
+> - próba w dowolnej jednostce, w tej samej jednostce loc i scale: A² jest bezwymiarowe
+>
+> **Zgodność z obserwacjami według źródeł:** brak: miara odległości między próbą a dopasowanym rozkładem
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. NIST/SEMATECH e-Handbook of Statistical Methods (2012), sect. 1.3.5.14, Anderson-Darling test: A² = -N - S, S = sum (2i - 1) / N [ln F(Y_i) + ln(1 - F(Y_(N+1-i)))] of the ordered data <https://www.itl.nist.gov/div898/handbook/eda/section3/eda35e.htm>
+> 2. Anderson, T.W. and Darling, D.A. (1954). A test of goodness of fit. Journal of the American Statistical Association 49(268), 765-769, the statistic W_n² and its computing form — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 3. Stephens, M.A. (1974). EDF statistics for goodness of fit and some comparisons. Journal of the American Statistical Association 69(347), 730-737, the computing form of A²; case 0, a distribution given in advance — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 4. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 5. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 6. Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.lognorm, shape s > 0, and scipy.stats.weibull_min, shape c > 0 <https://docs.scipy.org/doc/scipy/reference/stats.html>
+> 7. Hydrolog (2026). ADR-0048: Anderson-Darling critical values by a parametric bootstrap, decision 1: A² keeps its form, F clipped to [1e-10, 1 - 1e-10] <https://github.com/Daldek/Hydrolog/blob/main/docs/decisions/0048-anderson-darling-critical-values-by-a-parametric-bootstrap.md>
+>
+> Funkcja `hydrolog.statistics.frequency.anderson_darling`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:anderson_darling -->
 
 Tablicowe wartości krytyczne $A^2$ (Stephens 1974) dotyczą rozkładu znanego z góry. Gdy parametry
@@ -291,6 +993,59 @@ dystrybuant w pozycjach Weibulla) z inną wartością krytyczną; Hydrolog go ni
 ### Kryterium informacyjne Akaikego (AIC)
 
 <!-- spec:akaike_information_criterion -->
+
+<a id="spec-akaike_information_criterion"></a>
+
+> **Kryterium informacyjne Akaikego dla rozkładu dopasowanego do próby** · specyfikacja [`akaike_information_criterion`](../FORMULAS.md#akaike_information_criterion) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> \mathrm{AIC} = 2k - 2\sum_{i=1}^{n} \ln f(x_i; k, \xi, \alpha)
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_i$ | `annual_maxima` (ciąg) | Próba: maksima roczne lub dowolna próba z danego rozkładu | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 3) |
+> | $F$ | `distribution` (wybór) | Rozkład: logarytmiczno-normalny o parametrze położenia 0, GEV, Pearsona typu III lub trójparametrowy rozkład Weibulla z scipy.stats | – | jedna z: `log_normal`, `gev`, `pearson3`, `weibull` | – | – |
+> | $k$ | `shape` | Parametr kształtu: s rozkładu logarytmiczno-normalnego, c rozkładu GEV (znak jak w scipy, k Hoskinga, -xi Colesa), skośność rozkładu Pearsona III, parametr kształtu rozkładu Weibulla | – | (−∞; ∞) | nie podano w źródłach | [−0,6; 2,7] (źr. 4) |
+> | $\xi$ | `loc` | Parametr położenia | m³/s | (−∞; ∞) | nie podano w źródłach | [−1; 35,4] (źr. 4) |
+> | $\alpha$ | `scale` | Parametr skali | m³/s | (0; ∞) | nie podano w źródłach | [1; 37] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $\mathrm{AIC}$ | `aic` | Kryterium: im mniejsze, tym lepsze dopasowanie przy danej liczbie parametrów | – | (−∞; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | shape > 0 dla rozkładu logarytmiczno-normalnego (s) i Weibulla (k) | `shape_of_the_distribution` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 5) |
+> | ln f(x_i) jest skończony dla każdej wartości, a więc i ich suma: każda wartość leży wewnątrz nośnika rozkładu, gdzie gęstość jest dodatnia i skończona | `values_within_support` | odmowa obliczeń: wzór jest nieokreślony | (źr. 6) |
+>
+> **Konwencje**
+>
+> - wiarygodność przy parametrach z metody, która je wyznaczyła, maksymalna tylko w metodzie największej wiarygodności (ADR-0021, pkt 7): ranking według AIC porównuje wiarygodność parametrów każdego dopasowania
+> - k to liczba dopasowywanych parametrów: 2 dla rozkładu logarytmiczno-normalnego, którego parametr położenia jest ustalony na 0, 3 dla pozostałych
+> - dopasowanie, które pozostawia wartość poza swoim nośnikiem, nie ma skończonego AIC: FloodFrequencyAnalysis nadaje mu nieskończone AIC bez użycia wzoru, z komunikatem `outside_support`, i umieszcza je na ostatnim miejscu
+> - ln f z scipy.stats przy parametrach jego rozkładów lognorm, genextreme, pearson3 lub weibull_min, sumowane z dokładnym zaokrągleniem (math.fsum)
+> - logarytm naturalny; AIC zależy od jednostki próby
+>
+> **Zgodność z obserwacjami według źródeł:** brak: kryterium do porównywania dopasowań; według WMO-No. 168 samo nie wystarcza do wyboru jednego z nich
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.3, eq. 5.31, pp. II.5-14 and II.5-15: AIC(f) = -2 log L(theta, x) + 2k, with L the likelihood function and k the number of parameters; alone not appropriate for model selection <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+> 2. Akaike, H. (1974). A new look at the statistical model identification. IEEE Transactions on Automatic Control 19(6), 716-723, the criterion -2 ln (maximum likelihood) + 2 k — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 3. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 4. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 5. Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.lognorm, shape s > 0, and scipy.stats.weibull_min, shape c > 0 <https://docs.scipy.org/doc/scipy/reference/stats.html>
+> 6. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.6.3, eq. 5.31: the logarithm of the likelihood, -inf where a value has no density <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+>
+> Funkcja `hydrolog.statistics.frequency.akaike_information_criterion`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
 <!-- /spec:akaike_information_criterion -->
 
 AIC (ang. *Akaike information criterion*) nagradza wiarygodność i karze liczbę parametrów; mniejsze

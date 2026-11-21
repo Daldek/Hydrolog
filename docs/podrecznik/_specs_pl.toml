@@ -23,6 +23,7 @@
 "1/%" = { name = "odwrotność procentu" }
 "1/h" = { name = "odwrotność godziny" }
 "1/km2" = { name = "odwrotność kilometra kwadratowego" }
+"1/min" = { name = "odwrotność minuty" }
 "a" = { name = "rok" }
 "cm" = { name = "centymetr" }
 "d" = { name = "doba" }
@@ -33,6 +34,8 @@
 "h (ft3 s^-1 mi^-2 in^-1)^1.08" = { name = "jednostka stałej wzoru w jednostkach anglosaskich: godziny, stopy sześcienne na sekundę, mile kwadratowe i cale" }
 "h km^-0.52" = { name = "jednostka parametru empirycznego w godzinach i kilometrach" }
 "h km^-0.52 s^-1 m^1/3" = { name = "jednostka współczynnika empirycznego w godzinach, kilometrach, sekundach i metrach" }
+"h km^-0.78 mm^0.11 h^-0.22" = { name = "jednostka współczynnika empirycznego w godzinach, kilometrach i milimetrach" }
+"h km^-0.92 mm^0.27 h^-0.37" = { name = "jednostka współczynnika empirycznego w godzinach, kilometrach i milimetrach" }
 "h km^-1 m^0.5" = { name = "jednostka współczynnika empirycznego w godzinach, kilometrach i metrach" }
 "h m3 s^-1 km^-2 mm^-1" = { name = "godzina razy metr sześcienny na sekundę na kilometr kwadratowy i milimetr opadu" }
 "h^0.04" = { name = "jednostka współczynnika empirycznego w godzinach" }
@@ -57,6 +60,7 @@
 "min^(1/0.467) ft^-1" = { name = "jednostka stałej wzoru w minutach i stopach" }
 "mm" = { name = "milimetr" }
 "mm/(°C·d)" = { name = "milimetr na stopień Celsjusza i dobę" }
+"mm/h" = { name = "milimetr na godzinę" }
 "month" = { name = "miesiąc kalendarzowy (jego numer)", symbol = "mies." }
 "s m^-1/3" = { name = "sekunda na metr do potęgi jednej trzeciej (jednostka współczynnika Manninga)" }
 "s/d" = { name = "sekundy na dobę" }
@@ -73,6 +77,7 @@
 "HSG" = "HSG"
 "for" = "dla"
 "no upstream stream" = "brak cieków powyżej"
+"no upstream link" = "brak odcinka powyżej"
 "two or more " = "co najmniej dwa "
 "otherwise" = "w pozostałych przypadkach"
 "dry" = "dzień bezopadowy"
@@ -450,8 +455,106 @@ centroid_within_length = "Lc <= L: obie długości mierzy się wzdłuż cieku g�
 shares_within_catchment = "U + W <= 100: tereny zurbanizowane i lasy to udziały w powierzchni tej samej zlewni, które się nie pokrywają"
 root_in_bracket = "f(1,1) <= tp up <= f(20), tp od około 3,4e-11 do 3,4e23 h: pierwiastek N równania f(N) = tp up leży w przeszukiwanym przedziale, zaczynającym się od pierwszego wiersza tab. C.2, a float64 mieści każdy krok obliczeń"
 
+[formulas.nash_urban_regression]
+en_sha256 = "1dc27197b4b5bc5735ed9040d40050c9e86a826cc1134f9bfd6ee5f3d7c60c3c"
+title = "Parametry n i K modelu Nasha dla zlewni zurbanizowanej z regresji Rao, Delleura i Sarmy (1972)"
+validation = "Rao i in. (1972) dopasowali zależności do opadów w urbanizujących się zlewniach koło Indianapolis (tak podają je KZGW i Sikorska i in. 2012, bez statystyk błędu); KZGW (2017, s. 107) zaleca je tylko tam, gdzie parametrów nie da się dopasować do pomierzonych opadów i odpływów"
+conventions = [
+    "A w km², H w mm, D w h, U bezwymiarowe; LAG i k w h, K zwracane w min przez dokładne 60 min/h: stałe 1,28 i 0,56 obowiązują tylko dla tych jednostek (KZGW 2017, s. 107)",
+    "U to udział powierzchni nieprzepuszczalnych (KZGW 2017, s. 107; Sikorska i in. 2012, tab. 1), a nie udział terenów zabudowanych",
+    "iloczyn potęg A, H i D: wyrażają to własności skalowania, a jednostki niosą stałe (tą własnością nie jest jednorodność wymiarowa)",
+    "H i D dotyczą danego opadu: parametry zmieniają się z każdym opadem",
+]
+assumptions = [
+    "zlewnie zurbanizowane o powierzchni do 52 km², których parametrów nie da się dopasować do pomierzonych opadów i odpływów (KZGW 2017, s. 107)",
+]
+
+[formulas.nash_urban_regression.variables]
+area_km2 = "Powierzchnia zlewni"
+effective_precip_mm = "Wysokość opadu efektywnego danego deszczu"
+duration_h = "Czas trwania opadu efektywnego"
+urban_fraction = "Udział powierzchni nieprzepuszczalnych w powierzchni zlewni"
+
+[formulas.nash_urban_regression.outputs]
+lag_time_h = "Czas opóźnienia hydrogramu jednostkowego chwilowego, N K"
+n = "Liczba zbiorników kaskady Nasha"
+k_min = "Stała retencji każdego zbiornika"
+
+[formulas.nash_urban_regression.constants]
+lag_coefficient = "Współczynnik zależności czasu opóźnienia"
+lag_area_exponent = "Wykładnik powierzchni zlewni w zależności czasu opóźnienia"
+lag_urban_exponent = "Wykładnik udziału powierzchni nieprzepuszczalnych w zależności czasu opóźnienia"
+lag_depth_exponent = "Wykładnik wysokości opadu efektywnego w zależności czasu opóźnienia"
+lag_duration_exponent = "Wykładnik czasu trwania opadu efektywnego w zależności czasu opóźnienia"
+k_coefficient = "Współczynnik zależności stałej retencji"
+k_area_exponent = "Wykładnik powierzchni zlewni w zależności stałej retencji"
+k_urban_exponent = "Wykładnik udziału powierzchni nieprzepuszczalnych w zależności stałej retencji"
+k_depth_exponent = "Wykładnik wysokości opadu efektywnego w zależności stałej retencji"
+k_duration_exponent = "Wykładnik czasu trwania opadu efektywnego w zależności stałej retencji"
+
+[formulas.nash_iuh]
+en_sha256 = "2d222f70e212aa8b357e4b0f73a11bbcea365e3e498dc20b50bc6d8fa6ab0032"
+title = "Hydrogram jednostkowy chwilowy Nasha i jego hydrogram jednostkowy dla czasu trwania opadu"
+validation = "brak: Nash (1957) podaje model; n i K dopasowuje się do wezbrań obserwowanych lub szacuje (specyfikacje `lutz` i `nash_urban_regression`), a źródła nie podają żadnej statystyki błędu kształtu"
+conventions = [
+    "czasy w min od początku opadu; hydrogram chwilowy w 1/min; rzędne w m³/s na mm",
+    "hydrogram chwilowy w t = 0 ma na siatce wartość 0, także dla n <= 1, gdzie gęstość wynosi 1 / K (n = 1) lub jest nieograniczona (n < 1), gdy t dąży do 0",
+    "hydrogram jednostkowy dla D to hydrogram chwilowy uśredniony w czasie D za pomocą dokładnej krzywej S, czyli wzory 6.22-6.23 KZGW dla D = dt: D nie musi być całkowitą wielokrotnością kroku; D dużo krótsze niż dt traci cyfry znaczące w różnicy S(t) - S(t - D)",
+    "S(t) - S(t - D) to różnica P tam, gdzie S(t) <= 1/2, a dalej różnica Q = 1 - P, regularyzowanej górnej niekompletnej funkcji gamma: P z SciPy nie jest monotoniczna względem t dla n rzędu 1e-12 i mniejszych (i przekracza 1 poniżej 1e-14), a jej Q jest",
+    "siatka kończy się w T (`NashIUH`: 5 n K + D, a dla samego hydrogramu chwilowego max(5 n K, 10 K)): rzędne mieszczą S(T) jednostki, mniej niż 1 mm o ogon poza T",
+    "n poza przedziałem od 1 do 10 lub K poza przedziałem od 10 do 200 min podane klasie `NashIUH` dają uwagę `outside_unverified_range` (`nash.n`, `nash.k_min`): żadne źródło nie publikuje tych przedziałów",
+]
+assumptions = [
+    "zlewnia odpowiada jak kaskada n jednakowych zbiorników liniowych",
+    "opad efektywny równomierny na całej zlewni i w czasie D",
+]
+
+[formulas.nash_iuh.variables]
+n = "Liczba zbiorników kaskady, parametr kształtu; nie musi być całkowita"
+k_min = "Stała retencji każdego zbiornika"
+area_km2 = "Powierzchnia zlewni"
+timestep_min = "Krok czasowy rzędnych"
+duration_min = "Czas trwania jednostkowego opadu efektywnego"
+total_duration_min = "Długość hydrogramu; `NashIUH` przyjmuje 5 n K + D"
+
+[formulas.nash_iuh.outputs]
+times_min = "Chwile rzędnych liczone od początku opadu"
+iuh_ordinates_per_min = "Rzędne hydrogramu jednostkowego chwilowego w tych chwilach"
+ordinates_m3s = "Rzędne hydrogramu jednostkowego dla czasu trwania D"
+lag_time_min = "Czas opóźnienia, pierwszy moment hydrogramu jednostkowego chwilowego"
+time_to_peak_min = "Chwila największej rzędnej hydrogramu jednostkowego"
+peak_discharge_m3s = "Największa rzędna hydrogramu jednostkowego"
+
+[formulas.nash_iuh.constraints]
+length_bounded = "siatka ma najwyżej milion rzędnych"
+representable = "float64 przedstawia T / K, 1 / K oraz 1 mm nad zlewnią na sekundę czasu D, A x 1 mm / D, a n, K i D są liczbami znormalizowanymi (niekompletna funkcja gamma SciPy dla n podnormalnego nie jest monotoniczna)"
+
+[formulas.nash_iuh_peak]
+en_sha256 = "e77ff743ab38914c2b339736ec03be4b98930a3b0d71db9cf998aa01e145ce18"
+title = "Czas do szczytu i rzędna szczytowa hydrogramu jednostkowego chwilowego Nasha"
+validation = "brak: dokładne własności gęstości gamma Nasha (1957); źródła nie podają żadnej statystyki błędu"
+conventions = [
+    "tp w min od chwili opadu, up w 1/min",
+    "`NashIUH.time_to_peak_min` i `peak_ordinate_per_min` są puste (null) dla n <= 1, z uwagą `iuh_peak_undefined`, tam gdzie wersje do 0.8.1 podawały 0 i 1 / K",
+]
+assumptions = [
+    "hydrogram jednostkowy chwilowy kaskady n jednakowych zbiorników liniowych (specyfikacja `nash_iuh`)",
+]
+
+[formulas.nash_iuh_peak.variables]
+n = "Liczba zbiorników kaskady, parametr kształtu; nie musi być całkowita"
+k_min = "Stała retencji każdego zbiornika"
+
+[formulas.nash_iuh_peak.outputs]
+time_to_peak_min = "Chwila szczytu hydrogramu jednostkowego chwilowego, czyli jego dominanta"
+peak_ordinate_per_min = "Rzędna szczytowa hydrogramu jednostkowego chwilowego"
+
+[formulas.nash_iuh_peak.constraints]
+peak_defined = "n > 1: dla n <= 1 hydrogram chwilowy maleje od t = 0, gdzie wynosi 1 / K (n = 1) lub jest nieograniczony (n < 1), więc nie ma szczytu dla t > 0"
+representable = "K jest liczbą znormalizowaną, a float64 przedstawia 1 / K, ograniczenie szczytu"
+
 [formulas.scs]
-en_sha256 = "8c1dfea0979298b69e19c0fa048c956dda18679d0a620745eb9e9997c928aa98"
+en_sha256 = "ce3489830c4ef1d268dcf31235d0ab7169c42be7440cdc256f353b6a88b813f4"
 title = "Bezwymiarowy hydrogram jednostkowy SCS (NRCS) dla jednostkowego czasu trwania opadu"
 validation = "Mockus (1957) wyprowadził bezwymiarowy hydrogram jednostkowy z wielu naturalnych hydrogramów jednostkowych zlewni bardzo zróżnicowanych pod względem wielkości i położenia geograficznego (NEH 630-16, s. 16-2; HEC-HMS 2000, s. 55: małe zlewnie rolnicze); źródła nie podają żadnej statystyki błędu jego kształtu ani kulminacji"
 conventions = [
@@ -465,7 +568,7 @@ conventions = [
 assumptions = [
     "opad efektywny równomierny na całej zlewni i w czasie D; zlewnie cząstkowe o powierzchni najwyżej 20 mil kwadratowych, największa najwyżej 10 razy większa od najmniejszej (NEH 630, s. 16-4); większe zlewnie dzieli się, a ich hydrogramy transformuje się w korytach",
     "tlag = 0,6 tc, przeciętna zależność z rozdz. 15 NEH 630",
-    "D = 0,2 Tp (D = 0,133 tc), najwyżej 0,25 Tp (NEH 630, s. 16A-3); powyżej tej granicy `hydrograph generate` ostrzega uwagą `outside_typical_range` dla `scs.timestep_min`",
+    "D = 0,2 Tp (D = 0,133 tc), najwyżej 0,25 Tp (NEH 630, s. 16A-3); powyżej tej granicy `hydrograph generate` ostrzega uwagą `outside_applicability` dla `scs.timestep_min`",
 ]
 
 [formulas.scs.variables]
@@ -490,7 +593,7 @@ step_share = "Największy zalecany stosunek kroku czasowego do czasu do kulminac
 steps_representable = "float64 przedstawia tlag, Tp, podkrok i kulminacje jako liczby znormalizowane, podkroków jest najwyżej 2**53, a siatki kroku i podkroku mają każda najwyżej milion rzędnych"
 
 [formulas.snyder]
-en_sha256 = "d21a0f74f51152fdfb6bb990ac683e6b3ba3cd140131e21e5845bcbac09845c4"
+en_sha256 = "194f32e2664d607ae6837c64c70a5a6ed6e13616bbcfebbb5890369fc87964b4"
 title = "Syntetyczny hydrogram jednostkowy Snydera: czas opóźnienia, kulminacja, czas podstawy i szerokości"
 validation = "Snyder (1938) wyprowadził zależności dla zlewni w Appalachach o powierzchni od 10 do 10 000 mil kwadratowych (Chow i in. 1988 za notatkami Rajagopalana, s. 76); Ct i Cp są regionalne i najlepiej wyznaczać je przez kalibrację (HEC-HMS); źródła nie podają żadnej statystyki błędu"
 conventions = [
@@ -503,7 +606,7 @@ conventions = [
 ]
 assumptions = [
     "współczynniki Ct i Cp są właściwe dla regionu i najlepiej kalibrować je na zlewniach kontrolowanych tego regionu (HEC-HMS); KZGW 2017 podaje od 1,35 do 1,65 i od 0,4 do 0,8",
-    "większość zlewni ekosystemu (powierzchnie w przekazaniach danych do 250 km²) jest mniejsza od zlewni Snydera, od 30 do 30 000 km²: otrzymują one uwagę `outside_typical_range` dla `snyder.area_km2`",
+    "większość zlewni ekosystemu (powierzchnie w przekazaniach danych do 250 km²) jest mniejsza od zlewni Snydera, od 30 do 30 000 km²: otrzymują one uwagę `outside_applicability` dla `snyder.area_km2`",
 ]
 
 [formulas.snyder.variables]
@@ -539,7 +642,7 @@ width_exponent = "Wykładnik kulminacji na jednostkę powierzchni w zależności
 representable = "float64 przedstawia czas opóźnienia, kulminacje, czas podstawy i szerokości jako liczby znormalizowane"
 
 [formulas.snyder_shape]
-en_sha256 = "331b7328813c23197e2c13d25f1e77e874f43ab47bc4ea865816542aa6203847"
+en_sha256 = "9f45775d530e71ddde3d8fb51c3bd4271334b793fe94f9efb0dbc5e226f4a8a5"
 title = "Hydrogram jednostkowy Snydera jako krzywa gamma o objętości 1 mm przechodząca przez kulminację"
 validation = "brak: metoda Snydera daje kulminację, szerokości i czas podstawy, a nie krzywą (KZGW 2017, rys. 6.1; HEC-HMS dopasowuje zamiast tego hydrogram jednostkowy Clarka); Asquith i Roussel (2007) podają krzywą i jej objętość"
 conventions = [
@@ -565,7 +668,7 @@ ordinates_m3s = "Rzędne hydrogramu jednostkowego"
 
 [formulas.snyder_shape.constraints]
 root_bracketed = "wykładnik K krzywej o objętości 1 mm leży między 1e-12 a 1e12: qpR tpR / (A x 1 mm) między około 1e-12 a 4e5"
-grid_representable = "siatka ma najwyżej milion rzędnych, a float64 przedstawia (T + dt) / tpR oraz rzędną odpowiadającą 1 mm w jednym kroku, A x 1 mm / dt"
+grid_representable = "siatka ma najwyżej milion rzędnych, a float64 przedstawia (T + dt) / tpR oraz, jako liczbę znormalizowaną, rzędną odpowiadającą 1 mm w jednym kroku, A x 1 mm / dt"
 
 [formulas.clark]
 en_sha256 = "b734f4743eaca1b25d4dcd97f002d8785037644afe70ac5a0cef9f70294f4a0c"
@@ -606,6 +709,28 @@ time_area_exponent = "Wykładnik krzywej czas–powierzchnia zlewni eliptycznej"
 step_stable = "krok czasowy wynosi najwyżej dwukrotność stałej retencji, dt <= 2 R (z tolerancją 1e-9 · 2 R na zaokrąglenia): powyżej tej granicy poprzedni odpływ ma ujemną wagę (2 R - dt) / (2 R + dt), a rzędne oscylują poniżej 0"
 length_bounded = "siatka ma najwyżej milion rzędnych"
 representable = "float64 przedstawia jako liczby znormalizowane pierwszy odpływ ze zbiornika, C A(dt) / A, oraz 1 mm nad zlewnią na sekundę czasu D, A x 1 mm / D"
+
+[formulas.clark_lag]
+en_sha256 = "191d5ff2aa74f08d67e4ae90db0bb918b20190f37b954ca94890aa500f113c33"
+title = "Czas opóźnienia modelu Clarka: środek ciężkości krzywej czas–powierzchnia plus R"
+validation = "brak: dokładna własność modelu; parametry tc i R Clarka kalibruje się na wezbraniach obserwowanych (HEC-HMS), a źródła nie podają żadnej statystyki błędu"
+conventions = [
+    "opóźnienie od chwili jednostki opadu do środka ciężkości odpowiedzi, w min; hydrogram jednostkowy dla D jest opóźniony o dalsze D / 2 względem początku opadu",
+    "środek ciężkości eliptycznej krzywej czas–powierzchnia z HEC-HMS leży w tc / 2 niezależnie od jej współczynnika (1,414): pola, które jej dwie połówki odcinają od prostej A = 1, są równe",
+]
+assumptions = [
+    "krzywa czas–powierzchnia zlewni eliptycznej (specyfikacja `clark`); inna krzywa ma inny środek ciężkości",
+]
+
+[formulas.clark_lag.variables]
+tc_min = "Czas koncentracji, czyli czas translacji zlewni"
+r_min = "Stała retencji zbiornika liniowego, S = R O"
+
+[formulas.clark_lag.outputs]
+lag_time_min = "Czas opóźnienia, pierwszy moment hydrogramu jednostkowego chwilowego Clarka liczony od chwili opadu"
+
+[formulas.clark_lag.constants]
+centroid_share = "Względne położenie środka ciężkości krzywej czas–powierzchnia, ułamek tc"
 
 [formulas.uh_convolution]
 en_sha256 = "5823a28edc36af513cb73cd927569a9c8bb3b8e7b8b3b580b76ebc50a67cb47b"
@@ -1023,12 +1148,12 @@ same_length = "jedna powierzchnia na każdą wysokość"
 positive_relief = "max(z) > min(z): wysokość względna h/H powstaje z dzielenia przez deniwelację"
 
 [formulas.strahler_order]
-en_sha256 = "ff9f05094a086ec926336ae2c31955949c29c3912db209c51abccc992fdb88ea"
+en_sha256 = "766f555782e161e16f9cdb6901e7fe8b396e38380928713a56707915ceafffbf"
 title = "Rząd cieku poniżej węzła według Strahlera"
 validation = "brak: klasyfikacja cieków sieci rzecznej"
 conventions = [
     "węzeł trzech lub więcej cieków podnosi rząd, gdy co najmniej dwa z nich mają rząd najwyższy",
-    "innym uporządkowaniem jest magnituda Shreve'a, czyli suma magnitud cieków powyżej węzła",
+    "innym uporządkowaniem jest magnituda Shreve'a, czyli suma magnitud cieków powyżej węzła (specyfikacja `shreve_magnitude`)",
 ]
 
 [formulas.strahler_order.variables]
@@ -1039,6 +1164,25 @@ order = "Rząd cieku poniżej węzła według Strahlera"
 
 [formulas.strahler_order.constraints]
 whole_orders = "rzędy są liczbami całkowitymi"
+
+[formulas.shreve_magnitude]
+en_sha256 = "e67ee2de8d21d31f11ba2cf4d45deb825272bdd43a601a1ba8ad3206989c3b5e"
+title = "Magnituda odcinka cieku poniżej węzła według Shreve'a"
+validation = "brak: klasyfikacja odcinków sieci rzecznej"
+conventions = [
+    "magnitudy odcinków, czyli fragmentów cieków między węzłami, takich jak odcinki `StreamNetwork`",
+    "`network stats --method shreve` liczy odcinki każdej magnitudy i nie podaje wskaźników Hortona, zdefiniowanych dla rzędów Strahlera",
+]
+
+[formulas.shreve_magnitude.variables]
+upstream_magnitudes = "Magnitudy według Shreve'a odcinków wpadających do danego odcinka; lista pusta dla odcinka źródłowego"
+
+[formulas.shreve_magnitude.outputs]
+magnitude = "Magnituda odcinka poniżej węzła według Shreve'a, czyli liczba źródeł powyżej niego"
+
+[formulas.shreve_magnitude.constraints]
+whole_magnitudes = "magnitudy są liczbami całkowitymi, liczbami źródeł"
+sum_exact = "suma magnitud jest mniejsza niż 2^53, do której float64 przedstawia dokładnie każdą liczbę całkowitą"
 
 [formulas.bifurcation_ratio]
 en_sha256 = "31d23745ceb66cfc55c7a0f8c5ab40716dc53fa89c84b0558cff2c596de6b3b6"
@@ -2521,6 +2665,208 @@ one_count_per_class = "jedna liczebność na każdą klasę między dwiema grani
 edges_increasing = "e[i+1] > e[i]: klasy o dodatniej szerokości, od najniższego stanu w górę"
 some_levels = "sum(n) > 0: częstości wymagają stanów"
 
+[formulas.areal_mean_precipitation]
+en_sha256 = "22f0047aa44ae6030f2a46c60fccbf5d2052252bd87b8d2ea736a554e1d415f8"
+title = "Opad obszarowy jako średnia arytmetyczna z posterunków"
+validation = "Chow i in. (1988, s. 78) uznają metodę za zadowalającą, gdy posterunki są rozmieszczone równomiernie na terenie płaskim; brak statystyki błędu"
+conventions = [
+    "wysokości w mm; podaje się tylko posterunki leżące w zlewni (Chow i in. 1988 pomijają posterunki poza nią)",
+    "sumę liczy `math.fsum`, z poprawnym zaokrągleniem",
+]
+
+[formulas.areal_mean_precipitation.variables]
+precipitation_mm = "Wysokość opadu na każdym posterunku"
+
+[formulas.areal_mean_precipitation.outputs]
+areal_precipitation_mm = "Średni opad w zlewni"
+
+[formulas.thiessen_precipitation]
+en_sha256 = "8cd0e612b90b9dd8b366ac6bcc2bfafe56425c9dbd392549869b2aae0e56b3b0"
+title = "Opad obszarowy metodą wieloboków Thiessena"
+validation = "brak: Chow i in. (1988, s. 78) opisują metodę jako dokładniejszą od średniej arytmetycznej, gdy posterunki są rozmieszczone nierównomiernie, ale nie podają statystyki błędu"
+conventions = [
+    "wysokości w mm, powierzchnie w km² (każda jedna jednostka daje tę samą średnią)",
+    "wagi to powierzchnie podzielone przez ich sumę: KZGW (2017, wzór 2.1) dzieli przez powierzchnię zlewni, co daje to samo, gdy wieloboki pokrywają zlewnię",
+    "wieloboki są dane; ich wyznaczenie nie należy do wzoru",
+]
+
+[formulas.thiessen_precipitation.variables]
+precipitation_mm = "Wysokość opadu na każdym posterunku"
+polygon_areas_km2 = "Powierzchnia wieloboku każdego posterunku w granicach zlewni"
+
+[formulas.thiessen_precipitation.outputs]
+areal_precipitation_mm = "Średni opad w zlewni"
+weights = "Waga każdego posterunku; wagi sumują się do jedności"
+
+[formulas.thiessen_precipitation.constraints]
+gauge_count = "jedna powierzchnia wieloboku na każdy posterunek"
+area_positive = "sum(A_i) > 0: wieloboki pokrywają choć część zlewni"
+
+[formulas.idw_precipitation]
+en_sha256 = "8d89afe8bb41f2cf48ea24c3f9e8cf14008dbc97f9e0c605b6e504c59cfdbeb4"
+title = "Opad w punkcie metodą odwrotnych odległości (IDW) z posterunków"
+validation = "brak: źródła podają metodę bez statystyki błędu; HEC-HMS stosuje ją w prognozach w czasie rzeczywistym"
+conventions = [
+    "współrzędne w metrach jednego układu odwzorowania (w Polsce EPSG:2180); wagi zależą tylko od stosunków odległości, więc każda jedna jednostka daje to samo oszacowanie, z wyjątkiem progu, poniżej którego posterunek leży w punkcie, 1e-10 jednostki",
+    "używa się każdego podanego posterunku: najbliższy posterunek w każdej ćwiartce i największa odległość z HEC-HMS to wybory wywołującego; posterunki leżące w punkcie dzielą go między siebie po równo",
+    "wagi liczy się z ln d względem najbliższego posterunku, więc d**-p ani nie przekracza zakresu float, ani nie zanika do sumy zerowej",
+]
+
+[formulas.idw_precipitation.variables]
+station_x_m = "Współrzędna wschodnia (easting) każdego posterunku"
+station_y_m = "Współrzędna północna (northing) każdego posterunku"
+precipitation_mm = "Wysokość opadu na każdym posterunku"
+target_x_m = "Współrzędna wschodnia punktu"
+target_y_m = "Współrzędna północna punktu"
+power = "Wykładnik potęgi odległości"
+
+[formulas.idw_precipitation.outputs]
+point_precipitation_mm = "Opad w punkcie"
+weights = "Waga każdego posterunku; wagi sumują się do jedności"
+
+[formulas.idw_precipitation.constraints]
+station_count = "dwie współrzędne i wysokość opadu dla każdego posterunku"
+
+[formulas.isohyet_precipitation]
+en_sha256 = "94dd0bad622bc41ce5198b97a4d3c2e39a27b6939835196adef72a5b055527c7"
+title = "Opad obszarowy metodą izohiet"
+validation = "brak: Chow i in. (1988, s. 80) nazywają metodę najdokładniejszą z trzech, gdy izohiety kreśli się zgodnie z rzeźbą terenu; brak statystyki błędu"
+conventions = [
+    "wysokości w mm, powierzchnie w km² (każda jedna jednostka daje tę samą średnią, więc także udziały w powierzchni zlewni)",
+    "opad pasa to średnia jego dwóch izohiet (KZGW 2017, wzór 2.2); pas skrajny dostaje granicę umowną, dla której ta średnia równa się oszacowanemu dla niego opadowi (Chow i in. 1988, rys. 3.4.3c: granice 0 i 56 mm dla 5 i 53 mm)",
+    "powierzchnie dzieli się przez ich sumę, czyli powierzchnię zlewni, gdy pasy ją pokrywają",
+]
+
+[formulas.isohyet_precipitation.variables]
+isohyet_values_mm = "Wartości kolejnych izohiet ograniczających pasy"
+zone_areas_km2 = "Powierzchnia każdego pasa między dwiema kolejnymi izohietami"
+
+[formulas.isohyet_precipitation.outputs]
+areal_precipitation_mm = "Średni opad w zlewni"
+
+[formulas.isohyet_precipitation.constraints]
+zone_count = "n izohiet ogranicza n - 1 pasów"
+area_positive = "sum(A_i) > 0: pasy pokrywają choć część zlewni"
+
+[formulas.block_hyetograph]
+en_sha256 = "50f1050a6dd2727fe54d842453e1721dcd184a23f10844154665982ba4bdd507"
+title = "Blokowy hietogram projektowy (o stałym natężeniu)"
+validation = "brak: deszcz blokowy jest konwencją projektową, nie modelem deszczy obserwowanych"
+conventions = [
+    "wysokości w mm na krok; t_j to koniec kroku j, krok j obejmuje ((j - 1) dt, j dt]",
+    "deszcz składa się z całych kroków: Td = n dt (ADR-0046)",
+]
+
+[formulas.block_hyetograph.variables]
+total_mm = "Całkowita wysokość deszczu"
+duration_min = "Czas trwania deszczu, całkowita liczba kroków"
+timestep_min = "Krok czasowy: długość każdego bloku deszczu"
+
+[formulas.block_hyetograph.outputs]
+intensities_mm = "Wysokość opadu w każdym kroku (pole zachowuje nazwę z wcześniejszych wersji; natężenie podaje pole wyniku intensity_mm_per_h)"
+times_min = "Koniec każdego kroku liczony od początku deszczu"
+
+[formulas.block_hyetograph.constraints]
+step_within_duration = "dt <= Td: deszcz obejmuje co najmniej jeden krok"
+steps_representable = "Td / dt <= 1 000 000: najwyżej milion kroków"
+whole_steps = "Td = n dt dla całkowitego n, z dokładnością do 1e-9 Td: deszcz składa się z całych kroków"
+
+[formulas.triangular_hyetograph]
+en_sha256 = "e259eb2cb72a952f0af52c6185ae3146775fa04b6d57788f31bb7ecd09dc7172"
+title = "Trójkątny hietogram projektowy Yena i Chowa: całki trójkąta w blokach"
+validation = "Chow i in. (1988, s. 464) podają w tabeli r dopasowane do deszczy w miastach USA, Indii i Kanady; sam trójkąt jest kształtem projektowym, a źródła nie podają dla niego statystyki błędu"
+conventions = [
+    "wysokości w mm na krok; t_j to koniec kroku j; h w mm/h według tabeli jednostek",
+    "każdy krok zawiera wysokość, jaką przypisuje mu ciągły trójkąt, czyli różnicę udziału skumulowanego na jego końcach (ADR-0046); trójkąta się nie próbkuje",
+    "deszcz składa się z całych kroków: Td = n dt (ADR-0046)",
+]
+
+[formulas.triangular_hyetograph.variables]
+total_mm = "Całkowita wysokość deszczu"
+duration_min = "Czas trwania deszczu, całkowita liczba kroków"
+timestep_min = "Krok czasowy: długość każdego bloku deszczu"
+peak_position = "Współczynnik wyprzedzenia burzy: czas do szczytu jako ułamek czasu trwania"
+
+[formulas.triangular_hyetograph.outputs]
+intensities_mm = "Wysokość opadu w każdym kroku (pole zachowuje nazwę z wcześniejszych wersji; natężenie podaje pole wyniku intensity_mm_per_h)"
+times_min = "Koniec każdego kroku liczony od początku deszczu"
+peak_intensity_mm_per_h = "Natężenie w szczycie trójkąta"
+peak_time_min = "Chwila szczytu liczona od początku deszczu"
+
+[formulas.triangular_hyetograph.constraints]
+step_within_duration = "dt <= Td: deszcz obejmuje co najmniej jeden krok"
+steps_representable = "Td / dt <= 1 000 000: najwyżej milion kroków"
+whole_steps = "Td = n dt dla całkowitego n, z dokładnością do 1e-9 Td: deszcz składa się z całych kroków"
+peak_intensity_finite = "2 P / Td jest skończonym natężeniem w float64 (deszcz trwający ułamek sekundy, o wysokości 1e-300 mm lub większej, przekracza ten zakres)"
+
+[formulas.beta_hyetograph]
+en_sha256 = "ab53a0ff04506f4e6631118d1e14b21d773a06a0d4261b25c18535b97d238597"
+title = "Hietogram projektowy Beta: całki gęstości rozkładu beta w blokach"
+validation = "KZGW (2017, s. 26) dobiera alfa i beta tak, by kulminacja hydrogramu z tego deszczu była równa przepływowi o tym samym prawdopodobieństwie; źródła nie podają statystyki błędu kształtu względem deszczy obserwowanych"
+conventions = [
+    "wysokości w mm na krok; t_j to koniec kroku j",
+    "każdy krok zawiera całkę gęstości po swoim przedziale (ADR-0046); KZGW (2017, wzór 2.20) liczy gęstość na końcach kroków, co przesuwa deszcz o pół kroku, i tego Hydrolog nie naśladuje",
+    "deszcz składa się z całych kroków: Td = n dt (ADR-0046)",
+]
+assumptions = [
+    "KZGW (2017) dzieli sumę dobową na kroki godzinowe hipotetycznego wezbrania; Hydrolog przyjmuje dowolny czas trwania i krok",
+]
+
+[formulas.beta_hyetograph.variables]
+total_mm = "Całkowita wysokość deszczu"
+duration_min = "Czas trwania deszczu, całkowita liczba kroków"
+timestep_min = "Krok czasowy: długość każdego bloku deszczu"
+alpha = "Pierwszy parametr kształtu (r w KZGW): narastanie deszczu"
+beta = "Drugi parametr kształtu (s w KZGW): zanikanie deszczu"
+
+[formulas.beta_hyetograph.outputs]
+intensities_mm = "Wysokość opadu w każdym kroku (pole zachowuje nazwę z wcześniejszych wersji; natężenie podaje pole wyniku intensity_mm_per_h)"
+times_min = "Koniec każdego kroku liczony od początku deszczu"
+
+[formulas.beta_hyetograph.constraints]
+step_within_duration = "dt <= Td: deszcz obejmuje co najmniej jeden krok"
+steps_representable = "Td / dt <= 1 000 000: najwyżej milion kroków"
+whole_steps = "Td = n dt dla całkowitego n, z dokładnością do 1e-9 Td: deszcz składa się z całych kroków"
+
+[formulas.euler_ii_hyetograph]
+en_sha256 = "55ed28a5c7424d3bd957cce6b70b2df82001c25366ba217051363b559681d3bd"
+title = "Deszcz modelowy Eulera typu II według ATV-DVWK-A 118 z krzywej wysokość–czas trwania"
+validation = "brak: deszcz projektowy do wymiarowania odwodnienia (A 118); Licznar i Szeląg (2014, streszczenie) stwierdzają, że jego kształt odbiega od deszczy obserwowanych powyżej 180 min"
+conventions = [
+    "wysokości w mm na krok; t_j to koniec kroku j",
+    "przyrosty zachowują kolejność swoich czasów trwania i nie są sortowane, więc m kroków kończących się szczytem zawiera h(m dt) także tam, gdzie interpolacja sprawia, że przyrost rośnie (ADR-0042, jak program itwh); dla krzywej o malejących przyrostach jest to posortowany układ z A 118 i DWD",
+    "szczyt zaczyna się w 0,3 Td zaokrąglonym w dół do całego kroku (A 118 w cytowanej postaci: do wielokrotności 5 min); program itwh umieszcza szczyt deszczu 15-minutowego w drugim kroku, a Kaźmierczak i Kotowski (2012) kończą go w Td / 3, krok później dla Td równego 165 i 180 min",
+    "suma to h(Td) krzywej; krzywa dotyczy jednego prawdopodobieństwa",
+    "deszcz składa się z całych kroków: Td = n dt (ADR-0046)",
+]
+assumptions = [
+    "A 118 wymaga czasu trwania co najmniej dwukrotnie dłuższego od najdłuższego czasu przepływu; polskie deszcze modelowe Wartalskiej i Kotowskiego (2020) obejmują od 30 do 180 min; źródła nie podają zakresu danych wejściowych wzoru, więc żadna dana nie wywołuje uwagi",
+]
+
+[formulas.euler_ii_hyetograph.variables]
+durations_min = "Czasy trwania punktów krzywej wysokość–czas trwania, rosnące"
+depths_mm = "Wysokości krzywej dla tych czasów trwania, jednego prawdopodobieństwa"
+duration_min = "Czas trwania deszczu, całkowita liczba kroków"
+timestep_min = "Krok czasowy: długość każdego bloku deszczu"
+
+[formulas.euler_ii_hyetograph.outputs]
+intensities_mm = "Wysokość opadu w każdym kroku (pole zachowuje nazwę z wcześniejszych wersji; natężenie podaje pole wyniku intensity_mm_per_h)"
+times_min = "Koniec każdego kroku liczony od początku deszczu"
+total_mm = "Całkowita wysokość deszczu, wysokość krzywej dla Td"
+peak_start_min = "Początek przedziału szczytu liczony od początku deszczu"
+
+[formulas.euler_ii_hyetograph.constants]
+peak_start_share = "Ułamek czasu trwania, od którego zaczyna się przedział największego natężenia"
+
+[formulas.euler_ii_hyetograph.constraints]
+depths_not_decreasing = "h_(i+1) >= h_i: wysokość dla dłuższego czasu trwania nigdy nie jest mniejsza"
+curve_lengths = "jedna wysokość dla każdego czasu trwania krzywej"
+durations_increasing = "D_(i+1) > D_i: każdy czas trwania krzywej raz, w kolejności rosnącej"
+step_within_duration = "dt <= Td: deszcz obejmuje co najmniej jeden krok"
+steps_representable = "Td / dt <= 1 000 000: najwyżej milion kroków"
+whole_steps = "Td = n dt dla całkowitego n, z dokładnością do 1e-9 Td: deszcz składa się z całych kroków"
+curve_covers = "D_1 <= dt i D_m >= Td: krzywa sięga od kroku do czasu trwania deszczu, niczego się nie ekstrapoluje"
+
 [rules.weighted_cn]
 en_sha256 = "68175470053f85d97a7c34ee622ff14945e2367d5cbaaddaea588e96c679ddf0"
 title = "Liczba CN ważona powierzchnią"
@@ -3134,3 +3480,21 @@ en_sha256 = "2d83be0d151dd1903f84691a5e7be4ca4ed435fbf5fa121f40d9229a77fe05f8"
 title = "Odrzucanie pomiarów odstających przy dopasowaniu krzywej natężenia przepływu"
 definition = "Przy `remove_outliers` pary, których reszta z pierwszego dopasowania przekracza `outlier_std` odchyleń standardowych reszt (n - 1), są pomijane, a krzywa jest dopasowywana ponownie do pozostałych, jeden raz, gdy zostają co najmniej 3 pary."
 convention = "Jedno przejście: pary z |r| > k s są pomijane, a z |r| = k s zachowywane; start drugiego dopasowania jest taki sam jak pierwszego; własna reguła Hydrologa, podczas gdy WMO-No. 1044 (rozdz. 1.12.1) sprawdza pomiar przepływu odbiegający od krzywej o więcej niż 5 procent pomiarem kontrolnym."
+
+[rules.depth_duration_interpolation]
+en_sha256 = "ef91c6ea195dcac630877617d488889d7376581e850b3281b7a1c9092526f3ad"
+title = "Interpolacja krzywej wysokość–czas trwania"
+definition = "wysokość krzywej wysokość–czas trwania dla czasu trwania między dwoma jej punktami D_i <= D <= D_(i+1): h = h_i + (h_(i+1) - h_i) ln(D / D_i) / ln(D_(i+1) / D_i); czas trwania odległy od punktu o mniej niż 1e-9 przyjmuje jego wysokość; poza krzywą wartości nie ma"
+convention = "liniowo względem ln D (ADR-0042): tak odtwarza się wydruki itwh KOSTRA-DWD 2010R dla Göllheim z dokładnością 0,07 mm z wysokości drukowanych z dokładnością 0,1 mm, a interpolacja liniowa względem D chybia o 0,16 mm; narzędzie DWA MDMS interpoluje liniowo względem D, a HEC-HMS w skali log-log; niczego się nie ekstrapoluje"
+
+[rules.pmaxtp_depth]
+en_sha256 = "ee544c315fdf83412e0f9577d9bffd502e7dbca00dc180d3be8e18bc391d90bb"
+title = "Wysokość opadu z tablic PMAXTP"
+definition = "wysokość z tablicy PMAXTP IMGW-PIB dla punktu, czasu trwania i prawdopodobieństwa przewyższenia z tablic, metodą POT albo AMP, wraz z wysokościami 16 czasów trwania przy tym prawdopodobieństwie: krzywa wysokość–czas trwania dla `euler_ii_hyetograph`; nic nie jest liczone ani interpolowane"
+convention = "p to prawdopodobieństwo przewyższenia w procentach (w praktyce odczytuje się T = 100 / p lat; IMGW-PIB nie dokumentuje przeliczenia POT na prawdopodobieństwa roczne); wysokość zwracana jest tak, jak podaje ją IMGW-PIB (0,01 mm); tylko czasy trwania i prawdopodobieństwa z tablic; domyślnie POT, które IMGW-PIB zaleca dla p >= 50 % i poniżej uznaje za równoważne AMP (s. 23). Wiersz jest zadeklarowany tutaj: hydrolog._pmaxtp nie importuje żadnej biblioteki numerycznej"
+
+[rules.idw_grid_mean]
+en_sha256 = "cf6c7022ec4b749c9f5b03c63638a70c8f6284c70204b9bf0a3970c76a7dae2f"
+title = "Opad obszarowy jako średnia oszacowań IDW w węzłach siatki"
+definition = "opad obszarowy zlewni jako średnia arytmetyczna oszacowań IDW (`idw_precipitation`) w punktach siatki"
+convention = "średnia z punktów jest średnią w zlewni tylko dla regularnej siatki punktów leżących w jej granicach; w każdym punkcie używa się każdego posterunku"
