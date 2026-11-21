@@ -1845,6 +1845,21 @@ WantedBy=multi-user.target
 server runs. Hosting the GUI inside another application (Nogat's GUI platform) is in
 [INTEGRATION.md](INTEGRATION.md#web-gui-a-module-of-nogats-gui-platform).
 
+A deployment that runs the GUI from a checkout of this repository (its own `.venv`, `uv sync
+--locked --no-editable`) must reinstall Hydrolog after pulling a new commit: uv decides by the
+version whether the installed project is current, and commits between releases share one
+version (`0.9.0.devN`), so a plain `uv sync --locked --no-editable` keeps the old code without a
+word. Update with
+
+```bash
+git pull --ff-only
+uv sync --locked --no-editable --all-extras --reinstall-package hydrolog
+systemctl --user restart hydrolog-gui   # or systemctl restart for a system unit
+```
+
+`--reinstall-package hydrolog` rebuilds the project from the checkout every time, whatever its
+version (E7-13).
+
 ### Logs
 
 `hydrolog gui serve` keeps Nogat's three logs (DEV-12.4 to DEV-12.9,
