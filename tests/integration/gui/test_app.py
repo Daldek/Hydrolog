@@ -249,6 +249,47 @@ def test_ending_a_session_deletes_its_files(client, app):
     assert again.json()["files"] == []
 
 
+def test_a_download_the_session_ends_under_is_sent_whole(client, app):
+    """The page's ``DELETE api/session`` (pagehide) may delete the session while a
+    download of its file is being answered: the answer started is sent whole, not
+    broken off after its headers (a flaky browser test, macOS, 2026-11-20)."""
+    started = session_id(upload(client, "x.csv", FLOOD))
+    sessions = app.state.gui.sessions
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "server": ("testserver", 80),
+        "client": ("127.0.0.1", 50000),
+        "root_path": "",
+        "path": "/api/files/in/x.csv",
+        "raw_path": b"/api/files/in/x.csv",
+        "query_string": b"",
+        "headers": [(SESSION_HEADER.lower().encode(), started.encode())],
+    }
+    messages = []
+    requested = []
+
+    async def receive():
+        if not requested:
+            requested.append(True)
+            return {"type": "http.request", "body": b"", "more_body": False}
+        await asyncio.Event().wait()  # the client stays until the answer ends
+
+    async def send(message):
+        if message["type"] == "http.response.start":
+            sessions.remove(sessions.get(started))  # the session ends here
+        messages.append(message)
+
+    asyncio.run(app(scope, receive, send))
+
+    assert messages[0]["status"] == 200
+    assert b"".join(m.get("body", b"") for m in messages[1:]) == FLOOD
+    assert not messages[-1].get("more_body", False)
+
+
 def test_ending_no_session_or_a_busy_one_deletes_nothing(client, app):
     """No session is still ``204``; a session with a run going on is kept."""
     assert TestClient(app).delete("/api/session").status_code == 204
