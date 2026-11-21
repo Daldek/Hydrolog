@@ -16,7 +16,7 @@ Nogat's ``design/README.md`` says, in two steps (reference: ``fill`` of Nogat's
 
 Hydrolog's data sources (ADR-0034): the PMAXTP depth that Hydrogram zlewni fetches
 (``pmaxtp``) and the station series of IMGW-PIB and ČHMÚ that Archiwista hands off and
-Obserwator exports (``imgw``, ``chmi``). The GUI draws no map, so no basemap block.
+Obserwator exports (``imgw``, ``chmu``). The GUI draws no map, so no basemap block.
 
 A missing operator field or a value that cannot be used is a :class:`TermsError`: the
 GUI then serves no page and no link, as the kit's README asks.
@@ -47,10 +47,10 @@ __all__ = [
 ]
 
 TEMPLATE: Final = WEB_DIR / "nogat" / "nogat-terms.html"
-"""The kit's template of the regulamin (Nogat kit 1.0.0, regulamin 1.0)."""
+"""The kit's template of the regulamin (Nogat kit 1.1.0, regulamin 1.0)."""
 PAGE: Final = "regulamin.html"
 """The address of the filled regulamin, relative to the GUI's page."""
-BLOCKS: Final[tuple[str, ...]] = ("imgw", "pmaxtp", "chmi")
+BLOCKS: Final[tuple[str, ...]] = ("imgw", "pmaxtp", "chmu")
 """The blocks of Hydrolog's data sources (Nogat ``design/README.md``)."""
 OPTIONAL: Final = frozenset({"processor_transfer", "processor_cookie", "mail_transfer"})
 """The fields whose value may be empty (each is a whole sentence or nothing)."""

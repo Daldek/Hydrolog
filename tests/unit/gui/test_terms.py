@@ -31,8 +31,8 @@ SMALL = """<h1>{{service_name}}</h1>
 <!-- block: pmaxtp -->
 <p>PMAXTP</p>
 <!-- /block -->
-<!-- block: chmi -->
-<p>CHMI</p>
+<!-- block: chmu -->
+<p>CHMU</p>
 <!-- /block -->
 <!-- block: osm -->
 <p>OSM</p>
@@ -68,9 +68,9 @@ def operator(**changes):
 
 
 def test_listed_blocks_stay_without_their_markers_and_the_others_go():
-    page = fill(SMALL, VALUES, ["chmi"])
+    page = fill(SMALL, VALUES, ["chmu"])
 
-    assert "<p>CHMI</p>" in page
+    assert "<p>CHMU</p>" in page
     for dropped in ("IMGW-PIB", "PMAXTP", "OSM"):
         assert dropped not in page
     assert "<!--" not in page
@@ -116,7 +116,7 @@ def test_a_value_that_leaves_a_placeholder_is_refused():
         fill(SMALL, {**VALUES, "service_name": "{{service_url}}"}, [])
 
 
-@pytest.mark.parametrize("listed", [[], ["imgw", "pmaxtp", "chmi"], ["osm"]])
+@pytest.mark.parametrize("listed", [[], ["imgw", "pmaxtp", "chmu"], ["osm"]])
 def test_three_or_more_newlines_become_one_blank_line(listed):
     assert "\n\n\n" not in fill(SMALL, VALUES, listed)
 
