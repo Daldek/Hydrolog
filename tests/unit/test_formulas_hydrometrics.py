@@ -13,6 +13,7 @@ formulas compute, for the properties. The functions are given to the assertions
 through :func:`as_standard` (ADR-0050, point 3).
 """
 
+import csv
 import math
 import warnings
 from fractions import Fraction
@@ -64,6 +65,7 @@ pytestmark = pytest.mark.formula
 TESTS = Path(__file__).parents[1]
 CASES = TESTS / "fixtures" / "formulas" / "hydrometrics-cases.json"
 NLS = read_frozen_oracle(TESTS / "oracles" / "rating_curve" / "nls_port.csv")
+STATIONS = TESTS / "fixtures" / "rating_curve_stations.csv"
 FAMILY: tuple[tuple[FormulaSpec, object], ...] = (
     (RATING_CURVE, rating_discharge),
     (RATING_CURVE_FIT, fit_rating_curve),
@@ -377,14 +379,15 @@ def test_a_curve_at_its_bound_is_finite():
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
 def test_levels_at_their_test_bounds_fit_or_are_refused():
     """Trap exp_overflow of the fit: the search runs on normalised levels, so levels at
-    their test bounds fit; where the curve overflows the precondition refuses it."""
+    their test bounds fit; pairs there whose least squares have no minimum (a discharge
+    rising faster than an exponential) are refused by the precondition."""
     levels = np.array([-1.0e4, -5.0e3, 0.0, 5.0e3, 1.0e4])
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", OutsideApplicability)
         fit = fit_rating_curve(levels, 1.0e-3 * (levels + 1.2e4) ** 1.5, -1.1e4)
         assert_within(fit.b, 1.5, rel=1e-6, reason="noise-free pairs over 20,000 cm")
         with pytest.raises(InvalidParameterError) as caught:
-            fit_rating_curve([1.0e4, 9.99e3, 9.98e3], [1.0e6, 0.0, 1.0], -1.0e4)
+            fit_rating_curve([9.98e3, 9.99e3, 1.0e4], [1.0, 10.0, 1000.0], -1.0e4)
     assert caught.value.details["reason"] == "precondition_failed"
 
 
@@ -434,9 +437,13 @@ def test_many_pairs_keep_their_sums():
 
 def test_a_large_mean_discharge_keeps_r_squared():
     """Trap moment_cancellation: SS_tot of discharges near 1e6 with a spread of a few
-    m3/s, against exact fractions."""
+    m3/s, against exact fractions (a power of b near 2e-6, about 1e6 + 2 ln(H - 290),
+    with the pairs alternately 0.1 m3/s above and below it)."""
     levels = [300.0, 310.0, 320.0, 330.0, 340.0, 350.0, 360.0, 370.0]
-    discharges = [1.0e6 + 0.5 * (h - 290.0) ** 1.2 for h in levels]
+    discharges = [
+        1.0e6 + 2.0 * math.log(h - 290.0) + (0.1 if index % 2 else -0.1)
+        for index, h in enumerate(levels)
+    ]
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", OutsideApplicability)
         fit = fit_rating_curve(levels, discharges, 280.0)
@@ -457,6 +464,31 @@ def test_a_large_mean_discharge_keeps_r_squared():
         "a few m3/s under a mean of 1e6 keeps nine digits, the residuals' own rounding "
         "at 1e6 is 1e-10 m3/s",
     )
+
+
+# --- the stations of Obserwator's analyses of 2026-11-17 to 2026-11-19 ----------------
+
+
+def _station_pairs(code: str) -> tuple[list[float], list[float]]:
+    """The pairs of an IMGW-PIB station of tests/fixtures/rating_curve_stations.csv."""
+    with STATIONS.open(encoding="utf-8") as table:
+        rows = [row for row in csv.DictReader(table) if row["station"] == code]
+    return [float(row["H"]) for row in rows], [float(row["Q"]) for row in rows]
+
+
+@pytest.mark.parametrize("code", ["149190350", "150230070"])
+def test_station_pairs_whose_least_squares_have_no_minimum_are_refused(code):
+    """IMGW-PIB 149190350 (2016-2025, every 7th day) and 150230070 (2001-2010, every
+    4th day): the discharge rises like an exponential of the stage, so the least
+    squares fall toward Q = C exp(k H) as H0 goes to minus infinity. 0.9.0.dev4
+    returned the point where its search stopped in that valley (b = 42.2, H0 = -337 cm
+    at 149190350); 0.8.0 to 0.9.0.dev0 ran out of evaluations (calculation_error)."""
+    levels, discharges = _station_pairs(code)
+    start = min(levels) - max(1.0, 0.1 * (max(levels) - min(levels)))
+    with pytest.raises(InvalidParameterError) as caught:
+        fit_rating_curve(levels, discharges, start)
+    assert caught.value.details["reason"] == "precondition_failed"
+    assert caught.value.details["constraint"] == "least_squares_minimum"
 
 
 # --- the library's classes, notices and versions -------------------------------------

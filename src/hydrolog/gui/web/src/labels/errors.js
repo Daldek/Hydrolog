@@ -102,7 +102,7 @@ export const errors = {
     discharges_not_all_equal:
       "Wszystkie przepływy są równe: przepływ, który nie zmienia się ze stanem, nie wyznacza krzywej przepływu",
     least_squares_minimum:
-      "Metoda najmniejszych kwadratów nie znajduje dla tych par minimum (np. przepływy rosną jak funkcja wykładnicza): sprawdź pary stan–przepływ albo podaj inne początkowe H₀",
+      "Metoda najmniejszych kwadratów nie ma dla tych par minimum: przepływ rośnie ze stanem jak funkcja wykładnicza, a nie potęgowa (np. pary dwóch krzywych przepływu po przesunięciu zera wodowskazu albo zmianie koryta); dopasuj krzywą do lat jednej krzywej",
   },
   /** The sentences of the errors of Euler II's depth-duration curve, by `details.reason`. */
   curve: {

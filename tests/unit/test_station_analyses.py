@@ -419,14 +419,15 @@ class TestRatingCurvePeriods:
 
     def test_a_period_that_mixes_two_stage_regimes_is_implausible(self):
         """Daily pairs that span a change of the stage-discharge relation (zero flow at
-        20 cm, from 2004 at 80 cm) fit a curve of neither: b above 4 and H0 far below
+        20 cm, from 2004 at 60 cm) fit a curve of neither: b above 4 and H0 far below
         the stages, as IMGW-PIB 150170070 in 1981-1990 (b = 6.50, H0 = -88 cm). Such a
-        curve is given but flagged; the curves of one relation are not."""
+        curve is given but flagged; the curves of one relation are not. (With zero flow
+        at 80 cm from 2004 the least squares of the mixed pairs have no minimum.)"""
         before = np.linspace(40.0, 160.0, 40)
         after = np.linspace(85.0, 160.0, 40)
         levels, discharges, dates = [], [], []
         for year in range(2001, 2007):
-            stages, zero = (before, 20.0) if year < 2004 else (after, 80.0)
+            stages, zero = (before, 20.0) if year < 2004 else (after, 60.0)
             levels += [*stages]
             discharges += [*(0.01 * (stages - zero) ** 1.6)]
             dates += [str(day) for day in days(f"{year}-01-01", 40)]
@@ -482,6 +483,44 @@ class TestRatingCurvePeriods:
         assert "implausible_rating_curve" not in {
             n["code"] for n in envelope["notices"]
         }
+
+    def test_a_period_whose_least_squares_have_no_minimum_says_so(self):
+        """A year of pairs that rise as an exponential of the stage, Q = 0.6 e^(0.03 H),
+        has no curve Q = a (H - H0)^b: its least squares fall toward the exponential as
+        H0 goes to minus infinity. Its period was `fit_failed` (0.9.0.dev4) and is now
+        `no_least_squares_minimum`; the years of one power law keep their curves."""
+        stages = np.linspace(40.0, 160.0, 40)
+        levels, discharges, dates = [], [], []
+        for year in (2001, 2002, 2003):
+            power = year < 2003
+            levels += [*stages]
+            discharges += [
+                *(
+                    0.01 * (stages - 20.0) ** 1.6
+                    if power
+                    else 0.6 * np.exp(0.03 * stages)
+                )
+            ]
+            dates += [str(day) for day in days(f"{year}-01-01", 40)]
+        result = run_command(
+            "hydrometrics rating-curve",
+            {
+                "water_levels": levels,
+                "discharges": discharges,
+                "dates": dates,
+                "years_per_period": 1,
+            },
+        ).to_dict()["result"]
+        assert [p["reason"] for p in result["periods"]] == [
+            None,
+            None,
+            "no_least_squares_minimum",
+        ]
+        assert [p["b"] for p in result["periods"]] == [
+            pytest.approx(1.6),
+            pytest.approx(1.6),
+            None,
+        ]
 
     def test_years_need_dates(self):
         with pytest.raises(InvalidParameterError) as caught:

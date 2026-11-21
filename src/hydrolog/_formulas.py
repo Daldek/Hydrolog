@@ -246,8 +246,8 @@ DELEGATED: Final[tuple[Delegated, ...]] = (
     ),
     Delegated(
         name="rating_curve_least_squares",
-        library="scipy.optimize.curve_fit (bounds: least_squares, trust region "
-        "reflective)",
+        library="scipy.optimize.minimize_scalar (bounded: Brent's method) and "
+        "scipy.optimize.curve_fit (bounds: least_squares, trust region reflective)",
         versions="scipy>=1.10 (1.18.1 locked)",
         smoke_case="eight noise-free pairs of Q = 0.012 (H - 32)^1.62 at H = 40 to "
         "270 cm give back a = 0.012, b = 1.62 and H0 = 32 cm within 1e-6 relative "

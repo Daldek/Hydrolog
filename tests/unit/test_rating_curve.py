@@ -150,7 +150,6 @@ class TestRatingCurveErrors:
         assert caught.value.code == "validation_error"
         assert caught.value.details["reason"] == "precondition_failed"
         assert caught.value.details["constraint"] == "least_squares_minimum"
-        assert "another h0_initial" in caught.value.hint
 
     def test_non_convergence_is_still_a_value_error(self, curve_data, monkeypatch):
         """A search that does not settle was ``RatingCurveFitError`` (a

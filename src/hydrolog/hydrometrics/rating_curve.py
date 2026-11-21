@@ -6,8 +6,9 @@ shows their equations, ranges, sources and conventions:
 * :data:`RATING_CURVE` (``rating_curve``), the power-law rating equation of WMO-No.
   1044, computed by :func:`rating_discharge`;
 * :data:`RATING_CURVE_FIT` (``rating_curve_fit``), its least-squares fit to
-  stage-discharge pairs, :func:`fit_rating_curve`, whose search SciPy's ``curve_fit``
-  runs (a delegated computation, ``hydrolog._formulas.DELEGATED``);
+  stage-discharge pairs, :func:`fit_rating_curve`, whose search SciPy's
+  ``minimize_scalar`` and ``curve_fit`` run (a delegated computation,
+  ``hydrolog._formulas.DELEGATED``);
 * :data:`RATING_CURVE_PLAUSIBILITY` (``rating_curve_plausibility``), Hydrolog's check
   of a curve as the curve of one stage-discharge relation (ADR-0041),
   :func:`rating_curve_plausibility`;
@@ -60,7 +61,7 @@ from typing import Final, NamedTuple, cast
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, minimize_scalar
 
 from hydrolog._formulas import checked_inputs, checked_outputs, constraint_range
 from hydrolog._serialization import JsonResultMixin
@@ -277,6 +278,15 @@ _LEAST_SQUARES = Source(
     locator="sect. 1.12.2, p. II.1-20: the equation of the relation may be computed by "
     "the method of least squares, which assumes that the relation plots as a straight "
     "line on logarithmic paper",
+    url=_WMO_URL,
+)
+_TRIAL_VALUES = Source(
+    citation=_WMO_1044,
+    locator="sect. 1.5.4, pp. II.1-7 to II.1-8: e of a channel control or a section "
+    "control of irregular shape may be determined by successive approximations, "
+    "adding or subtracting trial values of e until the rating plots as a straight line "
+    "on logarithmic paper; with values of e smaller than the true one the rating is "
+    "concave upward, with greater ones concave downward",
     url=_WMO_URL,
 )
 _SECTION_CONTROLS = Source(
@@ -664,13 +674,25 @@ def rating_discharge(
 # The fit
 # ---------------------------------------------------------------------------
 
-_START: Final = (1.0, 1.5)
-"""The start of the search for a and b, on the normalised pairs."""
 _H0_GAP: Final = 2.0**-30
 """How far below the lowest normalised level H0 stays: 2^-30 of the levels' scale."""
+_DEPTHS: Final = tuple(2.0**power for power in range(-20, 11))
+"""The trial depths of H0 below the lowest level, in ranges of the levels: 2^-20 to
+2^10, besides the bound and the start (WMO-No. 1044's trial values of e)."""
+_EXPONENTS: Final = np.concatenate(
+    (np.linspace(0.0, 8.0, 33), np.geomspace(8.0, 100.0, 22)[1:])
+)
+"""The grid of b at a trial H0: 0 to 8 by 0.25, then 21 steps of a factor 1.13 to the
+bound 100."""
+_LARGEST_EXPONENT: Final = float(_EXPONENTS[-1])
+"""The bound of b in the search: 25 times the largest exponent of a plausible curve (4,
+ADR-0041); only pairs whose least squares fall toward an exponential reach it."""
+_AT_BOUND: Final = 1e-3
+"""An end within 10^-3 of b's bound, or within 10^-3 relative of the deepest H0, is
+no minimum."""
 _MAX_EVALUATIONS: Final = 10_000
 _SEARCH_TOLERANCE: Final = 1e-12
-"""ftol, xtol and gtol of the trust region search."""
+"""ftol, xtol and gtol of the trust region search, xatol of Brent's searches."""
 
 
 def _power_law(
@@ -686,8 +708,118 @@ def _scale(values: NDArray[np.float64]) -> int:
     return math.frexp(largest)[1] if largest > 0.0 else 0
 
 
+class _Heads(NamedTuple):
+    """The logarithms of the heads h - H0 of a trial H0, less the largest one."""
+
+    log: NDArray[np.float64]
+    top: float
+
+
+def _heads(h: NDArray[np.float64], h0: float) -> _Heads:
+    """Return ln(h - H0) less its max, and the max: weights exp(b u) in (0, 1]."""
+    log = np.log(h - h0)
+    top = float(np.max(log))
+    return _Heads(log - top, top)
+
+
+def _exponent_squares(q: NDArray[np.float64], heads: _Heads, b: float) -> float:
+    """Return the least squares of b at the heads, a in closed form (the residuals)."""
+    weights = np.exp(b * heads.log)
+    scale = float(weights @ q) / float(weights @ weights)
+    residuals = q - scale * weights
+    return float(residuals @ residuals)
+
+
+def _grid_squares(q: NDArray[np.float64], heads: _Heads) -> NDArray[np.float64]:
+    """Return the least squares of each b of the grid at the heads, a in closed form."""
+    weights = np.exp(np.multiply.outer(_EXPONENTS, heads.log))
+    fitted = weights @ q
+    return float(q @ q) - fitted**2 / np.sum(weights * weights, axis=1)
+
+
+def _best_exponent(q: NDArray[np.float64], heads: _Heads) -> tuple[float, float]:
+    """Return the least squares of the best b from 0 to its bound at the heads, and b.
+
+    b by the grid, then by Brent's bounded search between the neighbours of its best
+    point.
+    """
+    squares = _grid_squares(q, heads)
+    best = int(np.argmin(squares))
+    b = float(_EXPONENTS[best])
+    least = _exponent_squares(q, heads, b)
+    low = float(_EXPONENTS[max(best - 1, 0)])
+    high = float(_EXPONENTS[min(best + 1, _EXPONENTS.size - 1)])
+    found = minimize_scalar(
+        lambda exponent: _exponent_squares(q, heads, exponent),
+        bounds=(low, high),
+        method="bounded",
+        options={"xatol": _SEARCH_TOLERANCE},
+    )
+    if float(found.fun) < least:
+        return float(found.fun), float(found.x)
+    return least, b
+
+
+def _profiled(
+    h: NDArray[np.float64], q: NDArray[np.float64], start: float
+) -> tuple[float, float, float]:
+    """Return a, b and H0 of the least squares profiled over trial values of H0.
+
+    The trial depths below the lowest level are the bound, the depths of ``_DEPTHS``
+    times the range of the levels and the start; at each, the best b with a in closed
+    form (:func:`_best_exponent`). Brent's bounded search over ln(depth) between the
+    neighbours of the best trial ends the profile.
+    """
+    lowest = float(np.min(h))
+    span = float(np.ptp(h))
+    depths = sorted(
+        {
+            _H0_GAP,
+            lowest - start,
+            *(span * depth for depth in _DEPTHS if span * depth > _H0_GAP),
+        }
+    )
+    trials = [_best_exponent(q, _heads(h, lowest - depth)) for depth in depths]
+    best = min(range(len(depths)), key=lambda index: trials[index][0])
+    depth = depths[best]
+    least, b = trials[best]
+    if len(depths) > 1:
+        found = minimize_scalar(
+            lambda log: _best_exponent(q, _heads(h, lowest - math.exp(log)))[0],
+            bounds=(
+                math.log(depths[max(best - 1, 0)]),
+                math.log(depths[min(best + 1, len(depths) - 1)]),
+            ),
+            method="bounded",
+            options={"xatol": _SEARCH_TOLERANCE},
+        )
+        refined = math.exp(float(found.x))
+        squares, exponent = _best_exponent(q, _heads(h, lowest - refined))
+        if squares < least:
+            least, b, depth = squares, exponent, refined
+    heads = _heads(h, lowest - depth)
+    weights = np.exp(b * heads.log)
+    scale = float(weights @ q) / float(weights @ weights)
+    try:
+        a = scale * math.exp(-b * heads.top)
+    except OverflowError:  # an a beyond the floats: no curve of float64 numbers
+        a = math.inf
+    return a, b, lowest - depth
+
+
+def _settled(b: float, h0: float, lowest: float, deepest: float) -> bool:
+    """Return whether a search's end lies inside its bounds.
+
+    An end at b's bound or at the deepest H0 is the way of least squares that fall
+    toward an exponential.
+    """
+    return b < _LARGEST_EXPONENT - _AT_BOUND and lowest - h0 < (1.0 - _AT_BOUND) * (
+        lowest - deepest
+    )
+
+
 class _Search(NamedTuple):
-    """The least squares of normalised pairs (``None`` where they did not settle)."""
+    """The least squares of normalised pairs (``None`` where they have no minimum)."""
 
     found: tuple[float, float, float, float, float] | None
     caught: tuple[tuple[type[Warning], str], ...]
@@ -697,34 +829,31 @@ class _Search(NamedTuple):
 def _normalised_search(levels: bytes, discharges: bytes, start: float) -> _Search:
     """Fit the curve to normalised pairs, given as float64 bytes, from a start of H0.
 
-    Returns a', b, H0', R² and the standard deviation of the residuals of the
-    normalised pairs, and the warnings the search gave, which the fit issues again
-    (the cache keeps them, so a cached search warns as a new one). Cached by the
-    bytes: the precondition ``least_squares_minimum`` and the fit run one search, and
-    pairs scaled by powers of two share it.
+    The least squares profiled over trial values of H0 (:func:`_profiled`), then the
+    trust region search from their end (:func:`_polished`); an end at a bound of the
+    search, or a trust region search that does not settle, is no minimum. Returns a',
+    b, H0', R² and the standard deviation of the residuals of the normalised pairs,
+    and the warnings the search gave, which the fit issues again (the cache keeps
+    them, so a cached search warns as a new one). Cached by the bytes: the
+    precondition ``least_squares_minimum`` and the fit run one search, and pairs
+    scaled by powers of two share it.
     """
     h = np.frombuffer(levels, dtype=np.float64)
     q = np.frombuffer(discharges, dtype=np.float64)
-    upper = float(np.min(h)) - _H0_GAP
+    lowest = float(np.min(h))
+    upper = lowest - _H0_GAP
+    deepest = lowest - _DEPTHS[-1] * float(np.ptp(h))
     found: tuple[float, float, float, float, float] | None = None
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        try:
-            point, _ = curve_fit(
-                _power_law,
-                h,
-                q,
-                p0=[*_START, min(start, upper)],
-                bounds=([0.0, 0.0, -np.inf], [np.inf, np.inf, upper]),
-                maxfev=_MAX_EVALUATIONS,
-                ftol=_SEARCH_TOLERANCE,
-                xtol=_SEARCH_TOLERANCE,
-                gtol=_SEARCH_TOLERANCE,
-            )
-        except (RuntimeError, ValueError, ArithmeticError):
-            point = None
-        if point is not None:
-            a, b, h0 = (float(value) for value in point)
+        profiled = _profiled(h, q, min(max(start, deepest), upper))
+        point = (
+            _polished(h, q, profiled, deepest, upper)
+            if _settled(profiled[1], profiled[2], lowest, deepest)
+            else None
+        )
+        if point is not None and _settled(point[1], point[2], lowest, deepest):
+            a, b, h0 = point
             with np.errstate(all="ignore"):
                 residuals = q - _power_law(h, a, b, h0)
                 ss_res = float(np.sum(residuals**2))
@@ -735,6 +864,38 @@ def _normalised_search(levels: bytes, discharges: bytes, start: float) -> _Searc
                 found = (a, b, h0, 1.0 - ss_res / ss_tot, spread)
     warned = tuple((item.category, str(item.message)) for item in caught)
     return _Search(found, warned)
+
+
+def _polished(
+    h: NDArray[np.float64],
+    q: NDArray[np.float64],
+    point: tuple[float, float, float],
+    deepest: float,
+    upper: float,
+) -> tuple[float, float, float] | None:
+    """Return the end of the trust region search from the profile's end.
+
+    The profile's end where the search ends higher; ``None`` where it does not settle.
+    """
+    try:
+        found, _ = curve_fit(
+            _power_law,
+            h,
+            q,
+            p0=list(point),
+            bounds=([0.0, 0.0, deepest], [np.inf, _LARGEST_EXPONENT, upper]),
+            maxfev=_MAX_EVALUATIONS,
+            ftol=_SEARCH_TOLERANCE,
+            xtol=_SEARCH_TOLERANCE,
+            gtol=_SEARCH_TOLERANCE,
+        )
+    except (RuntimeError, ValueError, ArithmeticError):
+        return None
+    polished = (float(found[0]), float(found[1]), float(found[2]))
+    with np.errstate(all="ignore"):
+        before = float(np.sum((q - _power_law(h, *point)) ** 2))
+        after = float(np.sum((q - _power_law(h, *polished)) ** 2))
+    return polished if after <= before else point
 
 
 class _Fit(NamedTuple):
@@ -802,9 +963,9 @@ _BELOW_ZERO_Q: Final = (0.5, 1.2, 2.5, 4.8, 10.1, 17.3)
 """Six gaugings of the catalog's example, two below the gauge zero [cm, m3/s]."""
 _UNSETTLED_H: Final = (10.0, 20.0, 30.0)
 _UNSETTLED_Q: Final = (1.0, 10.0, 1000.0)
-"""Three pairs whose least squares have no minimum that the search reaches [cm,
-m3/s]: a discharge rising like an exponential draws b without bound and H0 to minus
-infinity, until the search's count of evaluations runs out."""
+"""Three pairs whose least squares have no minimum [cm, m3/s]: a discharge rising
+faster than an exponential draws H0 to minus infinity and b without bound, so the
+search ends at b's bound."""
 
 
 def _noise_free(run: Callable[..., Values]) -> None:
@@ -895,12 +1056,14 @@ RATING_CURVE_FIT: Final = FormulaSpec(
     function="hydrolog.hydrometrics.rating_curve.fit_rating_curve",
     family="statistic",
     equation=(
-        "(a, b, H0) minimise sum((Q_i - a * (H_i - H0)**b)**2) over a >= 0, b >= 0, "
-        "H0 < min(H); R2 = 1 - SS_res / SS_tot with SS_tot = sum((Q_i - mean(Q))**2); "
-        "s = sqrt(sum((r_i - mean(r))**2) / (n - 1)) of the residuals r_i"
+        "(a, b, H0) minimise sum((Q_i - a * (H_i - H0)**b)**2) over a >= 0, "
+        "0 <= b < 100 and min(H) - 1024 (max(H) - min(H)) < H0 < min(H); R2 = 1 - "
+        "SS_res / SS_tot with SS_tot = sum((Q_i - mean(Q))**2); s = sqrt(sum((r_i - "
+        "mean(r))**2) / (n - 1)) of the residuals r_i"
     ),
     latex=(
-        r"(\hat a, \hat b, \hat H_0) = \arg\min_{a \ge 0,\, b \ge 0,\, H_0 < \min H}"
+        r"(\hat a, \hat b, \hat H_0) = \arg\min_{a \ge 0,\, 0 \le b < 100,\,"
+        r" \min H - 1024\,(\max H - \min H) < H_0 < \min H}"
         r" \sum_{i=1}^{n} \left(Q_i - a\,(H_i - H_0)^{b}\right)^2,\quad"
         r" R^2 = 1 - \frac{SS_{res}}{SS_{tot}}"
     ),
@@ -977,7 +1140,7 @@ RATING_CURVE_FIT: Final = FormulaSpec(
             physical=Range(low=0.0),
         ),
     ),
-    sources=(_EQUATION, _LEAST_SQUARES, _ISO_1100_2),
+    sources=(_EQUATION, _LEAST_SQUARES, _TRIAL_VALUES, _ISO_1100_2),
     constraints=(
         Constraint(
             name="same_length",
@@ -1041,9 +1204,12 @@ RATING_CURVE_FIT: Final = FormulaSpec(
             name="least_squares_minimum",
             cls="precondition",
             check=_settles,
-            text="the sum of squares has a minimum that the search reaches in 10,000 "
-            "evaluations, at which the curve is a float64 number at every level",
-            source=_LEAST_SQUARES,
+            text="the sum of squares has a minimum with b < 100 and H0 above 1024 "
+            "ranges of the levels below the lowest level, which the search reaches, at "
+            "which the curve is a float64 number at every level; pairs whose discharge "
+            "rises like an exponential of H have none, their rating being concave on "
+            "logarithmic paper at every trial value of H0",
+            source=_TRIAL_VALUES,
             satisfied={"h0_initial": 41.2},
             violated={
                 "water_levels": list(_UNSETTLED_H),
@@ -1130,7 +1296,7 @@ RATING_CURVE_FIT: Final = FormulaSpec(
         "the research found no open worked example with gaugings and fitted "
         "parameters (WMO-No. 1044, Rantz 1982, Kennedy 1984)"
     ),
-    formula_version=1,
+    formula_version=2,
     status="oracle only",
     conventions=(
         (
@@ -1140,17 +1306,30 @@ RATING_CURVE_FIT: Final = FormulaSpec(
             "catalog's six gaugings: b = 1.640 on Q, 1.820 in logarithms)"
         ),
         (
-            "bounds a >= 0, b >= 0 and H0 below the lowest level by 2^-30 of the "
-            "levels' scale (the power of two that brings the largest |H| into "
-            "[1/2, 1)), about 5e-7 cm for stages of a few metres"
+            "bounds a >= 0, b from 0 to 100 (25 times the largest exponent of a "
+            "plausible curve, ADR-0041) and H0 from 1024 ranges of the levels below "
+            "the lowest level to 2^-30 of the levels' scale below it (the power of two "
+            "that brings the largest |H| into [1/2, 1)), about 5e-7 cm for stages of a "
+            "few metres; an end within 10^-3 of b's bound or within 10^-3 relative of "
+            "H0's deepest bound is no minimum: the least squares of pairs whose "
+            "discharge rises like an exponential of H (pairs of two ratings, a "
+            "compound control) fall toward Q = C exp(k H), the limit of the curve as "
+            "H0 goes to minus infinity and b to plus infinity, and reach the bounds"
         ),
         (
-            "the search: SciPy's curve_fit, the trust region reflective method with "
-            "ftol, xtol and gtol of 1e-12 and at most 10,000 evaluations, from a = 1, "
-            "b = 1.5 and H0 = h0_initial, on the levels and discharges divided "
-            "exactly by the powers of two that bring their largest magnitudes into "
-            "[1/2, 1); the curve is scaled back, so levels in cm or m and discharges "
-            "scaled by a power of two give the same curve"
+            "the search, on the levels and discharges divided exactly by the powers of "
+            "two that bring their largest magnitudes into [1/2, 1) (the curve is "
+            "scaled back, so levels in cm or m and discharges scaled by a power of two "
+            "give the same curve): the trial values of H0 of WMO-No. 1044 (sect. "
+            "1.5.4), the bound, h0_initial and the range of the levels times 2^j below "
+            "the lowest level for j = -20 to 10; at each the best b, a in closed form, "
+            "on a grid of 0 to 8 by 0.25 and on by factors of 1.13 to 100, refined "
+            "between the neighbours of its best point by SciPy's minimize_scalar "
+            "(Brent's bounded method, xatol 1e-12); ln of the depth of H0 refined so "
+            "between the neighbours of the best trial; then SciPy's curve_fit from "
+            "that end, the trust region reflective method within the bounds with ftol, "
+            "xtol and gtol of 1e-12 and at most 10,000 evaluations, whose end is kept "
+            "where it is not higher"
         ),
         (
             "R2 = 1 - SS_res / SS_tot on Q; s the standard deviation of the residuals "
@@ -1174,7 +1353,8 @@ RATING_CURVE_FIT: Final = FormulaSpec(
         "lowest level: test_a_curve_at_its_bound_is_finite",
         "exp_overflow": "the power of the head at the levels' test bounds: "
         "test_levels_at_their_test_bounds_fit_or_are_refused",
-        "unbounded_iteration": "the search's bounded count of 10,000 evaluations: "
+        "unbounded_iteration": "the trial values of H0, the bounded grid of b and at "
+        "most 10,000 evaluations of the trust region search: "
         "test_a_search_that_does_not_settle_is_refused (precondition "
         "least_squares_minimum)",
         "gap_propagation": "type cases water_levels-nan_element and "
@@ -1195,9 +1375,9 @@ RATING_CURVE_FIT: Final = FormulaSpec(
             "tests/fixtures/formulas/hydrometrics-cases.json)",
             conventions=(
                 "both: least squares on Q, every pair weighted equally",
-                "R: the port algorithm (PORT library's nl2sol), Hydrolog: SciPy's "
-                "trust "
-                "region reflective method on the normalised pairs",
+                "R: the port algorithm (PORT library's nl2sol) from its start, "
+                "Hydrolog: the trial values of H0, then SciPy's trust region "
+                "reflective method on the normalised pairs",
             ),
         ),
         Oracle(
@@ -1260,8 +1440,8 @@ def fit_rating_curve(
     ------
     InvalidParameterError
         If the spec refuses the inputs (``details.reason``, ``details.option`` or
-        ``details.constraint``: ``least_squares_minimum`` where the search does not
-        settle).
+        ``details.constraint``: ``least_squares_minimum`` where the least squares
+        have no minimum within the search's bounds).
 
     Warns
     -----
@@ -1910,7 +2090,9 @@ it differs from the input (or names a constraint)."""
 _FIT_HINTS: Final = {
     "start_below_levels": "Give h0_initial lower than every water level, in the same "
     "unit.",
-    "least_squares_minimum": "Check the measurement pairs or try another h0_initial.",
+    "least_squares_minimum": "The pairs do not follow one curve Q = a (H - H0)^b: "
+    "their discharge rises like an exponential of the stage, as the pairs of two "
+    "ratings (a moved gauge zero, a changed channel) do; fit the years of one rating.",
 }
 """The hints of the refusals of the spec rating_curve_fit that ``RatingCurve`` gives."""
 
@@ -2028,8 +2210,8 @@ class RatingCurve:
             ``discharges`` or ``h0_initial``): values that are not finite, lengths
             that differ, fewer than 3 pairs, levels or discharges all equal, a start
             not below the lowest level (``details.constraint``
-            ``start_below_levels``), or least squares on which the search does not
-            settle (``least_squares_minimum``).
+            ``start_below_levels``), or least squares without a minimum within the
+            search's bounds (``least_squares_minimum``).
 
         Warns
         -----
@@ -2041,8 +2223,10 @@ class RatingCurve:
         The rating equation is the power-law stage-discharge relation
         ``Q = a (H - H0)^b`` with ``H0`` the stage of zero flow (WMO-No. 1044,
         2010, Vol. II, eq. 1.4). The least-squares problem is not convex in ``H0``:
-        the start must be admissible (below every level) and should not be far from
-        the solution.
+        the search starts from the best of the trial values of ``H0`` that WMO-No.
+        1044 (sect. 1.5.4) tries until the rating is a straight line on logarithmic
+        paper, ``h0_initial`` one of them, and refuses pairs that no value of
+        ``H0`` straightens.
 
         Versions before 0.8.0 started from ``h0_initial = 0.0``, which is not
         below the lowest level of a gauge with readings at or below zero (stages
