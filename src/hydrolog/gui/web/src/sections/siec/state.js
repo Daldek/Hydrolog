@@ -38,6 +38,7 @@
 import { api } from "../../api.js";
 import { linesFields, linesOf, mergeLines, orderLines } from "../../attribution.js";
 import { sessionFileName } from "../../controls/file-field.js";
+import { nameSlug } from "../../../nogat/nogat-handoff.js";
 import { withReason } from "../../forms/model.js";
 import { cameRainfallKey, networkInputs, networkRainfallKey, rainfallOf, siecInputs, siecNodes, siecSubcatchment } from "../../handoff/mapping.js";
 import { isObject } from "../../handoff/validate.js";
@@ -471,13 +472,28 @@ export function documentName(state) {
 }
 
 /**
- * The base of the names of the files the section writes and exports.
+ * The base of the names of the session files the section writes: the network's document in
+ * "in/" and its schematic in "out/".
  *
  * @param {object} state the section's state
  * @returns {string} e.g. "siec"
  */
 export function fileStem(state) {
   return documentName(state).replace(/\.json$/i, "");
+}
+
+/**
+ * The network's part of the names of the files the section exports (Nogat DEV-19.21,
+ * `hydrolog_<content>_<part>`): the document's file name reduced by the kit's nameSlug,
+ * without the `hydrolog_network_` of a document the section saved (saving it again does not
+ * repeat it), and none for the default document.
+ *
+ * @param {object} state the section's state
+ * @returns {string} e.g. "kamiennik", "" for "siec.json" or "hydrolog_network.json"
+ */
+export function namePart(state) {
+  const stem = fileStem(state).replace(/^hydrolog_network(?:_|$)/i, "");
+  return stem === DOCUMENT_NAME.replace(/\.json$/, "") ? "" : nameSlug(stem);
 }
 
 /**

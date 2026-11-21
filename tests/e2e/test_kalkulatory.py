@@ -133,6 +133,10 @@ def test_the_tc_comparison_lists_six_methods_with_their_range_words(tab: Tab) ->
         )
     )
     expect(loop).to_contain_text('--method "$m"')
+    # The comparison's CSV is named by Nogat DEV-19.21
+    with page.expect_download() as saved:
+        page.locator(f"{RIGHT} button", has_text="CSV").first.click()
+    assert saved.value.suggested_filename == "hydrolog_tc-comparison.csv"
 
     # The chosen method goes to Hydrogram zlewni, which computes with it (the mockup's
     # run); back in Kalkulatory it is the one marked

@@ -881,7 +881,7 @@ def test_a_draft_is_saved_and_reopened(tab: Tab, tmp_path: Path) -> None:
     expect(save).to_have_text("Zapisz szkic")
     draft = save_document(page, tmp_path / "siec.json")
     expect(page.locator(".toast")).to_contain_text(
-        "Zapisano szkic siec.json: route network go nie przyjmie,"
+        "Zapisano szkic hydrolog_network.json: route network go nie przyjmie,"
         " dopóki nie poprawisz problemów"
     )
     assert draft["description"] == "Szkic sieci\nw dwóch wierszach"

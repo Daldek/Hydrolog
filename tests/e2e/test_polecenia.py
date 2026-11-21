@@ -557,18 +557,18 @@ def test_a_result_exports_csv_json_png_and_its_call(tab: Tab) -> None:
     buttons = right.locator(".export-row button")
 
     name, data = download(page, buttons.filter(has_text="CSV"))
-    assert name == "uh-nash.csv"
+    assert name == "hydrolog_uh-nash.csv"
     header, *rows = [line.split(",") for line in data.decode().splitlines()]
     assert header == ["times_min", "ordinates_m3s_per_mm"]
     assert [float(row[0]) for row in rows] == result["times_min"]
     assert [float(row[1]) for row in rows] == result["ordinates_m3s_per_mm"]
 
     name, data = download(page, buttons.filter(has_text="JSON"))
-    assert name == "uh-nash.result.json"
+    assert name == "hydrolog_uh-nash-result.json"
     assert json.loads(data) == envelope
 
     name, data = download(page, buttons.filter(has_text="PNG"))
-    assert name == "uh-nash.png"
+    assert name == "hydrolog_uh-nash.png"
     assert data[:8] == b"\x89PNG\r\n\x1a\n"
     box = chart.bounding_box()
     assert box is not None

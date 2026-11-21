@@ -598,7 +598,7 @@ def test_ticked_distributions_add_their_quantiles_to_the_table_and_the_csv(
     name, data = download(
         page, right.locator(".export-row button").filter(has_text="CSV")
     )
-    assert name == "maksima_roczne-kwantyle.csv"
+    assert name == "hydrolog_quantiles_maksima-roczne.csv"
     header, *lines = [line.split(",") for line in data.decode("utf-8").splitlines()]
     assert header == [
         "return_period_years",

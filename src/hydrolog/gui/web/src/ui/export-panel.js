@@ -1,12 +1,16 @@
 // Exports of a result (plan D14):
-//   html`<${ExportPanel} spec=${{subject, csv: () => text, json: () => obj, chart: () => svg,
-//                               cli: {command, options}, report: {command, options}, print,
-//                               files, lines}} />`
+//   html`<${ExportPanel} spec=${{content, subject, csv: () => text, json: () => obj,
+//                               chart: () => svg, cli: {command, options},
+//                               report: {command, options}, print, files, lines}} />`
+// The files are named by Nogat DEV-19.21 (fileName): `hydrolog_<content>_<subject>`, the
+// content an English word of the section ("hydrograph", "quantiles", the command
+// "tc-kirpich"), the subject a person's text reduced by the kit's nameSlug, none when
+// empty; the JSON is `<content>-result`, the report `hydrolog_report_<subject>.md`.
 // CSV and JSON are written in the browser, PNG is the chart shown (charts/png.js), the
 // command line comes from the server's format_command (debounced) with the paths as the
 // person gave them ("in/x.csv" shown as "x.csv"), wrapped at " --" for display and copied
 // as shown; Python and MCP show the same options. The Markdown report runs
-// `report generate` into out/<subject>.md and downloads it; `print: true` adds „Raport do
+// `report generate` into out/<its name> and downloads it; `print: true` adds „Raport do
 // druku”, the print view of css/print.css (print.js); files are the result's own. `lines`,
 // the providers' lines of the result (attribution.js, Nogat DEV-20.5), go into the CSV as
 // its two trailing columns and under the PNG's chart; the JSON has them already, and the
@@ -16,11 +20,11 @@ import { api, downloadBlob } from "../api.js";
 import { csvWithLines, footerLines } from "../attribution.js";
 import { toPng } from "../charts/png.js";
 import { bytes } from "../format.js";
+import { nameSlug } from "../../nogat/nogat-handoff.js";
 import { html, useEffect, useState } from "../html.js";
 import { common, t } from "../labels/common.js";
 import { describeError } from "../labels/errors.js";
 import { exportLabels as texts } from "../labels/exports.js";
-import { sessionFileName } from "../controls/file-field.js";
 import { printView } from "../print.js";
 import { Seg } from "./seg.js";
 import { toast } from "./toast.js";
@@ -29,10 +33,25 @@ import { toast } from "./toast.js";
 export const LINE_DELAY_MS = 300;
 
 /**
- * A file name of a subject: characters a file system refuses replaced by "-".
+ * The name of a file the GUI names for the person (Nogat DEV-19.21):
+ * `hydrolog_<content>[_<qualifier>…].<extension>`, an empty qualifier left out. A person's
+ * text goes in through nameSlug, an identifier as it is.
+ *
+ * @param {string} content what the file holds, English words joined by "-", e.g. "hydrograph"
+ * @param {string[]} qualifiers what tells two such files apart, e.g. ["kamiennik-swierzawa"]
+ * @param {string} extension e.g. "csv"
+ * @returns {string} e.g. "hydrolog_hydrograph_kamiennik-swierzawa.csv"
+ */
+export function fileName(content, qualifiers, extension) {
+  return `${["hydrolog", content, ...qualifiers.filter(Boolean)].join("_")}.${extension}`;
+}
+
+/**
+ * The base of a session file named after a subject (a received hand-off's data in "in/"):
+ * characters a file system refuses replaced by "-".
  *
  * @param {string} subject e.g. "Kamiennik — Świerzawa"
- * @returns {string} the base of the file names
+ * @returns {string} the base of the file name
  */
 export function fileBase(subject) {
   const base = String(subject || "")
@@ -286,22 +305,23 @@ export function FileList({ files }) {
 
 /**
  * The export buttons: CSV, JSON, PNG, the Markdown report and the print view; the CSV and
- * the PNG carry the spec's `lines`.
+ * the PNG carry the spec's `lines`. The files are `hydrolog_<content>_<subject>.csv` and
+ * `.png`, `hydrolog_<content>-result_<subject>.json` and `hydrolog_report_<subject>.md`.
  *
  * @param {{spec: object}} props the export spec
  * @returns {object} the buttons
  */
 export function ExportButtons({ spec }) {
-  const base = fileBase(spec.subject);
+  const part = nameSlug(spec.subject);
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState(null);
   const saveCsv = () => {
-    const name = `${base}.csv`;
+    const name = fileName(spec.content, [part], "csv");
     downloadBlob(new Blob([csvWithLines(spec.csv(), spec.lines || null)], { type: "text/csv;charset=utf-8" }), name);
     toast(t(texts.saved, { name }));
   };
   const saveJson = () => {
-    const name = `${base}.result.json`;
+    const name = fileName(`${spec.content}-result`, [part], "json");
     downloadBlob(new Blob([`${JSON.stringify(spec.json(), null, 2)}\n`], { type: "application/json" }), name);
     toast(t(texts.saved, { name }));
   };
@@ -310,7 +330,7 @@ export function ExportButtons({ spec }) {
     if (!svg) return;
     try {
       const blob = await toPng(svg, { scale: 2, footer: footerLines(spec.lines || null) });
-      const name = `${base}.png`;
+      const name = fileName(spec.content, [part], "png");
       downloadBlob(blob, name);
       toast(t(texts.saved, { name }));
     } catch (error) {
@@ -318,7 +338,7 @@ export function ExportButtons({ spec }) {
     }
   };
   const makeReport = async () => {
-    const name = `${sessionFileName(base)}.md`;
+    const name = fileName("report", [part], "md");
     setBusy(true);
     try {
       const envelope = await api.run(
@@ -362,7 +382,7 @@ export function ExportButtons({ spec }) {
 /**
  * The export panel of a result.
  *
- * @param {{spec: {subject: string, csv?: () => string, json?: () => object,
+ * @param {{spec: {content: string, subject?: string, csv?: () => string, json?: () => object,
  *   chart?: () => SVGSVGElement|null, cli?: {command: string, options: object},
  *   report?: {command: string, options: object}, print?: boolean, files?: object[],
  *   lines?: {attribution: string[], terms_notice: string[]}}}} props the export spec
