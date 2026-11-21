@@ -192,7 +192,9 @@ class TestNothingThatIsComputedChanges:
             outputs[name] = (text(envelope["result"]["nodes"]), tables)
 
         assert outputs["placed"] == outputs["bare"]
-        assert set(outputs["bare"][1]) == {f"{node_id}.csv" for node_id in PLACES}
+        assert set(outputs["bare"][1]) == {
+            f"hydrolog_node-hydrograph_{node_id}.csv" for node_id in PLACES
+        }
 
 
 class TestTheNodes:

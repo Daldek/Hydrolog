@@ -96,7 +96,13 @@ class TestTheFileAndTheDocument:
             network=confluence(), output_dir=out, schematic=tmp_path / "net.svg"
         )
 
-        tables = ["A.csv", "B.csv", "J.csv", "OUT.csv", "R.csv"]
+        tables = [
+            "hydrolog_node-hydrograph_A.csv",
+            "hydrolog_node-hydrograph_B.csv",
+            "hydrolog_node-hydrograph_J.csv",
+            "hydrolog_node-hydrograph_OUT.csv",
+            "hydrolog_node-hydrograph_R.csv",
+        ]
         assert files_of(output) == [*tables, "net.svg"]
         assert sorted(os.listdir(out)) == tables
         assert (tmp_path / "net.svg").is_file()
@@ -242,15 +248,24 @@ class TestThePlan:
         out = tmp_path / "out"
 
         plan = route_network(
-            network=confluence(), output_dir=out, schematic=out / "A.csv", check=True
+            network=confluence(),
+            output_dir=out,
+            schematic=out / "hydrolog_node-hydrograph_A.csv",
+            check=True,
         )
         with pytest.raises(ConflictError) as caught:
-            route_network(network=confluence(), output_dir=out, schematic=out / "A.csv")
+            route_network(
+                network=confluence(),
+                output_dir=out,
+                schematic=out / "hydrolog_node-hydrograph_A.csv",
+            )
 
         targets = plan.result["targets"]  # type: ignore[index]
         assert targets[-1]["reason"] == "duplicate_output_name"
         assert caught.value.details["reason"] == "duplicate_output_name"
-        assert caught.value.details["paths"] == [str(out / "A.csv")]
+        assert caught.value.details["paths"] == [
+            str(out / "hydrolog_node-hydrograph_A.csv")
+        ]
         assert not out.exists()
 
     def test_the_schematic_never_replaces_a_file_the_network_is_read_from(
@@ -304,11 +319,11 @@ class TestThePlan:
         assert details["reason"] == "output_unwritable"
         assert details["path"] == str(blocker / "net.svg")
         assert sorted(Path(item).name for item in details["written"]) == [
-            "A.csv",
-            "B.csv",
-            "J.csv",
-            "OUT.csv",
-            "R.csv",
+            "hydrolog_node-hydrograph_A.csv",
+            "hydrolog_node-hydrograph_B.csv",
+            "hydrolog_node-hydrograph_J.csv",
+            "hydrolog_node-hydrograph_OUT.csv",
+            "hydrolog_node-hydrograph_R.csv",
         ]
         assert "details.written" in caught.value.hint
 

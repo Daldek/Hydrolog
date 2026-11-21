@@ -204,8 +204,9 @@ NETWORK = Option(
     description_pl=(
         "Sieć w treści, jako obiekt JSON `hydrolog-network/1`: `schema`, `name`, "
         "`timestep_min`, `rainfall` (opad zlewni, które nie mają własnego) i `nodes`, "
-        "lista węzłów z `id` (nazwa pliku `<id>.csv`; nie con, prn, aux, nul, "
-        "com1-9, lpt1-9), `type` (subcatchment, reach, reservoir, junction, outlet) i "
+        "lista węzłów z `id` (część nazwy pliku `hydrolog_node-hydrograph_<id>.csv`; "
+        "nie con, prn, aux, nul, com1-9, lpt1-9), `type` (subcatchment, reach, "
+        "reservoir, junction, outlet) i "
         "`from` (id węzłów powyżej). Zlewnia (subcatchment) ma `times_min` z "
         "`discharge_m3s` albo `value_column` z `inflows_file` (domyślnie jej `id`), "
         "albo sama liczy hydrogram: `watershed` (WatershedParameters jak w "
@@ -222,9 +223,10 @@ NETWORK = Option(
     description=(
         "The network inline, as a JSON object `hydrolog-network/1`: `schema`, `name`, "
         "`timestep_min`, `rainfall` (the rain of the subcatchments that have none of "
-        "their own) and `nodes`, a list of nodes with `id` (names the file "
-        "`<id>.csv`; not con, prn, aux, nul, com1-9, lpt1-9), `type` (subcatchment, "
-        "reach, reservoir, junction, outlet) and `from` (the ids of the nodes "
+        "their own) and `nodes`, a list of nodes with `id` (part of the file name "
+        "`hydrolog_node-hydrograph_<id>.csv`; not con, prn, aux, nul, com1-9, "
+        "lpt1-9), `type` (subcatchment, reach, reservoir, junction, outlet) and "
+        "`from` (the ids of the nodes "
         "upstream). A subcatchment has `times_min` with `discharge_m3s`, or a "
         "`value_column` of `inflows_file` (default its `id`), or makes its own "
         "hydrograph: `watershed` (WatershedParameters as in `hydrograph generate`), "
@@ -280,12 +282,14 @@ NODES = Option(
     name="nodes",
     type="string_list",
     description_pl=(
-        "Id węzłów, których hydrogramy są zwracane: zapisywane jako `<id>.csv` w "
-        "`output_dir` albo, bez niego, umieszczane w wyniku; domyślnie wszystkie."
+        "Id węzłów, których hydrogramy są zwracane: zapisywane jako "
+        "`hydrolog_node-hydrograph_<id>.csv` w `output_dir` albo, bez niego, "
+        "umieszczane w wyniku; domyślnie wszystkie."
     ),
     description=(
-        "Ids of the nodes whose hydrographs are returned: written as `<id>.csv` into "
-        "`output_dir` or, without it, put in the result; default all of them."
+        "Ids of the nodes whose hydrographs are returned: written as "
+        "`hydrolog_node-hydrograph_<id>.csv` into `output_dir` or, without it, put in "
+        "the result; default all of them."
     ),
 )
 OUTPUT_DIR = Option(
@@ -293,15 +297,17 @@ OUTPUT_DIR = Option(
     type="path",
     path_role="output",
     description_pl=(
-        "Katalog na hydrogram każdego wybranego węzła, `<id>.csv` (`time_min`, "
-        "`discharge_m3s`), który czyta każda komenda `route`; tworzony, jeśli go "
+        "Katalog na hydrogram każdego wybranego węzła, "
+        "`hydrolog_node-hydrograph_<id>.csv` (`time_min`, `discharge_m3s`), który "
+        "czyta każda komenda `route`; tworzony, jeśli go "
         "brak. Bez niego hydrogramy są w wyniku. Istniejący plik jest zastępowany "
         "tylko z `force`; żaden plik nie może być plikiem wejściowym, a katalog nie "
         "może leżeć w magazynie innego narzędzia Nogat."
     ),
     description=(
-        "Directory for the hydrograph of each selected node, `<id>.csv` (`time_min`, "
-        "`discharge_m3s`), which every `route` command reads; created if missing. "
+        "Directory for the hydrograph of each selected node, "
+        "`hydrolog_node-hydrograph_<id>.csv` (`time_min`, `discharge_m3s`), which "
+        "every `route` command reads; created if missing. "
         "Without it the hydrographs are in the result. An existing file is replaced "
         "only with `force`; no file may be an input file and the directory must not "
         "lie in the store of another Nogat tool."
@@ -355,12 +361,14 @@ NETWORK_FORCE = Option(
     name="force",
     type="boolean",
     description_pl=(
-        "Zastąp pliki `<id>.csv`, które istnieją w `output_dir`, i plik `schematic`, "
-        "jeśli istnieje; bez tej opcji nic nie jest nadpisywane."
+        "Zastąp pliki `hydrolog_node-hydrograph_<id>.csv`, które istnieją w "
+        "`output_dir`, i plik `schematic`, jeśli istnieje; bez tej opcji nic nie jest "
+        "nadpisywane."
     ),
     description=(
-        "Replace the `<id>.csv` files that exist in `output_dir` and the `schematic` "
-        "file if it exists; without it nothing is overwritten."
+        "Replace the `hydrolog_node-hydrograph_<id>.csv` files that exist in "
+        "`output_dir` and the `schematic` file if it exists; without it nothing is "
+        "overwritten."
     ),
     default=False,
 )
@@ -1446,14 +1454,14 @@ COMMANDS: tuple[Command, ...] = (
         cardinality="bounded",
         rules=(
             "Give `network` or `network_file`; a `rating_file` lies beside the file.",
-            "`output_dir` writes `<id>.csv` per node (`nodes` selects), `schematic` an "
-            "SVG map of the network; `check` plans both.",
+            "`output_dir` writes `hydrolog_node-hydrograph_<id>.csv` per node (`nodes` "
+            "selects), `schematic` an SVG map; `check` plans both.",
             "Notices begin with the node id.",
         ),
         rules_pl=(
             "Podaj `network` albo `network_file`; `rating_file` leży obok pliku.",
-            "`output_dir` zapisuje `<id>.csv` każdego węzła (`nodes` wybiera), "
-            "`schematic` mapę sieci w SVG; `check` planuje oba.",
+            "`output_dir` zapisuje `hydrolog_node-hydrograph_<id>.csv` każdego węzła "
+            "(`nodes` wybiera), `schematic` mapę w SVG; `check` planuje oba.",
             "Uwagi zaczynają się od id węzła.",
         ),
         errors=(

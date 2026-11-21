@@ -141,6 +141,7 @@ __all__ = [
     "Reservoir",
     "RoutingNetwork",
     "Subcatchment",
+    "node_table_name",
 ]
 
 DEFAULT_TIMESTEP_MIN: Final = 5.0
@@ -148,7 +149,33 @@ DEFAULT_TIMESTEP_MIN: Final = 5.0
 of the command ``hydrograph generate``."""
 
 MAX_ID_CHARS: Final = 64
-"""Longest node id; an id names the file of its node (``<id>.csv``)."""
+"""Longest node id; an id names the file of its node (:func:`node_table_name`)."""
+
+
+def node_table_name(node_id: str) -> str:
+    """Return the name of the file of the hydrograph of a node.
+
+    ``route network --output-dir`` writes the hydrograph that leaves each node in the
+    table ``hydrolog_node-hydrograph_<id>.csv``, the id exactly as it is: a file a tool
+    names is ``<tool>_<content>_<qualifiers>.<extension>`` (Nogat DEV-19.21).
+
+    Parameters
+    ----------
+    node_id : str
+        Id of the node.
+
+    Returns
+    -------
+    str
+        The file name, e.g. ``hydrolog_node-hydrograph_W3.csv`` for the node ``W3``.
+
+    Examples
+    --------
+    >>> node_table_name("W3")
+    'hydrolog_node-hydrograph_W3.csv'
+    """
+    return f"hydrolog_node-hydrograph_{node_id}.csv"
+
 
 MAX_DESCRIPTION_CHARS: Final = 500
 """Longest description of a node or of a network [characters] (ADR-0023)."""

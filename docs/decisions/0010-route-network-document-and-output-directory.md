@@ -103,3 +103,12 @@ Three points that the first version left open were decided by the coordinating s
   than 20,000 characters (the default page of DOC-1.7) carries the warning `large_result`, which names
   `--nodes` and `--output-dir`. The result is not cut: a client that cannot read it all has the choice the
   notice gives.
+
+## Erratum (2026-11-21, Nogat DEV-19.21)
+
+Nogat DEV-19.21 (ECO-083) names a file a tool names for a user `<tool>_<content>_<qualifiers>.<extension>`: the
+table that `--output-dir` writes for a node (the Decision's `<id>.csv`) is `hydrolog_node-hydrograph_<id>.csv`, the
+id as it is (`hydrolog_node-hydrograph_W3.csv` for the node `W3`; `hydrolog.routing.network.node_table_name`), and
+`hydrolog.testing` builds the same names. `ATTRIBUTION.txt` beside the tables keeps its name. An id still names its
+file, so the rules of the id (letters, digits, `_`, `.`, `-`, at most 64 characters, unique without regard to case,
+not a Windows device name) stay as decided.

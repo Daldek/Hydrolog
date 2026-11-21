@@ -268,10 +268,12 @@ class TestTheTables:
         output = fixture(output_dir=out)
 
         assert [Path(p).name for p in output.files] == [
-            f"{i}.csv" for i in FIXTURE_NODES
+            f"hydrolog_node-hydrograph_{i}.csv" for i in FIXTURE_NODES
         ]
         assert all(Path(p).parent == out for p in output.files)
-        assert tables_of(out).keys() == {f"{i}.csv" for i in FIXTURE_NODES}
+        assert tables_of(out).keys() == {
+            f"hydrolog_node-hydrograph_{i}.csv" for i in FIXTURE_NODES
+        }
         assert output.replaced == () and output.check is False
         expected = (
             load_network(network_file=FIXTURE_NETWORK, inflows_file=FIXTURE_INFLOWS)
@@ -279,7 +281,9 @@ class TestTheTables:
             .hydrographs
         )
         for node_id, hydrograph in expected.items():
-            text = (out / f"{node_id}.csv").read_text(encoding="utf-8")
+            text = (out / f"hydrolog_node-hydrograph_{node_id}.csv").read_text(
+                encoding="utf-8"
+            )
             assert text == hydrograph.to_table()
         assert not any(
             "times_min" in node
@@ -291,7 +295,9 @@ class TestTheTables:
 
         fixture(output_dir=out)
 
-        assert sorted(os.listdir(out)) == sorted(f"{i}.csv" for i in FIXTURE_NODES)
+        assert sorted(os.listdir(out)) == sorted(
+            f"hydrolog_node-hydrograph_{i}.csv" for i in FIXTURE_NODES
+        )
         assert os.listdir(tmp_path) == ["out"]
 
     def test_a_network_with_one_reach_writes_the_table_of_the_single_command(
@@ -303,15 +309,21 @@ class TestTheTables:
         route_network(network=stream(), output_dir=out)
         route_lag(lag_min=25.0, times_min=TIMES, discharge_m3s=FLOOD, output=single)
 
-        assert (out / "OUT.csv").read_bytes() == single.read_bytes()
-        assert (out / "R.csv").read_bytes() == single.read_bytes()
+        assert (
+            out / "hydrolog_node-hydrograph_OUT.csv"
+        ).read_bytes() == single.read_bytes()
+        assert (
+            out / "hydrolog_node-hydrograph_R.csv"
+        ).read_bytes() == single.read_bytes()
 
     def test_the_tables_are_the_input_of_every_route_command(self, tmp_path):
         out = tmp_path / "out"
         fixture(output_dir=out)
 
-        again = route_lag(lag_min=30.0, input_file=out / "R1.csv")
-        hydrograph = load_hydrograph(input_file=out / "J1.csv")
+        again = route_lag(
+            lag_min=30.0, input_file=out / "hydrolog_node-hydrograph_R1.csv"
+        )
+        hydrograph = load_hydrograph(input_file=out / "hydrolog_node-hydrograph_J1.csv")
 
         assert again.result.inflow_peak_m3s == pytest.approx(22.2318891877)
         assert hydrograph.peak_discharge_m3s == pytest.approx(25.4718891877)
@@ -321,23 +333,29 @@ class TestTheTables:
 
         route_network(network=stream(), output_dir=out)
 
-        assert (out / "OUT.csv").is_file()
+        assert (out / "hydrolog_node-hydrograph_OUT.csv").is_file()
 
     def test_a_relative_directory_given_as_a_path_object(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
 
         output = route_network(network=stream(), output_dir=Path("tables"))
 
-        assert (tmp_path / "tables" / "R.csv").is_file()
-        assert Path(output.files[0]).name == "A.csv"
+        assert (tmp_path / "tables" / "hydrolog_node-hydrograph_R.csv").is_file()
+        assert Path(output.files[0]).name == "hydrolog_node-hydrograph_A.csv"
 
     def test_nodes_select_the_tables_and_their_order(self, tmp_path):
         out = tmp_path / "out"
 
         output = fixture(output_dir=out, nodes=["OUT", "J1"])
 
-        assert [Path(p).name for p in output.files] == ["OUT.csv", "J1.csv"]
-        assert sorted(os.listdir(out)) == ["J1.csv", "OUT.csv"]
+        assert [Path(p).name for p in output.files] == [
+            "hydrolog_node-hydrograph_OUT.csv",
+            "hydrolog_node-hydrograph_J1.csv",
+        ]
+        assert sorted(os.listdir(out)) == [
+            "hydrolog_node-hydrograph_J1.csv",
+            "hydrolog_node-hydrograph_OUT.csv",
+        ]
         assert len(output.result.nodes) == 6  # type: ignore[union-attr]
 
     def test_an_unknown_node_is_a_validation_error_and_nothing_is_written(
@@ -374,7 +392,9 @@ class TestTheTables:
             route_network(network=stream(), output_dir=out, nodes=["A", "OUT", "A"])
 
         assert caught.value.details["reason"] == "duplicate_output_name"
-        assert caught.value.details["paths"] == [str(out / "A.csv")]
+        assert caught.value.details["paths"] == [
+            str(out / "hydrolog_node-hydrograph_A.csv")
+        ]
         assert not out.exists()
 
     def test_the_order_of_the_nodes_in_the_document_changes_nothing(self, tmp_path):
@@ -446,7 +466,9 @@ class TestTheTables:
         route_network(network_file=network, output_dir=tmp_path / "out")
 
         expected = element.route(Hydrograph(TIMES, FLOOD)).outflow.to_table()
-        assert (tmp_path / "out" / "OUT.csv").read_text(encoding="utf-8") == expected
+        assert (tmp_path / "out" / "hydrolog_node-hydrograph_OUT.csv").read_text(
+            encoding="utf-8"
+        ) == expected
 
     def test_a_reservoir_equals_a_reach_by_level_pool(self, tmp_path):
         (tmp_path / "pond.csv").write_text(POND_TABLE, encoding="utf-8")
@@ -477,8 +499,17 @@ class TestTheTables:
         direct = LagReach(lag_min=25.0).route(
             Hydrograph(TIMES, FLOOD), initial_outflow_m3s=5.0, extend_min=0.0
         )
-        assert (out / "R.csv").read_text(encoding="utf-8") == direct.outflow.to_table()
-        assert len((out / "R.csv").read_text(encoding="utf-8").splitlines()) == 9
+        assert (out / "hydrolog_node-hydrograph_R.csv").read_text(
+            encoding="utf-8"
+        ) == direct.outflow.to_table()
+        assert (
+            len(
+                (out / "hydrolog_node-hydrograph_R.csv")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            )
+            == 9
+        )
 
     def test_reaches_in_series_equal_the_sub_reaches_of_one(self):
         # Muskingum with N sub-reaches is N reaches of K / N in series; a fixed
@@ -526,7 +557,11 @@ class TestExistingTables:
         return out
 
     def test_existing_tables_are_a_conflict_that_lists_every_path(self, tmp_path):
-        out = self.planted(tmp_path, "A.csv", "OUT.csv")
+        out = self.planted(
+            tmp_path,
+            "hydrolog_node-hydrograph_A.csv",
+            "hydrolog_node-hydrograph_OUT.csv",
+        )
         before = tables_of(out)
 
         with pytest.raises(ConflictError) as caught:
@@ -534,25 +569,39 @@ class TestExistingTables:
 
         assert caught.value.details == {
             "reason": "output_exists",
-            "paths": [str(out / "A.csv"), str(out / "OUT.csv")],
+            "paths": [
+                str(out / "hydrolog_node-hydrograph_A.csv"),
+                str(out / "hydrolog_node-hydrograph_OUT.csv"),
+            ],
         }
         assert "--force" in caught.value.hint
         assert tables_of(out) == before, "nothing was written"
 
     def test_force_replaces_the_tables_and_nothing_else(self, tmp_path):
-        out = self.planted(tmp_path, "A.csv", "OUT.csv")
+        out = self.planted(
+            tmp_path,
+            "hydrolog_node-hydrograph_A.csv",
+            "hydrolog_node-hydrograph_OUT.csv",
+        )
 
         output = fixture(output_dir=out, force=True)
 
-        assert set(output.replaced) == {str(out / "A.csv"), str(out / "OUT.csv")}
+        assert set(output.replaced) == {
+            str(out / "hydrolog_node-hydrograph_A.csv"),
+            str(out / "hydrolog_node-hydrograph_OUT.csv"),
+        }
         assert (out / "notes.txt").read_text(encoding="utf-8") == "mine"
-        assert (out / "A.csv").read_text(encoding="utf-8").startswith("time_min,")
+        assert (
+            (out / "hydrolog_node-hydrograph_A.csv")
+            .read_text(encoding="utf-8")
+            .startswith("time_min,")
+        )
         assert sorted(os.listdir(out)) == sorted(
-            [*(f"{i}.csv" for i in FIXTURE_NODES), "notes.txt"]
+            [*(f"hydrolog_node-hydrograph_{i}.csv" for i in FIXTURE_NODES), "notes.txt"]
         )
 
     def test_the_envelope_says_which_tables_were_replaced(self, tmp_path):
-        out = self.planted(tmp_path, "B.csv")
+        out = self.planted(tmp_path, "hydrolog_node-hydrograph_B.csv")
         options = {
             "network_file": str(FIXTURE_NETWORK),
             "inflows_file": str(FIXTURE_INFLOWS),
@@ -563,12 +612,12 @@ class TestExistingTables:
         files = run_command("route network", options).to_dict()["result"]["files"]
 
         assert {Path(f["path"]).name: f["status"] for f in files} == {
-            "A.csv": "written",
-            "B.csv": "replaced",
-            "R1.csv": "written",
-            "J1.csv": "written",
-            "D.csv": "written",
-            "OUT.csv": "written",
+            "hydrolog_node-hydrograph_A.csv": "written",
+            "hydrolog_node-hydrograph_B.csv": "replaced",
+            "hydrolog_node-hydrograph_R1.csv": "written",
+            "hydrolog_node-hydrograph_J1.csv": "written",
+            "hydrolog_node-hydrograph_D.csv": "written",
+            "hydrolog_node-hydrograph_OUT.csv": "written",
         }
 
     def test_check_plans_every_table_and_writes_nothing(self, tmp_path):
@@ -583,10 +632,13 @@ class TestExistingTables:
         assert [
             (Path(t["path"]).name, t["option"], t["action"])
             for t in document_["targets"]  # type: ignore[index]
-        ] == [(f"{i}.csv", "output_dir", "write") for i in FIXTURE_NODES]
+        ] == [
+            (f"hydrolog_node-hydrograph_{i}.csv", "output_dir", "write")
+            for i in FIXTURE_NODES
+        ]
 
     def test_a_check_shows_the_conflicts_and_the_replacements(self, tmp_path):
-        out = self.planted(tmp_path, "D.csv")
+        out = self.planted(tmp_path, "hydrolog_node-hydrograph_D.csv")
 
         taken = fixture(output_dir=out, check=True).result["targets"]  # type: ignore[index]
         forced = fixture(output_dir=out, check=True, force=True).result["targets"]  # type: ignore[index]
@@ -595,7 +647,7 @@ class TestExistingTables:
             t["action"]: t.get("reason") for t in taken if t["action"] != "write"
         } == {"conflict": "output_exists"}
         assert [t["action"] for t in forced].count("replace") == 1
-        assert not (out / "A.csv").exists()
+        assert not (out / "hydrolog_node-hydrograph_A.csv").exists()
 
     def test_a_check_needs_a_valid_network(self, tmp_path):
         with pytest.raises(InvalidParameterError) as caught:
@@ -613,7 +665,9 @@ class TestExistingTables:
         route = RoutingNetwork.route
 
         def late(self):
-            (out / "R.csv").write_text("mine", encoding="utf-8")
+            (out / "hydrolog_node-hydrograph_R.csv").write_text(
+                "mine", encoding="utf-8"
+            )
             return route(self)
 
         monkeypatch.setattr(RoutingNetwork, "route", late)
@@ -621,8 +675,12 @@ class TestExistingTables:
         with pytest.raises(ConflictError) as caught:
             route_network(network=stream(), output_dir=out)
 
-        assert caught.value.details["paths"] == [str(out / "R.csv")]
-        assert tables_of(out) == {"R.csv": "mine"}, "no table and no staging is left"
+        assert caught.value.details["paths"] == [
+            str(out / "hydrolog_node-hydrograph_R.csv")
+        ]
+        assert tables_of(out) == {"hydrolog_node-hydrograph_R.csv": "mine"}, (
+            "no table and no staging is left"
+        )
 
     @pytest.mark.parametrize(
         ("marker", "inside"),
@@ -646,7 +704,9 @@ class TestExistingTables:
         details = caught.value.details
         assert details["reason"] == "output_in_store"
         assert details["store"] == str(store)
-        assert details["paths"] == [str(out / f"{i}.csv") for i in ("A", "R", "OUT")]
+        assert details["paths"] == [
+            str(out / f"hydrolog_node-hydrograph_{i}.csv") for i in ("A", "R", "OUT")
+        ]
         assert "--root" in caught.value.hint
         assert sorted(os.listdir(store)) == before, "nothing was written"
 
@@ -669,8 +729,14 @@ class TestTheInputsAreSafe:
     ):
         folder = tmp_path / "net"
         folder.mkdir()
-        rating = folder / ("D.csv" if victim == "rating_file" else "pond.csv")
-        inflows = folder / ("A.csv" if victim == "inflows_file" else "inflows.csv")
+        rating = folder / (
+            "hydrolog_node-hydrograph_D.csv" if victim == "rating_file" else "pond.csv"
+        )
+        inflows = folder / (
+            "hydrolog_node-hydrograph_A.csv"
+            if victim == "inflows_file"
+            else "inflows.csv"
+        )
         rating.write_text(POND_TABLE, encoding="utf-8")
         inflows.write_text(
             "time_min,A\n"
@@ -683,7 +749,11 @@ class TestTheInputsAreSafe:
             outlet("D"),
         )
         network = written(
-            folder, content, "OUT.csv" if victim == "network_file" else "network.json"
+            folder,
+            content,
+            "hydrolog_node-hydrograph_OUT.csv"
+            if victim == "network_file"
+            else "network.json",
         )
         before = tables_of(folder)
 
@@ -770,9 +840,15 @@ class TestFailures:
         details = caught.value.details
         assert details["reason"] == "output_unwritable"
         assert details["path"] == str(out)
-        assert details["written"] == [str(out / "A.csv"), str(out / "R.csv")]
+        assert details["written"] == [
+            str(out / "hydrolog_node-hydrograph_A.csv"),
+            str(out / "hydrolog_node-hydrograph_R.csv"),
+        ]
         assert "details.written" in caught.value.hint
-        assert sorted(os.listdir(out)) == ["A.csv", "R.csv"], "staging is removed"
+        assert sorted(os.listdir(out)) == [
+            "hydrolog_node-hydrograph_A.csv",
+            "hydrolog_node-hydrograph_R.csv",
+        ], "staging is removed"
 
     def test_a_directory_that_cannot_be_made_is_an_output_error(self, tmp_path):
         blocker = tmp_path / "blocker"
@@ -813,7 +889,7 @@ class TestTheCommand:
 
         assert envelope["result"]["schema"] == "hydrolog-route-network/1"
         assert [Path(f["path"]).name for f in envelope["result"]["files"]] == [
-            f"{i}.csv" for i in FIXTURE_NODES
+            f"hydrolog_node-hydrograph_{i}.csv" for i in FIXTURE_NODES
         ]
         assert envelope["inputs"]["output_dir"] == str(out)
         assert envelope["inputs"]["force"] is False
@@ -861,8 +937,14 @@ class TestOnTheCommandLine:
 
         assert (code, stderr) == (0, "")
         files = json.loads(stdout)["result"]["files"]
-        assert [Path(f["path"]).name for f in files] == ["OUT.csv", "D.csv"]
-        assert sorted(os.listdir(out)) == ["D.csv", "OUT.csv"]
+        assert [Path(f["path"]).name for f in files] == [
+            "hydrolog_node-hydrograph_OUT.csv",
+            "hydrolog_node-hydrograph_D.csv",
+        ]
+        assert sorted(os.listdir(out)) == [
+            "hydrolog_node-hydrograph_D.csv",
+            "hydrolog_node-hydrograph_OUT.csv",
+        ]
 
     def test_the_long_flag_is_the_same_option(self, capsys, tmp_path):
         out = tmp_path / "out"
@@ -896,7 +978,7 @@ class TestOnTheCommandLine:
         lines = err.splitlines()
         assert lines[0] == "Error (conflict): State conflict"
         assert "already exists" in lines[1]
-        assert f"    {out / 'A.csv'}" in lines
+        assert f"    {out / 'hydrolog_node-hydrograph_A.csv'}" in lines
         assert len([line for line in lines if line.startswith("    ")]) == 6
         assert json.loads(lines[-1])["details"]["reason"] == "output_exists"
 
@@ -911,7 +993,7 @@ class TestOnTheCommandLine:
 
         assert code == 4
         assert "The output directory lies in the store of another tool" in english
-        assert f"    {out / 'OUT.csv'}" in english.splitlines()
+        assert f"    {out / 'hydrolog_node-hydrograph_OUT.csv'}" in english.splitlines()
         assert "own --root" in english
         assert "Katalog wyjściowy leży w magazynie innego narzędzia" in polish
         assert "--root" in polish.splitlines()[-2]
@@ -965,4 +1047,6 @@ class TestOnTheCommandLine:
         assert code == 0
         assert stdout.splitlines()[0].startswith("route network: Route hydrographs")
         assert "nodes (6):" in stdout and "model:" in stdout
-        assert f"Files:\n  {out / 'A.csv'}  (written," in stdout
+        assert (
+            f"Files:\n  {out / 'hydrolog_node-hydrograph_A.csv'}  (written," in stdout
+        )
