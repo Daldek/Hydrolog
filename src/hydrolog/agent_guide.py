@@ -146,8 +146,9 @@ _PRINCIPLES: Final[tuple[str, ...]] = (
     "outside `--allow-dir`, and every path option without it.",
     "**Read `notices`:** non-fatal warnings (a short series, a value outside a "
     "formula's range); pass them on with the result.",
-    "**Other sources:** series come from Obserwator, soil rasters from Kartograf; "
-    "only `{cmd:precip pmaxtp}` goes online.",
+    "**Other sources:** series come from Obserwator (CSV) and Archiwista "
+    "(`hydrolog-series/1`, also in a hand-off), soil rasters from Kartograf; only "
+    "`{cmd:precip pmaxtp}` goes online.",
 )
 # What each code of the error registry means for an agent.
 _ERROR_ADVICE: Final[Mapping[str, str]] = {
@@ -243,8 +244,7 @@ _FLOWS: Final[tuple[_Flow, ...]] = (
     ),
     _Flow(
         "Flood frequency from an Obserwator CSV export",
-        "Obserwator exports the daily discharge series to a CSV file (`Q [m3/s]`, "
-        "`date`) that Hydrolog loads without preprocessing.",
+        "Obserwator's daily discharge CSV (`Q [m3/s]`, `date`) loads as it is.",
         (
             _Step(
                 "Obserwator: export one station (`CODE` from `obserwator stations "

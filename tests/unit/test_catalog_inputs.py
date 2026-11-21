@@ -858,6 +858,128 @@ class TestLoadSeriesYears:
         assert from_file.details == {"option": "year_column", "reason": "conflict"}
 
 
+class TestSeriesDocuments:
+    """A ``hydrolog-series/1``, alone or in Archiwista's hand-off (ADR-0068)."""
+
+    DAILY = {
+        "schema": "hydrolog-series/1",
+        "name": "Raba — Q",
+        "variable": "Q",
+        "unit": "m3/s",
+        "step": "day",
+        "dates": ["2024-01-01", "2024-01-02", "2024-01-03"],
+        "values": [1.5, None, 2.0],
+    }
+    ANNUAL = {
+        "schema": "hydrolog-series/1",
+        "name": "Raba — Q max",
+        "variable": "Q",
+        "unit": "m3/s",
+        "step": "year",
+        "statistic": "max",
+        "year_type": "hydrological",
+        "years": [2001, 2002, 2004],
+        "values": [10.0, None, 12.5],
+    }
+    LINES = {
+        "attribution": [
+            "Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej "
+            "– Państwowy Instytut Badawczy"
+        ],
+        "terms_notice": [
+            "Regulamin serwisu hydrologicznego IMGW-PIB: https://hydro.imgw.pl/#/regulamin"
+        ],
+    }
+
+    @staticmethod
+    def handoff(payload, **extra):
+        return {
+            "schema": "nogat-handoff/1",
+            "created_at": "2026-11-21T10:00:00Z",
+            "producer": {"tool": "archiwista", "version": "0.3.2"},
+            "subject": "Raba",
+            "provenance": {"series": {"source": "imgw-pib"}},
+            "payload": payload,
+            **extra,
+        }
+
+    def test_daily_values_keep_their_dates_without_column_options(self, tmp_path):
+        path = write(tmp_path, "raba.json", json.dumps(self.DAILY))
+        assert read_table(path).columns == ("date", "Q")
+        series = load_series(input_file=path)
+        assert series.dates.astype(str).tolist() == self.DAILY["dates"]
+        assert series.years is None
+        assert np.isnan(series.values[1]) and series.values[2] == 2.0
+
+    def test_annual_values_in_a_handoff_keep_their_years_and_lines(self, tmp_path):
+        doc = self.handoff(self.ANNUAL, **self.LINES)
+        path = write(tmp_path, "raba.handoff.json", json.dumps(doc, ensure_ascii=False))
+        table = read_table(path)
+        lines = table.attribution.to_dict()
+        assert self.LINES["attribution"][0] in lines["attribution"]
+        assert self.LINES["terms_notice"][0] in lines["terms_notice"]
+        series = load_series(input_file=path, value_column="Q")
+        assert series.dates is None
+        assert series.without_missing().years.tolist() == [2001, 2004]
+
+    def test_given_columns_name_the_documents_columns(self, tmp_path):
+        path = write(tmp_path, "raba.json", json.dumps(self.handoff(self.DAILY)))
+        series = load_series(input_file=path, value_column="Q", date_column="date")
+        assert len(series.dates) == 3
+        missing = failure(lambda: load_series(input_file=path, year_column="year"))
+        assert missing.details["reason"] == "missing_column"
+
+    def test_annual_values_are_refused_where_dates_are_needed(self, tmp_path):
+        path = write(tmp_path, "raba.json", json.dumps(self.ANNUAL))
+        error = failure(lambda: load_series(input_file=path, require_dates=True))
+        assert error.details["reason"] == "annual_series"
+
+    def test_a_handoff_of_a_network_is_refused(self, tmp_path):
+        doc = self.handoff({"schema": "hydrolog-network/1", "nodes": []})
+        path = write(tmp_path, "siec.handoff.json", json.dumps(doc))
+        error = failure(lambda: read_table(path))
+        assert error.details["reason"] == "handoff_payload"
+        assert error.details["value"] == "hydrolog-network/1"
+
+    @pytest.mark.parametrize(
+        ("change", "reason"),
+        [
+            ({"step": "month"}, "invalid_value"),
+            ({"years": [2001]}, "unknown_field"),
+            ({"dates": None}, "type"),
+            ({"values": [1.0, "2", 3.0]}, "type"),
+            ({"values": [1.0, True, 3.0]}, "type"),
+            ({"values": [1.0, 2.0]}, "length_mismatch"),
+            ({"variable": "Q [m3/s]"}, "invalid_value"),
+            ({"variable": "date"}, "duplicate_column"),
+            ({"name": ""}, "type"),
+        ],
+    )
+    def test_a_series_that_breaks_its_schema_is_a_data_error(
+        self, tmp_path, change, reason
+    ):
+        path = write(tmp_path, "raba.json", json.dumps({**self.DAILY, **change}))
+        assert failure(lambda: read_table(path)).details["reason"] == reason
+
+    def test_a_missing_field_is_named(self, tmp_path):
+        annual = {key: value for key, value in self.ANNUAL.items() if key != "years"}
+        path = write(tmp_path, "raba.json", json.dumps(annual))
+        error = failure(lambda: read_table(path))
+        assert (error.details["reason"], error.details["fields"]) == (
+            "missing_field",
+            ["years"],
+        )
+
+    def test_an_unknown_year_type_is_refused(self, tmp_path):
+        doc = {**self.ANNUAL, "year_type": "x"}
+        path = write(tmp_path, "raba.json", json.dumps(doc))
+        error = failure(lambda: read_table(path))
+        assert (error.details["reason"], error.details["field"]) == (
+            "invalid_value",
+            "year_type",
+        )
+
+
 # --- watershed ------------------------------------------------------------------------
 
 

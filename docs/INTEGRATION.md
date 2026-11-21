@@ -416,6 +416,15 @@ Archiwista hands a station's series to „Statystyka przepływów” in the same
 
 „Wczytaj z Archiwisty” in the first step of Statystyka przepływów reads it from a file or the clipboard, checking the envelope against Nogat's schema and the payload against Hydrolog's. Annual maxima become the pasted values in the order of their years (missing years left out); daily values become the session's file `<subject>.csv` with the columns `date` and the variable, chosen as for a file of the person's, and `stats flood-frequency` takes the annual maxima of complete hydrological years from them. The file adds the columns `attribution` and `terms_notice` with the hand-off's lines (of an older hand-off without them, the lines of the provider its `provenance.series` names), which Hydrolog reads as lines, not data. Annual minima are refused with the reason: low flows are `stats low-flow` in „Polecenia”. The section names where the series came from until it is changed.
 
+The commands read the same file as an `input_file` ([ADR-0068](decisions/0068-a-stations-series-as-an-input-file.md)): a `hydrolog-series/1`, alone or as the payload of the hand-off, is the columns `date` (daily values) or `year` (annual values) and its variable (`Q`). Without `date_column` and `year_column` a series takes the document's own, so daily values keep their dates and annual maxima their years; `value_column` is the variable where a command leaves it optional (`scs effective`), and the commands that require it take `--value-column Q` (with `--date-column date` where they require that too). The hand-off's `attribution` and `terms_notice` are cited in the result. A hand-off of another payload is refused (`data_error`, `details.reason` `handoff_payload`), and annual values where a command needs dates (`annual_series`):
+
+```bash
+archiwista stations handoff 149190310 --variable Q > raba.handoff.json
+hydrolog stats flood-frequency --input-file raba.handoff.json --value-column Q --distribution all
+archiwista stations handoff 149190310 --variable Q --resolution annual > raba-max.handoff.json
+hydrolog stats homogeneity --input-file raba-max.handoff.json --value-column Q --split-year 1990
+```
+
 ### Obserwator: series export → `stats` commands
 
 Hydrolog does not download IMGW series. Obserwator exports the daily series (`series export`) to a single CSV file with units in the header (`Q [m3/s]`), a `date` column, value flags (`Q_flag`) and the providers' lines (`attribution_source`, `attribution_processed`, `attribution`, `terms_notice`), which Hydrolog reads as lines, not data, and carries into its results and files. Export to a file uses `--output FILE` (for example `series export ... --output q_daily.csv`); the versioned-store root option is `--root` and defaults to the user data directory. The file is loaded without preprocessing (comma or semicolon separator, UTF-8; columns are given by name without the unit: `Q` finds `Q [m3/s]`):
