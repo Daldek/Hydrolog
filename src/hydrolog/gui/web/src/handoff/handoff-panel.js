@@ -153,9 +153,9 @@ async function payloadSchemas(refused) {
  * hydrolog-network-1.schema.json or hydrolog-series-1.schema.json) and hand it to the
  * section it belongs to, or to Sieć for every network when Sieć reads it (`into`). A
  * station's series takes its providers' lines (its own, or the set of the provider an
- * older hand-off names, from GET api/session), and its daily values are first written
- * into the session's files with them, which Statystyka przepływów reads like a file of the
- * person's. A network takes the origins of its nodes (node_provenance) to Sieć, and a key
+ * older hand-off names, from GET api/session), and its values (daily or annual) are first
+ * written into the session's files with them, which Statystyka przepływów reads like a file
+ * of the person's. A network takes the origins of its nodes (node_provenance) to Sieć, and a key
  * that names no node is said in the load's note.
  *
  * @param {string} text the hand-off as text
@@ -176,14 +176,12 @@ async function openHandoff(text, { into = null } = {}) {
   } else if (read.target === "statystyka") {
     const lines = receivedLines(doc, null) ?? receivedLines(doc, await refreshSession()) ?? NO_LINES;
     const inputs = statystykaInputs(doc.payload, lines);
-    const values = { input_file: "", value_column: undefined, date_column: undefined, values: "", ...inputs.values };
-    if (inputs.csv !== null) {
-      try {
-        const file = new File([inputs.csv], `${fileBase(doc.subject)}.csv`, { type: "text/csv" });
-        values.input_file = (await uploadFile(file)).path;
-      } catch (error) {
-        return { title: texts.load.refused, lines: [t(texts.load.uploadFailed, { message: errorText(error) })] };
-      }
+    const values = { input_file: "", value_column: undefined, date_column: undefined, values: "" };
+    try {
+      const file = new File([inputs.csv], `${fileBase(doc.subject)}.csv`, { type: "text/csv" });
+      values.input_file = (await uploadFile(file)).path;
+    } catch (error) {
+      return { title: texts.load.refused, lines: [t(texts.load.uploadFailed, { message: errorText(error) })] };
     }
     deliver("statystyka", { source: inputs.source, values, received: { ...receivedOf(doc), ...linesFields(lines) } });
     // A station's series opened is one of the anonymous daily totals (DEV-15.11).

@@ -33,8 +33,9 @@ ciągu” runs ``stats homogeneity`` on the same series: the guide's pasted maxi
 the three tests, split by their positions; a file with a step after 2010 fails them,
 with the split and Pettitt's change point in years and the notice in Polish. A
 station's series handed off by Archiwista (``hydrolog-series/1``, ADR-0020) opens here
-with „Wczytaj z Archiwisty”: annual maxima as the pasted values without the missing
-years, daily values as a file of the session with its columns (read with the session's
+with „Wczytaj z Archiwisty”: annual maxima as a file of the session with their years
+(the missing ones left out), so the run shows its range and the homogeneity tests split
+by year, daily values as a file of the session with its columns (read with the session's
 header, also under the host's prefix) and one ``POST api/stats/station``; annual minima
 are refused.
 """
@@ -956,9 +957,10 @@ def open_handoff(page: Page, doc: dict[str, Any], tmp_path: Path) -> None:
     chooser.value.set_files(str(path))
 
 
-def test_annual_maxima_from_archiwista_run_as_values_without_the_missing_years(
+def test_annual_maxima_from_archiwista_keep_their_years_in_a_session_file(
     tab: Tab, tmp_path: Path
 ) -> None:
+    """G03-1: the hand-off's years reach the series' range and the homogeneity tests."""
     rows = [line.split(",") for line in MAXIMA.read_text("utf-8").splitlines()[1:]]
     maxima = [float(value) for _, value in rows]
     payload = {
@@ -980,16 +982,28 @@ def test_annual_maxima_from_archiwista_run_as_values_without_the_missing_years(
         page.locator(f'{SECTION} [data-handoff-source="archiwista"]')
     ).to_contain_text("Z Archiwisty: Raba — maksima roczne")
     expect(
-        page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Wklej")
+        page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Plik CSV")
     ).to_be_checked()
+    # The years with a maximum and the variable: the missing year 1997 is left out
+    expect(page.locator(f"{SECTION} #st-input_file")).to_have_value(
+        re.compile(r"^in/Raba.*maksima roczne\.csv$")
+    )
+    expect(page.locator(f"{SECTION} #st-value_column")).to_have_value("Q")
+    expect(page.locator(f"{SECTION} #st-date_column")).to_have_value("")
     highlight(page, "100")
     options = sent(compute(page))
-    assert options["values"] == maxima
+    assert (options["value_column"], "values" in options) == ("Q", False)
     expect(page.locator(f'{RIGHT} .kpi[data-key="q-100"] .v')).to_have_text(
         "324,9 m³/s"
     )
-    # A series typed over is the person's: the origin goes
-    page.locator(f"{SECTION} #st-values").fill("100; 120; 140")
+    expect(page.locator(".crumb-context")).to_have_text(
+        re.compile(r"maksima roczne\.csv · 26 lat \(1998–2023\)$")
+    )
+    # The homogeneity tests split by the years, not by the positions of the values
+    assert sent(compute_tested(page))["year_column"] == "year"
+    expect(page.locator(f"{HOMOGENEITY} .note")).to_contain_text("Podział od roku 2011")
+    # Another series is the person's: the origin goes
+    upload(page, MAXIMA)
     expect(page.locator(f"{SECTION} [data-handoff-source]")).to_have_count(0)
 
 
