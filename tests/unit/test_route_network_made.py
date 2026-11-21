@@ -176,9 +176,11 @@ class TestTheNotices:
             warnings.simplefilter("error")
             notices = route_network(network=content).notices
 
-        warned = [n for n in notices if n.code == "outside_typical_range"]
+        warned = [n for n in notices if n.code == "outside_applicability"]
         assert [n.level for n in warned] == ["warning"] * 3
-        assert [n.message.split(" is outside typical range")[0] for n in warned] == [
+        assert [
+            n.message.split(" is outside its applicability")[0] for n in warned
+        ] == [
             "A: kirpich: area_km2=12.0",
             "A: kirpich: length_km=12.0",
             f"A: kirpich: slope_m_per_m={10.0 / 12000.0}",

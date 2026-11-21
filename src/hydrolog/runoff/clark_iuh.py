@@ -3,9 +3,10 @@
 The Clark method models watershed runoff by the translation of a time-area curve and
 the attenuation of a linear reservoir (Clark 1945). The formula is declared by its
 spec :data:`CLARK` (``clark``, Nogat's computation standard, ADR-0050, ADR-0058)
-beside :func:`clark_unit_hydrograph`; ``docs/FORMULAS.md`` shows its equation,
-constants, ranges and sources. :class:`ClarkIUH` keeps the interface of earlier
-versions and computes through the spec.
+beside :func:`clark_unit_hydrograph`, and the model's lag by :data:`CLARK_LAG`
+(``clark_lag``) beside :func:`clark_lag_time`; ``docs/FORMULAS.md`` shows their
+equations, constants, ranges and sources. :class:`ClarkIUH` keeps the interface of
+earlier versions and computes through the specs.
 
 Reference:
     Clark, C.O. (1945). Storage and the Unit Hydrograph.
@@ -58,10 +59,12 @@ from hydrolog.runoff._uh_specs import (
 
 __all__ = [
     "CLARK",
+    "CLARK_LAG",
     "SPECS",
     "ClarkIUH",
     "ClarkIUHResult",
     "ClarkUHResult",
+    "clark_lag_time",
     "clark_unit_hydrograph",
 ]
 
@@ -243,7 +246,7 @@ def _hydrograph(x: Values) -> dict[str, object]:
     rise = step * window + remainder * tail
     per_second = _volume_m3(x.real("area_km2")) / convert(duration, "min", "s")
     ordinates = rise * per_second
-    peak = int(np.argmax(ordinates))
+    peak = int(np.argmax(rise))  # the shape's: subnormal ordinates round to ties
     return {
         "times_min": times,
         "ordinates_m3s": ordinates,
@@ -764,8 +767,190 @@ def clark_unit_hydrograph(
     )
 
 
-SPECS: Final = (CLARK,)
-"""The Tier A formula of the module."""
+# --- the lag of Clark's model: the spec clark_lag -------------------------------------
+
+
+def _time_area_centroid(run: Callable[..., Values]) -> None:
+    from scipy.integrate import quad
+
+    def outside(ratio: float) -> float:
+        return 1.0 - float(_time_area(np.array([ratio]))[0])
+
+    share = quad(outside, 0.0, 1.0, points=[0.5], epsabs=1e-15, epsrel=1e-14)[0]
+    for tc, r in ((120.0, 60.0), (60.0, 30.0), (90.0, 10.0), (450.0, 1050.0)):
+        assert_within(
+            run(tc_min=tc, r_min=r).real("lag_time_min"),
+            share * tc + r,
+            rel=1e-14,
+            reason="the centroid of the time-area curve, the integral of 1 - A(t) / A "
+            "over t / tc from 0 to 1, by adaptive quadrature: 1/2 within 1e-15",
+        )
+
+
+def _unit_hydrograph_centroid(run: Callable[..., Values]) -> None:
+    step = 0.25
+    for tc, r in ((120.0, 60.0), (90.0, 10.0), (30.0, 45.0), (450.0, 1050.0)):
+        shape = clark_unit_hydrograph(tc, r, 1.0, step, step, tc + 40.0 * r)
+        times, ordinates = shape.times_min, shape.ordinates_m3s
+        centroid = math.fsum((times * ordinates).tolist()) / math.fsum(
+            ordinates.tolist()
+        )
+        assert_within(
+            run(tc_min=tc, r_min=r).real("lag_time_min"),
+            centroid - step / 2.0,
+            abs=1e-4,
+            reason="the first moment of the unit hydrograph of D = dt = 0.25 min of "
+            "the spec clark to tc + 40 R, less the rainfall's centroid D / 2: the "
+            "grid's time-area increments move it by 7.6e-5 dt, 1.9e-5 min, and the "
+            "reservoir's tail beyond tc + 40 R holds e^-40 of the unit",
+        )
+
+
+CLARK_LAG: Final = FormulaSpec(
+    name="clark_lag",
+    title="Lag of Clark's model: the centroid of the time-area curve plus R",
+    function="hydrolog.runoff.clark_iuh.clark_lag_time",
+    family="scheme",
+    equation="t_lag = tc / 2 + R",
+    latex=r"t_{lag} = \frac{t_c}{2} + R",
+    variables=(CLARK.variable("tc_min"), CLARK.variable("r_min")),
+    outputs=(
+        Output(
+            name="lag_time_min",
+            unit="min",
+            symbol=r"t_{lag}",
+            description="Lag time, the first moment of Clark's instantaneous unit "
+            "hydrograph from the instant of the rainfall.",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+    ),
+    sources=(
+        hec_trm_2000(
+            "Clark's unit hydrograph model, eq. 50, p. 59: the time-area curve of an "
+            "elliptical watershed, whose centroid is at tc / 2; eqs. 47-49, p. 58: "
+            "the linear reservoir S = R O, whose response has the first moment R"
+        ),
+        Source(
+            citation="Nash, J.E. (1959). Systematic determination of unit hydrograph "
+            "parameters. Journal of Geophysical Research 64(1): 111-115",
+            locator="the theorem of moments: the first moment of a linear system's "
+            "response to an input is the input's first moment plus the IUH's, so "
+            "translation and reservoir add their lags (not opened)",
+            url="https://doi.org/10.1029/JZ064i001p00111",
+        ),
+    ),
+    constants=(
+        Constant(
+            name="centroid_share",
+            value=0.5,
+            unit="-",
+            symbol="1/2",
+            source=_TIME_AREA,
+        ),
+    ),
+    properties=Properties(
+        units="homogeneous",
+        monotonic={"tc_min": 1, "r_min": 1},
+        scalings=(
+            Scaling(
+                name="time",
+                inputs={"tc_min": 1, "r_min": 1},
+                outputs={"lag_time_min": 1},
+                tolerance=Tolerance(
+                    rel=0.0,
+                    abs=1e-300,
+                    reason="halving and adding doubled numbers is exact in binary, "
+                    "but for subnormal times",
+                ),
+            ),
+        ),
+        limits=(
+            Limit(
+                name="time_area_centroid",
+                text="tc / 2 is the centroid of the time-area curve: the integral of "
+                "1 - A(t) / A over the curve, its two halves cancelling the factor "
+                "1.414",
+                check=_time_area_centroid,
+            ),
+            Limit(
+                name="unit_hydrograph_centroid",
+                text="the first moment of the spec clark's unit hydrograph on a fine "
+                "grid, less D / 2, is tc / 2 + R",
+                check=_unit_hydrograph_centroid,
+            ),
+        ),
+    ),
+    validation=(
+        "none: an exact property of the model; Clark's tc and R are calibrated on "
+        "gauged floods (HEC-HMS), and the sources give no error statistic"
+    ),
+    formula_version=1,
+    status="oracle only",
+    conventions=(
+        "the lag from the instant of a unit of rainfall to the centroid of the "
+        "response, in min; the unit hydrograph of D lags a further D / 2 after the "
+        "rainfall's beginning",
+        (
+            "the centroid of HEC-HMS's elliptical time-area curve is tc / 2 whatever "
+            "its factor (1.414): the areas its two halves cut off from the line A = "
+            "1 are equal"
+        ),
+    ),
+    assumptions=(
+        "the time-area curve of an elliptical watershed (spec clark); another curve "
+        "has another centroid",
+    ),
+    no_traps_reason=(
+        "half of one input plus another: no denominator, iteration, gap or long sum"
+    ),
+    oracles=(
+        Oracle(
+            kind="algorithm",
+            description="the centroid of the time-area curve by adaptive quadrature "
+            "(scipy.integrate.quad, SciPy 1.18.1)",
+            test="tests/unit/test_formulas_unit_hydrographs.py (limit "
+            "time_area_centroid)",
+        ),
+        Oracle(
+            kind="algorithm",
+            description="the first moment of the unit hydrograph of the spec clark on "
+            "a grid of 0.25 min, less D / 2",
+            test="tests/unit/test_formulas_unit_hydrographs.py (limit "
+            "unit_hydrograph_centroid)",
+        ),
+    ),
+    base={"tc_min": 120.0, "r_min": 60.0},
+)
+
+
+def clark_lag_time(tc_min: float, r_min: float) -> float:
+    """Return the lag of Clark's model, spec clark_lag.
+
+    Parameters
+    ----------
+    tc_min : float
+        Time of concentration, the translation time [min].
+    r_min : float
+        Storage constant of the linear reservoir [min].
+
+    Returns
+    -------
+    float
+        Lag time from the instant of the rainfall to the centroid of the response
+        [min].
+
+    Raises
+    ------
+    InvalidParameterError
+        If the spec refuses an input (``details.reason``, ``details.option``).
+    """
+    x = checked_inputs(CLARK_LAG, tc_min=tc_min, r_min=r_min)
+    lag = CLARK_LAG.constant("centroid_share") * x.real("tc_min") + x.real("r_min")
+    return checked_outputs(CLARK_LAG, {"lag_time_min": lag}).real("lag_time_min")
+
+
+SPECS: Final = (CLARK, CLARK_LAG)
+"""The Tier A formulas of the module."""
 
 
 # --- the interface of earlier versions ------------------------------------------------
@@ -856,14 +1041,14 @@ class ClarkIUH:
     @property
     def lag_time_min(self) -> float:
         """
-        Lag time [min].
+        Lag time [min], spec ``clark_lag``.
 
         Notes
         -----
         The centroid of the time-area curve of the elliptical watershed is at
-        Tc/2; the linear reservoir adds R, so the lag is Tc/2 + R.
+        Tc/2; the linear reservoir adds R (:func:`clark_lag_time`).
         """
-        return self.tc_min / 2.0 + self.r_min
+        return clark_lag_time(self.tc_min, self.r_min)
 
     def cumulative_time_area(self, t_min: float) -> float:
         """

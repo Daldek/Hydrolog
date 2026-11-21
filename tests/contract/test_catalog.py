@@ -361,7 +361,7 @@ class TestCatalogDocument:
         assert served_range == {
             "method": method,
             "parameter": parameter,
-            "notice": "outside_typical_range",
+            "notice": "outside_applicability",
             "verified": True,
             **served,
         }

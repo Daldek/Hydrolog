@@ -1229,7 +1229,7 @@ GAUGINGS: Final = constraint_range(
     minimum=12,
 )
 """The number of gaugings that the applicability constraint ``enough_gaugings``
-bounds: fewer than 12 give the notice ``outside_typical_range`` of ``gaugings``."""
+bounds: fewer than 12 give the notice ``outside_applicability`` of ``gaugings``."""
 
 
 def fit_rating_curve(
@@ -1265,7 +1265,7 @@ def fit_rating_curve(
 
     Warns
     -----
-    OutsideTypicalRange
+    OutsideApplicability
         For fewer gaugings than the applicability of the fit (``parameter``
         ``gaugings``).
     """
@@ -2033,7 +2033,7 @@ class RatingCurve:
 
         Warns
         -----
-        OutsideTypicalRange
+        OutsideApplicability
             For fewer than 12 gaugings (``parameter`` ``gaugings``, WMO-No. 1044).
 
         Notes

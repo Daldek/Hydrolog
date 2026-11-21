@@ -4,7 +4,7 @@ import warnings
 
 import pytest
 
-from hydrolog._warnings import OutsideTypicalRange
+from hydrolog._warnings import OutsideApplicability
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.morphometry import (
     TerrainAnalysis,
@@ -36,7 +36,7 @@ def range_warnings(watershed: WatershedParameters, method: str) -> list[dict]:
     return [
         warning.message.details
         for warning in caught
-        if isinstance(warning.message, OutsideTypicalRange)
+        if isinstance(warning.message, OutsideApplicability)
     ]
 
 

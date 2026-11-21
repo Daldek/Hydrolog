@@ -2818,9 +2818,9 @@ class TestReportGenerate:
             (notice.code, notice.details.get("parameter"), notice.details.get("field"))
             for notice in result.notices
         ] == [
-            ("outside_typical_range", "area_km2", "area_km2"),
-            ("outside_typical_range", "length_km", "flow_path_length_km"),
-            ("outside_typical_range", "slope_m_per_m", "flow_path_slope_m_per_m"),
+            ("outside_applicability", "area_km2", "area_km2"),
+            ("outside_applicability", "length_km", "flow_path_length_km"),
+            ("outside_applicability", "slope_m_per_m", "flow_path_slope_m_per_m"),
         ]
         document = _json_roundtrip(result)
         assert document["result"]["output_path"] == str(output)

@@ -1,0 +1,348 @@
+schema = "nogat-formula-card/1"
+name = "nash_iuh"
+title = "Nash's instantaneous unit hydrograph and its unit hydrograph of a duration"
+function = "hydrolog.runoff.nash_iuh.nash_unit_hydrograph"
+family = "scheme"
+formula_version = 1
+status = "referenced"
+equation = "u(t) = (t / K)^(n - 1) e^(-t / K) / (K Gamma(n)) for t > 0, u(0) = 0; LAG = n K; S(t) = P(n, t / K), the regularized lower incomplete gamma function, 0 for t <= 0; U_D(t) = (S(t) - S(t - D)) / D; q_i = U_D(i dt) A x 1 mm per s; i = 0 to max(1, ceil(T / dt))"
+latex = "u(t) = \\frac{1}{K\\,\\Gamma(n)}\\left(\\frac{t}{K}\\right)^{n-1} e^{-t/K};\\quad t_{lag} = n K;\\quad S(t) = P\\!\\left(n, \\frac{t}{K}\\right);\\quad U_D(t) = \\frac{S(t) - S(t - D)}{D}"
+validation = "none: Nash (1957) gives the model; n and K are fitted to gauged floods or estimated (specs lutz and nash_urban_regression), and the sources give no error statistic of the shape"
+conventions = ["times in min from the beginning of the rainfall; the IUH in 1/min; ordinates in m3/s per mm", "the IUH at t = 0 is 0 on the grid, also for n <= 1, where the density is 1 / K (n = 1) or unbounded (n < 1) as t tends to 0", "the unit hydrograph of D is the IUH averaged over D by the exact S-curve, KZGW's eqs. 6.22-6.23 for D = dt: D need not be a whole number of steps; a D far shorter than dt loses digits in S(t) - S(t - D)", "S(t) - S(t - D) is the difference of P where S(t) <= 1/2 and of Q = 1 - P, the regularized upper incomplete gamma function, beyond: SciPy's P is not monotonic in t for n of about 1e-12 and below (and exceeds 1 below 1e-14), its Q is", "the grid ends at T (NashIUH: 5 n K + D, and max(5 n K, 10 K) for the IUH alone): the ordinates hold S(T) of the unit, short of 1 mm by the tail beyond T", "n outside 1 to 10 or K outside 10 to 200 min given to NashIUH gives the notice outside_unverified_range (nash.n, nash.k_min): no source publishes those ranges"]
+assumptions = ["the watershed responds as a cascade of n equal linear reservoirs", "excess rainfall uniform over the watershed and in time over D"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/unit-hydrographs-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "time"
+
+[properties.scalings.inputs]
+k_min = 1.0
+timestep_min = 1.0
+duration_min = 1.0
+total_duration_min = 1.0
+
+[properties.scalings.outputs]
+times_min = 1.0
+iuh_ordinates_per_min = -1.0
+ordinates_m3s = -1.0
+lag_time_min = 1.0
+time_to_peak_min = 1.0
+peak_discharge_m3s = -1.0
+
+[properties.scalings.tolerance]
+reason = "doubling every time keeps t / K and D / dt and halves the ordinates exactly in binary, but for subnormal ordinates"
+abs = 1e-300
+rel = 1e-14
+
+[[properties.scalings]]
+name = "area"
+
+[properties.scalings.inputs]
+area_km2 = 1.0
+
+[properties.scalings.outputs]
+ordinates_m3s = 1.0
+peak_discharge_m3s = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling the area doubles every ordinate exactly in binary, but for subnormal ordinates"
+abs = 1e-300
+rel = 1e-14
+
+[[properties.limits]]
+name = "erlang"
+text = "for a whole n the S-curve is the Erlang distribution function 1 - e^-x sum_j<n x^j / j! and the IUH x^(n-1) e^-x / (K (n-1)!), x = t / K: the ordinates of D = 15, 60 and 90 min agree"
+
+[[properties.limits]]
+name = "quadrature"
+text = "for a fractional n the S-curve is the integral of the IUH from 0 to t, by adaptive quadrature"
+
+[[properties.limits]]
+name = "telescoping_volume"
+text = "the ordinates of D = dt hold S at the end of the grid in mm over the watershed"
+
+[[sources]]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "annex 2, section 3.1.2, p. 96: eqs. 6.13 (the IUH) and 6.15 (LAG = N k); p. 99: eqs. 6.22-6.23, the ordinates of the unit hydrograph of dt as the IUH averaged over dt times A / 3.6"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[sources]]
+citation = "Sikorska, A.E., Scheidegger, A., Banasik, K., Rieckermann, J. (2012). Bayesian uncertainty assessment of flood predictions in ungauged urban basins for conceptual rainfall-runoff models. Hydrology and Earth System Sciences 16, 1221-1236"
+access = "open"
+locator = "eqs. 8-10, p. 1225: the IUH of the cascade, tp and up"
+url = "https://hess.copernicus.org/articles/16/1221/2012/hess-16-1221-2012.pdf"
+
+[[sources]]
+citation = "Nash, J.E. (1957). The form of the instantaneous unit hydrograph. International Association of Scientific Hydrology, Publication 45(3): 114-121"
+access = "open"
+locator = "the IUH of a cascade of n equal linear reservoirs of storage constant K, a gamma density of shape n and scale K, and its first moment n K (not opened; the equations as KZGW 2017 and Sikorska et al. 2012 print them)"
+
+[[variables]]
+name = "n"
+symbol = "n"
+unit = "-"
+kind = "real"
+description = "Number of reservoirs of the cascade, the shape parameter; need not be whole."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 100.0
+test_reason = "a hundred reservoirs, more than ten times the last row of KZGW's Table C.2 (N = 7.99)"
+
+[variables.typical]
+low = 1.1
+low_inclusive = true
+high = 8.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "Table C.2, pp. 132-133: N from 1.10 to 7.99, the cascades the method reads off"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "k_min"
+symbol = "K"
+unit = "min"
+kind = "real"
+description = "Storage constant of each reservoir."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 2700.0
+test_reason = "ten times the largest K the estimations give for the hand-offs (264 min)"
+
+[variables.typical]
+low = 0.8
+low_inclusive = true
+high = 270.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: K of 0.87 to 264.3 min by the spec lutz for the shortest and the longest flow path, 23.7 to 107.4 min by the spec nash_urban_regression for its points; KZGW Ex. 6.2: 42 min"
+
+[[variables]]
+name = "area_km2"
+symbol = "A"
+unit = "km2"
+kind = "real"
+description = "Area of the watershed."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000000.0
+test_reason = "a million km2, five times the basin of the Vistula (194,000 km2) and four thousand times the largest watershed Hydrograf hands over"
+
+[variables.typical]
+low = 0.0003
+low_inclusive = true
+high = 250.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 135 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)"
+
+[[variables]]
+name = "timestep_min"
+symbol = "\\Delta t"
+unit = "min"
+kind = "real"
+description = "Time step of the ordinates."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1440.0
+test_reason = "a day, the step of a daily rainfall series (E5b-07: tc 90.7 min at a step of 1440 min)"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 60.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2); and KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: 5 min; KZGW 2017, annex 2, ex. 6.1 and 6.2 (1 h) and 6.4 (0.5 h), pp. 92-110"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "duration_min"
+symbol = "D"
+unit = "min"
+kind = "real"
+description = "Duration of the unit of excess rainfall."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1440.0
+test_reason = "a day, the step of a daily rainfall series (E5b-07: tc 90.7 min at a step of 1440 min)"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 60.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2); and KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: 5 min; KZGW 2017, annex 2, ex. 6.1 and 6.2 (1 h) and 6.4 (0.5 h), pp. 92-110"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "total_duration_min"
+symbol = "T"
+unit = "min"
+kind = "real"
+description = "Length of the hydrograph; NashIUH takes 5 n K + D."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 108600.0
+test_reason = "ten times the longest default length of the typical ranges"
+
+[variables.typical]
+low = 9.0
+low_inclusive = true
+high = 10860.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog: the default length 5 n K + D over the typical ranges of n, K and D"
+access = "open"
+locator = "5 x 1.1 x 0.8 + 5 = 9.4 to 5 x 8 x 270 + 60 = 10,860 min"
+
+[[constraints]]
+name = "length_bounded"
+class = "precondition"
+text = "the grid has at most a million ordinates"
+
+[constraints.source]
+citation = "Hydrolog's bound of a hydrograph's length (hydrolog.routing.reach.MAX_ORDINATES)"
+access = "open"
+locator = "a million ordinates: the routing of a hydrograph refuses a longer one"
+
+[[constraints]]
+name = "representable"
+class = "precondition"
+text = "float64 holds T / K, 1 / K and 1 mm over the watershed per second of D, A x 1 mm / D, and n, K and D are normal numbers (SciPy's incomplete gamma of a subnormal n is not monotonic)"
+
+[constraints.source]
+citation = "IEEE 754 double precision (float64)"
+access = "open"
+locator = "normal numbers from 2.2e-308 to 1.8e308"
+
+[[outputs]]
+name = "times_min"
+unit = "min"
+kind = "real_array"
+symbol = "i \\Delta t"
+description = "Times of the ordinates, from the beginning of the rainfall."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "iuh_ordinates_per_min"
+unit = "1/min"
+kind = "real_array"
+symbol = "u(i \\Delta t)"
+description = "Ordinates of the instantaneous unit hydrograph at the times."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "ordinates_m3s"
+unit = "m3/s per mm"
+kind = "real_array"
+symbol = "q_i"
+description = "Ordinates of the unit hydrograph of the duration D."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "lag_time_min"
+unit = "min"
+kind = "real"
+symbol = "t_{lag}"
+description = "Lag time, the first moment of the instantaneous unit hydrograph."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "time_to_peak_min"
+unit = "min"
+kind = "real"
+symbol = "t_p"
+description = "Time of the largest ordinate of the unit hydrograph."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "peak_discharge_m3s"
+unit = "m3/s per mm"
+kind = "real"
+symbol = "q_p"
+description = "Largest ordinate of the unit hydrograph."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_nash_a_million_ordinates_hold_their_volume: the volume of a million ordinates of a 2^-10 min step against math.fsum"
+
+[[oracles]]
+kind = "exact"
+description = "the Erlang distribution function and density of a whole n in closed form, with math.fsum"
+test = "tests/unit/test_formulas_unit_hydrographs.py (limit erlang)"
+conventions = []
+
+[[oracles]]
+kind = "algorithm"
+description = "the S-curve of a fractional n as the integral of the IUH by adaptive Gauss-Kronrod quadrature (scipy.integrate.quad, SciPy 1.18.1)"
+test = "tests/unit/test_formulas_unit_hydrographs.py (limit quadrature)"
+conventions = []

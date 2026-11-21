@@ -3,7 +3,7 @@
 // model checks are inside Hydrolog's typical ranges (`typical_ranges` of the served catalog
 // documents, registered with the (i) explanations, ui/info.js), listed before Hydrolog's own
 // notices. A value outside a range is never worded here: Hydrolog's notice
-// `outside_typical_range` (`outside_unverified_range` for a range to be verified) says so,
+// `outside_applicability` (`outside_unverified_range` for a range to be verified) says so,
 // in Wyniki and on its field; a confirmation marks a range to be verified „do weryfikacji”.
 // Every number a note quotes comes from the inputs, the result or the served ranges.
 

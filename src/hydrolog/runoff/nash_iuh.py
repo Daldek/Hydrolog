@@ -2,7 +2,12 @@
 
 The Nash model represents the watershed as a cascade of n identical
 linear reservoirs, each with storage constant K. The IUH is the
-response to an instantaneous unit input (Dirac delta function).
+response to an instantaneous unit input (Dirac delta function). The IUH and its unit
+hydrograph of a duration are declared by the spec :data:`NASH_IUH` (``nash_iuh``,
+Nogat's computation standard) beside :func:`nash_unit_hydrograph`, the estimations
+of n and K by :data:`LUTZ` (``lutz``) and :data:`URBAN` (``nash_urban_regression``);
+``docs/FORMULAS.md`` shows their equations, constants, ranges and sources.
+:class:`NashIUH` keeps the interface of earlier versions and computes through them.
 
 References
 ----------
@@ -21,19 +26,21 @@ maksymalnych. Załącznik 2, Tabela C.2.
 """
 
 import math
+import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal, localcontext
-from typing import Final, NamedTuple
+from typing import Final, NamedTuple, cast
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import brentq
-from scipy.special import gamma
+from scipy.special import gamma, gammainc, gammaincc
 
 from hydrolog._formulas import checked_inputs, checked_outputs
 from hydrolog._ranges import warn_if_outside
 from hydrolog._serialization import JsonResultMixin
+from hydrolog._warnings import IuhPeakUndefined
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.nogat_formulas import (
     Constant,
@@ -51,6 +58,14 @@ from hydrolog.nogat_formulas import (
     Variable,
     assert_within,
     convert,
+)
+from hydrolog.runoff._uh_specs import (
+    AREA,
+    AREA_TYPICAL,
+    MAX_ORDINATES,
+    ORDINATES_SOURCE,
+    TIMESTEP,
+    TIMESTEP_TYPICAL,
 )
 
 
@@ -142,18 +157,19 @@ class IUHResult(JsonResultMixin):
         Number of reservoirs (shape parameter).
     k_min : float
         Reservoir storage constant [min].
-    time_to_peak_min : float
-        Time to peak discharge [min].
-    peak_ordinate_per_min : float
-        Peak IUH ordinate (rzędna szczytowa) [1/min].
+    time_to_peak_min : float or None
+        Time to the peak of the IUH, (n - 1) K [min] (spec ``nash_iuh_peak``);
+        None for n <= 1, whose IUH has no peak after the rainfall.
+    peak_ordinate_per_min : float or None
+        Peak IUH ordinate (rzędna szczytowa) [1/min]; None for n <= 1.
     """
 
     times_min: NDArray[np.float64]
     ordinates_per_min: NDArray[np.float64]
     n: float
     k_min: float
-    time_to_peak_min: float
-    peak_ordinate_per_min: float
+    time_to_peak_min: float | None
+    peak_ordinate_per_min: float | None
 
     @property
     def n_steps(self) -> int:
@@ -169,7 +185,7 @@ class IUHResult(JsonResultMixin):
 @dataclass
 class NashUHResult(JsonResultMixin):
     """
-    Result of Nash Unit Hydrograph (finite duration D).
+    Result of Nash Unit Hydrograph (finite duration D, spec ``nash_iuh``).
 
     Attributes
     ----------
@@ -189,6 +205,10 @@ class NashUHResult(JsonResultMixin):
         Number of reservoirs (shape parameter).
     k_min : float
         Reservoir storage constant [min].
+    iuh_ordinates_per_min : NDArray[np.float64]
+        Ordinates of the instantaneous unit hydrograph at the same times [1/min].
+    lag_time_min : float
+        Lag time n K, the first moment of the IUH [min].
     """
 
     times_min: NDArray[np.float64]
@@ -199,6 +219,8 @@ class NashUHResult(JsonResultMixin):
     peak_discharge_m3s: float
     n: float
     k_min: float
+    iuh_ordinates_per_min: NDArray[np.float64]
+    lag_time_min: float
 
     @property
     def n_steps(self) -> int:
@@ -232,10 +254,10 @@ class NashIUH:
             \cdot \left(\frac{t}{K}\right)^{n-1} \cdot e^{-t/K}
 
     Key properties:
-    - Lag time (first moment): tlag = n × K
+    - Lag time (first moment): tlag = n × K (spec ``nash_iuh``)
     - Variance (second moment): σ² = n × K²
-    - Time to peak: tp = (n-1) × K  (for n > 1)
-    - Peak ordinate: up = (n-1)^(n-1) × e^(-(n-1)) / (K × Γ(n))
+    - Time to peak and peak ordinate of the IUH (spec ``nash_iuh_peak``),
+      defined for n > 1 only
 
     The parameters n and K can be estimated from:
     - Time of concentration and lag time
@@ -289,7 +311,7 @@ class NashIUH:
             If ``n`` or ``k_min`` is outside its typical range (method ``nash``;
             the ranges: :data:`hydrolog._ranges.TYPICAL_RANGES`). The ranges have
             no published source and are kept as to be verified, so the warning is
-            this subclass of ``OutsideTypicalRange``. The estimating constructors
+            this subclass of ``OutsideApplicability``. The estimating constructors
             (``from_lutz``, ``from_urban_regression``) do not warn
             about them: the ranges are those of given parameters.
         """
@@ -344,37 +366,35 @@ class NashIUH:
         """
         return self.n * self.k_min
 
-    @property
-    def time_to_peak_min(self) -> float:
-        """
-        Time to peak of IUH [min].
-
-        Notes
-        -----
-        Formula: tp = (n-1) × K for n > 1
-        For n <= 1, the peak is at t = 0.
-        """
-        if self.n <= 1:
-            return 0.0
-        return (self.n - 1) * self.k_min
+    def _peak(self) -> "NashPeak | None":
+        """Return the peak of the IUH, or None with a warning for n <= 1."""
+        if not _peak_defined(self.n):
+            warnings.warn(IuhPeakUndefined(n=self.n, k_min=self.k_min), stacklevel=3)
+            return None
+        return nash_iuh_peak(self.n, self.k_min)
 
     @property
-    def peak_ordinate_per_min(self) -> float:
+    def time_to_peak_min(self) -> float | None:
         """
-        Peak ordinate of IUH [1/min].
+        Time to peak of IUH [min], spec ``nash_iuh_peak``.
 
-        Notes
-        -----
-        Formula: up = (n-1)^(n-1) × e^(-(n-1)) / (K × Γ(n)) for n > 1
-        For n = 1, up = 1/K (exponential decay).
+        None for n <= 1, whose IUH decreases from t = 0: the warning
+        :class:`~hydrolog._warnings.IuhPeakUndefined` (notice
+        ``iuh_peak_undefined``) says so.
         """
-        if self.n <= 1:
-            return 1.0 / self.k_min
+        peak = self._peak()
+        return None if peak is None else peak.time_to_peak_min
 
-        n_minus_1 = self.n - 1
-        numerator = (n_minus_1**n_minus_1) * np.exp(-n_minus_1)
-        denominator = self.k_min * gamma(self.n)
-        return float(numerator / denominator)
+    @property
+    def peak_ordinate_per_min(self) -> float | None:
+        """
+        Peak ordinate of IUH [1/min], spec ``nash_iuh_peak``.
+
+        None for n <= 1, whose IUH is 1 / K at t = 0 (n = 1) or unbounded there
+        (n < 1), with the warning :class:`~hydrolog._warnings.IuhPeakUndefined`.
+        """
+        peak = self._peak()
+        return None if peak is None else peak.peak_ordinate_per_min
 
     def ordinate(self, t_min: float) -> float:
         """
@@ -390,12 +410,7 @@ class NashIUH:
         float
             IUH ordinate u(t) [1/min].
         """
-        if t_min <= 0:
-            return 0.0
-
-        t_over_k = t_min / self.k_min
-        coefficient = 1.0 / (self.k_min * gamma(self.n))
-        return float(coefficient * (t_over_k ** (self.n - 1)) * np.exp(-t_over_k))
+        return float(_density(self.n, self.k_min, np.array([t_min], dtype=float))[0])
 
     def generate(
         self,
@@ -413,8 +428,8 @@ class NashIUH:
         timestep_min : float, optional
             Time step for discretization [min], by default 5.0.
         duration_min : float, optional
-            Total duration [min]. If not specified, uses
-            5 × lag_time or until ordinate < 0.001 × peak.
+            Total duration [min]. If not specified, uses 5 n K + D for the
+            unit hydrograph and max(5 n K, 10 K) for the IUH.
 
         Returns
         -------
@@ -425,7 +440,7 @@ class NashIUH:
         Raises
         ------
         InvalidParameterError
-            If timestep_min is not positive.
+            If the spec ``nash_iuh`` refuses an input (``details.reason``).
 
         Examples
         --------
@@ -463,7 +478,8 @@ class NashIUH:
         """
         Generate Nash Instantaneous Unit Hydrograph.
 
-        Always returns IUH regardless of area_km2 setting.
+        Always returns IUH regardless of area_km2 setting: the ordinates of the IUH
+        of the spec ``nash_iuh`` at the step times.
 
         Parameters
         ----------
@@ -471,7 +487,7 @@ class NashIUH:
             Time step for discretization [min], by default 5.0.
         duration_min : float, optional
             Total duration of IUH [min]. If not specified, uses
-            5 × lag_time or until ordinate < 0.001 × peak.
+            max(5 n K, 10 K).
 
         Returns
         -------
@@ -481,7 +497,8 @@ class NashIUH:
         Raises
         ------
         InvalidParameterError
-            If timestep_min is not positive.
+            If the spec ``nash_iuh`` refuses an input (``details.reason``; the length
+            is its ``total_duration_min``).
 
         Examples
         --------
@@ -490,39 +507,22 @@ class NashIUH:
         >>> print(f"Peak at {result.time_to_peak_min:.1f} min")
         Peak at 60.0 min
         """
-        if timestep_min <= 0:
-            raise InvalidParameterError(
-                f"timestep_min must be positive, got {timestep_min}"
-            )
-
-        # Determine duration
-        if duration_min is None:
-            # Use 5× lag time or extend until ordinate is negligible
-            duration_min = max(5.0 * self.lag_time_min, 10.0 * self.k_min)
-
-        if duration_min <= 0:
-            raise InvalidParameterError(
-                f"duration_min must be positive, got {duration_min}"
-            )
-
-        # Generate time array
-        n_steps = int(np.ceil(duration_min / timestep_min)) + 1
-        times = np.arange(n_steps, dtype=np.float64) * timestep_min
-
-        # Calculate ordinates using vectorized operations
-        ordinates = np.zeros(n_steps, dtype=np.float64)
-        mask = times > 0
-        t_over_k = times[mask] / self.k_min
-        coefficient = 1.0 / (self.k_min * gamma(self.n))
-        ordinates[mask] = coefficient * (t_over_k ** (self.n - 1)) * np.exp(-t_over_k)
-
+        total = (
+            max(5.0 * self.lag_time_min, 10.0 * self.k_min)
+            if duration_min is None
+            else duration_min
+        )
+        shape = nash_unit_hydrograph(
+            self.n, self.k_min, _UNIT_AREA_KM2, timestep_min, timestep_min, total
+        )
+        peak = self._peak()
         return IUHResult(
-            times_min=times,
-            ordinates_per_min=ordinates,
+            times_min=shape.times_min,
+            ordinates_per_min=shape.iuh_ordinates_per_min,
             n=self.n,
             k_min=self.k_min,
-            time_to_peak_min=self.time_to_peak_min,
-            peak_ordinate_per_min=self.peak_ordinate_per_min,
+            time_to_peak_min=None if peak is None else peak.time_to_peak_min,
+            peak_ordinate_per_min=None if peak is None else peak.peak_ordinate_per_min,
         )
 
     def to_unit_hydrograph(
@@ -533,10 +533,10 @@ class NashIUH:
         total_duration_min: float | None = None,
     ) -> NashUHResult:
         r"""
-        Convert IUH to D-minute Unit Hydrograph.
+        Convert IUH to D-minute Unit Hydrograph (spec ``nash_iuh``).
 
         Generates a unit hydrograph for rainfall of duration D
-        by integrating the IUH over the rainfall duration.
+        by averaging the IUH over the rainfall duration.
 
         Parameters
         ----------
@@ -558,7 +558,7 @@ class NashIUH:
         Raises
         ------
         InvalidParameterError
-            If any parameter is not positive.
+            If the spec ``nash_iuh`` refuses an input (``details.reason``).
 
         Notes
         -----
@@ -575,10 +575,9 @@ class NashIUH:
 
         where S(t) is the S-curve (integral of IUH).
 
-        The ordinates are then scaled by area to get m³/s per mm:
-
-        .. math::
-            Q(t) = U(t) \cdot A \cdot 1000 / 60
+        The ordinates are then scaled by the volume of 1 mm over the area, per
+        second, to get m³/s per mm. ``docs/FORMULAS.md`` gives the equations,
+        ranges and sources of the spec.
 
         Examples
         --------
@@ -587,85 +586,14 @@ class NashIUH:
         >>> print(f"Peak: {uh.peak_discharge_m3s:.2f} m³/s per mm")
         Peak: 6.63 m³/s per mm
         """
-        if area_km2 <= 0:
-            raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
-        if duration_min <= 0:
-            raise InvalidParameterError(
-                f"duration_min must be positive, got {duration_min}"
-            )
-        if timestep_min <= 0:
-            raise InvalidParameterError(
-                f"timestep_min must be positive, got {timestep_min}"
-            )
-
-        # Determine total duration
-        if total_duration_min is None:
-            total_duration_min = 5.0 * self.lag_time_min + duration_min
-
-        # Generate time array
-        n_steps = int(np.ceil(total_duration_min / timestep_min)) + 1
-        times = np.arange(n_steps, dtype=np.float64) * timestep_min
-
-        # Compute S-curve (cumulative integral of IUH)
-        # S(t) = integral from 0 to t of u(τ) dτ
-        # For Nash model: S(t) = incomplete gamma function
-        s_curve = self._s_curve(times)
-
-        # Compute D-minute UH using S-curve method
-        # U(t) = (S(t) - S(t-D)) / D
-        s_curve_shifted = self._s_curve(times - duration_min)
-        uh_dimensionless = (s_curve - s_curve_shifted) / duration_min
-
-        # Scale to m³/s per mm
-        # 1 mm over area_km2 = area_km2 * 1e6 m² * 0.001 m = area_km2 * 1000 m³
-        # Distributed over time, with IUH in 1/min:
-        # Q [m³/s] = ordinate [1/min] × volume [m³] / 60 [s/min]
-        volume_m3_per_mm = area_km2 * 1000.0  # m³ per mm of rainfall
-        ordinates_m3s = uh_dimensionless * volume_m3_per_mm / 60.0
-
-        # Find peak
-        peak_idx = np.argmax(ordinates_m3s)
-        time_to_peak = times[peak_idx]
-        peak_discharge = float(ordinates_m3s[peak_idx])
-
-        return NashUHResult(
-            times_min=times,
-            ordinates_m3s=ordinates_m3s,
-            duration_min=duration_min,
-            area_km2=area_km2,
-            time_to_peak_min=time_to_peak,
-            peak_discharge_m3s=peak_discharge,
-            n=self.n,
-            k_min=self.k_min,
+        total = (
+            _default_length(self.lag_time_min, duration_min)
+            if total_duration_min is None
+            else total_duration_min
         )
-
-    def _s_curve(self, times: NDArray[np.float64]) -> NDArray[np.float64]:
-        """
-        Compute S-curve (cumulative IUH).
-
-        The S-curve represents the response to a continuous unit input
-        starting at t=0. For the Nash model, it equals the regularized
-        incomplete gamma function.
-
-        Parameters
-        ----------
-        times : NDArray[np.float64]
-            Time values [min].
-
-        Returns
-        -------
-        NDArray[np.float64]
-            S-curve values (dimensionless, 0 to 1).
-        """
-        from scipy.special import gammainc
-
-        result = np.zeros_like(times, dtype=np.float64)
-        mask = times > 0
-        t_over_k = times[mask] / self.k_min
-        # gammainc is the regularized lower incomplete gamma function
-        # P(a, x) = γ(a, x) / Γ(a)
-        result[mask] = gammainc(self.n, t_over_k)
-        return result
+        return nash_unit_hydrograph(
+            self.n, self.k_min, area_km2, timestep_min, duration_min, total
+        )
 
     @classmethod
     def from_lutz(
@@ -723,7 +651,7 @@ class NashIUH:
 
         Warns
         -----
-        OutsideTypicalRange
+        OutsideApplicability
             If ``area_km2`` is larger than the watersheds KZGW (2017) recommends
             the method for (method ``lutz``; the ranges and their sources:
             :data:`hydrolog._ranges.TYPICAL_RANGES`).
@@ -969,6 +897,851 @@ def _sikorska(locator: str) -> Source:
 
 def _from_handoffs(what: str) -> Source:
     return Source(citation=_HANDOFFS, locator=f"{_HANDOFF_FILES}: {what}")
+
+
+# --- Nash's cascade and its unit hydrograph: the spec nash_iuh -----------------------
+
+_SMALLEST: Final = float(np.finfo(np.float64).tiny)
+"""The smallest normal float64."""
+
+_UNIT_AREA_KM2: Final = 1.0
+"""The area the instantaneous unit hydrograph is computed for, then divided out."""
+
+_NASH_1957 = Source(
+    citation="Nash, J.E. (1957). The form of the instantaneous unit hydrograph. "
+    "International Association of Scientific Hydrology, Publication 45(3): 114-121",
+    locator="the IUH of a cascade of n equal linear reservoirs of storage constant K, "
+    "a gamma density of shape n and scale K, and its first moment n K (not opened; "
+    "the equations as KZGW 2017 and Sikorska et al. 2012 print them)",
+)
+
+
+def _density(n: float, k: float, times: NDArray[np.float64]) -> NDArray[np.float64]:
+    """Return u(t) of the cascade [1/min], 0 at t <= 0, through logarithms.
+
+    (n - 1) ln(t / K) - t / K - ln Gamma(n) stays finite where (t / K)^(n - 1) and
+    Gamma(n) overflow apart.
+    """
+    out = np.zeros_like(times, dtype=np.float64)
+    mask = times > 0.0
+    ratio = times[mask] / k
+    out[mask] = np.exp((n - 1.0) * np.log(ratio) - ratio - math.lgamma(n)) / k
+    return out
+
+
+def _s_rise(
+    n: float, k: float, times: NDArray[np.float64], duration: float
+) -> NDArray[np.float64]:
+    """Return S(t) - S(t - D), S(t) = P(n, t / K) and 0 to t = 0, D the duration.
+
+    The difference is taken of P, the regularized lower incomplete gamma, where S(t) is
+    at most a half, and of Q = 1 - P, the upper one, beyond: values near 1 are then
+    differenced as their small complements, and SciPy's P of a tiny n, which is not
+    monotonic there, is not differenced.
+    """
+    now = np.maximum(times, 0.0) / k
+    before = np.maximum(times - duration, 0.0) / k
+    lower = gammainc(n, now)
+    rise = np.where(
+        lower <= 0.5,
+        lower - gammainc(n, before),
+        gammaincc(n, before) - gammaincc(n, now),
+    )
+    return np.asarray(rise, dtype=np.float64)
+
+
+def _nash_count(x: Values) -> int | None:
+    """Return the number of ordinates, or None beyond a million or float64."""
+    try:
+        count = max(math.ceil(x.real("total_duration_min") / x.real("timestep_min")), 1)
+    except OverflowError:  # a quotient of inf
+        return None
+    return count + 1 if count < MAX_ORDINATES else None
+
+
+def _unit_volume_m3(area_km2: float) -> float:
+    """Return the volume of 1 mm over the watershed [m³]."""
+    return convert(area_km2, "km2", "m2") * convert(1.0, "mm", "m")
+
+
+def _nash_representable(x: Values) -> bool:
+    """Return whether float64 holds T / K, 1 / K and 1 mm over A per second of D."""
+    k = x.real("k_min")
+    seconds = convert(x.real("duration_min"), "min", "s")
+    if not (x.real("n") >= _SMALLEST and k >= _SMALLEST and seconds >= _SMALLEST):
+        return False
+    ratios = (x.real("total_duration_min") / k, 1.0 / k)
+    volume = _unit_volume_m3(x.real("area_km2")) / seconds
+    return all(math.isfinite(value) for value in (*ratios, volume))
+
+
+def _nash_hydrograph(x: Values) -> dict[str, object]:
+    """Return the outputs of checked inputs."""
+    n, k = x.real("n"), x.real("k_min")
+    step, duration = x.real("timestep_min"), x.real("duration_min")
+    count = cast(int, _nash_count(x))
+    times = np.arange(count, dtype=np.float64) * step
+    rise = _s_rise(n, k, times, duration) / duration
+    per_minute = _unit_volume_m3(x.real("area_km2")) / convert(1.0, "min", "s")
+    ordinates = rise * per_minute
+    peak = int(np.argmax(rise))  # the shape's: subnormal ordinates round to ties
+    return {
+        "times_min": times,
+        "iuh_ordinates_per_min": _density(n, k, times),
+        "ordinates_m3s": ordinates,
+        "lag_time_min": n * k,
+        "time_to_peak_min": float(times[peak]),
+        "peak_discharge_m3s": float(ordinates[peak]),
+    }
+
+
+# properties and oracles (CMP-6.2, CMP-6.5)
+
+_KZGW_POINT: Final = {
+    "n": 2.55,
+    "k_min": 42.0,
+    "area_km2": 7.2,
+    "timestep_min": 60.0,
+    "duration_min": 60.0,
+    "total_duration_min": 600.0,
+}
+"""KZGW (2017) Ex. 6.2: N 2.55, k 0.70 h, the Niedźwiadka (7.2 km2), steps of 1 h."""
+
+
+def _erlang_s(n: int, ratio: float) -> float:
+    """S of a whole n: 1 - e^-x sum_j<n x^j / j!, the Erlang distribution function."""
+    if ratio <= 0.0:
+        return 0.0
+    terms = [ratio**j / math.factorial(j) for j in range(n)]
+    return -math.expm1(-ratio) if n == 1 else 1.0 - math.exp(-ratio) * math.fsum(terms)
+
+
+def _erlang(run: Callable[..., Values]) -> None:
+    for n in (1, 2, 3, 5):
+        for duration in (60.0, 90.0, 15.0):
+            point = {**_KZGW_POINT, "n": float(n), "duration_min": duration}
+            out = run(**point)
+            k, area = point["k_min"], point["area_km2"]
+            per_minute = area * 1000.0 / 60.0
+            expected = [
+                (_erlang_s(n, t / k) - _erlang_s(n, (t - duration) / k))
+                / duration
+                * per_minute
+                for t in out.array("times_min")
+            ]
+            assert_within(
+                out.array("ordinates_m3s"),
+                np.array(expected),
+                abs=1e-13 * max(expected),
+                reason="the Erlang distribution function of a whole n in closed form "
+                "against SciPy's gammainc: both within a few units in the last place "
+                "of S, whose difference over D loses at most a few more",
+            )
+            density = [
+                (t / k) ** (n - 1) * math.exp(-t / k) / (k * math.factorial(n - 1))
+                if t > 0.0
+                else 0.0
+                for t in out.array("times_min")
+            ]
+            assert_within(
+                out.array("iuh_ordinates_per_min"),
+                np.array(density),
+                rel=1e-13,
+                abs=1e-300,
+                reason="the density as a product against its logarithm: an exp of a "
+                "sum of logarithms near -10 loses some units in the last place",
+            )
+
+
+def _quadrature(run: Callable[..., Values]) -> None:
+    from scipy.integrate import quad
+
+    k = _KZGW_POINT["k_min"]
+
+    for n in (1.62133, 2.55, 3.75659, 7.5):
+        point = {**_KZGW_POINT, "n": n}
+        out = run(**point)
+
+        def density(t: float, n: float = n) -> float:
+            return float((t / k) ** (n - 1.0)) * math.exp(-t / k) / (k * math.gamma(n))
+
+        def s_curve(t: float) -> float:
+            if t <= 0.0:
+                return 0.0
+            return float(quad(density, 0.0, t, epsabs=1e-14, epsrel=1e-13)[0])
+
+        per_minute = point["area_km2"] * 1000.0 / 60.0
+        duration = point["duration_min"]
+        expected = [
+            (s_curve(t) - s_curve(t - duration)) / duration * per_minute
+            for t in out.array("times_min")
+        ]
+        assert_within(
+            out.array("ordinates_m3s"),
+            np.array(expected),
+            abs=1e-11 * max(expected),
+            reason="the S-curve as the integral of the density by adaptive "
+            "Gauss-Kronrod quadrature (scipy.integrate.quad, epsrel 1e-13) against "
+            "SciPy's incomplete gamma: two algorithms",
+        )
+
+
+def _telescoping_volume(run: Callable[..., Values]) -> None:
+    for n, k in ((1.0, 42.0), (2.55, 42.0), (3.75659, 42.2491), (7.5, 10.0)):
+        point = {**_KZGW_POINT, "n": n, "k_min": k, "timestep_min": 5.0}
+        point["duration_min"] = 5.0
+        out = run(**point)
+        times = out.array("times_min")
+        depth = (
+            math.fsum(out.array("ordinates_m3s").tolist())
+            * convert(5.0, "min", "s")
+            / _unit_volume_m3(point["area_km2"])
+        )
+        assert_within(
+            depth,
+            float(gammainc(n, times[-1] / k)),
+            abs=1e-12,
+            reason="for D = dt the differences S(t_i) - S(t_i - dt) telescope to S at "
+            "the end of the grid: 121 rounded differences and their exact sum",
+        )
+
+
+NASH_IUH: Final = FormulaSpec(
+    name="nash_iuh",
+    title="Nash's instantaneous unit hydrograph and its unit hydrograph of a duration",
+    function="hydrolog.runoff.nash_iuh.nash_unit_hydrograph",
+    family="scheme",
+    equation=(
+        "u(t) = (t / K)^(n - 1) e^(-t / K) / (K Gamma(n)) for t > 0, u(0) = 0; LAG = "
+        "n K; S(t) = P(n, t / K), the regularized lower incomplete gamma function, 0 "
+        "for t <= 0; U_D(t) = (S(t) - S(t - D)) / D; q_i = U_D(i dt) A x 1 mm per s; "
+        "i = 0 to max(1, ceil(T / dt))"
+    ),
+    latex=(
+        r"u(t) = \frac{1}{K\,\Gamma(n)}\left(\frac{t}{K}\right)^{n-1} e^{-t/K};\quad "
+        r"t_{lag} = n K;\quad S(t) = P\!\left(n, \frac{t}{K}\right);\quad U_D(t) = "
+        r"\frac{S(t) - S(t - D)}{D}"
+    ),
+    variables=(
+        Variable(
+            name="n",
+            symbol="n",
+            unit="-",
+            description="Number of reservoirs of the cascade, the shape parameter; "
+            "need not be whole.",
+            physical=Range(
+                low=0.0,
+                low_inclusive=False,
+                test_high=100.0,
+                test_reason="a hundred reservoirs, more than ten times the last row of "
+                "KZGW's Table C.2 (N = 7.99)",
+            ),
+            applicability="unstated",
+            typical=Range(
+                low=1.1,
+                high=8.0,
+                source=_kzgw(
+                    "Table C.2, pp. 132-133: N from 1.10 to 7.99, the cascades the "
+                    "method reads off"
+                ),
+            ),
+        ),
+        Variable(
+            name="k_min",
+            symbol="K",
+            unit="min",
+            description="Storage constant of each reservoir.",
+            physical=Range(
+                low=0.0,
+                low_inclusive=False,
+                test_high=2700.0,
+                test_reason="ten times the largest K the estimations give for the "
+                "hand-offs (264 min)",
+            ),
+            applicability="unstated",
+            typical=Range(
+                low=0.8,
+                high=270.0,
+                source=_from_handoffs(
+                    "K of 0.87 to 264.3 min by the spec lutz for the shortest and the "
+                    "longest flow path, 23.7 to 107.4 min by the spec "
+                    "nash_urban_regression for its points; KZGW Ex. 6.2: 42 min"
+                ),
+            ),
+        ),
+        Variable(
+            name="area_km2",
+            symbol="A",
+            unit="km2",
+            description="Area of the watershed.",
+            physical=AREA,
+            applicability="unstated",
+            typical=AREA_TYPICAL,
+        ),
+        Variable(
+            name="timestep_min",
+            symbol=r"\Delta t",
+            unit="min",
+            description="Time step of the ordinates.",
+            physical=TIMESTEP,
+            applicability="unstated",
+            typical=TIMESTEP_TYPICAL,
+        ),
+        Variable(
+            name="duration_min",
+            symbol="D",
+            unit="min",
+            description="Duration of the unit of excess rainfall.",
+            physical=TIMESTEP,
+            applicability="unstated",
+            typical=TIMESTEP_TYPICAL,
+        ),
+        Variable(
+            name="total_duration_min",
+            symbol="T",
+            unit="min",
+            description="Length of the hydrograph; NashIUH takes 5 n K + D.",
+            physical=Range(
+                low=0.0,
+                low_inclusive=False,
+                test_high=108600.0,
+                test_reason="ten times the longest default length of the typical "
+                "ranges",
+            ),
+            applicability="unstated",
+            typical=Range(
+                low=9.0,
+                high=10860.0,
+                source=Source(
+                    citation="Hydrolog: the default length 5 n K + D over the typical "
+                    "ranges of n, K and D",
+                    locator="5 x 1.1 x 0.8 + 5 = 9.4 to 5 x 8 x 270 + 60 = 10,860 min",
+                ),
+            ),
+        ),
+    ),
+    outputs=(
+        Output(
+            name="times_min",
+            unit="min",
+            kind="real_array",
+            symbol=r"i \Delta t",
+            description="Times of the ordinates, from the beginning of the rainfall.",
+            physical=Range(low=0.0),
+        ),
+        Output(
+            name="iuh_ordinates_per_min",
+            unit="1/min",
+            kind="real_array",
+            symbol="u(i \\Delta t)",
+            description="Ordinates of the instantaneous unit hydrograph at the times.",
+            physical=Range(low=0.0),
+        ),
+        Output(
+            name="ordinates_m3s",
+            unit="m3/s per mm",
+            kind="real_array",
+            symbol="q_i",
+            description="Ordinates of the unit hydrograph of the duration D.",
+            physical=Range(low=0.0),
+        ),
+        Output(
+            name="lag_time_min",
+            unit="min",
+            symbol=r"t_{lag}",
+            description="Lag time, the first moment of the instantaneous unit "
+            "hydrograph.",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+        Output(
+            name="time_to_peak_min",
+            unit="min",
+            symbol="t_p",
+            description="Time of the largest ordinate of the unit hydrograph.",
+            physical=Range(low=0.0),
+        ),
+        Output(
+            name="peak_discharge_m3s",
+            unit="m3/s per mm",
+            symbol="q_p",
+            description="Largest ordinate of the unit hydrograph.",
+            physical=Range(low=0.0),
+        ),
+    ),
+    sources=(
+        _kzgw(
+            "annex 2, section 3.1.2, p. 96: eqs. 6.13 (the IUH) and 6.15 (LAG = N k); "
+            "p. 99: eqs. 6.22-6.23, the ordinates of the unit hydrograph of dt as the "
+            "IUH averaged over dt times A / 3.6"
+        ),
+        _sikorska("eqs. 8-10, p. 1225: the IUH of the cascade, tp and up"),
+        _NASH_1957,
+    ),
+    constraints=(
+        Constraint(
+            name="length_bounded",
+            cls="precondition",
+            check=lambda x: _nash_count(x) is not None,
+            text="the grid has at most a million ordinates",
+            source=ORDINATES_SOURCE,
+            satisfied={"timestep_min": 60.0},
+            violated={"timestep_min": 1.0e-4},
+        ),
+        Constraint(
+            name="representable",
+            cls="precondition",
+            check=_nash_representable,
+            text="float64 holds T / K, 1 / K and 1 mm over the watershed per second of "
+            "D, A x 1 mm / D, and n, K and D are normal numbers (SciPy's incomplete "
+            "gamma of a subnormal n is not monotonic)",
+            source=Source(
+                citation="IEEE 754 double precision (float64)",
+                locator="normal numbers from 2.2e-308 to 1.8e308",
+            ),
+            satisfied={"duration_min": 60.0},
+            violated={"duration_min": 1.0e-310},
+        ),
+    ),
+    properties=Properties(
+        units="homogeneous",
+        scalings=(
+            Scaling(
+                name="time",
+                inputs={
+                    "k_min": 1,
+                    "timestep_min": 1,
+                    "duration_min": 1,
+                    "total_duration_min": 1,
+                },
+                outputs={
+                    "times_min": 1,
+                    "iuh_ordinates_per_min": -1,
+                    "ordinates_m3s": -1,
+                    "lag_time_min": 1,
+                    "time_to_peak_min": 1,
+                    "peak_discharge_m3s": -1,
+                },
+                tolerance=Tolerance(
+                    rel=1e-14,
+                    abs=1e-300,
+                    reason="doubling every time keeps t / K and D / dt and halves the "
+                    "ordinates exactly in binary, but for subnormal ordinates",
+                ),
+            ),
+            Scaling(
+                name="area",
+                inputs={"area_km2": 1},
+                outputs={"ordinates_m3s": 1, "peak_discharge_m3s": 1},
+                tolerance=Tolerance(
+                    rel=1e-14,
+                    abs=1e-300,
+                    reason="doubling the area doubles every ordinate exactly in "
+                    "binary, but for subnormal ordinates",
+                ),
+            ),
+        ),
+        limits=(
+            Limit(
+                name="erlang",
+                text="for a whole n the S-curve is the Erlang distribution function "
+                "1 - e^-x sum_j<n x^j / j! and the IUH x^(n-1) e^-x / (K (n-1)!), "
+                "x = t / K: the ordinates of D = 15, 60 and 90 min agree",
+                check=_erlang,
+            ),
+            Limit(
+                name="quadrature",
+                text="for a fractional n the S-curve is the integral of the IUH from "
+                "0 to t, by adaptive quadrature",
+                check=_quadrature,
+            ),
+            Limit(
+                name="telescoping_volume",
+                text="the ordinates of D = dt hold S at the end of the grid in mm "
+                "over the watershed",
+                check=_telescoping_volume,
+            ),
+        ),
+    ),
+    validation=(
+        "none: Nash (1957) gives the model; n and K are fitted to gauged floods or "
+        "estimated (specs lutz and nash_urban_regression), and the sources give no "
+        "error statistic of the shape"
+    ),
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "times in min from the beginning of the rainfall; the IUH in 1/min; ordinates "
+        "in m3/s per mm",
+        (
+            "the IUH at t = 0 is 0 on the grid, also for n <= 1, where the density "
+            "is 1 / K (n = 1) or unbounded (n < 1) as t tends to 0"
+        ),
+        (
+            "the unit hydrograph of D is the IUH averaged over D by the exact "
+            "S-curve, KZGW's eqs. 6.22-6.23 for D = dt: D need not be a whole number "
+            "of steps; a D far shorter than dt loses digits in S(t) - S(t - D)"
+        ),
+        (
+            "S(t) - S(t - D) is the difference of P where S(t) <= 1/2 and of Q = 1 - "
+            "P, the regularized upper incomplete gamma function, beyond: SciPy's P "
+            "is not monotonic in t for n of about 1e-12 and below (and exceeds 1 "
+            "below 1e-14), its Q is"
+        ),
+        (
+            "the grid ends at T (NashIUH: 5 n K + D, and max(5 n K, 10 K) for the "
+            "IUH alone): the ordinates hold S(T) of the unit, short of 1 mm by the "
+            "tail beyond T"
+        ),
+        (
+            "n outside 1 to 10 or K outside 10 to 200 min given to NashIUH gives the "
+            "notice outside_unverified_range (nash.n, nash.k_min): no source "
+            "publishes those ranges"
+        ),
+    ),
+    assumptions=(
+        "the watershed responds as a cascade of n equal linear reservoirs",
+        "excess rainfall uniform over the watershed and in time over D",
+    ),
+    traps={
+        "many_small_terms": "test_nash_a_million_ordinates_hold_their_volume: the "
+        "volume of a million ordinates of a 2^-10 min step against math.fsum",
+    },
+    reference_cases=("tests/fixtures/formulas/unit-hydrographs-cases.json",),
+    oracles=(
+        Oracle(
+            kind="exact",
+            description="the Erlang distribution function and density of a whole n "
+            "in closed form, with math.fsum",
+            test="tests/unit/test_formulas_unit_hydrographs.py (limit erlang)",
+        ),
+        Oracle(
+            kind="algorithm",
+            description="the S-curve of a fractional n as the integral of the IUH by "
+            "adaptive Gauss-Kronrod quadrature (scipy.integrate.quad, SciPy 1.18.1)",
+            test="tests/unit/test_formulas_unit_hydrographs.py (limit quadrature)",
+        ),
+    ),
+    base=_KZGW_POINT,
+)
+
+
+def nash_unit_hydrograph(
+    n: float,
+    k_min: float,
+    area_km2: float,
+    timestep_min: float,
+    duration_min: float,
+    total_duration_min: float,
+) -> NashUHResult:
+    """Return Nash's IUH and its unit hydrograph of a rainfall duration, spec nash_iuh.
+
+    The third input is the area of the watershed in square kilometres (its name
+    carries the unit, so the standard's check of this docstring, which allows no
+    digit, keeps it out of the list below).
+
+    Parameters
+    ----------
+    n : float
+        Number of reservoirs of the cascade [-].
+    k_min : float
+        Storage constant of each reservoir [min].
+    timestep_min : float
+        Time step of the ordinates [min].
+    duration_min : float
+        Duration of the unit of excess rainfall [min].
+    total_duration_min : float
+        Length of the hydrograph [min].
+
+    Returns
+    -------
+    NashUHResult
+        The IUH and the unit hydrograph at the step times, the lag, the largest
+        ordinate and its time.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the spec refuses an input (``details.reason``): a value outside its
+        physical range, a grid of too many ordinates (``length_bounded``) or one a
+        double cannot hold (``representable``).
+    """
+    x = checked_inputs(
+        NASH_IUH,
+        n=n,
+        k_min=k_min,
+        area_km2=area_km2,
+        timestep_min=timestep_min,
+        duration_min=duration_min,
+        total_duration_min=total_duration_min,
+    )
+    out = checked_outputs(NASH_IUH, _nash_hydrograph(x))
+    return NashUHResult(
+        times_min=out.array("times_min"),
+        ordinates_m3s=out.array("ordinates_m3s"),
+        duration_min=x.real("duration_min"),
+        area_km2=x.real("area_km2"),
+        time_to_peak_min=out.real("time_to_peak_min"),
+        peak_discharge_m3s=out.real("peak_discharge_m3s"),
+        n=x.real("n"),
+        k_min=x.real("k_min"),
+        iuh_ordinates_per_min=out.array("iuh_ordinates_per_min"),
+        lag_time_min=out.real("lag_time_min"),
+    )
+
+
+# --- the peak of Nash's IUH: the spec nash_iuh_peak -----------------------------------
+
+
+def _peak_defined(n: float) -> bool:
+    """Return whether the IUH of n reservoirs has its peak inside t > 0: n > 1."""
+    return n > 1.0
+
+
+def _iuh_peak(n: float, k: float) -> tuple[float, float]:
+    """Return (n - 1) K and the density there, through logarithms, for n > 1."""
+    shape = n - 1.0
+    peak = math.exp(shape * math.log(shape) - shape - math.lgamma(n)) / k
+    return shape * k, peak
+
+
+def _gamma_mode(run: Callable[..., Values]) -> None:
+    from scipy import stats
+
+    for n, k in (
+        (1.05, 42.0),
+        (2.55, 42.0),
+        (3.75659, 42.2491),
+        (7.99, 0.87),
+        (100.0, 1.0),
+    ):
+        out = run(n=n, k_min=k)
+        density = stats.gamma(a=n, scale=k)
+        assert_within(
+            out.real("peak_ordinate_per_min"),
+            float(density.pdf(out.real("time_to_peak_min"))),
+            rel=1e-13,
+            reason="SciPy's gamma density at the mode, through its logarithm: a few "
+            "units in the last place of each",
+        )
+        assert_within(
+            out.real("time_to_peak_min"),
+            (n - 1.0) * k,
+            rel=0.0,
+            abs=0.0,
+            reason="the mode of the gamma density of shape n and scale K, (n - 1) K, "
+            "is one product",
+        )
+        for side in (0.999, 1.001):
+            assert float(density.pdf(side * out.real("time_to_peak_min"))) < (
+                out.real("peak_ordinate_per_min")
+            ), "the density is lower beside its mode"
+
+
+_TABLE_C2: Final = (
+    (1.10, 0.076),
+    (1.50, 0.242),
+    (2.00, 0.368),
+    (2.55, 0.471),
+    (3.00, 0.541),
+    (4.00, 0.672),
+    (5.00, 0.781),
+    (6.00, 0.877),
+    (7.00, 0.964),
+    (7.99, 1.042),
+)
+"""N and f(N) = tp up of KZGW (2017), Table C.2, pp. 132-133, printed to 3 decimals."""
+
+
+def _table_c2(run: Callable[..., Values]) -> None:
+    for n, printed in _TABLE_C2:
+        out = run(n=n, k_min=42.0)
+        assert_within(
+            out.real("time_to_peak_min") * out.real("peak_ordinate_per_min"),
+            printed,
+            abs=0.0005,
+            reason="half a unit of the table's third decimal: tp up does not depend "
+            "on K",
+        )
+
+
+NASH_IUH_PEAK: Final = FormulaSpec(
+    name="nash_iuh_peak",
+    title="Time to peak and peak ordinate of Nash's instantaneous unit hydrograph",
+    function="hydrolog.runoff.nash_iuh.nash_iuh_peak",
+    family="empirical",
+    equation="tp = (n - 1) K; up = (n - 1)^(n - 1) e^-(n - 1) / (K Gamma(n)), n > 1",
+    latex=(r"t_p = (n - 1) K;\quad u_p = \frac{(n-1)^{n-1} e^{-(n-1)}}{K\,\Gamma(n)}"),
+    variables=(NASH_IUH.variable("n"), NASH_IUH.variable("k_min")),
+    outputs=(
+        Output(
+            name="time_to_peak_min",
+            unit="min",
+            symbol="t_p",
+            description="Time of the peak of the instantaneous unit hydrograph, its "
+            "mode.",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+        Output(
+            name="peak_ordinate_per_min",
+            unit="1/min",
+            symbol="u_p",
+            description="Peak ordinate of the instantaneous unit hydrograph.",
+            physical=Range(low=0.0, low_inclusive=False),
+        ),
+    ),
+    sources=(
+        _kzgw("annex 2, section 3.1.2, p. 96: eqs. 6.14 (tp) and 6.16 (up)"),
+        _sikorska("eqs. 9-10, p. 1225: tp and up of the IUH of the cascade"),
+    ),
+    constraints=(
+        Constraint(
+            name="peak_defined",
+            cls="precondition",
+            check=lambda x: _peak_defined(x.real("n")),
+            text="n > 1: for n <= 1 the IUH decreases from t = 0, where it is 1 / K "
+            "(n = 1) or unbounded (n < 1), so it has no peak inside t > 0",
+            source=_kzgw("p. 96, eq. 6.14: tp = (N - 1) k, positive for N > 1"),
+            satisfied={"n": 1.5},
+            violated={"n": 0.9},
+            boundary={"n": 1.0},
+            boundary_holds=False,
+        ),
+        Constraint(
+            name="representable",
+            cls="precondition",
+            check=lambda x: (
+                x.real("k_min") >= _SMALLEST and math.isfinite(1.0 / x.real("k_min"))
+            ),
+            text="K is a normal number and float64 holds 1 / K, the bound of the peak",
+            source=Source(
+                citation="IEEE 754 double precision (float64)",
+                locator="normal numbers from 2.2e-308 to 1.8e308",
+            ),
+            satisfied={"k_min": 42.0},
+            violated={"k_min": 1.0e-310},
+        ),
+    ),
+    properties=Properties(
+        units="homogeneous",
+        monotonic={"n": 1, "k_min": 1},
+        scalings=(
+            Scaling(
+                name="time",
+                inputs={"k_min": 1},
+                outputs={"time_to_peak_min": 1, "peak_ordinate_per_min": -1},
+                tolerance=Tolerance(
+                    rel=0.0,
+                    abs=1e-300,
+                    reason="doubling K doubles (n - 1) K and halves the density "
+                    "exactly in binary, but for subnormal values",
+                ),
+            ),
+        ),
+        limits=(
+            Limit(
+                name="gamma_mode",
+                text="tp is the mode of the gamma density of shape n and scale K and "
+                "up its value there (scipy.stats.gamma); the density is lower on "
+                "either side",
+                check=_gamma_mode,
+            ),
+            Limit(
+                name="table_c2",
+                text="tp up = (N - 1)^N e^-(N - 1) / Gamma(N), KZGW's f(N), matches "
+                "Table C.2 from N = 1.10 to 7.99",
+                check=_table_c2,
+                source=_kzgw("Table C.2, pp. 132-133"),
+            ),
+        ),
+    ),
+    validation=(
+        "none: exact properties of the gamma density of Nash (1957); the sources give "
+        "no error statistic"
+    ),
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "tp in min from the instant of the rainfall, up in 1/min",
+        (
+            "NashIUH.time_to_peak_min and peak_ordinate_per_min are null for n <= 1, "
+            "with the notice iuh_peak_undefined, where versions up to 0.8.1 gave 0 "
+            "and 1 / K"
+        ),
+    ),
+    assumptions=("the IUH of a cascade of n equal linear reservoirs (spec nash_iuh)",),
+    traps={
+        "singular_at_bound": "range cases n-physical_low_* and the constraint case "
+        "peak_defined at n = 1: (n - 1) ln(n - 1) tends to 0 as n tends to 1, and "
+        "n <= 1 is refused by the precondition peak_defined",
+    },
+    reference_cases=("tests/fixtures/formulas/unit-hydrographs-cases.json",),
+    oracles=(
+        Oracle(
+            kind="established",
+            description="scipy.stats.gamma (SciPy 1.18.1): the density of shape n and "
+            "scale K at its mode (n - 1) K",
+            test="tests/unit/test_formulas_unit_hydrographs.py (limit gamma_mode)",
+            conventions=("scale K in min, the density in 1/min",),
+        ),
+    ),
+    base={"n": 2.55, "k_min": 42.0},
+)
+
+
+@dataclass(frozen=True)
+class NashPeak(JsonResultMixin):
+    """The peak of Nash's IUH, spec nash_iuh_peak.
+
+    Attributes
+    ----------
+    time_to_peak_min : float
+        Time of the peak [min].
+    peak_ordinate_per_min : float
+        Peak ordinate [1/min].
+    """
+
+    time_to_peak_min: float
+    peak_ordinate_per_min: float
+
+
+def nash_iuh_peak(n: float, k_min: float) -> NashPeak:
+    """Return the time to peak and the peak of Nash's IUH, spec nash_iuh_peak.
+
+    Parameters
+    ----------
+    n : float
+        Number of reservoirs of the cascade [-].
+    k_min : float
+        Storage constant of each reservoir [min].
+
+    Returns
+    -------
+    NashPeak
+        Time to peak [min] and peak ordinate, the share of the unit per minute.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the spec refuses an input (``details.reason``), among them a cascade
+        whose IUH has no peak after the rainfall (precondition ``peak_defined``).
+    """
+    x = checked_inputs(NASH_IUH_PEAK, n=n, k_min=k_min)
+    time, peak = _iuh_peak(x.real("n"), x.real("k_min"))
+    out = checked_outputs(
+        NASH_IUH_PEAK, {"time_to_peak_min": time, "peak_ordinate_per_min": peak}
+    )
+    return NashPeak(
+        time_to_peak_min=out.real("time_to_peak_min"),
+        peak_ordinate_per_min=out.real("peak_ordinate_per_min"),
+    )
+
+
+def _default_length(lag_min: float, duration_min: object) -> float:
+    """Return 5 n K + D, the default length, or NaN of a D the spec refuses."""
+    try:
+        return float(5.0 * lag_min + cast(float, duration_min))
+    except TypeError:
+        return math.nan
 
 
 _N_LOW: Final = 1.1
@@ -2018,7 +2791,7 @@ def urban_regression_parameters(
 
     Warns
     -----
-    OutsideTypicalRange
+    OutsideApplicability
         If the area or the impervious fraction is outside the watersheds the
         relations are for.
     """
@@ -2035,7 +2808,7 @@ def urban_regression_parameters(
     )
 
 
-SPECS: Final[tuple[FormulaSpec, ...]] = (LUTZ, URBAN)
+SPECS: Final[tuple[FormulaSpec, ...]] = (NASH_IUH, NASH_IUH_PEAK, LUTZ, URBAN)
 """The specs of the module, in the order of ``docs/FORMULAS.md``."""
 
 

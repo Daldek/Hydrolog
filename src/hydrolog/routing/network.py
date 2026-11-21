@@ -518,8 +518,8 @@ def _observed() -> Iterator[list[RoutingNotice]]:
     """Collect the warnings that the library issues inside the block as notices.
 
     A ``UserWarning`` (a value outside the usual range of a formula) becomes a notice
-    whose code is its class's name in snake_case (``outside_typical_range`` for
-    :class:`~hydrolog._warnings.OutsideTypicalRange`, ``user_warning`` for a plain
+    whose code is its class's name in snake_case (``outside_applicability`` for
+    :class:`~hydrolog._warnings.OutsideApplicability`, ``user_warning`` for a plain
     ``UserWarning``), once for the same text, of the level of a
     :class:`~hydrolog._warnings.HydrologWarning` (``uh_substeps`` is ``"info"``), else
     ``"warning"``; a warning of another category is issued again when the block ends.

@@ -2,6 +2,8 @@
 
 - Status: accepted
 - Date: 2026-11-04
+- Amended by [ADR-0070](0070-the-notice-outside-applicability.md) (2026-11-21): the `notice` of a typical range with a source is
+  `outside_applicability`
 - Amended by [ADR-0019](0019-tc-from-the-inputs-its-source-defines.md) (2026-11-05): the inputs of a range checked on
   a watershed are the one field the method's source defines
 - Amended by [ADR-0050](0050-formulas-declared-by-specs.md) (2026-11-18): the ranges of a formula with a

@@ -2,6 +2,8 @@
 
 - Status: accepted
 - Date: 2026-11-02
+- Amended by [ADR-0070](0070-the-notice-outside-applicability.md) (2026-11-21): `OutsideTypicalRange` and `outside_typical_range` are
+  `OutsideApplicability` and `outside_applicability`
 - Amended by [ADR-0017](0017-typical-ranges-in-the-catalog.md) (2026-11-04): the bounds of the `outside_typical_range`
   notices come from one table
 - Amended by [ADR-0025](0025-the-structure-alone-in-the-schematic.md) (2026-11-10): `route schematic` has the

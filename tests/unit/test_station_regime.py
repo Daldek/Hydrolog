@@ -406,7 +406,7 @@ class TestBaseflow:
         for index in (150, 80):
             del dates[index], values[index]
         document = envelope("stats baseflow", values=values, dates=dates, alpha=0.99)
-        found = [n for n in document["notices"] if n["code"] == "outside_typical_range"]
+        found = [n for n in document["notices"] if n["code"] == "outside_applicability"]
         assert document["result"]["n_spans"] == 3
         assert [(n["details"]["method"], n["details"]["value"]) for n in found] == [
             ("lyne_hollick", 0.99)

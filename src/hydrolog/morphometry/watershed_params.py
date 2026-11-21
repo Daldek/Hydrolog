@@ -748,7 +748,7 @@ class WatershedParameters:
 
         Warns
         -----
-        OutsideTypicalRange
+        OutsideApplicability
             For an argument outside the typical range of the formula, and for
             "kirpich", "nrcs", "kerby" and "kerby_kirpich" an area outside the
             areas of the data of the method (parameter ``area_km2``); its

@@ -1739,7 +1739,7 @@ class ConcentrationTime:
     equations, constants, ranges and sources of the specs ``kirpich``, ``nrcs``,
     ``giandotti``, ``faa``, ``kerby`` and ``kerby_kirpich``. An input the spec refuses
     raises ``InvalidParameterError`` with the standard's ``details.reason``; an input
-    outside the data of the formula gives the warning ``OutsideTypicalRange``.
+    outside the data of the formula gives the warning ``OutsideApplicability``.
 
     Examples
     --------
@@ -1777,7 +1777,7 @@ class ConcentrationTime:
 
         Warns
         -----
-        OutsideTypicalRange
+        OutsideApplicability
             For an input outside the data of the formula (``method`` the spec's name,
             ``parameter`` the input). The area of the data is checked by
             ``WatershedParameters.calculate_tc``.
@@ -1817,7 +1817,7 @@ class ConcentrationTime:
 
         Warns
         -----
-        OutsideTypicalRange
+        OutsideApplicability
             For a CN outside the CN the equation may be used with. The area of its
             watersheds is checked by ``WatershedParameters.calculate_tc``.
         """
@@ -1855,7 +1855,7 @@ class ConcentrationTime:
 
         Warns
         -----
-        OutsideTypicalRange
+        OutsideApplicability
             For an area outside the basins of the formula's data.
         """
         x = checked_inputs(
@@ -1895,7 +1895,7 @@ class ConcentrationTime:
 
         Warns
         -----
-        OutsideTypicalRange
+        OutsideApplicability
             For a coefficient above those of the circular's table.
         """
         x = checked_inputs(
@@ -1939,7 +1939,7 @@ class ConcentrationTime:
 
         Warns
         -----
-        OutsideTypicalRange
+        OutsideApplicability
             For a length, slope or retardance outside Kerby's data; the slope is
             checked before the offset. The area of the data is checked by
             ``WatershedParameters.calculate_tc``.
@@ -2000,7 +2000,7 @@ class ConcentrationTime:
 
         Warns
         -----
-        OutsideTypicalRange
+        OutsideApplicability
             For the overland length or the retardance outside Kerby's data, and the
             flow path length or slope outside the main channels of the watersheds the
             method was verified on. Their area is checked by

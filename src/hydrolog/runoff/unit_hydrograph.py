@@ -642,7 +642,7 @@ SCS: Final = FormulaSpec(
         "tlag = 0.6 tc, the average relation of NEH 630 ch. 15",
         (
             "D = 0.2 Tp (D = 0.133 tc), at most 0.25 Tp (NEH 630 p. 16A-3); hydrograph "
-            "generate warns outside_typical_range of scs.timestep_min beyond it"
+            "generate warns outside_applicability of scs.timestep_min beyond it"
         ),
     ),
     notices=("uh_substeps",),
@@ -719,7 +719,7 @@ def scs_unit_hydrograph(
 
     Warns
     -----
-    OutsideTypicalRange
+    OutsideApplicability
         If the area is larger than the subareas of the method.
     UhSubsteps
         When the step was computed on sub-steps (notice ``uh_substeps``, info).
@@ -896,7 +896,7 @@ class SCSUnitHydrograph:
 
         Warns
         -----
-        OutsideTypicalRange
+        OutsideApplicability
             If the area is larger than the subareas of the method.
         UhSubsteps
             When the step was computed on sub-steps (notice ``uh_substeps``, info).

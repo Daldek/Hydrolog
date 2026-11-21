@@ -860,11 +860,11 @@ def test_notices_in_polish(page: Any) -> None:
            details: {curves: ['all pairs', '1981-1990'], b: [6.23341, 6.49733],
              h0: [-205.651, -87.9713]}},
           {code: 'no_such_code', message: 'Something odd'},
-          {code: 'outside_typical_range', message: 'm',
+          {code: 'outside_applicability', message: 'm',
            details: {method: 'rating_curve_fit', parameter: 'gaugings',
              field: 'gaugings', value: 6, minimum: 12, maximum: null,
              constraint: 'enough_gaugings', condition: 'n >= 12', source: 'WMO'}},
-          {code: 'outside_typical_range', message: 'm',
+          {code: 'outside_applicability', message: 'm',
            details: {method: 'kirpich', parameter: 'length_km', field: 'length_km',
              value: 0.05, minimum: 0.1, maximum: null, constraint: null,
              condition: null, source: null}},
@@ -912,7 +912,7 @@ def test_notices_in_polish(page: Any) -> None:
             "english": False,
         },
         {
-            "text": "kirpich: length_km = 0,05 poniżej typowego zakresu, od 0,1.",
+            "text": "kirpich: length_km = 0,05 poniżej zakresu stosowania, od 0,1.",
             "english": False,
         },
         {
