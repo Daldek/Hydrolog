@@ -25,10 +25,14 @@ export const NO_LINES = Object.freeze({ attribution: Object.freeze([]), terms_no
 /** The CSV columns that hold lines, not data (DEV-20.5, and the two more of an export of Obserwator 3.0.x or older). */
 export const LINE_COLUMNS = Object.freeze(["attribution", "terms_notice", "attribution_source", "attribution_processed"]);
 
-/** How the series of a hand-off without lines names its provider, by provider. */
+/**
+ * How the series of a hand-off without lines names its provider, by provider: by the names
+ * of Nogat ECO-082 (`IMGW`, `pl.imgw.…`; `CHMU`, `cz.chmu.…`) and, in a hand-off written
+ * before them, by the old ones (`IMGW-PIB`; `CHMI`, `cz.chmi.…`), since such files exist.
+ */
 const PROVIDER_NAMES = Object.freeze([
   { provider: "imgw", pattern: /^(imgw([-_ ]?pib)?|pl\.imgw(\..+)?)$/ },
-  { provider: "chmu", pattern: /^(chmu|cz\.chmu(\..+)?)$/ },
+  { provider: "chmu", pattern: /^(chm[ui]|cz\.chm[ui](\..+)?)$/ },
 ]);
 
 /** An address in a line (`https://…`), without the comma or bracket after it. */
@@ -169,8 +173,9 @@ export function providerLines(session, provider) {
 
 /**
  * The provider a series names in its provenance (`series.provider`, `source` or `dataset`):
- * IMGW-PIB, „imgw-pib” or „pl.imgw.…” is IMGW-PIB's public data, CHMU, ČHMÚ or „cz.chmu.…”
- * ČHMÚ's (the name folded: lower case, no diacritics).
+ * IMGW, „pl.imgw.…” or an older hand-off's IMGW-PIB is IMGW-PIB's public data, CHMU, ČHMÚ,
+ * „cz.chmu.…” or an older one's CHMI, „cz.chmi.…” ČHMÚ's (the name folded: lower case, no
+ * diacritics).
  *
  * @param {unknown} provenance the provenance of a hand-off
  * @returns {"imgw"|"chmu"|null} the provider, null when none is named

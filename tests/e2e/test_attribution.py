@@ -65,13 +65,19 @@ def maxima_payload() -> dict[str, Any]:
 
 
 def archiwista(lines: bool) -> dict[str, Any]:
-    """Return Archiwista's hand-off of the maxima, with its lines or (older) without."""
+    """Return Archiwista's hand-off of the maxima, with its lines or (older, before
+    Nogat ECO-082, naming IMGW-PIB ``imgw-pib``) without."""
     doc: dict[str, Any] = {
         "schema": "nogat-handoff/1",
         "created_at": "2026-11-13T08:00:00Z",
-        "producer": {"tool": "archiwista", "version": "0.4.0"},
+        "producer": {"tool": "archiwista", "version": "0.4.0" if lines else "0.3.2"},
         "subject": "Raba — maksima roczne",
-        "provenance": {"series": {"source": "imgw-pib", "station": "149190310"}},
+        "provenance": {
+            "series": {
+                "source": "imgw" if lines else "imgw-pib",
+                "station": "149190310",
+            }
+        },
     }
     if lines:
         doc["attribution"] = IMGW["attribution"]
@@ -140,6 +146,38 @@ def test_an_older_chmu_handoff_shows_and_sends_on_one_cp(
     envelope = compute(page).json()
     assert envelope["attribution"] == chmu
     assert sources_listed(page, SECTION) == chmu
+
+
+def test_a_handoff_without_lines_names_its_provider_by_new_or_older_names(
+    tab: Tab,
+) -> None:
+    """Nogat ECO-082: a hand-off without lines names its provider IMGW, CHMU or a
+    dataset key; one written before names it IMGW-PIB, CHMI or ``cz.chmi.…``, still
+    recognised."""
+    tab.open()
+    names = [
+        "IMGW",
+        "imgw-pib",
+        "IMGW-PIB",
+        "pl.imgw.hydro_daily",
+        "CHMU",
+        "ČHMÚ",
+        "cz.chmu.hydro_daily",
+        "CHMI",
+        "cz.chmi.hydro_daily",
+        "chmu-x",
+    ]
+    got = tab.page.evaluate(
+        """async ([names, sets]) => {
+          const a = await import('./src/attribution.js');
+          const session = {attribution: sets};
+          return names.map((source) =>
+            a.receivedLines({provenance: {series: {source}}}, session).attribution);
+        }""",
+        [names, SETS],
+    )
+    chmu = SETS["chmu"]["attribution"]
+    assert got == [*[IMGW["attribution"]] * 4, *[chmu] * 5, []]
 
 
 def open_part_statystyka(page: Page) -> None:
