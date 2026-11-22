@@ -520,8 +520,9 @@ def _network_document(schema_id: str) -> dict[str, Any]:
                 "not": {"pattern": _RESERVED_ID},
                 "maxLength": MAX_ID_CHARS,
                 "description": (
-                    "Names the node and its file `<id>.csv`: letters, digits, `_`, `.` "
-                    "and `-`, not starting with `.` or `-` and not ending with `.`, "
+                    "Names the node and its file `hydrolog_node-hydrograph_<id>.csv`: "
+                    "letters, digits, `_`, `.` and `-`, not starting with `.` or `-` "
+                    "and not ending with `.`, "
                     "not a device name of Windows (`con`, `prn`, `aux`, `nul`, `com1` "
                     "to `com9`, `lpt1` to `lpt9`, any case, any extension); unique "
                     "without regard to case."

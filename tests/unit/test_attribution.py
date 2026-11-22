@@ -730,7 +730,8 @@ class TestFilesOfCommands:
             TERMS_DANEPUBLICZNE,
             TERMS_PMAXTP,
         ]
-        outlet = read_table(out / f"{envelope['result']['outlet']}.csv")
+        outlet_id = envelope["result"]["outlet"]
+        outlet = read_table(out / f"hydrolog_node-hydrograph_{outlet_id}.csv")
         assert outlet.attribution.to_dict() == Attribution.of("pmaxtp").to_dict()
         svg = (tmp_path / "siec.svg").read_text(encoding="utf-8")
         assert f">{TERMS_PMAXTP}</text>" in svg
@@ -748,7 +749,9 @@ class TestFilesOfCommands:
         )
 
         assert not (out / "ATTRIBUTION.txt").exists()
-        assert "attribution" not in (out / "OUT.csv").read_text(encoding="utf-8")
+        assert "attribution" not in (
+            out / "hydrolog_node-hydrograph_OUT.csv"
+        ).read_text(encoding="utf-8")
 
     def test_lines_of_a_network_must_be_strings(self):
         document = {

@@ -435,6 +435,7 @@ def test_the_svg_and_the_network_document_export(tab: Tab) -> None:
     open_part(page, 'section[data-section="siec"]', "exports")
     with page.expect_download() as saved:
         page.locator('[data-export="json-network"]').click()
+    assert saved.value.suggested_filename == "hydrolog_network.json"
     document = json.loads(Path(saved.value.path()).read_text(encoding="utf-8"))
     example = example_network_document()
     assert document == as_written(with_cells(example, library(example)[0]))
@@ -444,7 +445,51 @@ def test_the_svg_and_the_network_document_export(tab: Tab) -> None:
         page.locator('[data-export="svg"]').click()
     svg = Path(drawing.value.path()).read_text(encoding="utf-8")
     assert svg.lstrip().startswith("<svg")
-    assert drawing.value.suggested_filename == "siec.svg"
+    assert drawing.value.suggested_filename == "hydrolog_network-schematic.svg"
+
+
+def test_the_files_are_named_after_the_network_file(tab: Tab, tmp_path: Path) -> None:
+    """Sieć names its files `hydrolog_<content>_<network>` (Nogat DEV-19.21): the
+    network file's name in lower-case ASCII, a node's id as it is; a document it saved
+    keeps its name when it is opened and saved again."""
+    page = open_section(tab)
+    named = tmp_path / "Kamiennik Dopływ.json"
+    named.write_text(json.dumps(example_network_document()), encoding="utf-8")
+    reopen(page, named)
+    compute(page)
+    page.locator(NODE.format("C")).click()
+    open_part(page, 'section[data-section="siec"]', "exports")
+    names = {}
+    for export in ("csv-node", "csv-all", "json-network", "json-result"):
+        with page.expect_download() as saved:
+            page.locator(f'[data-export="{export}"]').click()
+        names[export] = saved.value.suggested_filename
+    assert names == {
+        "csv-node": "hydrolog_node-hydrograph_kamiennik-doplyw_C.csv",
+        "csv-all": "hydrolog_network-nodes_kamiennik-doplyw.csv",
+        "json-network": "hydrolog_network_kamiennik-doplyw.json",
+        "json-result": "hydrolog_network-result_kamiennik-doplyw.json",
+    }
+
+    with page.expect_download() as saved:
+        page.get_by_role("button", name="Zapisz sieć").click()
+    first = tmp_path / saved.value.suggested_filename
+    saved.value.save_as(first)
+    assert first.name == "hydrolog_network_kamiennik-doplyw.json"
+    reopen(page, first)
+    with page.expect_download() as again:
+        page.get_by_role("button", name="Zapisz sieć").click()
+    assert again.value.suggested_filename == "hydrolog_network_kamiennik-doplyw.json"
+
+
+def reopen(page: Page, path: Path) -> None:
+    """Close the open network with „Wyczyść” and open the network file ``path``."""
+    page.locator('section[data-section="siec"]').get_by_role(
+        "button", name="Wyczyść"
+    ).click()
+    expect(page.locator("svg.schem")).to_have_count(0)
+    load_network(page, path)
+    expect(page.locator("svg.schem g.node")).to_have_count(8)
 
 
 def test_a_dragged_node_keeps_its_cell_after_a_reload_and_in_a_saved_file(

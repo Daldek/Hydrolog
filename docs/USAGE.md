@@ -496,9 +496,9 @@ There is one outlet, every node leads to it and a node flows into one node: a bi
 refused. The order of the nodes in the document changes nothing. A document that is wrong is a
 `data_error` (a file) or a `validation_error` (inline) with the node and the field in `details`.
 All sources have one time step and one first time; nothing is resampled. `schema` is required. An
-id names the file `<id>.csv`, so it must not be a Windows device name (`con`, `prn`, `aux`, `nul`,
-`com1` to `com9`, `lpt1` to `lpt9`, any case, any extension): `validation_error`, `details.reason`
-`reserved_name`.
+id names the file `hydrolog_node-hydrograph_<id>.csv`, so it must not be a Windows device name
+(`con`, `prn`, `aux`, `nul`, `com1` to `com9`, `lpt1` to `lpt9`, any case, any extension):
+`validation_error`, `details.reason` `reserved_name`.
 
 Every node, of any type, may also have a `description` and a `position`, and the document a
 `description` of its own at its top, after `name`
@@ -520,9 +520,11 @@ on and the description typed in „Opis” ([section 8](#building-a-network-in-s
  "description": "Suchy zbiornik powyżej Świerzawy", "position": {"x": 2, "y": 0}}
 ```
 
-`--output-dir DIR` (`-o`) writes the hydrograph that leaves each node as `<id>.csv`, a table that
-every `route` command reads again and the hand-off to Hydraulik; `--nodes` selects the nodes
-(default all). Without a directory the hydrographs of the selected nodes are in the result; when
+`--output-dir DIR` (`-o`) writes the hydrograph that leaves each node as
+`hydrolog_node-hydrograph_<id>.csv` (the id as it is, e.g. `hydrolog_node-hydrograph_OUT.csv`;
+Nogat DEV-19.21), a table that every `route` command reads again and the hand-off to Hydraulik;
+`--nodes` selects the nodes (default all). Without a directory the hydrographs of the selected
+nodes are in the result; when
 that is more than 20,000 characters (one page, DOC-1.7) the notice `large_result` suggests `--nodes`
 or `--output-dir`. The files
 follow the rules of section 3 and are never written over an input file. The example is the fixture
@@ -1169,8 +1171,9 @@ computes), and `route network` writes one file per node into `--output-dir` and 
 
 - `--output FILE`: exactly one plain file; missing directories are created. Hydrolog has no store
   and no managed directory layout.
-- `--output-dir DIR` (`route network` only, short flag `-o`): one plain file per node, `<id>.csv`;
-  the directory is created if it is missing. The plan lists every file; a directory that is, or
+- `--output-dir DIR` (`route network` only, short flag `-o`): one plain file per node,
+  `hydrolog_node-hydrograph_<id>.csv`; the directory is created if it is missing. The plan lists
+  every file; a directory that is, or
   lies in, the store of another Nogat tool is a `conflict` (`details.reason` `output_in_store`: the
   tool that owns a store writes into it with its own `--root`), and so is a node named twice in
   `--nodes` (`duplicate_output_name`). The files are written into
@@ -1568,6 +1571,22 @@ handed over by Archiwista
 uwagę” in the top bar sends a report on a problem or an idea to whoever runs the server, who
 reads it on the admin page `admin/` ([below](#reports-of-users-zgłoś-uwagę)), and „Aplikacje”
 leads to the other GUIs of the deployment ([below](#the-other-guis-aplikacje)).
+
+The page names the files it saves by Nogat DEV-19.21, `hydrolog_<content>_<qualifiers>.<ext>`:
+the content in English, a name the person gave (the watershed's, the series file's, the
+network file's) in lower-case ASCII with `-` (the kit's `nameSlug`), a node id as it is.
+Hydrogram zlewni saves `hydrolog_hydrograph_kamiennik-swierzawa.csv` and `.png`,
+`hydrolog_hydrograph-result_kamiennik-swierzawa.json` and
+`hydrolog_report_kamiennik-swierzawa.md`; Statystyka przepływów
+`hydrolog_quantiles_<series>.csv` (a pasted series without its part); Kalkulatory and Wszystkie
+polecenia `hydrolog_<command>.csv` (`hydrolog_tc-kirpich.csv`, `hydrolog_tc-kirpich-result.json`)
+and the tc comparison `hydrolog_tc-comparison.csv`; Sieć `hydrolog_network_<network>.json`,
+`hydrolog_network-result_<network>.json`, `hydrolog_network-nodes_<network>.csv`,
+`hydrolog_node-hydrograph_<network>_<node id>.csv` and `hydrolog_network-schematic_<network>.png`
+and `.svg`, without `_<network>` for the default `siec.json`, and a document it saved
+(`hydrolog_network_kamiennik.json`) keeps that name when saved again; the hand-off is
+`hydrolog_handoff_<subject>.json` and the admin page's statistics
+`hydrolog_stats_<first>_<last>.csv` (Nogat's kit).
 
 ### Building a network in Sieć
 

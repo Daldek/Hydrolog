@@ -16,9 +16,10 @@ read-only MCP server, which runs every writing tool with ``check``, can still ro
 :func:`route_network` routes the hydrographs of many subcatchments down a river network
 (the document ``hydrolog-network/1``, read by :mod:`hydrolog.operations._network_input`)
 and returns a :class:`NetworkRouteResult`, the summary of every node. The hydrograph of
-each node is in the result or, with ``output_dir``, in its own table ``<id>.csv``; the
-tables are written through a staging directory (DEV-19.7, ADR-0010) and carry the
-providers' lines like the table of ``output``. With ``schematic``
+each node is in the result or, with ``output_dir``, in its own table
+``hydrolog_node-hydrograph_<id>.csv`` (``node_table_name``); the tables are written
+through a staging directory (DEV-19.7, ADR-0010) and carry the providers' lines like the
+table of ``output``. With ``schematic``
 it also draws the network as an SVG map (ADR-0013), the providers' lines under it, and
 returns the document that the drawing is made of. :func:`route_schematic` reads a
 network the same way and returns
@@ -76,6 +77,7 @@ from hydrolog.routing import (
     RoutingNotice,
     RoutingResult,
 )
+from hydrolog.routing.network import node_table_name
 from hydrolog.routing.parameters import ParameterValue
 from hydrolog.routing.schematic import schematic_of, schematic_svg
 
@@ -1168,9 +1170,10 @@ def route_network(
     hydrographs at their last value.
 
     The hydrograph that leaves each node is a table (``time_min``, ``discharge_m3s``)
-    that every ``route`` command reads: ``output_dir`` receives one file ``<id>.csv``
-    per selected node, which is also the hand-off to a hydraulic model; without it the
-    hydrographs of the selected nodes are in the result (``nodes`` limits them).
+    that every ``route`` command reads: ``output_dir`` receives one file
+    ``hydrolog_node-hydrograph_<id>.csv`` per selected node, which is also the hand-off
+    to a hydraulic model; without it the hydrographs of the selected nodes are in the
+    result (``nodes`` limits them).
 
     Parameters
     ----------
@@ -1189,9 +1192,10 @@ def route_network(
     nodes : sequence of str, optional
         Ids of the nodes whose hydrographs are returned; default all of them.
     output_dir : str or os.PathLike, optional
-        Directory for the tables ``<id>.csv`` (created if missing). An existing table
-        is replaced only with ``force``; no table may be an input file and the
-        directory must not be, or lie in, the store of another Nogat tool.
+        Directory for the tables ``hydrolog_node-hydrograph_<id>.csv`` (created if
+        missing). An existing table is replaced only with ``force``; no table may be an
+        input file and the directory must not be, or lie in, the store of another Nogat
+        tool.
     schematic : str or os.PathLike, optional
         SVG file for the schematic of the network, a drawing in the style of a metro
         map (:meth:`~hydrolog.routing.RoutingNetwork.schematic`, ADR-0013), written
@@ -1284,7 +1288,7 @@ def route_network(
     inputs = _input_files(network_file, inflows_file, loaded.rating_files)
     plans = []
     if directory is not None:
-        names = [f"{node_id}.csv" for node_id in selected]
+        names = [node_table_name(node_id) for node_id in selected]
         _refuse_inputs(directory, names, inputs)
         plans.append(plan_directory("output_dir", directory, names, force=force))
     if target is not None:
@@ -1363,7 +1367,7 @@ def route_network(
     replaced: list[str | os.PathLike[str]] = [] if plan is None else [*plan.replaced]
     if directory is not None:
         tables = {
-            f"{node_id}.csv": csv_with_attribution(
+            node_table_name(node_id): csv_with_attribution(
                 run.hydrographs[node_id].to_table(), current()
             )
             for node_id in selected

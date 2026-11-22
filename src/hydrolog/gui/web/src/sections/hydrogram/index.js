@@ -364,7 +364,7 @@ export default function Hydrogram({ path = [] }) {
 
   const spec = useMemo(() => {
     if (!run) return null;
-    const subject = (run.options.watershed && run.options.watershed.name) || SECTION;
+    const subject = (run.options.watershed && run.options.watershed.name) || "";
     return exportSpec({ subject, options: run.options, envelope: run.envelope, chartSvg });
   }, [run]);
 

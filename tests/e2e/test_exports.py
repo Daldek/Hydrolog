@@ -332,7 +332,7 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
     result = envelope["result"]
 
     name, data = download(page, handoff_button(page, HG, "file"))
-    assert name == "Kamiennik — Świerzawa.handoff.json"
+    assert name == "hydrolog_handoff_kamiennik-swierzawa.json"
     doc = json.loads(data)
     valid(doc)
     assert doc["schema"] == "nogat-handoff/1"
@@ -859,7 +859,7 @@ def test_a_network_of_two_subcatchments_opens_in_siec_beside_hydrografs_result(
     # Written again from Sieć: the same network at the cells of Hydrolog's layout (the
     # canvas opened it there), its provenance and Hydrolog's outlet
     name, data = download(page, handoff_button(page, SIEC, "file"))
-    assert name == "Kamiennik — dwie zlewnie.handoff.json"
+    assert name == "hydrolog_handoff_kamiennik-dwie-zlewnie.json"
     doc = json.loads(data)
     valid(doc)
     layout = RoutingNetwork.from_document(TWO).schematic()["nodes"]
@@ -948,17 +948,19 @@ def test_the_markdown_report_downloads_from_report_generate(tab: Tab) -> None:
         name, data = download(page, button)
     assert asked.value.post_data_json == {
         **options,
-        "output": "out/Kamiennik _ Swierzawa.md",
+        "output": "out/hydrolog_report_kamiennik-swierzawa.md",
         "force": True,
     }
-    assert name == "Kamiennik _ Swierzawa.md"
+    assert name == "hydrolog_report_kamiennik-swierzawa.md"
     report = data.decode("utf-8")
     assert report.startswith("# Raport Hydrologiczny: Kamiennik — Świerzawa\n")
     assert f"Hydrolog v{hydrolog.__version__}" in report
     assert "57.90" in report
     # The report stays listed: fetched again with the session's header, the same file
     listed = page.locator(f"{HG} .view-panel.right .file-list button")
-    expect(listed).to_have_attribute("data-file", "out/Kamiennik _ Swierzawa.md")
+    expect(listed).to_have_attribute(
+        "data-file", "out/hydrolog_report_kamiennik-swierzawa.md"
+    )
     assert download(page, listed) == (name, data)
 
 
@@ -1674,7 +1676,7 @@ def test_handoffs_open_and_join_in_siec_and_the_written_one_reopens(
     # described, each without the watershed's fields no step shows for its choice
     # (Hydrograf's Lc under SCS)
     name, data = download(page, handoff_button(page, SIEC, "file"))
-    assert name == "Kamiennik — Świerzawa.handoff.json"
+    assert name == "hydrolog_handoff_kamiennik-swierzawa.json"
     doc = json.loads(data)
     valid(doc)
     handed = as_written(

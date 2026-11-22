@@ -29,7 +29,7 @@ import { DataTable } from "../../ui/table.js";
 import { cumulativeSpec, mainSpec, uhSpec } from "./charts.js";
 import { guiNotes } from "./notes.js";
 import { durationText, shortText } from "./rows.js";
-import { COMMAND, PEAK_DEFAULTS, isEmpty, rainDuration, usesLutz, usesTc } from "./state.js";
+import { COMMAND, PEAK_DEFAULTS, SECTION, isEmpty, rainDuration, usesLutz, usesTc } from "./state.js";
 
 /** Icons of the notes by level (the mockup's). */
 const ICONS = {
@@ -398,7 +398,7 @@ export function ResultsPanel({ run, spec, stale, current = null }) {
         <${CommandLine} command=${COMMAND} options=${run.options} title=${false} />
       <//>
       <${Part} id="handoff" title=${handoffLabels.export.title} meta=${handoffLabels.export.meta} open=${Boolean(current && current.handoff)}>
-        <${HydrogramHandoff} run=${run} current=${current} subject=${spec.subject} rain=${rainLabel(inputs, result)} />
+        <${HydrogramHandoff} run=${run} current=${current} subject=${spec.subject || SECTION} rain=${rainLabel(inputs, result)} />
       <//>
     </div>
     <${Attribution} lines=${linesOf(envelope)} />

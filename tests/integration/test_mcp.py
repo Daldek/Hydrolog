@@ -843,14 +843,14 @@ class TestRouteNetwork:
         assert document["check"] is False
         files = document["result"]["files"]
         assert {Path(f["path"]).name: f["status"] for f in files} == {
-            "A.csv": "written",
-            "R.csv": "written",
-            "OUT.csv": "written",
+            "hydrolog_node-hydrograph_A.csv": "written",
+            "hydrolog_node-hydrograph_R.csv": "written",
+            "hydrolog_node-hydrograph_OUT.csv": "written",
         }
         assert sorted(path.name for path in out.iterdir()) == [
-            "A.csv",
-            "OUT.csv",
-            "R.csv",
+            "hydrolog_node-hydrograph_A.csv",
+            "hydrolog_node-hydrograph_OUT.csv",
+            "hydrolog_node-hydrograph_R.csv",
         ]
 
     def test_the_directory_must_lie_in_an_allowed_directory(self, tmp_path):

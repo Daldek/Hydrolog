@@ -1442,7 +1442,7 @@ def test_the_hydrograph_exports_csv_json_and_png(tab: Tab, tmp_path: Path) -> No
     buttons = page.locator(f"{RIGHT} .export-row button")
 
     name, data = download(page, buttons.filter(has_text="CSV"))
-    assert name == "Kamiennik — Świerzawa.csv"
+    assert name == "hydrolog_hydrograph_kamiennik-swierzawa.csv"
     header, *rows = list(csv.reader(io.StringIO(data.decode("utf-8"))))
     # The example's PMAXTP depth: DEV-20.5's two columns of its lines after the data
     assert header == [
@@ -1473,11 +1473,11 @@ def test_the_hydrograph_exports_csv_json_and_png(tab: Tab, tmp_path: Path) -> No
     assert routed["attribution"] == envelope["attribution"]
 
     name, data = download(page, buttons.filter(has_text="JSON"))
-    assert name == "Kamiennik — Świerzawa.result.json"
+    assert name == "hydrolog_hydrograph-result_kamiennik-swierzawa.json"
     assert json.loads(data) == envelope
 
     name, data = download(page, buttons.filter(has_text="PNG"))
-    assert name == "Kamiennik — Świerzawa.png"
+    assert name == "hydrolog_hydrograph_kamiennik-swierzawa.png"
     assert data[:8] == b"\x89PNG\r\n\x1a\n"
     box = page.locator(f"{CENTER} .chart.wide svg").bounding_box()
     assert box is not None

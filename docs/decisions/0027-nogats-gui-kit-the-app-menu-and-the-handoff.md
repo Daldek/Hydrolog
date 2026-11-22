@@ -67,3 +67,11 @@ and the payload. Its menu had no address of another GUI.
 - `tests/e2e/test_shell.py` checks the menu at the root, under a host's prefix and on a phone; `tests/e2e/test_exports.py`
   the file name, the copy's fallback field and the kit's messages; `tests/integration/gui/test_app.py` the session's
   `gui`; `tests/contract/test_gui_web.py` the copies.
+
+## Erratum (2026-11-21, Nogat DEV-19.21)
+
+Nogat DEV-19.21 (ECO-083) names a file a tool names for a user `<tool>_<content>_<qualifiers>.<extension>`, and the
+kit copied from Nogat `998d05e` follows it: „Plik przekazania” downloads `hydrolog_handoff_<subject>.json` (point 4's
+`<subject>.handoff.json`), the subject reduced by the kit's `nameSlug` to lower-case ASCII without diacritics with `-`
+for each run of other characters (`hydrolog_handoff_kamiennik-swierzawa.json`), and `hydrolog_handoff.json` when
+nothing of it is left. The GUI's other exports use the same `nameSlug` for the names a person gave.

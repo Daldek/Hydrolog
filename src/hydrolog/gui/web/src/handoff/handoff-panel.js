@@ -520,7 +520,7 @@ function ReceivedResult({ received, own, ownVersion, state }) {
 
 /**
  * „Plik przekazania” and „Kopiuj do Hydrologa” for a hand-off made on demand, through
- * Nogat's kit: the file `<subject>.handoff.json`, and the clipboard, or where the browser
+ * Nogat's kit: the file `hydrolog_handoff_<subject>.json`, and the clipboard, or where the browser
  * gives none or refuses, the text selected in a field below the buttons for Ctrl+C.
  *
  * @param {{make: (() => object)|null, section: string, disabled?: string}} props the maker
