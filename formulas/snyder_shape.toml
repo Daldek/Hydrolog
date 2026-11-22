@@ -1,0 +1,290 @@
+schema = "nogat-formula-card/1"
+name = "snyder_shape"
+title = "Snyder's unit hydrograph as the gamma curve of 1 mm through its peak"
+function = "hydrolog.runoff.snyder_uh.snyder_shape"
+family = "scheme"
+formula_version = 1
+status = "oracle only"
+equation = "q(t) = qpR [(t / tpR) exp(1 - t / tpR)]^K with K > 0 the root of qpR tpR Gamma(K) (e / K)^K = A x 1 mm, the curve that holds 1 mm over A; the ordinates are q(k dt) for k = 0 to max(1, ceil(T / dt)), rescaled so that the sum of q_k dt is A x 1 mm"
+latex = "q(t) = q_{pR}\\left[\\frac{t}{t_{pR}}\\,e^{1 - t/t_{pR}}\\right]^K,\\quad q_{pR}\\,t_{pR}\\,\\Gamma(K)\\left(\\frac{e}{K}\\right)^K = A \\cdot 1\\,\\mathrm{mm},\\quad \\sum_k q_k\\,\\Delta t = A \\cdot 1\\,\\mathrm{mm}"
+validation = "none: Snyder's method gives the peak, the widths and the time base, not a curve (KZGW 2017 fig. 6.1; HEC-HMS fits a Clark unit hydrograph instead); Asquith and Roussel (2007) give the curve and its volume"
+conventions = ["times from the beginning of the rainfall, in min; ordinates in m3/s per mm", "the ordinates are the curve at the step times, rescaled to hold exactly 1 mm: the sampling and the part beyond T would change the volume", "SnyderUH takes tpR and qpR of the spec snyder for the duration, and T, unless given, at 99.99 % of the curve's volume, T = tpR P^-1(K + 1, 0.9999) / K with P the regularized lower incomplete gamma function"]
+assumptions = ["the shape of the unit hydrograph between its points of Snyder's method is the gamma curve; KZGW 2017 example 6.1 draws straight lines (its table 6.1, a peak 6.9 % lower)"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/unit-hydrographs-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "time"
+
+[properties.scalings.inputs]
+time_to_peak_min = 1.0
+peak_discharge_m3s = -1.0
+timestep_min = 1.0
+total_duration_min = 1.0
+
+[properties.scalings.outputs]
+times_min = 1.0
+ordinates_m3s = -1.0
+
+[properties.scalings.tolerance]
+reason = "doubling every time and halving the peak keeps qpR tpR, K and the grid in units of tpR exactly in binary, but for subnormal ordinates"
+abs = 1e-300
+rel = 1e-14
+
+[[properties.scalings]]
+name = "area"
+
+[properties.scalings.inputs]
+area_km2 = 1.0
+peak_discharge_m3s = 1.0
+
+[properties.scalings.outputs]
+ordinates_m3s = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling the area and the peak keeps K and doubles every ordinate exactly in binary, but for subnormal ordinates"
+abs = 1e-300
+rel = 1e-14
+
+[[properties.limits]]
+name = "volume_identity"
+text = "K solves qpR tpR Gamma(K) (e / K)^K = A x 1 mm (Asquith and Roussel 2007 eq. 4)"
+
+[[properties.limits]]
+name = "gamma_density"
+text = "the ordinates are proportional to SciPy's gamma density of the shape K + 1 and the scale tpR / K"
+
+[[properties.limits]]
+name = "peak_at_its_time"
+text = "a step that divides tpR puts the largest ordinate at tpR"
+
+[[properties.conservation]]
+name = "unit_volume"
+text = "the ordinates hold 1 mm over the watershed, sum(q_k) dt = A x 1 mm"
+
+[properties.conservation.tolerance]
+reason = "the ordinates are rescaled to 1 mm by a sum of math.fsum; the products round by a few units in the last place"
+abs = 1e-12
+
+[[sources]]
+citation = "Asquith, W.H. and Roussel, M.C. (2007). An initial-abstraction, constant-loss model for unit hydrograph modeling for applicable watersheds in Texas. U.S. Geological Survey Scientific Investigations Report 2007-5243"
+access = "open"
+locator = "eq. 2, the gamma unit hydrograph through its peak, and eq. 4, its volume qp tp Gamma(K) (e / K)^K"
+url = "https://pubs.usgs.gov/sir/2007/5243/"
+
+[[sources]]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "fig. 6.1, p. 90: the unit hydrograph through (tpR, qpR), its shape not prescribed"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "area_km2"
+symbol = "A"
+unit = "km2"
+kind = "real"
+description = "Area of the watershed."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000000.0
+test_reason = "a million km2, five times the basin of the Vistula (194,000 km2) and four thousand times the largest watershed Hydrograf hands over"
+
+[variables.typical]
+low = 0.0003
+low_inclusive = true
+high = 250.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 135 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)"
+
+[[variables]]
+name = "time_to_peak_min"
+symbol = "t_{pR}"
+unit = "min"
+kind = "real"
+description = "Time to peak from the beginning of the rainfall (the spec snyder)."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 7600.0
+test_reason = "ten times the longest of the typical range"
+
+[variables.typical]
+low = 16.0
+low_inclusive = true
+high = 760.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog: the spec snyder over the typical ranges of its inputs"
+access = "open"
+locator = "the corners of the typical ranges of the spec snyder: areas of 0.0003 to 250 km2, L and Lc of 0.05 to 29 km (Lc <= L), Ct 1.35 to 1.65, Cp 0.4 to 0.8 and D of 5 to 60 min give tpR of 16.6 to 758 min"
+
+[[variables]]
+name = "peak_discharge_m3s"
+symbol = "q_{pR}"
+unit = "m3/s per mm"
+kind = "real"
+description = "Peak of the unit hydrograph (the spec snyder)."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 2350.0
+test_reason = "ten times the largest of the typical range"
+
+[variables.typical]
+low = 2.7e-06
+low_inclusive = true
+high = 235.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog: the spec snyder over the typical ranges of its inputs"
+access = "open"
+locator = "the corners of the typical ranges of the spec snyder: areas of 0.0003 to 250 km2, L and Lc of 0.05 to 29 km (Lc <= L), Ct 1.35 to 1.65, Cp 0.4 to 0.8 and D of 5 to 60 min give qpR of 2.7e-6 to 235 m3/s per mm"
+
+[[variables]]
+name = "timestep_min"
+symbol = "\\Delta t"
+unit = "min"
+kind = "real"
+description = "Time step of the ordinates."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1440.0
+test_reason = "a day, the step of a daily rainfall series (E5b-07: tc 90.7 min at a step of 1440 min)"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 60.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2); and KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: 5 min; KZGW 2017, annex 2, ex. 6.1 and 6.2 (1 h) and 6.4 (0.5 h), pp. 92-110"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "total_duration_min"
+symbol = "T"
+unit = "min"
+kind = "real"
+description = "Length of the hydrograph: the curve beyond it is cut off."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 76000.0
+test_reason = "ten times the longest of the typical range"
+
+[variables.typical]
+low = 60.0
+low_inclusive = true
+high = 7610.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog: the spec snyder over the typical ranges of its inputs"
+access = "open"
+locator = "the corners of the typical ranges of the spec snyder: areas of 0.0003 to 250 km2, L and Lc of 0.05 to 29 km (Lc <= L), Ct 1.35 to 1.65, Cp 0.4 to 0.8 and D of 5 to 60 min give the ends of the curves at 99.99 % of their volume, the default of SnyderUH, of 61 to 7,605 min (K of 1.14 to 17.2)"
+
+[[constraints]]
+name = "root_bracketed"
+class = "precondition"
+text = "the exponent K of the curve of 1 mm lies between 1e-12 and 1e12: qpR tpR / (A x 1 mm) between about 1e-12 and 4e5"
+
+[constraints.source]
+citation = "Hydrolog's bracket of the root of the volume of the curve"
+access = "open"
+locator = "Brent's method on ln K from 1e-12 to 1e12"
+
+[[constraints]]
+name = "grid_representable"
+class = "precondition"
+text = "the grid has at most a million ordinates, and float64 holds (T + dt) / tpR and, as a normal number, the ordinate of 1 mm on one step, A x 1 mm / dt"
+
+[constraints.source]
+citation = "Hydrolog's bound of a hydrograph's length (hydrolog.routing.reach.MAX_ORDINATES)"
+access = "open"
+locator = "a million ordinates: the routing of a hydrograph refuses a longer one"
+
+[[outputs]]
+name = "shape_exponent"
+unit = "-"
+kind = "real"
+symbol = "K"
+description = "Exponent of the curve."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "times_min"
+unit = "min"
+kind = "real_array"
+symbol = "k \\Delta t"
+description = "Times of the ordinates, from the beginning of the rainfall."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "ordinates_m3s"
+unit = "m3/s per mm"
+kind = "real_array"
+symbol = "q_k"
+description = "Ordinates of the unit hydrograph."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "unbounded_iteration"
+description = "An iteration without a bounded count (root finding, fit)."
+test = "Brent's method on ln K in a bracket with at most a hundred iterations; outside it the precondition root_bracketed refuses: test_snyder_shape_refuses_an_exponent_outside_its_bracket"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "the volume of up to a million ordinates by math.fsum: test_snyder_shape_a_million_ordinates_hold_their_volume"
+
+[[oracles]]
+kind = "exact"
+description = "the volume of the curve, qpR tpR Gamma(K) (e / K)^K = A x 1 mm (Asquith and Roussel 2007 eq. 4), in math.gamma and a power"
+test = "tests/unit/test_formulas_unit_hydrographs.py (limit volume_identity)"
+conventions = []
+
+[[oracles]]
+kind = "established"
+description = "SciPy's gamma distribution (scipy.stats.gamma, SciPy of Nogat's release set): its density of the shape K + 1 and the scale tpR / K is proportional to the curve"
+test = "tests/unit/test_formulas_unit_hydrographs.py (limit gamma_density)"
+conventions = ["Hydrolog: x^K exp(K (1 - x)) with x = t / tpR", "SciPy: t^a-1 exp(-t / scale) / (Gamma(a) scale^a) with a = K + 1 and scale = tpR / K"]

@@ -33,9 +33,10 @@ Examples
 --------
 >>> from hydrolog.precipitation import EulerIIHietogram
 >>> from hydrolog.routing import DesignStorm
->>> storm = DesignStorm(45.0, duration_min=60.0, hietogram=EulerIIHietogram())
->>> storm.hyetograph(timestep_min=10.0).intensities_mm.round(1).tolist()
-[9.0, 14.7, 6.8, 5.6, 4.8, 4.2]
+>>> curve = EulerIIHietogram({10: 14.0, 20: 20.0, 30: 24.0, 60: 31.0})
+>>> storm = DesignStorm(31.0, duration_min=60.0, hietogram=curve)
+>>> storm.hyetograph(timestep_min=10.0).intensities_mm.round(2).tolist()
+[6.0, 14.0, 4.0, 2.91, 2.25, 1.84]
 """
 
 from __future__ import annotations
@@ -177,6 +178,20 @@ HIETOGRAMS.add("beta", BetaHietogram)
 HIETOGRAMS.add("euler_ii", EulerIIHietogram)
 
 
+def _key_text(key: object) -> str:
+    """Return a key of a mapping as the key of a JSON object: ``60.0`` -> ``"60"``."""
+    if isinstance(key, float) and key.is_integer():
+        return str(int(key))
+    return key if isinstance(key, str) else repr(key)
+
+
+def _native(value: object) -> object:
+    """Return an argument of a shape as a document holds it (a mapping: an object)."""
+    if isinstance(value, Mapping):
+        return {_key_text(key): item for key, item in value.items()}
+    return value
+
+
 def _same_duration(own: float, asked: float | None, what: str) -> None:
     """Refuse a duration that the caller asks for and the source does not have."""
     if asked is None:
@@ -255,19 +270,23 @@ class DesignStorm:
 
     The depth is spread over the duration by the ``hietogram`` (the generators of
     :mod:`hydrolog.precipitation`), cut at the time step of the network. The duration
-    is the duration of the storm, not of the network: a duration that is not a whole
-    number of steps gives a storm of the whole steps that it holds.
+    is the duration of the storm, not of the network, and must be a whole number of
+    steps: the storm then lasts its duration and holds its depth, and another step is
+    refused (``details.reason`` ``not_multiple``, ADR-0046) rather than packing the
+    depth into the whole steps the duration holds.
 
     Parameters
     ----------
     total_mm : float
-        Depth of the storm [mm], > 0.
+        Depth of the storm [mm], > 0; for an Euler II storm the depth of its curve at
+        the duration (:meth:`EulerIIHietogram.depth_mm
+        <hydrolog.precipitation.EulerIIHietogram.depth_mm>`).
     duration_min : float
         Duration of the storm [min], > 0.
     hietogram : Hietogram
         The shape: ``BlockHietogram()``, ``TriangularHietogram(peak_position=0.4)``,
-        ``BetaHietogram(alpha=2, beta=5)``, ``EulerIIHietogram()`` or any class added to
-        :data:`HIETOGRAMS`.
+        ``BetaHietogram(alpha=2, beta=5)``, ``EulerIIHietogram(depth_duration_mm)``
+        or any class added to :data:`HIETOGRAMS`.
 
     Raises
     ------
@@ -328,7 +347,8 @@ class DesignStorm:
         Parameters
         ----------
         timestep_min : float
-            The time step [min], > 0 and not above the duration of the storm.
+            The time step [min], > 0, not above the duration of the storm and a
+            divisor of it.
         duration_min : float, optional
             Refused unless it is the duration of the storm.
 
@@ -340,7 +360,8 @@ class DesignStorm:
         Raises
         ------
         InvalidParameterError
-            If the step is not valid or longer than the storm, or ``duration_min`` is
+            If the step is not valid, longer than the storm or does not divide its
+            duration (``details.reason`` ``not_multiple``), or ``duration_min`` is
             another duration (``details.reason`` ``duration_mismatch``).
         """
         step = positive(timestep_min, "timestep_min")
@@ -352,10 +373,14 @@ class DesignStorm:
         )
 
     def _shape(self) -> dict[str, Any]:
-        """Return the arguments of the shape, by the names of its constructor."""
+        """Return the arguments of the shape, by the names of its constructor.
+
+        A mapping (the depth-duration curve of Euler II) is written as a JSON object:
+        its keys are numbers, which become their shortest text (``60.0`` -> ``"60"``).
+        """
         names, _ = constructor_arguments(type(self._hietogram))
         return {
-            name: getattr(self._hietogram, name)
+            name: _native(getattr(self._hietogram, name))
             for name in names
             if hasattr(self._hietogram, name)
         }
@@ -371,7 +396,8 @@ class DesignStorm:
         """List the depth, the duration, the shape and, with a run, the time step.
 
         The arguments of the shape are ``"default"`` when they are the defaults of its
-        constructor; the time step of a run is ``"computed"``: the network gives it.
+        constructor; the time step of a run is ``"computed"``: the network gives it. A
+        curve (Euler II) is data, not a parameter: its document has it.
         """
         listed = [
             parameter("total_mm", self._total_mm, "given"),
@@ -380,6 +406,8 @@ class DesignStorm:
         ]
         defaults = constructor_defaults(type(self._hietogram))
         for name, value in self._shape().items():
+            if isinstance(value, Mapping):
+                continue
             source: ParameterSource = (
                 "default" if value == defaults.get(name) else "given"
             )
@@ -416,7 +444,8 @@ class DesignStorm:
         """Read the object of a document.
 
         The fields are ``hietogram_type``, ``total_mm``, ``duration_min`` and the
-        arguments of that shape (``alpha`` and ``beta``; ``peak_position``).
+        arguments of that shape (``alpha`` and ``beta``; ``peak_position``;
+        ``depth_duration_mm``).
 
         Raises
         ------
@@ -428,7 +457,7 @@ class DesignStorm:
         subject = "A design rainfall"
         type_name = required(subject, document, "hietogram_type")
         shape_cls = HIETOGRAMS.resolve(type_name, subject, field="hietogram_type")
-        names, _ = constructor_arguments(shape_cls)
+        names, needed = constructor_arguments(shape_cls)
         check_fields(
             subject,
             document,
@@ -436,15 +465,28 @@ class DesignStorm:
         )
         total = required(subject, document, "total_mm")
         duration = required(subject, document, "duration_min")
+        for name in needed:
+            required(
+                subject,
+                document,
+                name,
+                hint=f"The shape {type_name!r} is made from {name!r}.",
+            )
         shape = {
             name: document[name] for name in names if document.get(name) is not None
         }
         try:
             hietogram = shape_cls(**shape)
         except InvalidParameterError as exc:
+            option = exc.details.get("option")
+            if option in names:
+                # the field of the document is the argument the shape refuses
+                raise InvalidParameterError(
+                    str(exc), details={**exc.details, "field": option}, hint=exc.hint
+                ) from exc
             if exc.details:
                 raise
-            # the shape classes begin the message with the argument they refuse
+            # a shape without details begins the message with the argument it refuses
             argument = str(exc).split(" ", 1)[0]
             fail(
                 str(exc),

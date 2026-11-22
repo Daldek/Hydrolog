@@ -25,9 +25,10 @@ reason                 meaning (extra ``details`` keys)
 ``type``               wrong JSON type (``expected``, ``value``, ``got``; ``index``
                        inside lists)
 ``not_finite``         NaN or infinity where a finite number is required
-``minimum``,           bound violated (``minimum``/``maximum``/``exclusive_minimum``,
-``maximum``,           ``value``)
-``exclusive_minimum``
+``minimum``,           bound violated (``minimum``/``maximum``/``exclusive_minimum``/
+``maximum``,           ``exclusive_maximum``, ``value``)
+``exclusive_minimum``,
+``exclusive_maximum``
 ``choice``             value not among the choices (``allowed``, ``value``)
 ``empty``              empty string, path or list
 ``invalid_path``       path that cannot be used (NUL character, unresolvable)
@@ -52,6 +53,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from hydrolog._attribution import collecting
+from hydrolog._formula_versions import recording
 from hydrolog.catalog.document import (
     Document,
     catalog_document,
@@ -459,10 +461,12 @@ def run_command(
     lazily from ``Command.function`` and call it with the normalized options as
     keyword arguments, collecting the providers' lines its inputs carry
     (:func:`hydrolog._attribution.collecting`: the input files, the option
-    ``attribution``); wrap its return value in a
-    :class:`~hydrolog.catalog.envelope.CommandResult` (see
+    ``attribution``) and the versions of the formulas that give its result
+    (:func:`hydrolog._formula_versions.recording`, Nogat CMP-2.8); wrap its return
+    value in a :class:`~hydrolog.catalog.envelope.CommandResult` (see
     :mod:`hydrolog.catalog.envelope` for the return protocol: notices, written
-    files with SHA-256 and the lines ``attribution`` and ``terms_notice``).
+    files with SHA-256, the lines ``attribution`` and ``terms_notice`` and the
+    ``formula_versions``).
 
     Parameters
     ----------
@@ -506,12 +510,17 @@ def run_command(
         else tuple(os.fspath(item) for item in allowed_dirs)
     )
     try:
-        with collecting() as cited:
+        with collecting() as cited, recording() as formulas:
             output = function(**resolved)
     finally:
         _ALLOWED_DIRS.reset(token)
     return CommandResult.from_output(
-        command.name, resolved, output, command.result_schema, cited.value
+        command.name,
+        resolved,
+        output,
+        command.result_schema,
+        cited.value,
+        formula_versions=formulas,
     )
 
 

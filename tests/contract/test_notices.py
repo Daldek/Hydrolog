@@ -4,7 +4,9 @@ Every example of every command runs offline from the repository root, as in
 ``test_catalog.py``, and each notice of its envelope has a code of ``NOTICES`` with
 the level of the registry, never the catch-all code of a warning of another library,
 and the details and message that the registry promises: exactly the detail keys of
-the code, and the template filled with them as the message. ``route network`` adds
+the code, and the registry's wording of them as the message (``NoticeSpec.message``:
+the template filled, or for a library warning its class's wording, which words a
+range with one end by that end). ``route network`` adds
 ``details.node_id`` to the notice of a node and starts its message with the id; a
 routing model, and a library warning that the network caught, give no other details
 there (their notice keeps the text of its emitter).
@@ -17,7 +19,6 @@ from typing import Any
 
 import pytest
 
-from hydrolog._warnings import render
 from hydrolog.catalog import Command, data_commands, run_command
 from hydrolog.catalog.notices import NOTICES
 from hydrolog.exceptions import MissingDependencyError
@@ -76,8 +77,8 @@ def _problems(command: str, notice: dict[str, Any]) -> list[str]:
         return problems
     if set(details) != set(spec.details):
         problems.append(f"{code}: details {sorted(details)}, registered {spec.details}")
-    elif message != render(spec.template, details):
-        problems.append(f"{code}: {message!r} is not the template filled")
+    elif message != spec.message(details):
+        problems.append(f"{code}: {message!r} is not the registry's wording")
     return problems
 
 

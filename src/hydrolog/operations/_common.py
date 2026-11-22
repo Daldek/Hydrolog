@@ -24,7 +24,7 @@ def option_names(names: Mapping[str, str]) -> Iterator[None]:
 
     An :class:`~hydrolog.exceptions.InvalidParameterError` whose ``details.option`` is
     a key of ``names`` is raised again with the option instead, and an
-    :class:`~hydrolog._warnings.OutsideTypicalRange` about such a parameter gets the
+    :class:`~hydrolog._warnings.OutsideApplicability` about such a parameter gets the
     option as its ``field`` (:func:`~hydrolog._warnings.typical_range_fields`).
 
     Parameters

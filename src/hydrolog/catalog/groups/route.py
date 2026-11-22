@@ -204,8 +204,9 @@ NETWORK = Option(
     description_pl=(
         "Sieć w treści, jako obiekt JSON `hydrolog-network/1`: `schema`, `name`, "
         "`timestep_min`, `rainfall` (opad zlewni, które nie mają własnego) i `nodes`, "
-        "lista węzłów z `id` (nazwa pliku `<id>.csv`; nie con, prn, aux, nul, "
-        "com1-9, lpt1-9), `type` (subcatchment, reach, reservoir, junction, outlet) i "
+        "lista węzłów z `id` (część nazwy pliku `hydrolog_node-hydrograph_<id>.csv`; "
+        "nie con, prn, aux, nul, com1-9, lpt1-9), `type` (subcatchment, reach, "
+        "reservoir, junction, outlet) i "
         "`from` (id węzłów powyżej). Zlewnia (subcatchment) ma `times_min` z "
         "`discharge_m3s` albo `value_column` z `inflows_file` (domyślnie jej `id`), "
         "albo sama liczy hydrogram: `watershed` (WatershedParameters jak w "
@@ -222,9 +223,10 @@ NETWORK = Option(
     description=(
         "The network inline, as a JSON object `hydrolog-network/1`: `schema`, `name`, "
         "`timestep_min`, `rainfall` (the rain of the subcatchments that have none of "
-        "their own) and `nodes`, a list of nodes with `id` (names the file "
-        "`<id>.csv`; not con, prn, aux, nul, com1-9, lpt1-9), `type` (subcatchment, "
-        "reach, reservoir, junction, outlet) and `from` (the ids of the nodes "
+        "their own) and `nodes`, a list of nodes with `id` (part of the file name "
+        "`hydrolog_node-hydrograph_<id>.csv`; not con, prn, aux, nul, com1-9, "
+        "lpt1-9), `type` (subcatchment, reach, reservoir, junction, outlet) and "
+        "`from` (the ids of the nodes "
         "upstream). A subcatchment has `times_min` with `discharge_m3s`, or a "
         "`value_column` of `inflows_file` (default its `id`), or makes its own "
         "hydrograph: `watershed` (WatershedParameters as in `hydrograph generate`), "
@@ -280,12 +282,14 @@ NODES = Option(
     name="nodes",
     type="string_list",
     description_pl=(
-        "Id węzłów, których hydrogramy są zwracane: zapisywane jako `<id>.csv` w "
-        "`output_dir` albo, bez niego, umieszczane w wyniku; domyślnie wszystkie."
+        "Id węzłów, których hydrogramy są zwracane: zapisywane jako "
+        "`hydrolog_node-hydrograph_<id>.csv` w `output_dir` albo, bez niego, "
+        "umieszczane w wyniku; domyślnie wszystkie."
     ),
     description=(
-        "Ids of the nodes whose hydrographs are returned: written as `<id>.csv` into "
-        "`output_dir` or, without it, put in the result; default all of them."
+        "Ids of the nodes whose hydrographs are returned: written as "
+        "`hydrolog_node-hydrograph_<id>.csv` into `output_dir` or, without it, put in "
+        "the result; default all of them."
     ),
 )
 OUTPUT_DIR = Option(
@@ -293,15 +297,17 @@ OUTPUT_DIR = Option(
     type="path",
     path_role="output",
     description_pl=(
-        "Katalog na hydrogram każdego wybranego węzła, `<id>.csv` (`time_min`, "
-        "`discharge_m3s`), który czyta każda komenda `route`; tworzony, jeśli go "
+        "Katalog na hydrogram każdego wybranego węzła, "
+        "`hydrolog_node-hydrograph_<id>.csv` (`time_min`, `discharge_m3s`), który "
+        "czyta każda komenda `route`; tworzony, jeśli go "
         "brak. Bez niego hydrogramy są w wyniku. Istniejący plik jest zastępowany "
         "tylko z `force`; żaden plik nie może być plikiem wejściowym, a katalog nie "
         "może leżeć w magazynie innego narzędzia Nogat."
     ),
     description=(
-        "Directory for the hydrograph of each selected node, `<id>.csv` (`time_min`, "
-        "`discharge_m3s`), which every `route` command reads; created if missing. "
+        "Directory for the hydrograph of each selected node, "
+        "`hydrolog_node-hydrograph_<id>.csv` (`time_min`, `discharge_m3s`), which "
+        "every `route` command reads; created if missing. "
         "Without it the hydrographs are in the result. An existing file is replaced "
         "only with `force`; no file may be an input file and the directory must not "
         "lie in the store of another Nogat tool."
@@ -355,12 +361,14 @@ NETWORK_FORCE = Option(
     name="force",
     type="boolean",
     description_pl=(
-        "Zastąp pliki `<id>.csv`, które istnieją w `output_dir`, i plik `schematic`, "
-        "jeśli istnieje; bez tej opcji nic nie jest nadpisywane."
+        "Zastąp pliki `hydrolog_node-hydrograph_<id>.csv`, które istnieją w "
+        "`output_dir`, i plik `schematic`, jeśli istnieje; bez tej opcji nic nie jest "
+        "nadpisywane."
     ),
     description=(
-        "Replace the `<id>.csv` files that exist in `output_dir` and the `schematic` "
-        "file if it exists; without it nothing is overwritten."
+        "Replace the `hydrolog_node-hydrograph_<id>.csv` files that exist in "
+        "`output_dir` and the `schematic` file if it exists; without it nothing is "
+        "overwritten."
     ),
     default=False,
 )
@@ -990,13 +998,13 @@ COMMANDS: tuple[Command, ...] = (
                 name="n",
                 type="number",
                 description_pl=(
-                    "Liczba zbiorników w szeregu; > 0, nie musi być całkowita. n = 1 "
-                    "to jeden zbiornik (największe tłumienie), duże n to samo "
+                    "Liczba zbiorników w szeregu; > 0, nie musi być całkowita. Przy "
+                    "tym samym n K mniejsze n tłumi silniej, duże n to samo "
                     "opóźnienie fali."
                 ),
                 description=(
-                    "Number of reservoirs in series; > 0, need not be whole. n = 1 "
-                    "is one reservoir (the most attenuation), a large n is a pure "
+                    "Number of reservoirs in series; > 0, need not be whole. At the "
+                    "same n K a smaller n attenuates more, a large n is a pure "
                     "delay of the wave."
                 ),
                 required=True,
@@ -1006,12 +1014,13 @@ COMMANDS: tuple[Command, ...] = (
                 name="k_min",
                 type="number",
                 description_pl=(
-                    "Stała retencji K jednego zbiornika [min]; > 0; odcinek opóźnia "
-                    "falę o n K. Zamiast `length_km` i `celerity_m_per_s`."
+                    "Stała retencji K jednego zbiornika [min]; > 0; środek ciężkości "
+                    "fali przesuwa się o n K. Zamiast `length_km` i `celerity_m_per_s`."
                 ),
                 description=(
-                    "Storage constant K of one reservoir [min]; > 0; the reach delays "
-                    "the wave by n K. Instead of `length_km` and `celerity_m_per_s`."
+                    "Storage constant K of one reservoir [min]; > 0; the centroid of "
+                    "the wave moves by n K. Instead of `length_km` and "
+                    "`celerity_m_per_s`."
                 ),
                 exclusive_minimum=0,
                 unit="min",
@@ -1137,15 +1146,15 @@ COMMANDS: tuple[Command, ...] = (
             "zbiornika lub odcinka z tabelą pojemność-odpływ: w treści (`storage_m3`, "
             "`outflow_m3s`, `stage_m`) albo `rating_file`; `subreaches` to "
             "pododcinki. "
-            "Krok dłuższy niż 2 min dS/dO jest dzielony. Zwraca szczyty, objętości, "
-            "bilans i szereg."
+            "Krok dłuższy niż 2·min(dS/dO)/subreaches jest dzielony. Zwraca "
+            "szczyty, objętości, bilans i szereg."
         ),
         description=(
             "Level-pool routing (modified Puls, NEH-630 ch. 17) through a reservoir or "
             "reach given by a storage-outflow table, inline (`storage_m3`, "
             "`outflow_m3s`, `stage_m`) or `rating_file`; `subreaches` sets "
             "sub-reaches. "
-            "A step above twice the shortest dS/dO is divided. Returns peaks, volumes, "
+            "A step above 2·min(dS/dO)/subreaches is divided. Returns peaks, volumes, "
             "balance and the series."
         ),
         function="hydrolog.operations.route_level_pool",
@@ -1155,12 +1164,12 @@ COMMANDS: tuple[Command, ...] = (
                 type="number_list",
                 description_pl=(
                     "Pojemność (woda w zbiorniku) w kolejnych wierszach tabeli [m3], "
-                    "niemalejąca, nieujemna; od stanu pustego. Razem z `outflow_m3s`, "
-                    "zamiast `rating_file`."
+                    "niemalejąca, nieujemna; od stanu najniższego. Razem z "
+                    "`outflow_m3s`, zamiast `rating_file`."
                 ),
                 description=(
                     "Storage of each row of the table [m3], not decreasing, not "
-                    "negative; from the empty state. With `outflow_m3s`, instead of "
+                    "negative; from the lowest state. With `outflow_m3s`, instead of "
                     "`rating_file`."
                 ),
                 minimum=0,
@@ -1202,7 +1211,7 @@ COMMANDS: tuple[Command, ...] = (
                 description_pl=(
                     "Plik CSV albo JSON z tabelą pojemność-odpływ: kolumny "
                     "`storage_m3`, `outflow_m3s` i opcjonalnie `stage_m`, wiersze od "
-                    "stanu pustego do pełnego. Zamiast tabeli w treści."
+                    "stanu najniższego do najwyższego. Zamiast tabeli w treści."
                 ),
                 description=(
                     "CSV or JSON file with the storage-outflow table: columns "
@@ -1249,14 +1258,14 @@ COMMANDS: tuple[Command, ...] = (
         result_schema="hydrolog-route-level-pool/1",
         cardinality="bounded",
         rules=(
-            "Give the table inline or as `rating_file`, rows rising from empty to "
-            "full.",
+            "Give the table inline or as `rating_file`, rows rising from the lowest "
+            "state.",
             "A flood beyond the table is `table_exceeded`, never an extrapolation.",
             "Read `notices`: `timestep_refined` is a divided time step.",
         ),
         rules_pl=(
             "Podaj tabelę w treści albo jako `rating_file`, wiersze rosnące od stanu "
-            "pustego do pełnego.",
+            "najniższego.",
             "Wezbranie poza tabelą to `table_exceeded`, nigdy ekstrapolacja.",
             "Czytaj `notices`: `timestep_refined` to podzielony krok czasu.",
         ),
@@ -1376,8 +1385,16 @@ COMMANDS: tuple[Command, ...] = (
                     "rainfall": {
                         "kind": "design",
                         "hietogram_type": "euler_ii",
-                        "total_mm": 45,
+                        "total_mm": 41.77,
                         "duration_min": 60,
+                        "depth_duration_mm": {
+                            "5": 13.11,
+                            "10": 20.48,
+                            "15": 24.99,
+                            "30": 33.1,
+                            "45": 38.09,
+                            "60": 41.77,
+                        },
                     },
                     "nodes": [
                         {
@@ -1437,14 +1454,14 @@ COMMANDS: tuple[Command, ...] = (
         cardinality="bounded",
         rules=(
             "Give `network` or `network_file`; a `rating_file` lies beside the file.",
-            "`output_dir` writes `<id>.csv` per node (`nodes` selects), `schematic` an "
-            "SVG map of the network; `check` plans both.",
+            "`output_dir` writes `hydrolog_node-hydrograph_<id>.csv` per node (`nodes` "
+            "selects), `schematic` an SVG map; `check` plans both.",
             "Notices begin with the node id.",
         ),
         rules_pl=(
             "Podaj `network` albo `network_file`; `rating_file` leży obok pliku.",
-            "`output_dir` zapisuje `<id>.csv` każdego węzła (`nodes` wybiera), "
-            "`schematic` mapę sieci w SVG; `check` planuje oba.",
+            "`output_dir` zapisuje `hydrolog_node-hydrograph_<id>.csv` każdego węzła "
+            "(`nodes` wybiera), `schematic` mapę w SVG; `check` planuje oba.",
             "Uwagi zaczynają się od id węzła.",
         ),
         errors=(
@@ -1522,33 +1539,33 @@ COMMANDS: tuple[Command, ...] = (
                     {
                         "id": "A",
                         "type": "subcatchment",
-                        "peak_m3s": 16.959234,
-                        "time_to_peak_min": 95.0,
+                        "peak_m3s": 13.411756,
+                        "time_to_peak_min": 90.0,
                         "parameters": {
-                            "total_mm": 45.0,
+                            "total_mm": 41.77,
                             "area_km2": 12.0,
                             "cn": 75,
                             "tc_min": 90.0,
-                            "total_effective_mm": 6.987621,
+                            "total_effective_mm": 5.633253,
                         },
                     },
                     {
                         "id": "B",
-                        "peak_m3s": 1.191303,
-                        "parameters": {"total_mm": 30.0, "tc_min": 44.70827},
+                        "peak_m3s": 1.192943,
+                        "parameters": {"total_mm": 30.0, "tc_min": 44.64767},
                     },
                     {
                         "id": "R1",
                         "type": "reach",
                         "model": "lag",
-                        "peak_m3s": 16.959234,
+                        "peak_m3s": 13.411756,
                         "peak_delay_min": 30.0,
                     },
                     {
                         "id": "J1",
                         "type": "junction",
-                        "peak_m3s": 17.11763,
-                        "time_to_peak_min": 125.0,
+                        "peak_m3s": 13.621164,
+                        "time_to_peak_min": 120.0,
                         "times_min": [0.0, 5.0, 10.0],
                         "discharge_m3s": [0.0, 0.0, 0.0],
                     },

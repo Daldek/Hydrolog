@@ -269,27 +269,29 @@ export function readHandoff(text, { networkSchema = null, seriesSchema = null, i
 }
 
 /**
- * The inputs of Statystyka przepływów a series opens with: annual maxima as the pasted
- * values (the missing years left out), daily values as a file of the session, `date` and
- * the variable, whose columns the section then finds, with the providers' lines of the
- * series in the two trailing columns of DEV-20.5.
+ * The inputs of Statystyka przepływów a series opens with: a file of the session, written
+ * as an upload would write it, whose columns the section then finds. Annual maxima are
+ * `year` and the variable (the missing years left out), so the run keeps their years
+ * (the series' range, the ranked maxima and the homogeneity tests by year); daily values
+ * are `date` and the variable. The providers' lines of the series go in the two trailing
+ * columns of DEV-20.5.
  *
  * @param {object} payload a hydrolog-series/1 readHandoff opened
  * @param {{attribution: string[], terms_notice: string[]}} [lines] the lines of the series
  *   (receivedLines)
- * @returns {{source: "paste"|"file", values: object, csv: string|null}} the section's
- *   source and form values, and the file's text of a daily series
+ * @returns {{source: "file", csv: string}} the section's source and the file's text
  */
 export function statystykaInputs(payload, lines = NO_LINES) {
-  if (payload.step === "year") {
-    const values = payload.values.filter((value) => typeof value === "number");
-    return { source: "paste", values: { values: values.map(inputText).join("; ") }, csv: null };
-  }
-  const rows = payload.dates.map((date, index) => {
+  const annual = payload.step === "year";
+  const keys = annual ? payload.years : payload.dates;
+  const rows = [];
+  keys.forEach((key, index) => {
     const value = payload.values[index];
-    return `${date},${typeof value === "number" ? String(value) : ""}`;
+    if (typeof value === "number") rows.push(`${key},${String(value)}`);
+    else if (!annual) rows.push(`${key},`);
   });
-  return { source: "file", values: {}, csv: csvWithLines(`date,${payload.variable}\n${rows.join("\n")}\n`, lines) };
+  const header = `${annual ? "year" : "date"},${payload.variable}`;
+  return { source: "file", csv: csvWithLines(`${header}\n${rows.join("\n")}\n`, lines) };
 }
 
 /**

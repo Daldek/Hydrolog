@@ -36,8 +36,9 @@ in memory.
 Files
 -----
 :func:`hydrograph_table` is the text of a hydrograph table (``time_min,discharge_m3s``),
-:func:`network_tables` the tables ``<id>.csv`` that ``route network --output-dir``
-writes for an inline network and :func:`write_network_tables` writes them into a
+:func:`network_tables` the tables ``hydrolog_node-hydrograph_<id>.csv`` that
+``route network --output-dir`` writes for an inline network and
+:func:`write_network_tables` writes them into a
 directory. :func:`build_network_fixture` writes a small complete case (the network
 document, its inflows and the tables the command makes of them) for a test that calls
 ``hydrolog route network`` itself or reads its tables.
@@ -73,6 +74,7 @@ from hydrolog.routing.document import SCHEMA as NETWORK_SCHEMA
 from hydrolog.routing.network import (
     check_description,
     check_position,
+    node_table_name,
     position_to_document,
 )
 from hydrolog.routing.rainfall import rainfall_from_document
@@ -137,7 +139,7 @@ def subcatchment(
     Parameters
     ----------
     node_id : str
-        Id of the node (it names the table ``<id>.csv``).
+        Id of the node (it names the table ``hydrolog_node-hydrograph_<id>.csv``).
     times_min, discharge_m3s : sequence of float, optional
         The hydrograph inline, both together.
     value_column : str, optional
@@ -268,6 +270,7 @@ def watershed(
     cn: float | None = 75,
     flow_path_length_km: float | None = 6.0,
     flow_path_slope_m_per_m: float | None = 0.02,
+    flow_path_equal_area_slope_m_per_m: float | None = None,
     **options: Any,
 ) -> dict[str, Any]:
     """Return the ``watershed`` of a subcatchment that makes its hydrograph.
@@ -291,8 +294,13 @@ def watershed(
     flow_path_length_km, flow_path_slope_m_per_m : float, optional
         Length [km] and slope [m/m] of the longest flow path, from the hydraulically
         most distant point of the watershed to the outlet; ``None`` leaves it out.
+    flow_path_equal_area_slope_m_per_m : float, optional
+        Equal-area slope [m/m] of the longitudinal profile of that path, Lutz's Jg
+        (``nash_estimation`` ``"lutz"`` also needs ``Lc_km`` and ``manning_n``);
+        left out by default.
     **options
-        The other fields of ``WatershedParameters`` (``name``, ``crs``...).
+        The other fields of ``WatershedParameters`` (``name``, ``crs``, ``Lc_km``,
+        ``manning_n``...).
 
     Returns
     -------
@@ -313,6 +321,7 @@ def watershed(
         "cn": cn,
         "flow_path_length_km": flow_path_length_km,
         "flow_path_slope_m_per_m": flow_path_slope_m_per_m,
+        "flow_path_equal_area_slope_m_per_m": flow_path_equal_area_slope_m_per_m,
     }
     document: dict[str, Any] = {
         name: value for name, value in given.items() if value is not None
@@ -353,23 +362,26 @@ def curve_number_runoff(**options: Any) -> dict[str, Any]:
 
 def design_storm(
     *,
-    hietogram_type: str = "euler_ii",
+    hietogram_type: str = "beta",
     total_mm: float = 40.0,
     duration_min: float = 60.0,
-    **shape: float,
+    **shape: Any,
 ) -> dict[str, Any]:
     """Return a ``rainfall`` of the kind ``design``: a depth over a duration.
 
     Parameters
     ----------
     hietogram_type : {"block", "triangular", "beta", "euler_ii"}, optional
-        The shape of the storm, by default ``euler_ii``.
+        The shape of the storm, by default ``beta`` (with its defaults 2 and 5).
     total_mm : float, optional
-        Total depth [mm], by default 40.
+        Total depth [mm], by default 40; for ``euler_ii`` the depth of its curve at
+        ``duration_min``.
     duration_min : float, optional
         Duration [min], by default 60.
     **shape
-        ``alpha`` and ``beta`` or ``peak_position``, where the shape takes them.
+        ``alpha`` and ``beta``, ``peak_position``, or the ``depth_duration_mm`` of
+        ``euler_ii`` (an object of duration [min] to depth [mm], keys as text),
+        where the shape takes them.
 
     Returns
     -------
@@ -531,13 +543,13 @@ def write_network_document(
 def example_network_document() -> dict[str, Any]:
     """Return the document of a network of three subcatchments that make hydrographs.
 
-    ``A`` has a design storm of its own (Euler II, 45 mm in 60 min), ``B`` a record of
-    38 mm in steps of 5 min and ``C`` none: it takes the default of the network, a block
-    storm of 30 mm in 60 min. ``A`` and ``B`` take the time of concentration from their
-    watersheds (Kirpich), ``C`` is given 60 min. ``A`` reaches the junction ``J1`` by a
-    lag reach of 25 min, where ``B`` joins it, a Muskingum reach (K 40 min, X 0.2)
-    carries them to ``J2``, where ``C`` joins, and ``OUT`` ends the network. The time
-    step is that of the record of ``B``, 5 min.
+    ``A`` has a design storm of its own (Beta (2; 5), 45 mm in 60 min), ``B`` a
+    record of 38 mm in steps of 5 min and ``C`` none: it takes the default of the
+    network, a block storm of 30 mm in 60 min. ``A`` and ``B`` take the time of
+    concentration from their watersheds (Kirpich), ``C`` is given 60 min. ``A`` reaches
+    the junction ``J1`` by a lag reach of 25 min, where ``B`` joins it, a Muskingum
+    reach (K 40 min, X 0.2) carries them to ``J2``, where ``C`` joins, and ``OUT`` ends
+    the network. The time step is that of the record of ``B``, 5 min.
 
     Returns
     -------
@@ -639,8 +651,9 @@ def network_tables(network: Mapping[str, Any]) -> dict[str, str]:
     Returns
     -------
     dict of str to str
-        File name ``<id>.csv`` to the text of the table of the hydrograph that leaves
-        the node, for every node, in the order of the computation (headwaters first).
+        File name ``hydrolog_node-hydrograph_<id>.csv`` to the text of the table of the
+        hydrograph that leaves the node, for every node, in the order of the
+        computation (headwaters first).
 
     Raises
     ------
@@ -652,7 +665,9 @@ def network_tables(network: Mapping[str, Any]) -> dict[str, str]:
 
 def _tables(graph: RoutingNetwork) -> dict[str, str]:
     run = graph.route()
-    return {f"{node}.csv": run.hydrographs[node].to_table() for node in graph.order}
+    return {
+        node_table_name(node): run.hydrographs[node].to_table() for node in graph.order
+    }
 
 
 def _write_tables(directory: Path, tables: Mapping[str, str]) -> tuple[Path, ...]:
@@ -696,8 +711,8 @@ class NetworkFixture:
         The directory with the tables that ``route network --output-dir`` writes for
         the two files above.
     nodes : tuple of str
-        The ids of the nodes, headwaters first; ``output_dir`` holds ``<id>.csv`` of
-        each.
+        The ids of the nodes, headwaters first; ``output_dir`` holds
+        ``hydrolog_node-hydrograph_<id>.csv`` of each.
     """
 
     network_file: Path
@@ -716,7 +731,7 @@ def build_network_fixture(directory: str | os.PathLike[str]) -> NetworkFixture:
 
         <directory>/network.json
         <directory>/inflows.csv
-        <directory>/out/<id>.csv      A, B, R1, J1, OUT
+        <directory>/out/hydrolog_node-hydrograph_<id>.csv   A, B, R1, J1, OUT
 
     Parameters
     ----------
@@ -755,26 +770,29 @@ def build_network_fixture(directory: str | os.PathLike[str]) -> NetworkFixture:
 
 def hietogram_envelope(
     *,
-    hietogram_type: str = "euler_ii",
-    total_mm: float = 40.0,
+    hietogram_type: str = "beta",
+    total_mm: float | None = 40.0,
     duration_min: float = 60.0,
     timestep_min: float = 10.0,
-    **options: float,
+    **options: Any,
 ) -> dict[str, Any]:
     """Return the envelope of ``precip hietogram``, as ``--json`` prints it.
 
     Parameters
     ----------
     hietogram_type : {"block", "triangular", "beta", "euler_ii"}, optional
-        Temporal distribution, by default ``euler_ii``.
-    total_mm : float, optional
-        Total depth [mm], by default 40.
+        Temporal distribution, by default ``beta`` (with its defaults 2 and 5).
+    total_mm : float or None, optional
+        Total depth [mm], by default 40; ``None`` for ``euler_ii``, whose total is
+        the depth of its curve at ``duration_min``.
     duration_min : float, optional
         Storm duration [min], by default 60.
     timestep_min : float, optional
         Time step [min], by default 10.
     **options
-        ``alpha``, ``beta`` or ``peak_position`` where the type takes them.
+        ``alpha``, ``beta``, ``peak_position`` or the ``depth_duration_mm`` of
+        ``euler_ii`` (an object of duration [min] to depth [mm]) where the type
+        takes them.
 
     Returns
     -------
@@ -803,17 +821,18 @@ def hietogram_envelope(
 def _hietogram_text(**options: Any) -> str:
     from hydrolog import run_command
 
-    return run_command("precip hietogram", **options).to_json()
+    given = {name: value for name, value in options.items() if value is not None}
+    return run_command("precip hietogram", **given).to_json()
 
 
 def write_hietogram_envelope(
     path: str | os.PathLike[str],
     *,
-    hietogram_type: str = "euler_ii",
-    total_mm: float = 40.0,
+    hietogram_type: str = "beta",
+    total_mm: float | None = 40.0,
     duration_min: float = 60.0,
     timestep_min: float = 10.0,
-    **options: float,
+    **options: Any,
 ) -> Path:
     """Write :func:`hietogram_envelope` to ``path`` and return the path.
 

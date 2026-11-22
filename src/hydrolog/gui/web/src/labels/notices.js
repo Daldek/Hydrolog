@@ -2,11 +2,13 @@
  * Notices of results in Polish (plan D16): one text per stable code of Hydrolog's NOTICES
  * registry, filled from the notice's `details`. A text with values has a plain form for a
  * notice without them (`route network` gives its nodes' notices only `node_id`), may
- * name the codes a detail holds (`names`: detail -> code -> Polish name), and may word a
- * list detail item by item (`each`: detail -> the text of one item, filled with the items
- * at its place in the lists of details of that length). A contract test fails for a code
- * without a text here; a code the GUI does not know shows the English message marked
- * „(EN)”.
+ * have partial forms for a notice that lacks some of them (a range with one end, whose
+ * other end is null: the first form whose values are all there is used), may name the
+ * codes a detail holds (`names`: detail -> code -> Polish name), and may word a list
+ * detail item by item (`each`: detail -> the text of one item, filled with the items at
+ * its place in the lists of details of that length). A null detail counts as absent. A
+ * contract test fails for a code without a text here; a code the GUI does not know shows
+ * the English message marked „(EN)”.
  */
 
 import { auto } from "../format.js";
@@ -80,10 +82,6 @@ export const notices = {
     },
     mean_elevation_approximated: "Średnią wysokość zlewni przybliżono z wysokości najmniejszej i największej.",
     channel_length_defaulted: "Długość cieku głównego przyjęto równą długości zlewni.",
-    duration_not_covered: {
-      text: "Czas trwania {duration_min} min nie jest wielokrotnością kroku {timestep_min} min: hietogram ma {steps} kroków ({covered_min} min).",
-      plain: "Opad nie pokrywa całego czasu trwania obliczeń.",
-    },
     stations_without_polygon: {
       text: "Pominięto posterunki bez wieloboku Thiessena: {stations}.",
       plain: "Pominięto posterunki bez wieloboku Thiessena.",
@@ -105,17 +103,48 @@ export const notices = {
       text: "Miesiące z jedną wartością, bez przedziału ufności: {months}.",
       plain: "Niektóre miesiące mają jedną wartość: bez przedziału ufności.",
     },
+    single_year_month: {
+      text: "Miesiące z wartościami tylko jednego roku, bez przedziału ufności średniej (liczonego ze średnich miesiąca w kolejnych latach): {months}.",
+      plain: "Niektóre miesiące mają wartości tylko z jednego roku: bez przedziału ufności.",
+    },
     large_result: {
       text: "Duży wynik: {size_chars} znaków (strona: {page_chars}).",
       plain: "Duży wynik.",
     },
-    outside_typical_range: {
-      text: "{method}: {parameter} = {value} poza typowym zakresem od {minimum} do {maximum}.",
-      plain: "Parametr metody poza typowym zakresem.",
+    outside_applicability: {
+      text: "{method}: {parameter} = {value} poza zakresem stosowania od {minimum} do {maximum}.",
+      partial: [
+        "{method}: {parameter} = {value}, mniej niż {minimum}: {constraint}.",
+        "{method}: {parameter} = {value} poniżej zakresu stosowania, od {minimum}.",
+        "{method}: {parameter} = {value} powyżej zakresu stosowania, do {maximum}.",
+      ],
+      plain: "Parametr metody poza zakresem stosowania.",
+      names: {
+        method: { rating_curve_fit: "Krzywa przepływu" },
+        parameter: { gaugings: "liczba par stan–przepływ" },
+        constraint: {
+          enough_gaugings:
+            "WMO-No. 1044 (tom II, rozdz. 1.5.1) zaleca do krzywej przepływu co najmniej 12–15 pomiarów przepływu z okresu analizy, więc krzywa jest mniej pewna",
+        },
+      },
     },
     outside_unverified_range: {
       text: "{method}: {parameter} = {value} poza typowym zakresem od {minimum} do {maximum}; zakres bez opublikowanego źródła, do weryfikacji.",
+      partial: [
+        "{method}: {parameter} = {value} poniżej typowego zakresu, od {minimum}; zakres bez opublikowanego źródła, do weryfikacji.",
+        "{method}: {parameter} = {value} powyżej typowego zakresu, do {maximum}; zakres bez opublikowanego źródła, do weryfikacji.",
+      ],
       plain: "Parametr metody poza typowym zakresem, który czeka na weryfikację.",
+    },
+    unreferenced_formula: {
+      text: "{formula} (wersja {formula_version}): źródła nie podają przykładu z wynikiem tej metody i nie ma niezależnego sposobu jej sprawdzenia, więc wyniku nie zweryfikowano.",
+      plain: "Źródła nie podają przykładu z wynikiem tej metody: wyniku nie zweryfikowano.",
+      names: {
+        formula: {
+          rating_curve_plausibility: "Ocena wiarygodności krzywej przepływu (reguła Hydrologa, ADR-0041)",
+          rybczynski_zones: "Strefy stanów wody wg Rybczyńskiego (źródła nie otwarto)",
+        },
+      },
     },
     small_sample: {
       text: "Mała próba: {years} lat (zalecane co najmniej {minimum}).",
@@ -125,7 +154,7 @@ export const notices = {
       text: "Liczba lat w szeregu: {years}; KZGW (2017) wymaga co najmniej {minimum} lat danych do analizy częstości wezbrań.",
       plain: "Szereg jest krótszy, niż KZGW (2017) wymaga do analizy częstości wezbrań.",
     },
-    ks_test_approximate: "Wartości krytyczne testu Kołmogorowa-Smirnowa są nieważne, gdy parametry szacuje się z tych samych danych; wybieraj rozkład wg A² i AIC.",
+    ks_test_approximate: "Wartości krytyczne testu Kołmogorowa-Smirnowa są nieważne, gdy parametry szacuje się z tych samych danych; wybieraj rozkład wg AIC albo A² z wartością krytyczną jego dopasowania (tylko L-momenty).",
     distribution_left_out: {
       text: "Rozkład {distribution} pominięty: metoda {fit_method} nie daje jego parametrów dla tej próby ({reason}).",
       plain: "Wybrana metoda nie daje parametrów jednego z rozkładów; pominięto go.",
@@ -135,6 +164,10 @@ export const notices = {
       text: "Rozkład {distribution} dopasowany metodą {fit_method} nie obejmuje maksimów {values}: jego AIC jest nieokreślone, rozkład jest na końcu rankingu.",
       plain: "Dopasowany rozkład nie obejmuje wszystkich maksimów: jego AIC jest nieokreślone.",
       names: FREQUENCY_NAMES,
+    },
+    negative_quantiles: {
+      text: "Dopasowany rozkład Fishera–Tippetta osiąga przepływ 0 raz na {zero_return_period} lat: kwantyle okresów {return_periods} lat byłyby ujemne i pominięto je.",
+      plain: "Część kwantyli niżówek byłaby ujemnym przepływem: pominięto je.",
     },
     homogeneity_rejected: {
       text: "Testy odrzucające jednorodność ciągu przy α = {alpha}: {tests}.",
@@ -153,8 +186,8 @@ export const notices = {
       },
     },
     normal_not_computed: {
-      text: "Normalna okresu {first_year}–{last_year} wymaga wartości rocznych w {required} latach, a ma je {years} (WMO-No. 1203): normalna i procenty normalnej są puste.",
-      plain: "Za mało lat z wartościami rocznymi na normalną (WMO-No. 1203).",
+      text: "Normalna miesięczna okresu {first_year}–{last_year} wymaga wartości w {required} latach, a miesiąc z najmniejszą ich liczbą ma {years} (WMO-No. 1203, 4.4.2): ta normalna, złożone z niej normalne roku, półroczy i pór roku (4.3.3) oraz procenty tych normalnych są puste.",
+      plain: "Za mało lat z wartościami miesięcznymi na normalną (WMO-No. 1203).",
     },
     accumulated_totals: {
       text: "{count} wartości kolumny {column} to sumy dni bez pomiaru przed nimi: w sumach miesięcznych zastępują te dni, w statystykach dobowych są brakami.",
@@ -172,6 +205,10 @@ export const notices = {
       text: "{count} lat hydrologicznych okresu ma mniej niż {minimum} dni z danymi do obliczeń i nie ma własnych wartości: {years}.",
       plain: "Niektóre lata mają za mało dni z danymi, by mieć własne wartości.",
     },
+    years_without_fit: {
+      text: "{count} lat hydrologicznych okresu ma dość dni z danymi, ale nie ma własnego dopasowania {harmonics} harmonik: ich wartości są wszystkie równe albo mają lukę co najmniej {max_gap_days} dni: {years}.",
+      plain: "Niektóre lata mają stałe wartości albo zbyt długą lukę w danych, by dopasować do nich harmoniki.",
+    },
     undated_extremes: {
       text: "{count} ekstremów rocznych nie ma daty w pliku półroczy i pominięto je: {years}.",
       plain: "Ekstrema roczne bez daty pominięto.",
@@ -187,6 +224,10 @@ export const notices = {
     uh_substeps: {
       text: "Krok czasowy {timestep_min} min jest dłuższy niż {maximum_min} min, typowy zakres hydrogramu jednostkowego SCS: hydrogram policzono na {substeps} krokach pośrednich po {substep_min} min, z opadem każdego kroku rozłożonym na nie równo, i odczytano w chwilach kroków, więc zachowuje objętość 1 mm.",
       plain: "Krok czasowy jest dłuższy niż typowy zakres hydrogramu jednostkowego SCS: hydrogram policzono na krokach pośrednich, więc zachowuje objętość 1 mm.",
+    },
+    iuh_peak_undefined: {
+      text: "Hydrogram jednostkowy chwilowy Nasha dla n = {n} zbiorników (K = {k_min} min) maleje od chwili opadu: dla n ≤ 1 nie ma szczytu po niej, więc czas do szczytu i rzędna szczytowa są nieokreślone (brak wartości).",
+      plain: "Hydrogram jednostkowy chwilowy Nasha dla n ≤ 1 nie ma szczytu: czas do szczytu i rzędna szczytowa są nieokreślone.",
     },
     positions_ignored: {
       text: "{reason}; schemat ułożono automatycznie, bez podanych położeń węzłów.",
@@ -207,14 +248,14 @@ export const notices = {
 
 /**
  * Whether a notice puts a value outside a two-sided typical range of Hydrolog: the code
- * `outside_typical_range`, or `outside_unverified_range` for a range to be verified
+ * `outside_applicability`, or `outside_unverified_range` for a range to be verified
  * (`verified` false in the served `typical_ranges`).
  *
  * @param {{code?: string}|null} notice a notice of hydrolog-result/1
  * @returns {boolean} true for either code
  */
 export function isRangeNotice(notice) {
-  return Boolean(notice) && (notice.code === "outside_typical_range" || notice.code === "outside_unverified_range");
+  return Boolean(notice) && (notice.code === "outside_applicability" || notice.code === "outside_unverified_range");
 }
 
 /**
@@ -260,7 +301,9 @@ export function describeNotice(notice) {
   const details = (notice && notice.details) || {};
   const values = { message };
   const names = (typeof entry === "object" && entry.names) || {};
-  for (const [key, value] of Object.entries(details)) values[key] = noticeValue(named(names[key], value));
+  for (const [key, value] of Object.entries(details)) {
+    if (value !== null && value !== undefined) values[key] = noticeValue(named(names[key], value));
+  }
   const each = (typeof entry === "object" && entry.each) || {};
   for (const [key, item] of Object.entries(each)) {
     const items = details[key];
@@ -269,9 +312,9 @@ export function describeNotice(notice) {
     const at = (index) => Object.fromEntries(lists.map(([name, value]) => [name, noticeValue(named(names[name], value[index]))]));
     values[key] = items.map((_, index) => t(item, at(index))).join(", ");
   }
-  const full = typeof entry === "string" ? entry : entry.text;
-  const needed = [...full.matchAll(/\{(\w+)\}/g)].map((match) => match[1]);
-  const template = needed.every((key) => Object.hasOwn(values, key)) ? full : entry.plain || full;
+  const forms = typeof entry === "string" ? [entry] : [entry.text, ...(entry.partial || [])];
+  const complete = (form) => [...form.matchAll(/\{(\w+)\}/g)].every((match) => Object.hasOwn(values, match[1]));
+  const template = forms.find(complete) || (typeof entry === "object" && entry.plain) || forms[0];
   const english = template.includes("{message}");
   let text = t(template, values);
   if (english) text = `${text} ${common.english}`;

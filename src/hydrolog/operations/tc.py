@@ -4,7 +4,7 @@ Each ``tc_<method>`` function wraps one static method of
 :class:`~hydrolog.time.ConcentrationTime`; :func:`tc_watershed` applies a method to
 :class:`~hydrolog.morphometry.WatershedParameters`. The library reports a parameter
 outside the typical range of a formula with a warning; the operations turn it into a
-notice of the result envelope (code ``outside_typical_range``, details ``method``,
+notice of the result envelope (code ``outside_applicability``, details ``method``,
 ``parameter``, ``value``, ``minimum`` and ``maximum``).
 """
 
@@ -90,8 +90,8 @@ def tc_kirpich(*, length_km: float, slope_m_per_m: float) -> OperationOutput:
     Returns
     -------
     OperationOutput
-        :class:`TcResult` (``tc_min = 3.981 * L**0.77 * S**-0.385``) with a notice
-        for every parameter outside the typical range of the formula.
+        :class:`TcResult` (spec ``kirpich``, ``docs/FORMULAS.md``) with a notice
+        for every parameter outside the applicability range of the formula.
 
     Raises
     ------
@@ -197,8 +197,8 @@ def tc_faa(
     Returns
     -------
     OperationOutput
-        :class:`TcResult` (``tc = 22.213 (1.1 - C) sqrt(L) / S**(1/3)``) with notices
-        for parameters outside the typical range.
+        :class:`TcResult` (spec ``faa``, ``docs/FORMULAS.md``) with notices for
+        parameters outside the applicability range.
 
     Raises
     ------
@@ -236,8 +236,8 @@ def tc_kerby(
     Returns
     -------
     OperationOutput
-        :class:`TcResult` (``tc = 36.37 (L N)**0.467 S**-0.2335``; ``S + 0.0005``
-        below ``S = 0.002``) with notices for parameters outside the typical range.
+        :class:`TcResult` (spec ``kerby``, ``docs/FORMULAS.md``, with its low-slope
+        offset) with notices for parameters outside the applicability range.
 
     Raises
     ------

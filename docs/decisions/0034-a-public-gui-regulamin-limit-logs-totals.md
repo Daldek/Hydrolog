@@ -87,3 +87,8 @@ run them.
   `localStorage`); runs that carry their files and answer their outputs, keeping nothing (every section's file model
   rewritten); counting the catalog documents (above); a log file of the app's own (a second retention to keep beside
   the journal's).
+
+## Erratum (2026-11-21, Nogat ECO-082)
+
+The regulamin's block of ČHMÚ is `chmu` since Nogat ECO-082 (identifiers by the national acronym without diacritics):
+Hydrolog fills the blocks `imgw`, `pmaxtp` and `chmu` (`hydrolog.gui._terms.BLOCKS`).

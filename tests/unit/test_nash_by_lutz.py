@@ -32,7 +32,12 @@ STORM = {"hietogram_type": "beta", "total_mm": 101.82, "duration_min": 720.0}
 LUTZ = {"uh_model": "nash", "nash_estimation": "lutz"}
 RUNOFF = {"model": "curve-number", **LUTZ}
 # Lutz's inputs that the watershed lacks, in the order they are reported
-NEEDED = ["flow_path_length_km", "Lc_km", "flow_path_slope_m_per_m", "manning_n"]
+NEEDED = [
+    "flow_path_length_km",
+    "Lc_km",
+    "flow_path_equal_area_slope_m_per_m",
+    "manning_n",
+]
 
 
 def refused(build) -> InvalidParameterError:
@@ -58,7 +63,7 @@ def by_uh_nash(watershed: dict[str, Any], timestep_min: float) -> dict[str, floa
         "area_km2": watershed["area_km2"],
         "lutz_length_km": watershed["flow_path_length_km"],
         "lutz_centroid_length_km": watershed["Lc_km"],
-        "lutz_slope_m_per_m": watershed["flow_path_slope_m_per_m"],
+        "lutz_slope_m_per_m": watershed["flow_path_equal_area_slope_m_per_m"],
         "lutz_manning_n": watershed["manning_n"],
         "timestep_min": timestep_min,
     }
@@ -90,14 +95,15 @@ def network(watershed: dict[str, Any], runoff: dict[str, Any]) -> dict[str, Any]
 
 
 class TestTheFieldsOfTheWatershed:
-    def test_l_and_j_are_those_of_the_main_stream_from_the_divide(self):
+    def test_l_is_the_flow_paths_and_j_the_equal_area_slope_of_its_profile(self):
         parameters = WatershedParameters.from_dict(KAMIENNIK).nash_parameters("lutz")
 
-        # the channel (14.78 km at 0.0142) ends at the channel head: not Lutz's L, J
+        # the channel (14.78 km at 0.0142) ends at the channel head: not Lutz's L; the
+        # slope between the flow path's ends (0.0114) is not Lutz's Jg (ADR-0053)
         assert parameters == {
             "L_km": 15.88,
             "Lc_km": 6.76,
-            "slope": 0.0114,
+            "slope": 0.00848,
             "manning_n": 0.035,
             "urban_pct": 1.0,
             "forest_pct": 57.4,
@@ -120,11 +126,12 @@ class TestTheFieldsOfTheWatershed:
         [
             NEEDED,
             ["Lc_km", "manning_n"],
-            ["flow_path_slope_m_per_m"],
+            ["flow_path_equal_area_slope_m_per_m"],
         ],
     )
     def test_a_field_that_lutz_needs_is_named_with_the_others_missing(self, lacking):
-        # the channel's length and slope do not stand in for the flow path's
+        # neither the channel's length and slope nor the slope between the flow path's
+        # ends stand in for Lutz's L and Jg
         watershed = WatershedParameters.from_dict(
             {key: value for key, value in KAMIENNIK.items() if key not in lacking}
         )
@@ -147,15 +154,15 @@ class TestTheFieldsOfTheWatershed:
         }
         assert (error.details["maximum"], error.details["value"]) == (15.88, 16.0)
 
-    def test_a_flat_main_stream_is_refused_on_its_slope(self):
-        watershed = WatershedParameters.from_dict(
-            {**KAMIENNIK, "flow_path_slope_m_per_m": 0.0}
+    def test_a_flat_profile_is_refused_on_its_equal_area_slope(self):
+        error = refused(
+            lambda: WatershedParameters.from_dict(
+                {**KAMIENNIK, "flow_path_equal_area_slope_m_per_m": 0.0}
+            )
         )
 
-        error = refused(watershed.nash_parameters)
-
         assert (error.details["option"], error.details["reason"]) == (
-            "flow_path_slope_m_per_m",
+            "flow_path_equal_area_slope_m_per_m",
             "exclusive_minimum",
         )
 
@@ -207,6 +214,7 @@ class TestTheCommand:
             "cn": 75,
             "flow_path_length_km": 1.0,
             "flow_path_slope_m_per_m": 0.1,
+            "flow_path_equal_area_slope_m_per_m": 0.1,
             "Lc_km": 0.5,
             "manning_n": 0.03,
         }
@@ -236,7 +244,7 @@ class TestTheCommand:
         found = [
             notice["details"]
             for notice in envelope["notices"]
-            if notice["code"] == "outside_typical_range"
+            if notice["code"] == "outside_applicability"
         ]
         assert [(d["method"], d["parameter"], d["field"]) for d in found] == [
             ("lutz", "area_km2", "area_km2")
@@ -333,7 +341,7 @@ class TestTheReport:
         assert "**Dane wejściowe metody Lutza:**" in text
         assert "**Krok 1: Współczynnik P1**" in text
         assert "**Krok 6: Stała zbiornika K**" in text
-        assert "$L$ = 15.880 km" in text and "$J_g$ = 0.0114" in text
+        assert "$L$ = 15.880 km" in text and "$J_g$ = 0.00848" in text
         assert f"otrzymano: $n = {parameters['n']:.3f}$" in text
         assert f"= {parameters['k_min']:.1f} \\text{{ min}}$$" in text
 

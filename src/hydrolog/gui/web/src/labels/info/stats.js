@@ -70,9 +70,12 @@ export const statsInfo = {
     note:
       "<p>L-momenty są mniej czułe na pojedyncze duże maksima i stabilniejsze na krótkich szeregach niż największa " +
       "wiarygodność, a najmniejsze kwadraty idą za największymi maksimami. Dla rzadkich wezbrań metody mogą dać różne " +
-      "kwantyle.</p>",
+      "kwantyle. Największa wiarygodność nie daje parametrów, gdy wiarygodność rośnie bez końca (nieskończona gęstość " +
+      "na granicy rozkładu, która wypada na skrajnym maksimum): taka kombinacja jest pominięta z uwagą.</p>",
     guide: "metoda-stats-fit-method",
-    sources: "Hosking i Wallis 1997 (Regional Frequency Analysis)",
+    sources:
+      "Hosking i Wallis 1997 (Regional Frequency Analysis); " +
+      "Smith 1985 (Maximum likelihood estimation in a class of nonregular cases)",
   },
   "stats-fit": {
     title: "Zgodność dopasowania: AIC, A², KS",
@@ -90,11 +93,13 @@ export const statsInfo = {
     ],
     note:
       "<p>Mniejsze AIC jest lepsze, różnica poniżej 2 nie rozstrzyga, a brak AIC (—) znaczy, że rozkład nie obejmuje " +
-      "któregoś maksimum. ✓ to A² poniżej wartości krytycznej dla 5&nbsp;%; oba testy są przybliżone.</p>",
+      "któregoś maksimum. ✓ to A² poniżej wartości krytycznej dla 5&nbsp;% tego dopasowania, z bootstrapu " +
+      "parametrycznego: 999 prób z dopasowanego rozkładu, każda dopasowana znów L-momentami; przy innych metodach " +
+      "A² nie ma wartości krytycznej. KS p jest tylko orientacyjne: parametry oszacowano z tej samej próby.</p>",
     guide: "metoda-stats-fit",
     sources:
       "Akaike 1974; Burnham i Anderson 2002 (Model Selection and Multimodel Inference); Anderson i Darling 1954; " +
-      "Stephens 1974",
+      "Stephens 1974; Stute, González Manteiga i Presedo Quindimil 1993 (Bootstrap based goodness-of-fit tests)",
   },
   "stats-plot": {
     title: "Siatka Gumbela i położenie Weibulla",

@@ -1,0 +1,1871 @@
+[
+ {
+  "formula": "sample_moments",
+  "case_id": "b17b-ex1-fishkill",
+  "source": {
+   "citation": "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia",
+   "url": "https://pubs.usgs.gov/unnumbered/70275162/report.pdf",
+   "access": "open",
+   "locator": "appendix 12, example 1, table 12-2 and eqs. 12-1 to 12-3, pp. 12-5 to 12-6 (Fishkill Creek at Beacon, NY, 1945-1968)"
+  },
+  "inputs": {
+   "values": [
+    3.35984,
+    3.16732,
+    3.34635,
+    3.47276,
+    3.48001,
+    3.08279,
+    3.3962,
+    3.50106,
+    3.50786,
+    3.24551,
+    3.94448,
+    3.91803,
+    3.11727,
+    3.39794,
+    3.29226,
+    3.33041,
+    3.63749,
+    3.48572,
+    3.25042,
+    3.13988,
+    2.99123,
+    3.01703,
+    3.19866,
+    3.55991
+   ]
+  },
+  "expected": {
+   "mean": 3.3684,
+   "std": 0.2456,
+   "skewness": 0.73
+  },
+  "printed_precision": {
+   "values": 1e-05,
+   "mean": 0.0001,
+   "std": 0.0001,
+   "skewness": 0.0001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "X**2 and X**3 of each logarithm printed to 5 decimals and summed (table 12-2); S and G from the sums (eqs. 12-2, 12-3): |dS| <= N 5e-6 / (2 (N - 1) S) = 1.06e-05, |dG| <= (N**2 N 5e-6 + 3 N sum(X) N 5e-6) / (N (N - 1)(N - 2) S**3) + 3 G dS / S = 0.00436",
+    "effect": {
+     "std": 1.062e-05,
+     "skewness": 0.004361
+    }
+   },
+   {
+    "step": "S**3 carried as .014816 in eq. 12-3 (exact S**3 of the printed logarithms 0.0148169)",
+    "effect": {
+     "skewness": 4.235e-05
+    }
+   }
+  ],
+  "conventions": [
+   "the values are the base-10 logarithms of the annual peaks as table 12-2 prints them (5 decimals); the peaks of table 12-1 give the same logarithms",
+   "S with the divisor N - 1 (eq. 3b); G of eq. 4b, the adjusted Fisher-Pearson coefficient"
+  ],
+  "second_source": {
+   "citation": "USGS National Water Information System, peak streamflow of site 01373500 (Fishkill Creek at Beacon, NY)",
+   "locator": "the 24 annual peaks of 1945-1968, as in table 12-1",
+   "url": "https://nwis.waterdata.usgs.gov/nwis/peak?site_no=01373500&agency_cd=USGS&format=rdb",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "sample_moments",
+  "case_id": "b17b-ex2-floyd",
+  "source": {
+   "citation": "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia",
+   "url": "https://pubs.usgs.gov/unnumbered/70275162/report.pdf",
+   "access": "open",
+   "locator": "appendix 12, example 2, step 1, p. 12-14 (Floyd River at James, IA, 1935-1973); peaks in table 12-1, p. 12-4"
+  },
+  "inputs": {
+   "values": [
+    3.16435,
+    3.60746,
+    3.55267,
+    3.31387,
+    3.11394,
+    3.14301,
+    3.23553,
+    3.79796,
+    3.13354,
+    3.87157,
+    3.72591,
+    3.14613,
+    3.51055,
+    3.43297,
+    3.65514,
+    3.68485,
+    3.92012,
+    4.14301,
+    4.85431,
+    3.79588,
+    3.35411,
+    2.50243,
+    3.12385,
+    2.98677,
+    3.2833,
+    4.17898,
+    3.45788,
+    4.31387,
+    3.58092,
+    2.86094,
+    3.87506,
+    3.85552,
+    3.30103,
+    2.91855,
+    4.23805,
+    3.67578,
+    4.1271,
+    3.46835,
+    3.75282
+   ]
+  },
+  "expected": {
+   "mean": 3.5553,
+   "std": 0.4642,
+   "skewness": 0.3566
+  },
+  "printed_precision": {
+   "values": 1e-05,
+   "mean": 0.0001,
+   "std": 0.0001,
+   "skewness": 0.0001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "the example omits its computations; done as in example 1, the X**2 and X**3 of the 5-decimal logarithms rounded to 5 decimals and summed: |dS| <= 5.53e-06, |dG| <= 0.000644 (the bounds of example 1 for N = 39)",
+    "effect": {
+     "std": 5.53e-06,
+     "skewness": 0.000644
+    }
+   }
+  ],
+  "conventions": [
+   "the values are the base-10 logarithms of the 39 annual peaks of table 12-1 rounded to 5 decimals, as table 12-2 of example 1 prints them",
+   "S with the divisor N - 1 (eq. 3b); G of eq. 4b"
+  ],
+  "second_source": {
+   "citation": "USGS National Water Information System, peak streamflow of site 06600500 (Floyd River at James, IA)",
+   "locator": "the 39 annual peaks of 1935-1973, as in table 12-1",
+   "url": "https://nwis.waterdata.usgs.gov/nwis/peak?site_no=06600500&agency_cd=USGS&format=rdb",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "sample_moments",
+  "case_id": "wmo1029-223204",
+  "inputs": {
+   "values": [
+    8.0,
+    13.0,
+    2.0,
+    2.7,
+    9.1,
+    0.0,
+    0.7,
+    21.6,
+    35.1,
+    12.7,
+    1.3,
+    9.1,
+    26.0,
+    22.7,
+    21.3,
+    7.9,
+    23.0,
+    6.0,
+    3.1,
+    4.1,
+    0.0,
+    4.9,
+    2.3,
+    12.4,
+    4.4,
+    2.1,
+    3.1,
+    7.6,
+    9.0,
+    9.0,
+    20.4,
+    13.6,
+    3.3,
+    10.3
+   ]
+  },
+  "expected": {
+   "mean": 9.765,
+   "std": 8.68
+  },
+  "printed_precision": {
+   "values": 0.1,
+   "mean": 0.001,
+   "std": 0.01
+  },
+  "intermediate_rounding": [
+   {
+    "step": "each value printed to 0.1 (1000 m3/d) rounds on its own, by up to 0.05, which a shift of all values together does not show: |ds| <= 0.05 sqrt(n / (n - 1)); |dl2| <= 0.05 sum|w_j| and |dl3| <= 0.05 sum|v_j| of the weights of l2 and l3 on the ordered values; |dt3| <= (|dl3| + |t3| |dl2|) / (l2 - |dl2|)",
+    "effect": {
+     "std": 0.050752
+    }
+   }
+  ],
+  "source": {
+   "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029",
+   "url": "https://library.wmo.int/idurl/4/32176",
+   "access": "open",
+   "locator": "sect. 7.2, p. 58 (the AM(7) series of station 223204) and table 7.1, p. 64 (F(x), all values)"
+  },
+  "conventions": [
+   "AM(7) annual minima of the 7-day mean flow in 1000 m3/d, as printed (to 0.1)",
+   "the standard deviation with the divisor n - 1 (eq. 7.8); the L-moments of eqs. 7.11 and 7.12"
+  ],
+  "second_source": {
+   "citation": "Koffler, D., Gauster, T. and Laaha, G. lfstat: calculation of low flow statistics for daily stream flow data, R package version 0.9.15, CRAN",
+   "locator": "tests/testthat/test-tyear.R: the AM(7) series of stations 223204 and 223207 of WMO-No. 1029, transcribed alike",
+   "url": "https://cran.r-project.org/package=lfstat",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "sample_l_moments",
+  "case_id": "wmo1029-223204",
+  "inputs": {
+   "values": [
+    8.0,
+    13.0,
+    2.0,
+    2.7,
+    9.1,
+    0.0,
+    0.7,
+    21.6,
+    35.1,
+    12.7,
+    1.3,
+    9.1,
+    26.0,
+    22.7,
+    21.3,
+    7.9,
+    23.0,
+    6.0,
+    3.1,
+    4.1,
+    0.0,
+    4.9,
+    2.3,
+    12.4,
+    4.4,
+    2.1,
+    3.1,
+    7.6,
+    9.0,
+    9.0,
+    20.4,
+    13.6,
+    3.3,
+    10.3
+   ]
+  },
+  "expected": {
+   "l1": 9.765,
+   "l2": 4.721,
+   "t3": 0.273
+  },
+  "printed_precision": {
+   "values": 0.1,
+   "l1": 0.001,
+   "l2": 0.001,
+   "t3": 0.001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "each value printed to 0.1 (1000 m3/d) rounds on its own, by up to 0.05, which a shift of all values together does not show: |ds| <= 0.05 sqrt(n / (n - 1)); |dl2| <= 0.05 sum|w_j| and |dl3| <= 0.05 sum|v_j| of the weights of l2 and l3 on the ordered values; |dt3| <= (|dl3| + |t3| |dl2|) / (l2 - |dl2|)",
+    "effect": {
+     "l2": 0.025758,
+     "t3": 0.005982
+    }
+   }
+  ],
+  "source": {
+   "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029",
+   "url": "https://library.wmo.int/idurl/4/32176",
+   "access": "open",
+   "locator": "sect. 7.2, p. 58 (the AM(7) series of station 223204) and table 7.1, p. 64 (F(x), all values)"
+  },
+  "conventions": [
+   "AM(7) annual minima of the 7-day mean flow in 1000 m3/d, as printed (to 0.1)",
+   "the standard deviation with the divisor n - 1 (eq. 7.8); the L-moments of eqs. 7.11 and 7.12"
+  ],
+  "second_source": {
+   "citation": "Koffler, D., Gauster, T. and Laaha, G. lfstat: calculation of low flow statistics for daily stream flow data, R package version 0.9.15, CRAN",
+   "locator": "tests/testthat/test-tyear.R: the AM(7) series of stations 223204 and 223207 of WMO-No. 1029, transcribed alike",
+   "url": "https://cran.r-project.org/package=lfstat",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "sample_moments",
+  "case_id": "wmo1029-223207",
+  "inputs": {
+   "values": [
+    27.3,
+    38.0,
+    72.9,
+    53.6,
+    45.7,
+    37.0,
+    21.7,
+    36.6,
+    43.1,
+    12.6,
+    20.7,
+    66.7,
+    76.6,
+    53.1,
+    15.7,
+    66.6,
+    78.0,
+    53.1,
+    62.6,
+    40.7,
+    51.6,
+    23.1,
+    23.4,
+    23.0,
+    6.0
+   ]
+  },
+  "expected": {
+   "mean": 41.977,
+   "std": 21.05
+  },
+  "printed_precision": {
+   "values": 0.1,
+   "mean": 0.001,
+   "std": 0.01
+  },
+  "intermediate_rounding": [
+   {
+    "step": "each value printed to 0.1 (1000 m3/d) rounds on its own, by up to 0.05, which a shift of all values together does not show: |ds| <= 0.05 sqrt(n / (n - 1)); |dl2| <= 0.05 sum|w_j| and |dl3| <= 0.05 sum|v_j| of the weights of l2 and l3 on the ordered values; |dt3| <= (|dl3| + |t3| |dl2|) / (l2 - |dl2|)",
+    "effect": {
+     "std": 0.051031
+    }
+   }
+  ],
+  "source": {
+   "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029",
+   "url": "https://library.wmo.int/idurl/4/32176",
+   "access": "open",
+   "locator": "sect. 7.2, p. 58 (the AM(7) series of station 223207) and table 7.1, p. 64 (F(x), all values)"
+  },
+  "conventions": [
+   "AM(7) annual minima of the 7-day mean flow in 1000 m3/d, as printed (to 0.1)",
+   "the standard deviation with the divisor n - 1 (eq. 7.8); the L-moments of eqs. 7.11 and 7.12"
+  ],
+  "second_source": {
+   "citation": "Koffler, D., Gauster, T. and Laaha, G. lfstat: calculation of low flow statistics for daily stream flow data, R package version 0.9.15, CRAN",
+   "locator": "tests/testthat/test-tyear.R: the AM(7) series of stations 223204 and 223207 of WMO-No. 1029, transcribed alike",
+   "url": "https://cran.r-project.org/package=lfstat",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "sample_l_moments",
+  "case_id": "wmo1029-223207",
+  "inputs": {
+   "values": [
+    27.3,
+    38.0,
+    72.9,
+    53.6,
+    45.7,
+    37.0,
+    21.7,
+    36.6,
+    43.1,
+    12.6,
+    20.7,
+    66.7,
+    76.6,
+    53.1,
+    15.7,
+    66.6,
+    78.0,
+    53.1,
+    62.6,
+    40.7,
+    51.6,
+    23.1,
+    23.4,
+    23.0,
+    6.0
+   ]
+  },
+  "expected": {
+   "l1": 41.977,
+   "l2": 12.305,
+   "t3": 0.045
+  },
+  "printed_precision": {
+   "values": 0.1,
+   "l1": 0.001,
+   "l2": 0.001,
+   "t3": 0.001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "each value printed to 0.1 (1000 m3/d) rounds on its own, by up to 0.05, which a shift of all values together does not show: |ds| <= 0.05 sqrt(n / (n - 1)); |dl2| <= 0.05 sum|w_j| and |dl3| <= 0.05 sum|v_j| of the weights of l2 and l3 on the ordered values; |dt3| <= (|dl3| + |t3| |dl2|) / (l2 - |dl2|)",
+    "effect": {
+     "l2": 0.026,
+     "t3": 0.001866
+    }
+   }
+  ],
+  "source": {
+   "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029",
+   "url": "https://library.wmo.int/idurl/4/32176",
+   "access": "open",
+   "locator": "sect. 7.2, p. 58 (the AM(7) series of station 223207) and table 7.1, p. 64 (F(x), all values)"
+  },
+  "conventions": [
+   "AM(7) annual minima of the 7-day mean flow in 1000 m3/d, as printed (to 0.1)",
+   "the standard deviation with the divisor n - 1 (eq. 7.8); the L-moments of eqs. 7.11 and 7.12"
+  ],
+  "second_source": {
+   "citation": "Koffler, D., Gauster, T. and Laaha, G. lfstat: calculation of low flow statistics for daily stream flow data, R package version 0.9.15, CRAN",
+   "locator": "tests/testthat/test-tyear.R: the AM(7) series of stations 223204 and 223207 of WMO-No. 1029, transcribed alike",
+   "url": "https://cran.r-project.org/package=lfstat",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "sample_l_moments",
+  "case_id": "wmo1029-223204-non-zero",
+  "source": {
+   "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029",
+   "url": "https://library.wmo.int/idurl/4/32176",
+   "access": "open",
+   "locator": "sect. 7.2, p. 58 (station 223204) and table 7.1, p. 64 (G(x): the values above 0, sect. 7.4.2)"
+  },
+  "inputs": {
+   "values": [
+    8.0,
+    13.0,
+    2.0,
+    2.7,
+    9.1,
+    0.7,
+    21.6,
+    35.1,
+    12.7,
+    1.3,
+    9.1,
+    26.0,
+    22.7,
+    21.3,
+    7.9,
+    23.0,
+    6.0,
+    3.1,
+    4.1,
+    4.9,
+    2.3,
+    12.4,
+    4.4,
+    2.1,
+    3.1,
+    7.6,
+    9.0,
+    9.0,
+    20.4,
+    13.6,
+    3.3,
+    10.3
+   ]
+  },
+  "expected": {
+   "l1": 10.375,
+   "l2": 4.67,
+   "t3": 0.276
+  },
+  "printed_precision": {
+   "values": 0.1,
+   "l1": 0.001,
+   "l2": 0.001,
+   "t3": 0.001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "each value printed to 0.1 (1000 m3/d) rounds on its own, by up to 0.05, which a shift of all values together does not show: |ds| <= 0.05 sqrt(n / (n - 1)); |dl2| <= 0.05 sum|w_j| and |dl3| <= 0.05 sum|v_j| of the weights of l2 and l3 on the ordered values; |dt3| <= (|dl3| + |t3| |dl2|) / (l2 - |dl2|)",
+    "effect": {
+     "l2": 0.025806,
+     "t3": 0.006092
+    }
+   }
+  ],
+  "conventions": [
+   "the 32 values above 0 of station 223204 (the two zeros left out, as G(x) of sect. 7.4.2)"
+  ],
+  "second_source": {
+   "citation": "Koffler, D., Gauster, T. and Laaha, G. lfstat: calculation of low flow statistics for daily stream flow data, R package version 0.9.15, CRAN",
+   "locator": "tests/testthat/test-tyear.R: the AM(7) series of stations 223204 and 223207 of WMO-No. 1029, transcribed alike",
+   "url": "https://cran.r-project.org/package=lfstat",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "pearson3_quantiles",
+  "case_id": "b17b-k-skew-0.7",
+  "source": {
+   "citation": "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia",
+   "url": "https://pubs.usgs.gov/unnumbered/70275162/report.pdf",
+   "access": "open",
+   "locator": "appendix 12, example 1, table 12-3, p. 12-9: the K of G = 0.7 from appendix 3 (Harter 1969), at the exceedance probabilities P"
+  },
+  "inputs": {
+   "skew": 0.7,
+   "loc": 0.0,
+   "scale": 1.0,
+   "return_periods_years": [
+    1.0101010101010102,
+    1.1111111111111112,
+    2.0,
+    10.0,
+    20.0,
+    50.0,
+    100.0,
+    200.0,
+    500.0
+   ]
+  },
+  "expected": {
+   "quantiles": [
+    -1.80621,
+    -1.18347,
+    -0.11578,
+    1.33294,
+    1.81864,
+    2.4067,
+    2.82359,
+    3.22281,
+    3.72957
+   ]
+  },
+  "printed_precision": {
+   "quantiles": 1e-05
+  },
+  "conventions": [
+   "K is the quantile of the Pearson III of mean 0, standard deviation 1 and skewness G at the non-exceedance 1 - P; T = 1/P",
+   "the skewness 0.7 is the table's column, exact: its printed precision here only bounds the corners the module tries, which stay inside the column's own digits"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "pearson3_quantiles",
+  "case_id": "kzgw2017-ex3.2-polana",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 3.2 (the Czarna at Polana), eqs. 3.28 to 3.30, pp. 39-40 (epsilon = 4.0 m3/s, lambda = 1.341, alpha = 0.0448) and table 3.9, p. 43 (Q_max,p)"
+  },
+  "inputs": {
+   "skew": 1.7270925338361327,
+   "loc": 33.933035714285715,
+   "scale": 25.84856124859658,
+   "return_periods_years": [
+    2.0,
+    2.5,
+    3.3333333333333335,
+    4.0,
+    5.0,
+    10.0,
+    20.0,
+    33.333333333333336
+   ]
+  },
+  "expected": {
+   "quantiles": [
+    26.89,
+    32.93,
+    40.48,
+    45.17,
+    50.84,
+    68.07,
+    84.93,
+    97.2
+   ]
+  },
+  "printed_precision": {
+   "quantiles": 0.01
+  },
+  "intermediate_rounding": [
+   {
+    "step": "lambda printed 1.341 and alpha 0.0448 (eqs. 3.29, 3.30): the largest change of the quantiles over the corners of their half units, skew = 2 / sqrt(lambda), loc = epsilon + lambda / alpha, scale = sqrt(lambda) / alpha",
+    "effect": {
+     "quantiles": 0.125308
+    }
+   }
+  ],
+  "conventions": [
+   "KZGW's (epsilon, alpha, lambda) as scipy's pearson3: skew = 2 / sqrt(lambda), loc = epsilon + lambda / alpha, scale = sqrt(lambda) / alpha (eq. 3.1); epsilon = 4.0 is the graphical estimate, exact",
+   "p of the table is the exceedance probability, T = 100 / p",
+   "the example's conclusion on p. 42 names epsilon = 4.5, alpha = 0.0420, lambda = 1.235, which table 3.9 does not use: its quantiles are those of 4.0, 1.341, 0.0448"
+  ],
+  "second_source": {
+   "citation": "Hydrolog's research ResFloodFrequency (2026-11-18): the examples of KZGW 2017 recomputed with scipy (check_kzgw.py) from their printed parameters",
+   "locator": "~/tmp/research-ResFloodFrequency/plmethod/check_kzgw.py, kept with the research's notes",
+   "access": "author-provided"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "pearson3_quantiles",
+  "case_id": "kzgw2017-ex3.2-polana-tail",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 3.2 (the Czarna at Polana), eqs. 3.28 to 3.30, pp. 39-40 (epsilon = 4.0 m3/s, lambda = 1.341, alpha = 0.0448) and table 3.9, p. 43 (Q_max,p)"
+  },
+  "inputs": {
+   "skew": 1.7270925338361327,
+   "loc": 33.933035714285715,
+   "scale": 25.84856124859658,
+   "return_periods_years": [
+    50.0,
+    100.0,
+    200.0,
+    1000.0
+   ]
+  },
+  "expected": {
+   "quantiles": [
+    106.9,
+    123.2,
+    139.6,
+    177.1
+   ]
+  },
+  "printed_precision": {
+   "quantiles": 0.1
+  },
+  "intermediate_rounding": [
+   {
+    "step": "lambda printed 1.341 and alpha 0.0448 (eqs. 3.29, 3.30): the largest change of the quantiles over the corners of their half units, skew = 2 / sqrt(lambda), loc = epsilon + lambda / alpha, scale = sqrt(lambda) / alpha",
+    "effect": {
+     "quantiles": 0.220205
+    }
+   }
+  ],
+  "conventions": [
+   "KZGW's (epsilon, alpha, lambda) as scipy's pearson3: skew = 2 / sqrt(lambda), loc = epsilon + lambda / alpha, scale = sqrt(lambda) / alpha (eq. 3.1); epsilon = 4.0 is the graphical estimate, exact",
+   "p of the table is the exceedance probability, T = 100 / p",
+   "the example's conclusion on p. 42 names epsilon = 4.5, alpha = 0.0420, lambda = 1.235, which table 3.9 does not use: its quantiles are those of 4.0, 1.341, 0.0448"
+  ],
+  "second_source": {
+   "citation": "Hydrolog's research ResFloodFrequency (2026-11-18): the examples of KZGW 2017 recomputed with scipy (check_kzgw.py) from their printed parameters",
+   "locator": "~/tmp/research-ResFloodFrequency/plmethod/check_kzgw.py, kept with the research's notes",
+   "access": "author-provided"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "log_normal_quantiles",
+  "case_id": "kzgw2017-ex3.3-rypin",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 3.3 (the Rypienica at Rypin), eqs. 3.45 to 3.47, p. 48 (epsilon = 0.384 m3/s, mu = 0.738, sigma = 0.754) and table 3.12, p. 51 (Q_max,p)"
+  },
+  "inputs": {
+   "shape": 0.754,
+   "loc": 0.384,
+   "scale": 2.091747832543221,
+   "return_periods_years": [
+    2.0,
+    5.0,
+    10.0,
+    20.0,
+    50.0,
+    100.0,
+    1000.0
+   ]
+  },
+  "expected": {
+   "quantiles": [
+    2.476,
+    4.329,
+    5.88,
+    7.611,
+    10.219,
+    12.461,
+    21.861
+   ]
+  },
+  "printed_precision": {
+   "shape": 0.001,
+   "loc": 0.001,
+   "quantiles": 0.001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "mu printed 0.738 (eq. 3.46): scale = exp(mu) moves the quantiles by up to this over mu +- 0.0005",
+    "effect": {
+     "quantiles": 0.010752
+    }
+   }
+  ],
+  "conventions": [
+   "KZGW's Q_p = epsilon + exp(mu + sigma u_p) (eq. 3.35) as scipy's lognorm: shape = sigma, loc = epsilon, scale = exp(mu)",
+   "p of the table is the exceedance probability, T = 100 / p"
+  ],
+  "second_source": {
+   "citation": "Hydrolog's research ResFloodFrequency (2026-11-18): the examples of KZGW 2017 recomputed with scipy (check_kzgw.py) from their printed parameters",
+   "locator": "~/tmp/research-ResFloodFrequency/plmethod/check_kzgw.py, kept with the research's notes",
+   "access": "author-provided"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "weibull_quantiles",
+  "case_id": "kzgw2017-ex3.4-rzepin",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 3.4 (the Świślina at Rzepin), eqs. 3.60 and 3.61, p. 54 (epsilon = 1.8 m3/s, beta_W = 0.947, alpha_W = 0.1001) and table 3.15, p. 60 (Q_max,p)"
+  },
+  "inputs": {
+   "shape": 0.947,
+   "loc": 1.8,
+   "scale": 9.990009990009991,
+   "return_periods_years": [
+    2.0,
+    5.0,
+    10.0,
+    20.0,
+    50.0,
+    100.0,
+    1000.0
+   ]
+  },
+  "expected": {
+   "quantiles": [
+    8.58,
+    18.31,
+    25.9,
+    33.61,
+    43.97,
+    51.9,
+    78.67
+   ]
+  },
+  "printed_precision": {
+   "shape": 0.001,
+   "quantiles": 0.01
+  },
+  "intermediate_rounding": [
+   {
+    "step": "alpha_W printed 0.1001 (eq. 3.61): scale = 1 / alpha_W moves the quantiles by up to this over alpha_W +- 0.00005",
+    "effect": {
+     "quantiles": 0.038426
+    }
+   }
+  ],
+  "conventions": [
+   "KZGW's P(Q >= x) = exp(-[alpha_W (x - epsilon)]^beta_W) (eq. 3.55) as scipy's weibull_min: shape = beta_W, loc = epsilon, scale = 1 / alpha_W; epsilon = 1.8 is the example's estimate, exact",
+   "p of the table is the exceedance probability, T = 100 / p"
+  ],
+  "second_source": {
+   "citation": "Hydrolog's research ResFloodFrequency (2026-11-18): the examples of KZGW 2017 recomputed with scipy (check_kzgw.py) from their printed parameters",
+   "locator": "~/tmp/research-ResFloodFrequency/plmethod/check_kzgw.py, kept with the research's notes",
+   "access": "author-provided"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "gev_quantiles",
+  "case_id": "coles2001-port-pirie",
+  "source": {
+   "citation": "OpenTURNS 1.28 documentation, example 'Estimate a GEV on the Port Pirie sea-levels data', reproducing Coles (2001), sect. 3.4.1",
+   "locator": "its output: mu 3.875, sigma 0.198, xi -0.050 of the maximum likelihood, the 10-year return level 4.29617 m and the 100-year 4.68814 m",
+   "url": "https://openturns.github.io/openturns/latest/auto_data_analysis/distribution_fitting/plot_estimate_gev_pirie.html",
+   "access": "open"
+  },
+  "inputs": {
+   "shape": 0.05,
+   "loc": 3.875,
+   "scale": 0.198,
+   "return_periods_years": [
+    10.0,
+    100.0
+   ]
+  },
+  "expected": {
+   "quantiles": [
+    4.29617,
+    4.68814
+   ]
+  },
+  "printed_precision": {
+   "shape": 0.001,
+   "loc": 0.001,
+   "scale": 0.001,
+   "quantiles": 1e-05
+  },
+  "conventions": [
+   "Coles's (mu, sigma, xi) with xi = -c: scipy's c = 0.050 for xi = -0.050",
+   "the return level z_T at the non-exceedance 1 - 1/T",
+   "the return levels are OpenTURNS's from the unrounded estimates; the corners of the printed parameters cover the difference"
+  ],
+  "second_source": {
+   "citation": "Coles, S. (2001). An Introduction to Statistical Modeling of Extreme Values. Springer",
+   "locator": "sect. 3.4.1, Port Pirie: (mu, sigma, xi) = (3.87, 0.198, -0.050), the 10- and 100-year return levels 4.30 and 4.69 m",
+   "access": "author-provided"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "fit_moments",
+  "case_id": "b17b-ex1-fishkill",
+  "source": {
+   "citation": "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia",
+   "url": "https://pubs.usgs.gov/unnumbered/70275162/report.pdf",
+   "access": "open",
+   "locator": "appendix 12, example 1, table 12-2 and eqs. 12-1 to 12-3, pp. 12-5 to 12-6 (Fishkill Creek at Beacon, NY, 1945-1968)"
+  },
+  "inputs": {
+   "annual_maxima": [
+    3.35984,
+    3.16732,
+    3.34635,
+    3.47276,
+    3.48001,
+    3.08279,
+    3.3962,
+    3.50106,
+    3.50786,
+    3.24551,
+    3.94448,
+    3.91803,
+    3.11727,
+    3.39794,
+    3.29226,
+    3.33041,
+    3.63749,
+    3.48572,
+    3.25042,
+    3.13988,
+    2.99123,
+    3.01703,
+    3.19866,
+    3.55991
+   ],
+   "distribution": "pearson3"
+  },
+  "expected": {
+   "loc": 3.3684,
+   "scale": 0.2456,
+   "shape": 0.73
+  },
+  "printed_precision": {
+   "annual_maxima": 1e-05,
+   "loc": 0.0001,
+   "scale": 0.0001,
+   "shape": 0.0001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "X**2 and X**3 of each logarithm printed to 5 decimals and summed (table 12-2); S and G from the sums (eqs. 12-2, 12-3): |dS| <= N 5e-6 / (2 (N - 1) S) = 1.06e-05, |dG| <= (N**2 N 5e-6 + 3 N sum(X) N 5e-6) / (N (N - 1)(N - 2) S**3) + 3 G dS / S = 0.00436",
+    "effect": {
+     "scale": 1.062e-05,
+     "shape": 0.004361
+    }
+   },
+   {
+    "step": "S**3 carried as .014816 in eq. 12-3 (exact S**3 of the printed logarithms 0.0148169)",
+    "effect": {
+     "shape": 4.235e-05
+    }
+   }
+  ],
+  "conventions": [
+   "the values are the base-10 logarithms of the annual peaks as table 12-2 prints them (5 decimals); the peaks of table 12-1 give the same logarithms",
+   "S with the divisor N - 1 (eq. 3b); G of eq. 4b, the adjusted Fisher-Pearson coefficient",
+   "the log-Pearson type III distribution of the example is Pearson III fitted by moments to the logarithms: (G, mean, S) are scipy's pearson3 (shape, loc, scale)"
+  ],
+  "second_source": {
+   "citation": "USGS National Water Information System, peak streamflow of site 01373500 (Fishkill Creek at Beacon, NY)",
+   "locator": "the 24 annual peaks of 1945-1968, as in table 12-1",
+   "url": "https://nwis.waterdata.usgs.gov/nwis/peak?site_no=01373500&agency_cd=USGS&format=rdb",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "fit_moments",
+  "case_id": "b17b-ex2-floyd",
+  "source": {
+   "citation": "Interagency Advisory Committee on Water Data (1982). Guidelines for Determining Flood Flow Frequency, Bulletin 17B of the Hydrology Subcommittee, U.S. Geological Survey, Reston, Virginia",
+   "url": "https://pubs.usgs.gov/unnumbered/70275162/report.pdf",
+   "access": "open",
+   "locator": "appendix 12, example 2, step 1, p. 12-14 (Floyd River at James, IA, 1935-1973); peaks in table 12-1, p. 12-4"
+  },
+  "inputs": {
+   "annual_maxima": [
+    3.16435,
+    3.60746,
+    3.55267,
+    3.31387,
+    3.11394,
+    3.14301,
+    3.23553,
+    3.79796,
+    3.13354,
+    3.87157,
+    3.72591,
+    3.14613,
+    3.51055,
+    3.43297,
+    3.65514,
+    3.68485,
+    3.92012,
+    4.14301,
+    4.85431,
+    3.79588,
+    3.35411,
+    2.50243,
+    3.12385,
+    2.98677,
+    3.2833,
+    4.17898,
+    3.45788,
+    4.31387,
+    3.58092,
+    2.86094,
+    3.87506,
+    3.85552,
+    3.30103,
+    2.91855,
+    4.23805,
+    3.67578,
+    4.1271,
+    3.46835,
+    3.75282
+   ],
+   "distribution": "pearson3"
+  },
+  "expected": {
+   "loc": 3.5553,
+   "scale": 0.4642,
+   "shape": 0.3566
+  },
+  "printed_precision": {
+   "annual_maxima": 1e-05,
+   "loc": 0.0001,
+   "scale": 0.0001,
+   "shape": 0.0001
+  },
+  "intermediate_rounding": [
+   {
+    "step": "the example omits its computations; done as in example 1, the X**2 and X**3 of the 5-decimal logarithms rounded to 5 decimals and summed: |dS| <= 5.53e-06, |dG| <= 0.000644 (the bounds of example 1 for N = 39)",
+    "effect": {
+     "scale": 5.53e-06,
+     "shape": 0.000644
+    }
+   }
+  ],
+  "conventions": [
+   "the values are the base-10 logarithms of the 39 annual peaks of table 12-1 rounded to 5 decimals, as table 12-2 of example 1 prints them",
+   "S with the divisor N - 1 (eq. 3b); G of eq. 4b",
+   "the log-Pearson type III distribution of the example is Pearson III fitted by moments to the logarithms: (G, mean, S) are scipy's pearson3 (shape, loc, scale)"
+  ],
+  "second_source": {
+   "citation": "USGS National Water Information System, peak streamflow of site 06600500 (Floyd River at James, IA)",
+   "locator": "the 39 annual peaks of 1935-1973, as in table 12-1",
+   "url": "https://nwis.waterdata.usgs.gov/nwis/peak?site_no=06600500&agency_cd=USGS&format=rdb",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "fit_maximum_likelihood",
+  "case_id": "coles2001-port-pirie",
+  "source": {
+   "citation": "OpenTURNS 1.28 documentation, example 'Estimate a GEV on the Port Pirie sea-levels data', reproducing Coles (2001), sect. 3.4.1",
+   "locator": "its output of the maximum likelihood: mu 3.875, sigma 0.198, xi -0.050 (log-likelihood 4.339056652316124)",
+   "url": "https://openturns.github.io/openturns/latest/auto_data_analysis/distribution_fitting/plot_estimate_gev_pirie.html",
+   "access": "open"
+  },
+  "inputs": {
+   "annual_maxima": [
+    4.03,
+    3.83,
+    3.65,
+    3.88,
+    4.01,
+    4.08,
+    4.18,
+    3.8,
+    4.36,
+    3.96,
+    3.98,
+    4.69,
+    3.85,
+    3.96,
+    3.85,
+    3.93,
+    3.75,
+    3.63,
+    3.57,
+    4.25,
+    3.97,
+    4.05,
+    4.24,
+    4.22,
+    3.73,
+    4.37,
+    4.06,
+    3.71,
+    3.96,
+    4.06,
+    4.55,
+    3.79,
+    3.89,
+    4.11,
+    3.85,
+    3.86,
+    3.86,
+    4.21,
+    4.01,
+    4.11,
+    4.24,
+    3.96,
+    4.21,
+    3.74,
+    3.85,
+    3.88,
+    3.66,
+    4.11,
+    3.71,
+    4.18,
+    3.9,
+    3.78,
+    3.91,
+    3.72,
+    4.0,
+    3.66,
+    3.62,
+    4.33,
+    4.55,
+    3.75,
+    4.08,
+    3.9,
+    3.88,
+    3.94,
+    4.33
+   ],
+   "distribution": "gev"
+  },
+  "expected": {
+   "shape": 0.05,
+   "loc": 3.875,
+   "scale": 0.198
+  },
+  "printed_precision": {
+   "shape": 0.001,
+   "loc": 0.001,
+   "scale": 0.001
+  },
+  "conventions": [
+   "the 65 annual maximum sea levels [m] of Port Pirie, 1923-1987, as R's evd::portpirie and Coles's data give them",
+   "Coles's (mu, sigma, xi) with xi = -c: scipy's c = 0.050 for xi = -0.050"
+  ],
+  "second_source": {
+   "citation": "Coles, S. (2001). An Introduction to Statistical Modeling of Extreme Values. Springer",
+   "locator": "sect. 3.4.1, Port Pirie: (mu, sigma, xi) = (3.87, 0.198, -0.050), the maximized log-likelihood 4.34",
+   "access": "author-provided"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "plotting_positions",
+  "case_id": "kzgw2017-tab3.13-rzepin",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "locator": "example 3.4, table 3.13, pp. 54-55: the annual maxima of the Świślina at Rzepin, 1976-2005, ordered from the largest, with p_i = i / (N + 1) to 4 decimals (eq. 3.7, p. 29)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "values": [
+    19.3,
+    8.32,
+    7.88,
+    24.4,
+    28.0,
+    17.6,
+    10.3,
+    10.3,
+    2.52,
+    11.0,
+    8.92,
+    5.34,
+    3.22,
+    2.73,
+    2.35,
+    4.0,
+    2.09,
+    7.88,
+    9.52,
+    2.28,
+    29.2,
+    10.9,
+    3.06,
+    9.37,
+    18.5,
+    39.8,
+    8.9,
+    9.68,
+    5.65,
+    38.0
+   ],
+   "method": "weibull"
+  },
+  "expected": {
+   "values_sorted": [
+    39.8,
+    38.0,
+    29.2,
+    28.0,
+    24.4,
+    19.3,
+    18.5,
+    17.6,
+    11.0,
+    10.9,
+    10.3,
+    10.3,
+    9.68,
+    9.52,
+    9.37,
+    8.92,
+    8.9,
+    8.32,
+    7.88,
+    7.88,
+    5.65,
+    5.34,
+    4.0,
+    3.22,
+    3.06,
+    2.73,
+    2.52,
+    2.35,
+    2.28,
+    2.09
+   ],
+   "exceedance_prob": [
+    0.0323,
+    0.0645,
+    0.0968,
+    0.129,
+    0.1613,
+    0.1935,
+    0.2258,
+    0.2581,
+    0.2903,
+    0.3226,
+    0.3548,
+    0.3871,
+    0.4194,
+    0.4516,
+    0.4839,
+    0.5161,
+    0.5484,
+    0.5806,
+    0.6129,
+    0.6452,
+    0.6774,
+    0.7097,
+    0.7419,
+    0.7742,
+    0.8065,
+    0.8387,
+    0.871,
+    0.9032,
+    0.9355,
+    0.9677
+   ]
+  },
+  "printed_precision": {
+   "exceedance_prob": 0.0001
+  },
+  "conventions": [
+   "the chronological series [m3/s] of the table as the sample; its ordered series prints the same numbers, so they compare exactly",
+   "the ties 10.3 (ranks 11 and 12) and 7.88 (19 and 20) keep consecutive ranks"
+  ],
+  "second_source": {
+   "citation": "WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II, WMO-No. 168",
+   "locator": "sect. 5.6.1, p. II.5-14: the Weibull formula p_i = i / (n + 1) of the ith largest flood",
+   "url": "https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf",
+   "access": "open"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "plotting_positions",
+  "case_id": "wmo168-sect5.6.1-weibull",
+  "source": {
+   "citation": "WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168",
+   "locator": "sect. 5.6.1, p. II.5-14: 'the Weibull formula with pi = i / (n + 1), the Cunnane formula with pi = (i - 0.40) / (n + 0.2), and the Hazen formula with pi = (i - 0.5) / n', the exceedance probability of the ith largest flood",
+   "url": "https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "values": [
+    10.0,
+    40.0,
+    20.0,
+    30.0
+   ],
+   "method": "weibull"
+  },
+  "expected": {
+   "values_sorted": [
+    40.0,
+    30.0,
+    20.0,
+    10.0
+   ],
+   "exceedance_prob": [
+    0.2,
+    0.4,
+    0.6,
+    0.8
+   ],
+   "return_periods": [
+    5.0,
+    2.5,
+    1.6666666666666667,
+    1.25
+   ]
+  },
+  "tolerance": {
+   "rel": 6.7e-16,
+   "reason": "the source prints the formula, not a sample's positions: the expected values are its exact rationals for four values, as float64; the code rounds a few times"
+  },
+  "conventions": [
+   "the ith largest value has rank i; T = 1 / p"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "plotting_positions",
+  "case_id": "wmo168-sect5.6.1-hazen",
+  "source": {
+   "citation": "WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168",
+   "locator": "sect. 5.6.1, p. II.5-14: 'the Weibull formula with pi = i / (n + 1), the Cunnane formula with pi = (i - 0.40) / (n + 0.2), and the Hazen formula with pi = (i - 0.5) / n', the exceedance probability of the ith largest flood",
+   "url": "https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "values": [
+    10.0,
+    40.0,
+    20.0,
+    30.0
+   ],
+   "method": "hazen"
+  },
+  "expected": {
+   "values_sorted": [
+    40.0,
+    30.0,
+    20.0,
+    10.0
+   ],
+   "exceedance_prob": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "return_periods": [
+    8.0,
+    2.6666666666666665,
+    1.6,
+    1.1428571428571428
+   ]
+  },
+  "tolerance": {
+   "rel": 6.7e-16,
+   "reason": "the source prints the formula, not a sample's positions: the expected values are its exact rationals for four values, as float64; the code rounds a few times"
+  },
+  "conventions": [
+   "the ith largest value has rank i; T = 1 / p"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "plotting_positions",
+  "case_id": "wmo168-sect5.6.1-cunnane",
+  "source": {
+   "citation": "WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168",
+   "locator": "sect. 5.6.1, p. II.5-14: 'the Weibull formula with pi = i / (n + 1), the Cunnane formula with pi = (i - 0.40) / (n + 0.2), and the Hazen formula with pi = (i - 0.5) / n', the exceedance probability of the ith largest flood",
+   "url": "https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "values": [
+    10.0,
+    40.0,
+    20.0,
+    30.0
+   ],
+   "method": "cunnane"
+  },
+  "expected": {
+   "values_sorted": [
+    40.0,
+    30.0,
+    20.0,
+    10.0
+   ],
+   "exceedance_prob": [
+    0.14285714285714285,
+    0.38095238095238093,
+    0.6190476190476191,
+    0.8571428571428571
+   ],
+   "return_periods": [
+    7.0,
+    2.625,
+    1.6153846153846154,
+    1.1666666666666667
+   ]
+  },
+  "tolerance": {
+   "rel": 6.7e-16,
+   "reason": "the source prints the formula, not a sample's positions: the expected values are its exact rationals for four values, as float64; the code rounds a few times"
+  },
+  "conventions": [
+   "the ith largest value has rank i; T = 1 / p"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "non_exceedance_positions",
+  "case_id": "wmo1029-eq7.3-223207-weibull",
+  "source": {
+   "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029",
+   "url": "https://library.wmo.int/idurl/4/32176",
+   "access": "open",
+   "locator": "sect. 7.3, eq. 7.3, p. 59: P_i = (i - a) / (n + 1 - 2a), the non-exceedance probability of the ith smallest event, the Weibull formula a = 0 (p. 60); sect. 7.8, step I, p. 65; the AM(7) minima of station 223207 (Timbarra River), table 7.1 and p. 58, plotted in figure 7.5"
+  },
+  "inputs": {
+   "values": [
+    27.3,
+    38.0,
+    72.9,
+    53.6,
+    45.7,
+    37.0,
+    21.7,
+    36.6,
+    43.1,
+    12.6,
+    20.7,
+    66.7,
+    76.6,
+    53.1,
+    15.7,
+    66.6,
+    78.0,
+    53.1,
+    62.6,
+    40.7,
+    51.6,
+    23.1,
+    23.4,
+    23.0,
+    6.0
+   ],
+   "method": "weibull"
+  },
+  "expected": {
+   "values_ascending": [
+    6.0,
+    12.6,
+    15.7,
+    20.7,
+    21.7,
+    23.0,
+    23.1,
+    23.4,
+    27.3,
+    36.6,
+    37.0,
+    38.0,
+    40.7,
+    43.1,
+    45.7,
+    51.6,
+    53.1,
+    53.1,
+    53.6,
+    62.6,
+    66.6,
+    66.7,
+    72.9,
+    76.6,
+    78.0
+   ],
+   "non_exceedance_probabilities": [
+    0.038461538461538464,
+    0.07692307692307693,
+    0.11538461538461539,
+    0.15384615384615385,
+    0.19230769230769232,
+    0.23076923076923078,
+    0.2692307692307692,
+    0.3076923076923077,
+    0.34615384615384615,
+    0.38461538461538464,
+    0.4230769230769231,
+    0.46153846153846156,
+    0.5,
+    0.5384615384615384,
+    0.5769230769230769,
+    0.6153846153846154,
+    0.6538461538461539,
+    0.6923076923076923,
+    0.7307692307692307,
+    0.7692307692307693,
+    0.8076923076923077,
+    0.8461538461538461,
+    0.8846153846153846,
+    0.9230769230769231,
+    0.9615384615384616
+   ],
+   "return_periods": [
+    26.0,
+    13.0,
+    8.666666666666666,
+    6.5,
+    5.2,
+    4.333333333333333,
+    3.7142857142857144,
+    3.25,
+    2.888888888888889,
+    2.6,
+    2.3636363636363638,
+    2.1666666666666665,
+    2.0,
+    1.8571428571428572,
+    1.7333333333333334,
+    1.625,
+    1.5294117647058822,
+    1.4444444444444444,
+    1.368421052631579,
+    1.3,
+    1.2380952380952381,
+    1.1818181818181819,
+    1.1304347826086956,
+    1.0833333333333333,
+    1.04
+   ]
+  },
+  "tolerance": {
+   "rel": 6.7e-16,
+   "reason": "the source prints the formula, not the positions: the expected values are its exact rationals for the 25 minima, as float64; the code rounds a few times"
+  },
+  "conventions": [
+   "the ith smallest minimum has rank i; T = 1 / F (eq. 7.14)",
+   "a = 0 is WMO-No. 1029's Weibull formula; a = 1/2 (Hazen) and 2/5 (Cunnane) are WMO-No. 168's (sect. 5.6.1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "non_exceedance_positions",
+  "case_id": "wmo1029-eq7.3-223207-hazen",
+  "source": {
+   "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029",
+   "url": "https://library.wmo.int/idurl/4/32176",
+   "access": "open",
+   "locator": "sect. 7.3, eq. 7.3, p. 59: P_i = (i - a) / (n + 1 - 2a), the non-exceedance probability of the ith smallest event, the Weibull formula a = 0 (p. 60); sect. 7.8, step I, p. 65; the AM(7) minima of station 223207 (Timbarra River), table 7.1 and p. 58, plotted in figure 7.5"
+  },
+  "inputs": {
+   "values": [
+    27.3,
+    38.0,
+    72.9,
+    53.6,
+    45.7,
+    37.0,
+    21.7,
+    36.6,
+    43.1,
+    12.6,
+    20.7,
+    66.7,
+    76.6,
+    53.1,
+    15.7,
+    66.6,
+    78.0,
+    53.1,
+    62.6,
+    40.7,
+    51.6,
+    23.1,
+    23.4,
+    23.0,
+    6.0
+   ],
+   "method": "hazen"
+  },
+  "expected": {
+   "values_ascending": [
+    6.0,
+    12.6,
+    15.7,
+    20.7,
+    21.7,
+    23.0,
+    23.1,
+    23.4,
+    27.3,
+    36.6,
+    37.0,
+    38.0,
+    40.7,
+    43.1,
+    45.7,
+    51.6,
+    53.1,
+    53.1,
+    53.6,
+    62.6,
+    66.6,
+    66.7,
+    72.9,
+    76.6,
+    78.0
+   ],
+   "non_exceedance_probabilities": [
+    0.02,
+    0.06,
+    0.1,
+    0.14,
+    0.18,
+    0.22,
+    0.26,
+    0.3,
+    0.34,
+    0.38,
+    0.42,
+    0.46,
+    0.5,
+    0.54,
+    0.58,
+    0.62,
+    0.66,
+    0.7,
+    0.74,
+    0.78,
+    0.82,
+    0.86,
+    0.9,
+    0.94,
+    0.98
+   ],
+   "return_periods": [
+    50.0,
+    16.666666666666668,
+    10.0,
+    7.142857142857143,
+    5.555555555555555,
+    4.545454545454546,
+    3.8461538461538463,
+    3.3333333333333335,
+    2.9411764705882355,
+    2.6315789473684212,
+    2.380952380952381,
+    2.1739130434782608,
+    2.0,
+    1.8518518518518519,
+    1.7241379310344827,
+    1.6129032258064515,
+    1.5151515151515151,
+    1.4285714285714286,
+    1.3513513513513513,
+    1.2820512820512822,
+    1.2195121951219512,
+    1.1627906976744187,
+    1.1111111111111112,
+    1.0638297872340425,
+    1.0204081632653061
+   ]
+  },
+  "tolerance": {
+   "rel": 6.7e-16,
+   "reason": "the source prints the formula, not the positions: the expected values are its exact rationals for the 25 minima, as float64; the code rounds a few times"
+  },
+  "conventions": [
+   "the ith smallest minimum has rank i; T = 1 / F (eq. 7.14)",
+   "a = 0 is WMO-No. 1029's Weibull formula; a = 1/2 (Hazen) and 2/5 (Cunnane) are WMO-No. 168's (sect. 5.6.1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "non_exceedance_positions",
+  "case_id": "wmo1029-eq7.3-223207-cunnane",
+  "source": {
+   "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029",
+   "url": "https://library.wmo.int/idurl/4/32176",
+   "access": "open",
+   "locator": "sect. 7.3, eq. 7.3, p. 59: P_i = (i - a) / (n + 1 - 2a), the non-exceedance probability of the ith smallest event, the Weibull formula a = 0 (p. 60); sect. 7.8, step I, p. 65; the AM(7) minima of station 223207 (Timbarra River), table 7.1 and p. 58, plotted in figure 7.5"
+  },
+  "inputs": {
+   "values": [
+    27.3,
+    38.0,
+    72.9,
+    53.6,
+    45.7,
+    37.0,
+    21.7,
+    36.6,
+    43.1,
+    12.6,
+    20.7,
+    66.7,
+    76.6,
+    53.1,
+    15.7,
+    66.6,
+    78.0,
+    53.1,
+    62.6,
+    40.7,
+    51.6,
+    23.1,
+    23.4,
+    23.0,
+    6.0
+   ],
+   "method": "cunnane"
+  },
+  "expected": {
+   "values_ascending": [
+    6.0,
+    12.6,
+    15.7,
+    20.7,
+    21.7,
+    23.0,
+    23.1,
+    23.4,
+    27.3,
+    36.6,
+    37.0,
+    38.0,
+    40.7,
+    43.1,
+    45.7,
+    51.6,
+    53.1,
+    53.1,
+    53.6,
+    62.6,
+    66.6,
+    66.7,
+    72.9,
+    76.6,
+    78.0
+   ],
+   "non_exceedance_probabilities": [
+    0.023809523809523808,
+    0.06349206349206349,
+    0.10317460317460317,
+    0.14285714285714285,
+    0.18253968253968253,
+    0.2222222222222222,
+    0.2619047619047619,
+    0.30158730158730157,
+    0.3412698412698413,
+    0.38095238095238093,
+    0.42063492063492064,
+    0.4603174603174603,
+    0.5,
+    0.5396825396825397,
+    0.5793650793650794,
+    0.6190476190476191,
+    0.6587301587301587,
+    0.6984126984126984,
+    0.7380952380952381,
+    0.7777777777777778,
+    0.8174603174603174,
+    0.8571428571428571,
+    0.8968253968253969,
+    0.9365079365079365,
+    0.9761904761904762
+   ],
+   "return_periods": [
+    42.0,
+    15.75,
+    9.692307692307692,
+    7.0,
+    5.478260869565218,
+    4.5,
+    3.8181818181818183,
+    3.3157894736842106,
+    2.9302325581395348,
+    2.625,
+    2.3773584905660377,
+    2.1724137931034484,
+    2.0,
+    1.8529411764705883,
+    1.726027397260274,
+    1.6153846153846154,
+    1.5180722891566265,
+    1.4318181818181819,
+    1.3548387096774193,
+    1.2857142857142858,
+    1.2233009708737863,
+    1.1666666666666667,
+    1.1150442477876106,
+    1.0677966101694916,
+    1.024390243902439
+   ]
+  },
+  "tolerance": {
+   "rel": 6.7e-16,
+   "reason": "the source prints the formula, not the positions: the expected values are its exact rationals for the 25 minima, as float64; the code rounds a few times"
+  },
+  "conventions": [
+   "the ith smallest minimum has rank i; T = 1 / F (eq. 7.14)",
+   "a = 0 is WMO-No. 1029's Weibull formula; a = 1/2 (Hazen) and 2/5 (Cunnane) are WMO-No. 168's (sect. 5.6.1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "akaike_information_criterion",
+  "case_id": "coles2001-port-pirie",
+  "source": {
+   "citation": "OpenTURNS 1.28 documentation, example 'Estimate a GEV on the Port Pirie sea-levels data', reproducing Coles (2001), sect. 3.4.1",
+   "locator": "its output of the maximum likelihood: mu 3.875, sigma 0.198, xi -0.050 and the log-likelihood 4.339056652316124 at these estimates",
+   "url": "https://openturns.github.io/openturns/latest/auto_data_analysis/distribution_fitting/plot_estimate_gev_pirie.html",
+   "access": "open"
+  },
+  "inputs": {
+   "annual_maxima": [
+    4.03,
+    3.83,
+    3.65,
+    3.88,
+    4.01,
+    4.08,
+    4.18,
+    3.8,
+    4.36,
+    3.96,
+    3.98,
+    4.69,
+    3.85,
+    3.96,
+    3.85,
+    3.93,
+    3.75,
+    3.63,
+    3.57,
+    4.25,
+    3.97,
+    4.05,
+    4.24,
+    4.22,
+    3.73,
+    4.37,
+    4.06,
+    3.71,
+    3.96,
+    4.06,
+    4.55,
+    3.79,
+    3.89,
+    4.11,
+    3.85,
+    3.86,
+    3.86,
+    4.21,
+    4.01,
+    4.11,
+    4.24,
+    3.96,
+    4.21,
+    3.74,
+    3.85,
+    3.88,
+    3.66,
+    4.11,
+    3.71,
+    4.18,
+    3.9,
+    3.78,
+    3.91,
+    3.72,
+    4.0,
+    3.66,
+    3.62,
+    4.33,
+    4.55,
+    3.75,
+    4.08,
+    3.9,
+    3.88,
+    3.94,
+    4.33
+   ],
+   "distribution": "gev",
+   "shape": 0.05,
+   "loc": 3.875,
+   "scale": 0.198
+  },
+  "expected": {
+   "aic": -2.678113304632248
+  },
+  "printed_precision": {
+   "shape": 0.001,
+   "loc": 0.001,
+   "scale": 0.001,
+   "aic": 2e-15
+  },
+  "conventions": [
+   "the 65 annual maximum sea levels [m] of Port Pirie, 1923-1987, as R's evd::portpirie and Coles's data give them",
+   "AIC = 2 k - 2 ln L with k = 3 of the GEV and ln L the printed log-likelihood (WMO-No. 168 eq. 5.31)",
+   "Coles's (mu, sigma, xi) with xi = -c: scipy's c = 0.050 for xi = -0.050; the log-likelihood is OpenTURNS's at its unrounded estimates, which the corners of the printed ones cover"
+  ],
+  "second_source": {
+   "citation": "Coles, S. (2001). An Introduction to Statistical Modeling of Extreme Values. Springer",
+   "locator": "sect. 3.4.1, Port Pirie: the maximized log-likelihood 4.34",
+   "access": "author-provided"
+  },
+  "status": "second_source"
+ }
+]

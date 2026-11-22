@@ -1,0 +1,716 @@
+[
+ {
+  "formula": "scs",
+  "case_id": "neh630-ex16-1-area-a",
+  "source": {
+   "citation": "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)",
+   "url": "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf",
+   "access": "open",
+   "locator": "example 16-1, step 1, p. 16-8: Tp 1.53 h, qp 1,455 ft3/s for 1 in of runoff; figure 16-2(a), area A, p. 16-5"
+  },
+  "inputs": {
+   "area_km2": 11.9139453075456,
+   "tc_min": 138.0,
+   "timestep_min": 18.0
+  },
+  "expected": {
+   "time_to_peak_min": 91.8,
+   "peak_discharge_m3s": 1.6220870784
+  },
+  "printed_precision": {
+   "time_to_peak_min": 0.6,
+   "peak_discharge_m3s": 0.00111483648
+  },
+  "tolerance": {
+   "rel": 0.0016,
+   "reason": "the formula's C = 2.08 m3/s per km2 cm/h (HEC-HMS 2000 eq. 36) is the peak rate factor 483.23 in foot-pound units, 0.159 % below the 484 the source computes with"
+  },
+  "conventions": [
+   "the sources' foot-pound units converted exactly: 1 mi = 1.609344 km, 1 ft3/s = 0.028316846592 m3/s, 1 in = 25.4 mm (a peak per inch of runoff is the peak per 25.4 mm)",
+   "D = 0.3 h, the example's rounding of 0.133 tc = 0.306 h (eq. 16A-13)"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "USDA-SCS (1972). National Engineering Handbook, Section 4 Hydrology, Chapter 16: Hydrographs (NEH Notice 4-102, August 1972; amendment 6, March 1985)",
+   "url": "https://archive.org/details/CAT71334647003",
+   "access": "open",
+   "locator": "example 1, step 1, p. 16.10: Tp = 0.30/2 + 0.6 x 2.3 = 1.53 h, qp = 484 x 4.6 x 1 / 1.53 = 1,450 cfs printed to three figures; step 3: 2,968 cfs h"
+  }
+ },
+ {
+  "formula": "scs",
+  "case_id": "neh630-fig16-2-area-b",
+  "source": {
+   "citation": "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)",
+   "url": "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf",
+   "access": "open",
+   "locator": "figure 16-2, area B, pp. 16-5 to 16-6: D.A. 4.6 mi2, Tc 6.0 h, dD 0.8 h, qp 557 ft3/s, Tp 4.0 h"
+  },
+  "inputs": {
+   "area_km2": 11.9139453075456,
+   "tc_min": 360.0,
+   "timestep_min": 48.0
+  },
+  "expected": {
+   "time_to_peak_min": 240.0,
+   "peak_discharge_m3s": 0.62096391936
+  },
+  "printed_precision": {
+   "time_to_peak_min": 6.0,
+   "peak_discharge_m3s": 0.00111483648
+  },
+  "tolerance": {
+   "rel": 0.0016,
+   "reason": "the formula's C = 2.08 m3/s per km2 cm/h (HEC-HMS 2000 eq. 36) is the peak rate factor 483.23 in foot-pound units, 0.159 % below the 484 the source computes with"
+  },
+  "conventions": [
+   "the sources' foot-pound units converted exactly: 1 mi = 1.609344 km, 1 ft3/s = 0.028316846592 m3/s, 1 in = 25.4 mm (a peak per inch of runoff is the peak per 25.4 mm)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "scs",
+  "case_id": "neh630-fig16-2-area-c1",
+  "source": {
+   "citation": "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)",
+   "url": "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf",
+   "access": "open",
+   "locator": "figure 16-2, area C1, pp. 16-5 to 16-6: D.A. 2.6 mi2, Tc 6.0 h, dD 0.8 h, qp 315 ft3/s, Tp 4.0 h"
+  },
+  "inputs": {
+   "area_km2": 6.7339690868736,
+   "tc_min": 360.0,
+   "timestep_min": 48.0
+  },
+  "expected": {
+   "time_to_peak_min": 240.0,
+   "peak_discharge_m3s": 0.3511734912
+  },
+  "printed_precision": {
+   "time_to_peak_min": 6.0,
+   "peak_discharge_m3s": 0.00111483648
+  },
+  "tolerance": {
+   "rel": 0.0016,
+   "reason": "the formula's C = 2.08 m3/s per km2 cm/h (HEC-HMS 2000 eq. 36) is the peak rate factor 483.23 in foot-pound units, 0.159 % below the 484 the source computes with"
+  },
+  "conventions": [
+   "the sources' foot-pound units converted exactly: 1 mi = 1.609344 km, 1 ft3/s = 0.028316846592 m3/s, 1 in = 25.4 mm (a peak per inch of runoff is the peak per 25.4 mm)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "scs",
+  "case_id": "neh630-fig16-2-area-c2",
+  "source": {
+   "citation": "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)",
+   "url": "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf",
+   "access": "open",
+   "locator": "figure 16-2(b), area C2, p. 16-6: D.A. 2.0 mi2, Tc 1.5 h, dD 0.2 h, qp 988 ft3/s, Tp 1.0 h"
+  },
+  "inputs": {
+   "area_km2": 5.179976220672,
+   "tc_min": 90.0,
+   "timestep_min": 12.0
+  },
+  "expected": {
+   "time_to_peak_min": 60.0,
+   "peak_discharge_m3s": 1.10145844224
+  },
+  "printed_precision": {
+   "time_to_peak_min": 6.0,
+   "peak_discharge_m3s": 0.00111483648
+  },
+  "tolerance": {
+   "rel": 0.0016,
+   "reason": "the formula's C = 2.08 m3/s per km2 cm/h (HEC-HMS 2000 eq. 36) is the peak rate factor 483.23 in foot-pound units, 0.159 % below the 484 the source computes with"
+  },
+  "conventions": [
+   "the sources' foot-pound units converted exactly: 1 mi = 1.609344 km, 1 ft3/s = 0.028316846592 m3/s, 1 in = 25.4 mm (a peak per inch of runoff is the peak per 25.4 mm)"
+  ],
+  "status": "discrepancy",
+  "second_source": {
+   "citation": "USDA-SCS (1972). National Engineering Handbook, Section 4 Hydrology, Chapter 16: Hydrographs (NEH Notice 4-102, August 1972; amendment 6, March 1985)",
+   "url": "https://archive.org/details/CAT71334647003",
+   "access": "open",
+   "locator": "example 4, location 1, step 2, p. 16.22: the same watershed (2 mi2, Tc 1.5 h, dD 0.2 h), qp = 484 x 2 x 1 / 1.0 = 968 ft3/s"
+  },
+  "discrepancy": "a misprint of the figure: eq. 16A-6 gives 484 x 2.0 / 1.0 = 968 ft3/s, as NEH-4 computes for the same watershed and as the figure's other three areas follow"
+ },
+ {
+  "formula": "scs",
+  "case_id": "neh4-1972-ex4-location-1",
+  "source": {
+   "citation": "USDA-SCS (1972). National Engineering Handbook, Section 4 Hydrology, Chapter 16: Hydrographs (NEH Notice 4-102, August 1972; amendment 6, March 1985)",
+   "url": "https://archive.org/details/CAT71334647003",
+   "access": "open",
+   "locator": "example 4, location 1, steps 1-2, p. 16.22: 2 mi2, Tc 1.5 h, dD = 0.133 x 1.5 = 0.2 h, qp = 484 x 2 x 1 / (0.1 + 0.9) = 968 ft3/s"
+  },
+  "inputs": {
+   "area_km2": 5.179976220672,
+   "tc_min": 90.0,
+   "timestep_min": 12.0
+  },
+  "expected": {
+   "peak_discharge_m3s": 1.07916171264
+  },
+  "printed_precision": {
+   "peak_discharge_m3s": 0.00111483648
+  },
+  "tolerance": {
+   "rel": 0.0016,
+   "reason": "the formula's C = 2.08 m3/s per km2 cm/h (HEC-HMS 2000 eq. 36) is the peak rate factor 483.23 in foot-pound units, 0.159 % below the 484 the source computes with"
+  },
+  "conventions": [
+   "the sources' foot-pound units converted exactly: 1 mi = 1.609344 km, 1 ft3/s = 0.028316846592 m3/s, 1 in = 25.4 mm (a peak per inch of runoff is the peak per 25.4 mm)",
+   "D as the example rounds 0.133 tc"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "scs",
+  "case_id": "neh4-1972-ex4-location-2",
+  "source": {
+   "citation": "USDA-SCS (1972). National Engineering Handbook, Section 4 Hydrology, Chapter 16: Hydrographs (NEH Notice 4-102, August 1972; amendment 6, March 1985)",
+   "url": "https://archive.org/details/CAT71334647003",
+   "access": "open",
+   "locator": "example 4, location 2, steps 1-2, p. 16.23: 20 mi2, Tc 6 h, dD = 0.133 x 6 = 0.8 h, qp = 484 x 20 x 1 / (0.4 + 3.6) = 2,420 ft3/s"
+  },
+  "inputs": {
+   "area_km2": 51.79976220672,
+   "tc_min": 360.0,
+   "timestep_min": 48.0
+  },
+  "expected": {
+   "peak_discharge_m3s": 2.6979042816
+  },
+  "printed_precision": {
+   "peak_discharge_m3s": 0.00111483648
+  },
+  "tolerance": {
+   "rel": 0.0016,
+   "reason": "the formula's C = 2.08 m3/s per km2 cm/h (HEC-HMS 2000 eq. 36) is the peak rate factor 483.23 in foot-pound units, 0.159 % below the 484 the source computes with"
+  },
+  "conventions": [
+   "the sources' foot-pound units converted exactly: 1 mi = 1.609344 km, 1 ft3/s = 0.028316846592 m3/s, 1 in = 25.4 mm (a peak per inch of runoff is the peak per 25.4 mm)",
+   "D as the example rounds 0.133 tc"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "scs",
+  "case_id": "neh630-ex16-1-ordinates",
+  "source": {
+   "citation": "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)",
+   "url": "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf",
+   "access": "open",
+   "locator": "example 16-1, step 2 and table 16-4(a), column 2, pp. 16-8 and 16-12: the ordinates at 0.3 h read from figure 16-4"
+  },
+  "inputs": {
+   "area_km2": 11.9139453075456,
+   "tc_min": 138.0,
+   "timestep_min": 18.0
+  },
+  "expected": {
+   "ordinates_m3s": [
+    0.0,
+    0.1560771072,
+    0.48941321472,
+    1.02899407104,
+    1.48496219136,
+    1.6220870784,
+    1.53624466944,
+    1.29989933568,
+    0.97325224704,
+    0.67001672448,
+    0.48606870528,
+    0.36120701952,
+    0.2619865728,
+    0.19063703808,
+    0.13823972352,
+    0.1003352832,
+    0.0724643712,
+    0.05239731456,
+    0.0390192768,
+    0.027870912,
+    0.02006705664,
+    0.01560771072,
+    0.01226320128,
+    0.00780385536,
+    0.00445934592,
+    0.00111483648,
+    0.0
+   ]
+  },
+  "printed_precision": {
+   "ordinates_m3s": 0.00111483648
+  },
+  "tolerance": {
+   "abs": 0.00891869184,
+   "rel": 0.0016,
+   "reason": "the ordinates were read from the plotted curve (step 2), whose sum NEH checks within 0.17 % of the volume (2,974 against 2,969 ft3/s h): 8 ft3/s, 0.55 % of qp; and C = 2.08 against 484, 0.159 %"
+  },
+  "conventions": [
+   "the sources' foot-pound units converted exactly: 1 mi = 1.609344 km, 1 ft3/s = 0.028316846592 m3/s, 1 in = 25.4 mm (a peak per inch of runoff is the peak per 25.4 mm)",
+   "the ordinates at k dD, dD = 0.3 h, from t = 0"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "uh_convolution",
+  "case_id": "neh630-ex16-1-flood-hydrograph",
+  "source": {
+   "citation": "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16 Hydrographs (210-VI-NEH, March 2007)",
+   "locator": "example 16-1, table 16-4(a)-(d), column 3, and step 10, pp. 16-11 to 16-13: the composite flood hydrograph at 0.3 h, peak 2,356 ft3/s at 6.3 h, sum 33,409",
+   "url": "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "effective_precip_mm": [
+    0.0,
+    3.048,
+    6.858,
+    8.382,
+    6.604,
+    4.572,
+    3.048,
+    1.524,
+    0.0,
+    0.0,
+    0.254,
+    1.27,
+    2.794,
+    6.35,
+    9.144,
+    10.668,
+    7.874,
+    6.096,
+    4.826,
+    2.286
+   ],
+   "unit_hydrograph_m3s": [
+    0.0,
+    0.1560771072,
+    0.48941321472,
+    1.02899407104,
+    1.48496219136,
+    1.6220870784,
+    1.53624466944,
+    1.29989933568,
+    0.97325224704,
+    0.67001672448,
+    0.48606870528,
+    0.36120701952,
+    0.2619865728,
+    0.19063703808,
+    0.13823972352,
+    0.1003352832,
+    0.0724643712,
+    0.05239731456,
+    0.0390192768,
+    0.027870912,
+    0.02006705664,
+    0.01560771072,
+    0.01226320128,
+    0.00780385536,
+    0.00445934592,
+    0.00111483648,
+    0.0
+   ],
+   "timestep_min": 18.0
+  },
+  "expected": {
+   "discharge_m3s": [
+    0.0,
+    0.0,
+    0.481386392064,
+    2.54851619328,
+    7.7871328128,
+    16.7069394893,
+    27.693875967,
+    37.7746733537,
+    44.3441817631,
+    46.1281430984,
+    43.2681415926,
+    37.0950690355,
+    29.9025900012,
+    23.8427848305,
+    20.6712980122,
+    21.7756550292,
+    28.0053612795,
+    38.4542776719,
+    50.4889374735,
+    60.6546854001,
+    66.4313221048,
+    66.7144905708,
+    61.702408724,
+    52.7542852009,
+    42.3053688084,
+    32.3944725012,
+    23.9277353702,
+    17.3015932677,
+    12.4877293471,
+    9.06139090944,
+    6.56950840934,
+    4.75723022746,
+    3.45465528422,
+    2.52019934669,
+    1.84059502848,
+    1.33089178982,
+    0.962772784128,
+    0.7079211648,
+    0.481386392064,
+    0.311485312512,
+    0.198217926144,
+    0.113267386368,
+    0.056633693184,
+    0.028316846592,
+    0.0,
+    0.0
+   ],
+   "peak_discharge_m3s": 66.7144905708,
+   "time_to_peak_min": 378.0
+  },
+  "printed_precision": {
+   "discharge_m3s": 0.028316846592,
+   "peak_discharge_m3s": 0.028316846592
+  },
+  "tolerance": {
+   "abs": 0.028316846592,
+   "reason": "NEH rounds every product of the strips of paper to whole ft3/s before adding them (step 8: 16.8 -> 17)"
+  },
+  "conventions": [
+   "the source's foot-pound units converted exactly: 1 in = 25.4 mm, 1 ft3/s = 0.028316846592 m3/s; a unit hydrograph per inch is per 25.4 mm",
+   "the increment of the interval ending at t_m starts the unit hydrograph at t_(m-1): Q(0.6 h) = 0.12 in x UH(0.3 h)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "uh_convolution",
+  "case_id": "kzgw2017-ex6-2-niedzwiadka",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych. Załącznik nr 2 do OPZ (ujednolicony)",
+   "locator": "przykład 6.2 (potok Niedźwiadka km 3+450), tabela 6.2 (h_t) and tabela 6.3 (H_t, Q_t), pp. 100-101; eq. 6.12: peak 13.66 m3/s at 22 h",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "effective_precip_mm": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.07,
+    0.73,
+    1.73,
+    2.95,
+    4.25,
+    5.51,
+    6.54,
+    7.18,
+    7.23,
+    6.5,
+    4.79,
+    1.89
+   ],
+   "unit_hydrograph_m3s": [
+    0.0,
+    0.528,
+    0.771,
+    0.425,
+    0.175,
+    0.063,
+    0.021,
+    0.007,
+    0.002,
+    0.001,
+    0.0
+   ],
+   "timestep_min": 60.0
+  },
+  "expected": {
+   "peak_discharge_m3s": 13.66,
+   "time_to_peak_min": 1320.0
+  },
+  "printed_precision": {
+   "peak_discharge_m3s": 0.01,
+   "effective_precip_mm": 0.01,
+   "unit_hydrograph_m3s": 0.001
+  },
+  "conventions": [
+   "Q_t = sum_i h_i H_(t-i+1) (KZGW 2017 eq. 6.12), h_i the ordinate at the end of interval i, H_t the excess of interval t"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "uh_convolution",
+  "case_id": "kzgw2017-ex6-4-sluzewiecki",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych. Załącznik nr 2 do OPZ (ujednolicony)",
+   "locator": "przykład 6.4 (Potok Służewiecki, al. KEN), tabela 6.3 (h_i, dt 0.5 h) and tabela 6.4, pp. 108-110: peak 9.51 m3/s at 3.5 h",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "effective_precip_mm": [
+    0.0,
+    1.4,
+    1.6,
+    2.1
+   ],
+   "unit_hydrograph_m3s": [
+    0,
+    0.57,
+    1.371,
+    1.772,
+    1.911,
+    1.887,
+    1.769,
+    1.602,
+    1.415,
+    1.227,
+    1.05,
+    0.887,
+    0.743,
+    0.618,
+    0.51,
+    0.419,
+    0.342,
+    0.278,
+    0.225,
+    0.182,
+    0.147,
+    0.118,
+    0.094,
+    0.075,
+    0.06,
+    0.048,
+    0.038,
+    0.03,
+    0.024
+   ],
+   "timestep_min": 30.0
+  },
+  "expected": {
+   "peak_discharge_m3s": 9.51,
+   "time_to_peak_min": 210.0
+  },
+  "printed_precision": {
+   "peak_discharge_m3s": 0.01
+  },
+  "conventions": [
+   "Q_t = sum_i h_i H_(t-i+1) (KZGW 2017 eq. 6.12), h_i the ordinate at the end of interval i, H_t the excess of interval t"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "snyder",
+  "case_id": "kzgw2017-ex6-1-parameters",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 6.1 (the Jasienica at the Międzyrzecze dam), step 9, p. 93: tL 6.65 h, tD 1.21 h, tp 7.26 h, qp 1.06 m3/s per mm, tLR 6.60 h and qpR 1.07 m3/s per mm for a rainfall of 1 h (eqs. 6.4 to 6.10)"
+  },
+  "inputs": {
+   "area_km2": 45.3,
+   "length_km": 14.9,
+   "centroid_length_km": 7.0,
+   "ct": 1.65,
+   "cp": 0.565,
+   "duration_min": 60.0
+  },
+  "expected": {
+   "lag_time_min": 399.0,
+   "standard_duration_min": 72.6,
+   "adjusted_lag_time_min": 396.0,
+   "standard_peak_discharge_m3s": 1.06,
+   "peak_discharge_m3s": 1.07
+  },
+  "printed_precision": {
+   "area_km2": 0.1,
+   "length_km": 0.1,
+   "centroid_length_km": 0.1,
+   "ct": 0.01,
+   "cp": 0.001,
+   "lag_time_min": 0.6,
+   "standard_duration_min": 0.6,
+   "adjusted_lag_time_min": 0.6,
+   "standard_peak_discharge_m3s": 0.01,
+   "peak_discharge_m3s": 0.01
+  },
+  "intermediate_rounding": [
+   {
+    "step": "tD = 6.65 / 5.5 h from tL rounded to 6.65 h",
+    "effect": {
+     "standard_duration_min": 0.0546
+    }
+   },
+   {
+    "step": "qp = 0.275 x 0.565 x 45.3 / 6.65 from tL rounded",
+    "effect": {
+     "standard_peak_discharge_m3s": 0.0008
+    }
+   },
+   {
+    "step": "tLR = 6.65 + 0.25 (1.0 - 1.21) h from tL and tD rounded",
+    "effect": {
+     "adjusted_lag_time_min": 0.375
+    }
+   },
+   {
+    "step": "qpR = 1.06 x 6.65 / 6.60 from qp, tL and tLR rounded",
+    "effect": {
+     "peak_discharge_m3s": 0.0067
+    }
+   }
+  ],
+  "conventions": [
+   "times in h in the source and in min here (60 min/h); peaks in m3/s per mm of runoff",
+   "Ct in SI units (KZGW 2017 p. 90: 1.35 to 1.65, 0.75 times Snyder's); tp and tpR from the beginning of the rainfall"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "snyder",
+  "case_id": "kzgw2017-ex6-1-time-to-peak-and-base",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 6.1, step 9, p. 93: tpR = 6.60 + 1.0 / 2 = 7.0 h and tb = 0.556 x 45.3 / 1.07 = 23.0 h (eqs. 6.9 and 6.11)"
+  },
+  "inputs": {
+   "area_km2": 45.3,
+   "length_km": 14.9,
+   "centroid_length_km": 7.0,
+   "ct": 1.65,
+   "cp": 0.565,
+   "duration_min": 60.0
+  },
+  "expected": {
+   "time_to_peak_min": 420.0,
+   "time_base_min": 1380.0
+  },
+  "printed_precision": {
+   "time_to_peak_min": 6.0,
+   "time_base_min": 6.0
+  },
+  "conventions": [
+   "times in h in the source and in min here (60 min/h)"
+  ],
+  "status": "discrepancy",
+  "second_source": {
+   "citation": "Rajagopalan, B. CVEN 5333 lecture notes, Unit Hydrographs, after Chow, V.T., Maidment, D.R. and Mays, L.W. (1988), Applied Hydrology, chapter 7, University of Colorado Boulder",
+   "url": "https://civil.colorado.edu/~balajir/CVEN5333/Lectures/Unit-Hydrographs-Chow-Chap7.pdf",
+   "access": "open",
+   "locator": "pp. 77-78: the adjusted lag plus half the duration to the peak, tb = C3 A / qpR with C3 = 5.56 per cm"
+  },
+  "discrepancy": "slips of the source's arithmetic, its page image checked: the printed terms give tpR = 6.60 + 1.0 / 2 = 7.10 h, not 7.0, and tb = 0.556 x 45.3 / 1.07 = 23.54 h, not 23.0; the equations of both sources give the formula's 7.10 h and 23.6 h"
+ },
+ {
+  "formula": "snyder_shape",
+  "case_id": "kzgw2017-ex6-1-design-peak",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 6.1, table 6.1, p. 94: the design hydrograph of the excess rainfall of hours 14 to 23 (0.8, 4.0, 8.5, 12.8, 15.3, 15.0, 12.0, 7.4, 3.1 and 0.7 mm), its peak 73.24 m3/s at 26 h"
+  },
+  "inputs": {
+   "area_km2": 45.3,
+   "time_to_peak_min": 426.0,
+   "peak_discharge_m3s": 1.07,
+   "timestep_min": 60.0,
+   "total_duration_min": 2640.0
+  },
+  "expected": {
+   "design_peak_m3s": 73.24,
+   "design_peak_time_min": 1560.0
+  },
+  "printed_precision": {
+   "design_peak_m3s": 0.01
+  },
+  "conventions": [
+   "the design hydrograph is the convolution of the excess rainfall with the unit hydrograph (eq. 6.12); the peak tpR and qpR of the spec snyder for a rainfall of 1 h"
+  ],
+  "status": "discrepancy",
+  "second_source": {
+   "citation": "Rajagopalan, B. CVEN 5333 lecture notes, Unit Hydrographs, after Chow, V.T., Maidment, D.R. and Mays, L.W. (1988), Applied Hydrology, chapter 7, University of Colorado Boulder",
+   "url": "https://civil.colorado.edu/~balajir/CVEN5333/Lectures/Unit-Hydrographs-Chow-Chap7.pdf",
+   "access": "open",
+   "locator": "pp. 77-78: the unit hydrograph sketched through the peak, the widths W50 and W75, a third of each before the peak, and the time base"
+  },
+  "discrepancy": "the shape between the points of the method: KZGW draws the unit hydrograph with straight lines (fig. 6.1), and a triangle or Chow's polygon of the widths through the peak reproduces table 6.1 within 0.5 % (73.1 to 73.6 m3/s); the gamma curve of 1 mm gives 78.27 m3/s at 25 h, 6.9 % higher"
+ },
+ {
+  "formula": "nash_iuh",
+  "case_id": "kzgw2017-ex6-2-uh-from-n-k",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 6.2 (the Niedźwiadka at km 3+450), step 11 and table 6.2, p. 100: u_t and h_t of N 2.55 and k 0.70 h at t = 0 to 10 h (eqs. 6.13, 6.22-6.23)"
+  },
+  "inputs": {
+   "n": 2.55,
+   "k_min": 42.0,
+   "area_km2": 7.2,
+   "timestep_min": 60.0,
+   "duration_min": 60.0,
+   "total_duration_min": 600.0
+  },
+  "expected": {
+   "iuh_ordinates_per_min": [0.0, 0.00718333333333, 0.00505, 0.00228333333333, 0.00085, 0.000283333333333, 0.0001, 0.0000333333333333, 0.0000166666666667, 0.0, 0.0],
+   "ordinates_m3s": [0.0, 0.528, 0.771, 0.425, 0.175, 0.063, 0.021, 0.007, 0.002, 0.001, 0.0]
+  },
+  "printed_precision": {
+   "n": 0.01,
+   "k_min": 0.6,
+   "iuh_ordinates_per_min": 0.0000166666666667,
+   "ordinates_m3s": 0.001
+  },
+  "conventions": [
+   "u_t in 1/h in the source, divided by 60 here; h_t = A / 3.6 x (1 / dt) int u over the step, in m3/s per mm (eq. 6.22), the ordinates of D = dt = 1 h",
+   "N read from table C.2 to two decimals and k = 1.09 / 1.55 h printed as 0.70 h: the inputs as printed"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "nash_iuh_peak",
+  "case_id": "kzgw2017-ex6-2-tp-up-from-n-k",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "example 6.2 (the Niedźwiadka at km 3+450), steps 8-10, pp. 99-100: tp = 1.09 h and up = 0.433 1/h give f(N) = tp up = 0.471, N = 2.55 (table C.2) and k = tp / (N - 1) = 0.70 h, eqs. 6.14 and 6.16 read backwards"
+  },
+  "inputs": {
+   "n": 2.55,
+   "k_min": 42.0
+  },
+  "expected": {
+   "time_to_peak_min": 65.4,
+   "peak_ordinate_per_min": 0.00721666666667
+  },
+  "printed_precision": {
+   "n": 0.01,
+   "k_min": 0.6,
+   "time_to_peak_min": 0.6,
+   "peak_ordinate_per_min": 0.0000166666666667
+  },
+  "conventions": [
+   "tp in h and up in 1/h in the source, here in min (60 min/h) and 1/min",
+   "the example's N and k, read from table C.2 and printed to two decimals, as inputs"
+  ],
+  "status": "single_source"
+ }
+]

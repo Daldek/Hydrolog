@@ -2,9 +2,9 @@
 
 ## Hydrolog - Hydrological Toolkit Library
 
-**Version:** 0.8.0 (frozen on 2026-11-16)
+**Version:** 0.9.0
 **Date:** 2026-10-19
-**Status:** v0.8.0 frozen on 2026-11-16 for the first joint release of the Nogat ecosystem
+**Status:** v0.9.0, the release of the Nogat ecosystem's standard 1.1 (v0.8.0 was the first joint release of the ecosystem, v0.8.1 its patch release)
 
 ---
 
@@ -136,9 +136,9 @@ print(f"Peak intensity: {result.intensity_mm_per_h.max():.2f} mm/h")
 **So that** I can determine the catchment response time
 
 **Acceptance criteria:**
-- [ ] Accepts: stream length [km], slope [m/m]
+- [ ] Accepts: length of the longest flow path, from the hydraulically most distant point to the outlet [km], and its slope [m/m]
 - [ ] Returns: time of concentration [min]
-- [ ] Formula: tc = 0.0195 × L^0.77 × S^(-0.385)
+- [ ] Formula: spec `kirpich` ([FORMULAS.md](FORMULAS.md)), Kirpich's `tc[min] = 0.0078 × L^0.77 × S^(-0.385)` with L in ft (Fang et al. 2005, eq. 3.14), the length converted from km exactly
 
 **Example:**
 ```python
@@ -156,9 +156,9 @@ print(f"tc = {tc:.1f} min")
 **So that** I can take CN into account in the calculations
 
 **Acceptance criteria:**
-- [ ] Accepts: stream length [km], CN, slope [m/m]
+- [ ] Accepts: length of the longest flow path [km], CN, average land slope of the catchment [m/m] (not the slope of the flow path)
 - [ ] Returns: time of concentration [min]
-- [ ] Formula: Lag = L^0.8 × (S+1)^0.7 / (1900 × Y^0.5), tc = Lag / 0.6
+- [ ] Formula: spec `nrcs` ([FORMULAS.md](FORMULAS.md)), NEH 630 ch. 15, eq. 15-4b: `tc[h] = ℓ^0.8 × (S+1)^0.7 / (1140 × Y^0.5)` with ℓ in ft, S = 1000/CN − 10 in inches and Y in %, the inputs converted exactly (eq. 15-4a gives the lag, L = 0.6 Tc by eq. 15-3)
 
 > **Note:** The method was renamed from `scs_lag` to `nrcs` in v0.3.0. The `slope_percent` parameter was changed to `slope_m_per_m`.
 
@@ -226,8 +226,12 @@ print(f"tc = {tc:.1f} min")
 
 #### US-P04: Euler Type II hyetograph
 **As** a developer
-**I want** to generate an Euler Type II (DVWK) hyetograph
-**So that** I can apply the standard design rainfall used in German-speaking countries
+**I want** to generate the Euler type II design storm of ATV-DVWK-A 118 from the depth-duration curve of one probability (PMAXTP, KOSTRA-DWD or a local formula)
+**So that** I can apply the model rain of German and Polish urban drainage design, in which the blocks around the peak hold the design depths of their durations
+
+**Acceptance criteria** (corrected in the hotfix of 2026-11-18, [ADR-0042](decisions/0042-the-euler-type-ii-storm-from-a-depth-duration-curve.md)):
+- [x] The blocks are the increments of the curve: the first in the peak interval, which starts at 0.3 of the duration rounded down to the step, the next ones before it back to t = 0, the rest after it; the storm holds the depth of its duration
+- [x] The published storms of DWD (Malitz 2009) and the itwh KOSTRA-DWD 2010R printouts are reproduced to their printing, and the peak blocks of an itwh KOSTRA-DWD 2020 printout and of the Wrocław monograph (Kaźmierczak and Kotowski 2012) (COMPUTATION_PATHS 3.15)
 
 ---
 
@@ -418,7 +422,7 @@ print(f"tc = {tc:.1f} min")
 
 **Acceptance criteria:**
 - [ ] Section „Kalkulatory”: 16 calculators, catalog forms prefilled from the watershed of „Hydrogram zlewni”
-- [ ] The tc comparison lists six methods with the words of their applicability notices (`outside_typical_range`)
+- [ ] The tc comparison lists six methods with the words of their applicability notices (`outside_applicability`)
 - [ ] A calculator's CLI line and result match the CLI's
 
 #### US-G05: Every command as a generated form
@@ -529,7 +533,7 @@ print(f"tc = {tc:.1f} min")
 - rasterio >= 1.3, pyproj >= 3.6 (optional, extra `[raster]`: HSG from rasters)
 - mcp >= 2.3, < 3 (optional, extra `[mcp]`: MCP server)
 - starlette >= 1.10, < 2, uvicorn >= 0.54, < 1 (optional, extra `[gui]`: web GUI)
-- obserwator >= 3.0.0.dev0, < 4 (optional, extras `[pmaxtp]` and `[gui]`: the PMAXTP depth of `precip pmaxtp`)
+- obserwator >= 3.1.0, < 4 (optional, extras `[pmaxtp]` and `[gui]`: the PMAXTP depth of `precip pmaxtp`)
 - No dependency on GeoPandas/Shapely in the core
 
 ---
@@ -601,7 +605,7 @@ print(f"tc = {tc:.1f} min")
   - [x] Water balance, CN curve, hypsometric curve
   - [x] River network statistics, rain gauge station map
   - [x] Dashboard with full calculation results
-- [x] `precipitation.hietogram` - Euler Type II (DVWK)
+- [x] `precipitation.hietogram` - Euler Type II (DVWK) (until 0.8.1 an approximation with fixed `r^-0.7` weights that took only the total; since the hotfix of 2026-11-18 the storm of ATV-DVWK-A 118 from a depth-duration curve, ADR-0042)
 - [x] `runoff.nash_iuh` - Lutz method (estimating n, K from catchment characteristics)
 - [x] Tests and documentation (538 tests)
 
@@ -634,7 +638,7 @@ print(f"tc = {tc:.1f} min")
 - [x] `visualization.statistics` - 10 visualization functions
 - [x] Tests and documentation
 
-### v0.8.0 - Command catalog, MCP, HSG *(frozen on 2026-11-16)*
+### v0.8.0 - Command catalog, MCP, HSG *(released 2026-11-16)*
 - [x] `catalog`, `operations` - a catalog of 62 commands in 17 groups and the operations layer
 - [x] `cli` - CLI generated from the catalog (breaking change: the former syntax was removed)
 - [x] `mcp` - MCP server (`hydrolog mcp`, extra `[mcp]`)
@@ -644,14 +648,21 @@ print(f"tc = {tc:.1f} min")
 - [x] Calculation fixes: Fisher-Tippett for minima, Clark UH for D that is not a multiple of the step, calculation report, StreamNetwork, RatingCurve (details: CHANGELOG)
 - [x] Station analyses for Obserwator's series: the groups `stats`, `hydrometrics` and `meteo` (ADR-0029 to ADR-0033)
 - [x] `gui` - the web GUI (`hydrolog gui serve`, extra `[gui]`, ADR-0014; section 2.16)
-- [ ] Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - after v0.8.0
-- [ ] Complete API documentation (MkDocs/Sphinx) - after v0.8.0
-- [ ] Publication on PyPI - after v0.8.0, with the rename to `nogat-hydrolog`; v0.8.0 installs from its Git tag
+- [ ] Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - after v0.9.0
+- [ ] Complete API documentation (MkDocs/Sphinx) - after v0.9.0
+- [ ] Publication on PyPI - after v0.9.0, with the rename to `nogat-hydrolog`; v0.9.0 installs from its Git tag
 
-### v0.8.0 - Flood routing *(merged into `develop`, ADR-0007)*
+### v0.8.0 - Flood routing *(released 2026-11-16, ADR-0007)*
 - [x] `routing` and the command group `route`: `Hydrograph`, `Reach`, lag (`route lag`), Muskingum (`route muskingum`), Muskingum-Cunge (`route muskingum-cunge`), cascade of linear reservoirs (`route cascade`), level-pool reservoir (`route level-pool`), river network (`route network`) (plan: `docs/plans/2026-10-24-flood-routing.md`)
+
+### v0.9.0 - Formulas declared by specs (Nogat's computation standard)
+- [x] `nogat_formulas` - Nogat's reference module; every Tier A formula declared by its `FormulaSpec` with ranges, sources, reference cases and a `formula_version`, carried by results in `formula_versions` (ADR-0050); `docs/FORMULAS.md` and the handbook `docs/podrecznik/` generated from the specs
+- [x] Gross formula defects fixed (Nogat CMP-9.1): the Euler type II storm from a depth-duration curve (ADR-0042), Kirpich's and the NRCS lag constants, maximum likelihood and least squares of the frequency analyses, the rating curve fit (ADR-0071)
+- [x] The notice `outside_applicability` (CMP-3.3, ADR-0070, was `outside_typical_range`)
+- [x] File names `hydrolog_<content>_<qualifiers>.<ext>` (Nogat DEV-19.21), ČHMÚ as `chmu`, Nogat's GUI kit 1.1.0 and standard 1.1
+- [x] A station's series `hydrolog-series/1` as an `input_file` (ADR-0068)
 
 ---
 
-**Document version:** 0.8.0 (frozen on 2026-11-16)
-**Last updated:** 2026-11-16
+**Document version:** 0.9.0
+**Last updated:** 2026-11-22

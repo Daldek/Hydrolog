@@ -392,7 +392,7 @@ class TestWhatItUses:
         )
         model = CurveNumberRunoff()
 
-        with pytest.warns(UserWarning, match="outside typical range"):
+        with pytest.warns(UserWarning, match="outside its applicability range"):
             model.hydrograph(RAIN, flat, 5.0)
         with warnings.catch_warnings():
             warnings.simplefilter("error")

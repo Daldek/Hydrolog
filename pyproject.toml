@@ -65,7 +65,7 @@ viz = [
 # before its release (the release commit replaces it with a tag). The "gui" and "all"
 # extras repeat it.
 pmaxtp = [
-    "obserwator>=3.0.0,<4",
+    "obserwator>=3.1.0,<4",
 ]
 # The web GUI (`hydrolog gui serve`, the `nogat.gui` module): Starlette's routing,
 # StaticFiles and TestClient, served by uvicorn, and Obserwator for the PMAXTP depth of
@@ -73,7 +73,7 @@ pmaxtp = [
 gui = [
     "starlette>=1.10,<2",
     "uvicorn>=0.54,<1",
-    "obserwator>=3.0.0,<4",
+    "obserwator>=3.1.0,<4",
 ]
 all = [
     "rasterio>=1.3",
@@ -83,7 +83,7 @@ all = [
     "seaborn>=0.12",
     "starlette>=1.10,<2",
     "uvicorn>=0.54,<1",
-    "obserwator>=3.0.0,<4",
+    "obserwator>=3.1.0,<4",
 ]
 
 [project.scripts]
@@ -106,14 +106,15 @@ where = ["src"]
 include = ["hydrolog*"]
 
 [tool.setuptools.package-data]
-hydrolog = ["py.typed", "_data/agents/*.md", "schemas/*.json", "gui/web/**/*"]
+hydrolog = ["py.typed", "_data/agents/*.md", "_data/tables/*.csv", "schemas/*.json", "gui/web/**/*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "hydrolog.__version__"}
 
 [tool.uv.sources]
-# Obserwator 3.0.1, the release of Nogat's release set of the patch releases.
-obserwator = { git = "https://github.com/Daldek/Obserwator.git", tag = "v3.0.1" }
+# Obserwator 3.1.0, the release of Nogat's release set v0.2.0 (the release round of
+# 2026-11-21).
+obserwator = { git = "https://github.com/Daldek/Obserwator.git", tag = "v3.1.0" }
 
 [dependency-groups]
 dev = [
@@ -127,6 +128,11 @@ dev = [
     # `uv run --no-sync playwright install chromium`).
     "httpx2>=2.16,<3",
     "playwright>=1.64,<2",
+    # The generated range, type and property tests of the formulas (Hypothesis,
+    # Nogat CMP-6.5, CMP-6.9) and their mutation testing (mutmut, CMP-7.1), at the
+    # versions of Nogat's release set (CMP-8.3).
+    "hypothesis>=6.170.15",
+    "mutmut>=3.8.1",
 ]
 
 [tool.ruff]
@@ -144,6 +150,8 @@ convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
+# The research script of a frozen oracle, kept byte for byte as it ran (Nogat CMP-6.4).
+"tests/oracles/trend_regime/build_datasets.py" = ["E501", "SIM905"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -181,6 +189,7 @@ markers = [
     "live: real network services (the PMAXTP of IMGW-PIB); run on demand",
     "slow: more than ~10 s or Docker",
     "db: needs a database (none in this project)",
+    "formula: a test of a formula of the computation standard (Nogat CMP-6.8)",
 ]
 
 [tool.coverage.run]

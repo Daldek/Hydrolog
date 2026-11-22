@@ -14,7 +14,7 @@ Use it on numbers or local CSV/JSON/GeoTIFF files, with no keys; only `precip pm
 
 ## Install
 
-Python 3.12 or newer: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git"`. Extras: `raster` (rasterio, pyproj; `soil hsg`, `soil hsg-stats`), `mcp` (the MCP server), `pmaxtp` (`precip pmaxtp`), `viz` (plots in Python, outside the catalog), `all`.
+Python >= 3.12: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"`. Extras: `raster` (rasterio, pyproj; `soil hsg`, `soil hsg-stats`), `mcp` (the MCP server), `pmaxtp` (`precip pmaxtp`), `viz` (plots in Python, outside the catalog), `all`.
 
 ## Interfaces
 
@@ -36,11 +36,11 @@ Rules:
 5. **Errors by code:** decide by `code`, `details.option` and `details.reason` (or the exit code), fix the argument as `hint` says and call again; never present an error as a result.
 6. **Absolute paths in allowed directories:** MCP refuses (`forbidden`) files outside `--allow-dir`, and every path option without it.
 7. **Read `notices`:** non-fatal warnings (a short series, a value outside a formula's range); pass them on with the result.
-8. **Other sources:** series come from Obserwator, soil rasters from Kartograf; only `precip pmaxtp` goes online.
+8. **Other sources:** series come from Obserwator (CSV) and Archiwista (`hydrolog-series/1`, also in a hand-off), soil rasters from Kartograf; only `precip pmaxtp` goes online.
 
 ## Result envelope
 
-A command returns `hydrolog-result/1`: `schema`, `tool` (`hydrolog`), `version`, `command`, `check` (true for a `--check` plan: `result.targets[]` with `option`, `path`, `action`), `status` (`ok`; `partial` or `failed`, with `items`, for a batch with failed calls; a failing command raises an error and leaves nothing half done), `result`, `notices`, `inputs`, `page` (paged lists), `attribution` and `terms_notice` (providers' lines to pass on).
+A command returns `hydrolog-result/1`: `schema`, `tool` (`hydrolog`), `version`, `command`, `check` (true for a `--check` plan: `result.targets[]` with `option`, `path`, `action`), `status` (`ok`; `partial` or `failed`, with `items`, for a batch with failed calls; a failing command raises an error and leaves nothing half done), `result`, `notices`, `inputs`, `page` (paged lists), `attribution` and `terms_notice` (providers' lines to pass on), `formula_versions`.
 
 - `result`: the values of the command with its own `schema`; units follow from field names (`tc_min`); `NaN` and infinities are `null`.
 - `result.files`: files the command wrote, each `{path, size_bytes, sha256, status}` with `status` `written` or `replaced`.
@@ -129,7 +129,7 @@ The watershed file has the `WatershedParameters` format: only `area_km2` is requ
 3. `hydrolog hydrograph generate --watershed-file /data/hydrolog/watershed.json --tc-method kirpich --hietogram-type beta --total-mm 50 --duration-min 60` - direct runoff (Beta hyetograph, SCS-CN with `cn` from the file, SCS unit hydrograph): `peak_discharge_m3s`, `time_to_peak_min`, `total_volume_m3`.
 4. `hydrolog report generate --output /data/hydrolog/report.md --watershed-file /data/hydrolog/watershed.json --tc-method kirpich --hietogram-type beta --total-mm 50 --duration-min 60 --check` - plan of the Markdown report (`write`, `replace` or `conflict`); run it without `check` to write it (`result.files`).
 ### 2. Flood frequency from an Obserwator CSV export
-Obserwator exports the daily discharge series to a CSV file (`Q [m3/s]`, `date`) that Hydrolog loads without preprocessing.
+Obserwator's daily discharge CSV (`Q [m3/s]`, `date`) loads as it is.
 1. `obserwator series export --dataset pl.imgw.hydro_daily --station CODE --variables Q --format csv --output /data/hydrolog/q_daily.csv` - Obserwator: export one station (`CODE` from `obserwator stations find`).
 2. `hydrolog stats flood-frequency --input-file /data/hydrolog/q_daily.csv --value-column Q --date-column date --distribution all --return-periods 10,50,100` - annual maxima of hydrological years (Nov-Oct); `Q` finds the column `Q [m3/s]`; result: `best_distribution`, `distributions[].quantiles`; under 30 years adds a notice.
 ### 3. Hydrologic soil groups (HSG) from SoilGrids rasters and the weighted CN

@@ -9,9 +9,15 @@ from typing import Any
 
 import pytest
 
+from hydrolog.nogat_formulas import register_profiles
+
 PMAXTP_TABLE = Path(__file__).parent / "fixtures" / "pmaxtp_warszawa_pot.json"
 """IMGW-PIB's PMAXTP answer for Warsaw (52.23, 21.01, POT), recorded on 2026-11-04 as
 Obserwator returns it (``PMaXTPResult``: 16 durations, 27 probabilities)."""
+
+# The Hypothesis profiles of Nogat CMP-6.9: `gate` (50 derandomized examples) unless
+# HYPOTHESIS_PROFILE names `ci` (1,000) or `nightly` (20,000).
+register_profiles()
 
 
 @pytest.fixture

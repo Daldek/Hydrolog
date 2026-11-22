@@ -4,14 +4,19 @@ Stage W3: „Nowa sieć” opens step 1 with the name, the description, the netw
 step and „Opad sieci” (Hydrogram zlewni's step 2, PMAXTP at first), and the empty canvas
 says to give that rainfall first. The network's PMAXTP depth is fetched once at its
 point, p and duration on the channel ``siec-pmaxtp``, kept with the stored inputs
-(``hydrolog-gui/siec/1``) and not fetched again after a reload. A subcatchment made from
-rainfall in a network without a rainfall („Brak”) is the problem „Brak opadu” of its
-node, and „Oblicz sieć” sends nothing until the network has a rainfall. Every section
-mounted with Sieć's network open, a subcatchment chosen (its panel beside „Dane”, stage
-W4), keeps the page's ids unique.
+(``hydrolog-gui/siec/1``) and not fetched again after a reload. PMAXTP's Euler II is
+written with the depths of every duration of its p (``depth_duration_mm``), computes,
+and opens again from the saved file as „Hietogram” with that curve; without the curve
+Hydrolog's refusal says why. A subcatchment made from rainfall in a network without a
+rainfall („Brak”) is the problem „Brak opadu” of its node, and „Oblicz sieć” sends
+nothing until the network has a rainfall. Every section mounted with Sieć's network
+open, a subcatchment chosen (its panel beside „Dane”, stage W4), keeps the page's ids
+unique.
 """
 
+import json
 import re
+from pathlib import Path
 
 from playwright.sync_api import Page, Request, expect
 
@@ -20,10 +25,13 @@ from tests.e2e.conftest import (
     KAMIENNIK_POINT,
     Tab,
     input_text,
+    load_network,
+    pmaxtp_curve,
     sources_listed,
     sources_shown,
 )
-from tests.e2e.test_siec import BADGE, NODE
+from tests.e2e.test_session import session_text
+from tests.e2e.test_siec import BADGE, NODE, compute, open_section
 from tests.e2e.test_siec_editor import (
     PANEL,
     SECTION,
@@ -123,8 +131,14 @@ def test_the_networks_pmaxtp_depth_is_fetched_once_and_kept(tab: Tab) -> None:
     # runner: wait for the fetched depth to be kept
     fetched = "(key) => JSON.parse(localStorage.getItem(key))?.network?.pmaxtp_fetched"
     page.wait_for_function(f"(key) => ({fetched})(key)?.depth_mm != null", arg=STORED)
-    pmaxtp = provider_lines()["pmaxtp"]  # the answer's lines are kept with the depth
-    assert page.evaluate(fetched, STORED) == {**options, "depth_mm": 101.82, **pmaxtp}
+    # The answer's lines and the depths of every duration at p are kept with the depth
+    pmaxtp = provider_lines()["pmaxtp"]
+    assert page.evaluate(fetched, STORED) == {
+        **options,
+        "depth_mm": 101.82,
+        "depth_duration_mm": pmaxtp_curve("1"),
+        **pmaxtp,
+    }
     # The network's strip shows the depth's lines before any run: PS and PP, every line
     # in its dialog
     assert sources_shown(page, SECTION) == pmaxtp["attribution"][:2]
@@ -137,6 +151,78 @@ def test_the_networks_pmaxtp_depth_is_fetched_once_and_kept(tab: Tab) -> None:
     expect(depth).to_have_value("101,82")
     page.wait_for_timeout(1000)
     assert len(fetches) == 1
+
+
+def test_pmaxtps_euler_ii_writes_its_curve_and_opens_again_with_it(
+    tab: Tab, tmp_path: Path
+) -> None:
+    page = open_section(tab)
+    rain = page.locator(RAIN)
+    shapes = rain.locator('[aria-labelledby="siec-net-shape-label"]')
+    rain.get_by_role("radio", name="PMAXTP", exact=True).click()
+    page.locator("#siec-net-pmaxtp_latitude").fill(
+        input_text(KAMIENNIK_POINT["latitude"])
+    )
+    page.locator("#siec-net-pmaxtp_longitude").fill(
+        input_text(KAMIENNIK_POINT["longitude"])
+    )
+    page.locator("#siec-net-pmaxtp_probability_pct").select_option("1")
+    page.locator("#siec-net-pmaxtp_duration_min").select_option("60")
+    shapes.get_by_role("radio", name="Euler II", exact=True).click()
+    expect(page.locator("#siec-net-pmaxtp_depth")).to_have_value("46,28")
+    expect(rain.locator('[data-euler="pmaxtp"]')).to_contain_text("0,3·D")
+    expect(rain.locator('[data-field="peak_position"]')).to_have_count(0)
+    # The document's rainfall: the PMAXTP depth of D and the depths of every duration
+    storm = {
+        "kind": "design",
+        "hietogram_type": "euler_ii",
+        "total_mm": 46.28,
+        "duration_min": 60,
+        "depth_duration_mm": pmaxtp_curve("1"),
+    }
+    compute(page)
+    sent = json.loads(session_text(page, "in/siec.json"))
+    assert sent["rainfall"] == storm
+    peak = page.locator('[data-tiles="network"] [data-tile="peak"] .v').inner_text()
+
+    # Saved, cleared and opened again: „Hietogram” Euler II with the file's curve, which
+    # computes the same network
+    with page.expect_download() as saved:
+        page.get_by_role("button", name="Zapisz sieć").click()
+    saved.value.save_as(tmp_path / "siec.json")
+    document = json.loads((tmp_path / "siec.json").read_text(encoding="utf-8"))
+    assert document["rainfall"] == storm
+    page.locator(SECTION).get_by_role("button", name="Wyczyść").click()
+    expect(page.locator("svg.schem")).to_have_count(0)
+    load_network(page, tmp_path / "siec.json")
+    expect(page.locator("svg.schem g.node")).to_have_count(8)
+    expect(rain.get_by_role("radio", name="Hietogram", exact=True)).to_have_attribute(
+        "aria-checked", "true"
+    )
+    expect(shapes.get_by_role("radio", name="Euler II", exact=True)).to_have_attribute(
+        "aria-checked", "true"
+    )
+    expect(rain.locator('[data-euler="curve"]')).to_contain_text(
+        "16 czasów trwania, od 5 min do 72 h"
+    )
+    compute(page)
+    assert json.loads(session_text(page, "in/siec.json"))["rainfall"] == storm
+    expect(page.locator('[data-tiles="network"] [data-tile="peak"] .v')).to_have_text(
+        peak
+    )
+
+    # Without its curve the file still opens as it is: Euler II is not offered, the note
+    # says why, and Hydrolog's refusal stands among the problems
+    del document["rainfall"]["depth_duration_mm"]
+    (tmp_path / "bez-krzywej.json").write_text(json.dumps(document), encoding="utf-8")
+    page.locator(SECTION).get_by_role("button", name="Wyczyść").click()
+    load_network(page, tmp_path / "bez-krzywej.json")
+    expect(page.locator("svg.schem g.node")).to_have_count(8)
+    expect(shapes.get_by_role("radio")).to_have_text(["Blokowy", "Trójkątny", "Beta"])
+    expect(rain.locator('[data-euler="none"]')).to_be_visible()
+    expect(page.locator('[data-list="problems"]')).to_contain_text(
+        "Euler II buduje się z krzywej wysokość–czas trwania"
+    )
 
 
 def test_a_subcatchment_without_any_rainfall_is_a_problem_of_its_node(

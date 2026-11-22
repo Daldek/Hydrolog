@@ -232,7 +232,7 @@ class TestRunning:
         assert lines[0] == f"tc kirpich: {_command('tc kirpich').summary_pl}"
         assert "Wejście:" in lines and "Wynik:" in lines
         assert "  length_km:     8.2 km" in lines
-        assert any(line.startswith("  tc_min:") and "85.9733" in line for line in lines)
+        assert any(line.startswith("  tc_min:") and "85.8568" in line for line in lines)
         assert not any(line.startswith("  schema:") for line in lines)
 
     def test_json_is_the_envelope_on_one_line(self, capsys):
@@ -401,14 +401,57 @@ class TestRunning:
             "stats",
             "low-flow",
             "--input-file",
-            str(FIXTURES / "daily_flows_3y.csv"),
+            str(FIXTURES / "daily_flows_15y.csv"),
             "--value-column",
             "Q",
             "--date-column",
             "date",
+            "--last-year",
+            "2015",  # 7 years: the warning small_sample
         )
         assert code == 0
         assert "Uwagi:" in out and "[ostrzeżenie]" in out
+
+    def test_a_stations_series_from_archiwista_is_an_input_file(self, capsys, tmp_path):
+        """E3-07: `--input-file` reads `hydrolog-series/1`, in a hand-off too."""
+        rows = (FIXTURES / "daily_flows_3y.csv").read_text("utf-8").splitlines()[1:]
+        daily = {
+            "schema": "hydrolog-series/1",
+            "name": "Raba — Q",
+            "variable": "Q",
+            "unit": "m3/s",
+            "step": "day",
+            "dates": [row.split(",")[0] for row in rows],
+            "values": [float(row.split(",")[1]) for row in rows],
+        }
+        line = "Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki"
+        handoff = {
+            "schema": "nogat-handoff/1",
+            "created_at": "2026-11-21T10:00:00Z",
+            "producer": {"tool": "archiwista", "version": "0.3.2"},
+            "subject": "Raba",
+            "provenance": {},
+            "attribution": [f"{line} Wodnej – Państwowy Instytut Badawczy"],
+            "payload": daily,
+        }
+        path = tmp_path / "raba.handoff.json"
+        path.write_text(json.dumps(handoff, ensure_ascii=False), encoding="utf-8")
+        argv = ["stats", "flood-frequency", "--input-file", str(path)]
+        code, document = _json_run(capsys, *argv, "--value-column", "Q", "--json")
+        assert code == 0
+        # The days keep their dates: the maxima of three hydrological years
+        assert document["result"]["hydrological_years"] == [2022, 2023, 2024]
+        assert document["attribution"][0].startswith(line)
+        years = {**daily, "step": "year", "statistic": "max"}
+        years |= {"year_type": "hydrological", "years": [2001, 2002, 2004]}
+        del years["dates"]
+        path.write_text(json.dumps(years | {"values": [3.0, 5.0, 4.0]}), "utf-8")
+        code, document = _json_run(
+            capsys, "stats", "mann-kendall", *argv[2:], "--value-column", "Q", "--json"
+        )
+        # The years of annual values: Sen's slope per year over the gap of 2003
+        assert code == 0
+        assert document["result"]["sen_slope"] == pytest.approx(1 / 3)
 
     def test_commands_list_pages_through_the_catalog(self, capsys):
         names: list[str] = []
@@ -764,7 +807,7 @@ class TestSchema:
         assert [
             (served["parameter"], served["minimum"], served["maximum"])
             for served in entry["typical_ranges"]
-        ] == [("slope_m_per_m", 0.03, 0.1)]
+        ] == [("length_km", 0.10668, 1.2192), ("slope_m_per_m", 0.025, 0.1)]
         for argv in (["tc", "--schema"], ["--schema"]):
             _, out, _ = _run(capsys, *argv)
             entries = json.loads(out)["commands"]

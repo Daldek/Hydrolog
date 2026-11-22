@@ -1,23 +1,39 @@
 """
-Curve Number lookup tables based on USDA-NRCS TR-55.
+Curve numbers of the USDA-NRCS TR-55 tables for a soil group and a land cover.
 
-This module provides CN values for various combinations of:
-- Hydrologic Soil Group (HSG): A, B, C, D
-- Land cover type and hydrologic condition
-
-References (page numbers of the printed editions):
-- USDA-SCS (1986). Urban Hydrology for Small Watersheds, TR-55, 2nd ed.:
-  table 2-2a (urban areas) p. 2-5, table 2-2b (cultivated agricultural lands)
-  p. 2-6, table 2-2c (other agricultural lands) p. 2-7
-- USDA-NRCS. National Engineering Handbook, Part 630, Chapter 9 (p. 9-1: impervious
-  and water surfaces are assigned CN 98)
+The table is the data file ``src/hydrolog/_data/tables/tr55_cn.csv`` (Nogat CMP-2.5):
+TR-55 (USDA-SCS 1986, 2nd ed.) tables 2-2a (urban areas, p. 2-5), 2-2b (cultivated
+agricultural lands, p. 2-6) and 2-2c (other agricultural lands, p. 2-7); ``herbaceous``
+takes the pasture row of table 2-2c, as footnote 1 of table 2-2d directs for range in
+humid regions; water is CN 98 (NEH 630 ch. 9, p. 9-1). Row crops and small grain are
+the straight-row rows, in poor and good condition only: TR-55 has no fair condition
+for them. The lookup is declared by its spec :data:`TR55_CN` (``tr55_cn``), the
+area-weighted CN by the Tier B row :data:`WEIGHTED_CN`.
 """
 
+import csv
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
+from typing import Final
 
+from hydrolog._formulas import checked_inputs, checked_outputs
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.nogat_formulas import (
+    Constraint,
+    FormulaSpec,
+    Limit,
+    Output,
+    Properties,
+    Range,
+    Source,
+    Table,
+    TierBSpec,
+    Values,
+    Variable,
+)
 
 
 class HydrologicCondition(Enum):
@@ -79,148 +95,214 @@ class LandCover(Enum):
     WATER = "water"
 
 
-# CN lookup tables from TR-55
-# Format: {(LandCover, HydrologicCondition): {"A": cn, "B": cn, "C": cn, "D": cn}}
-# For land covers without condition variation, use None as condition key
+_TABLE_PATH = Path(__file__).resolve().parents[1] / "_data" / "tables" / "tr55_cn.csv"
+_HSG = ("A", "B", "C", "D")
+_NONE = "none"
 
-_CN_TABLE: dict[tuple[LandCover, HydrologicCondition | None], dict[str, int]] = {
-    # Agricultural - Fallow (bare soil)
-    (LandCover.FALLOW, None): {"A": 77, "B": 86, "C": 91, "D": 94},
-    # Agricultural - Row crops (straight row)
-    (LandCover.ROW_CROPS, HydrologicCondition.POOR): {
-        "A": 72,
-        "B": 81,
-        "C": 88,
-        "D": 91,
-    },
-    (LandCover.ROW_CROPS, HydrologicCondition.FAIR): {
-        "A": 69,
-        "B": 79,
-        "C": 86,
-        "D": 90,
-    },
-    (LandCover.ROW_CROPS, HydrologicCondition.GOOD): {
-        "A": 67,
-        "B": 78,
-        "C": 85,
-        "D": 89,
-    },
-    # Agricultural - Small grain
-    (LandCover.SMALL_GRAIN, HydrologicCondition.POOR): {
-        "A": 65,
-        "B": 76,
-        "C": 84,
-        "D": 88,
-    },
-    (LandCover.SMALL_GRAIN, HydrologicCondition.FAIR): {
-        "A": 64,
-        "B": 75,
-        "C": 83,
-        "D": 87,
-    },
-    (LandCover.SMALL_GRAIN, HydrologicCondition.GOOD): {
-        "A": 63,
-        "B": 75,
-        "C": 83,
-        "D": 87,
-    },
-    # Agricultural - Pasture/grassland
-    (LandCover.PASTURE, HydrologicCondition.POOR): {"A": 68, "B": 79, "C": 86, "D": 89},
-    (LandCover.PASTURE, HydrologicCondition.FAIR): {"A": 49, "B": 69, "C": 79, "D": 84},
-    (LandCover.PASTURE, HydrologicCondition.GOOD): {"A": 39, "B": 61, "C": 74, "D": 80},
-    # Agricultural - Meadow (continuous grass)
-    (LandCover.MEADOW, None): {"A": 30, "B": 58, "C": 71, "D": 78},
-    # Natural - Brush/shrub
-    (LandCover.BRUSH, HydrologicCondition.POOR): {"A": 48, "B": 67, "C": 77, "D": 83},
-    (LandCover.BRUSH, HydrologicCondition.FAIR): {"A": 35, "B": 56, "C": 70, "D": 77},
-    (LandCover.BRUSH, HydrologicCondition.GOOD): {"A": 30, "B": 48, "C": 65, "D": 73},
-    # Natural - Forest/woods
-    (LandCover.FOREST, HydrologicCondition.POOR): {"A": 45, "B": 66, "C": 77, "D": 83},
-    (LandCover.FOREST, HydrologicCondition.FAIR): {"A": 36, "B": 60, "C": 73, "D": 79},
-    (LandCover.FOREST, HydrologicCondition.GOOD): {"A": 30, "B": 55, "C": 70, "D": 77},
-    # Natural - Woods-grass combination (orchard or tree farm): TR-55 table 2-2c, p. 2-7
-    (LandCover.WOODS_GRASS, HydrologicCondition.POOR): {
-        "A": 57,
-        "B": 73,
-        "C": 82,
-        "D": 86,
-    },
-    (LandCover.WOODS_GRASS, HydrologicCondition.FAIR): {
-        "A": 43,
-        "B": 65,
-        "C": 76,
-        "D": 82,
-    },
-    (LandCover.WOODS_GRASS, HydrologicCondition.GOOD): {
-        "A": 32,
-        "B": 58,
-        "C": 72,
-        "D": 79,
-    },
-    # Natural - Herbaceous (weeds, grass mix)
-    (LandCover.HERBACEOUS, HydrologicCondition.POOR): {
-        "A": 68,
-        "B": 79,
-        "C": 86,
-        "D": 89,
-    },
-    (LandCover.HERBACEOUS, HydrologicCondition.FAIR): {
-        "A": 49,
-        "B": 69,
-        "C": 79,
-        "D": 84,
-    },
-    (LandCover.HERBACEOUS, HydrologicCondition.GOOD): {
-        "A": 39,
-        "B": 61,
-        "C": 74,
-        "D": 80,
-    },
-    # Developed - Farmstead
-    (LandCover.FARMSTEAD, None): {"A": 59, "B": 74, "C": 82, "D": 86},
-    # Developed - Residential, 2 acre lots, 12% impervious: TR-55 table 2-2a, p. 2-5
-    (LandCover.RESIDENTIAL_LOW, None): {"A": 46, "B": 65, "C": 77, "D": 82},
-    # Developed - Residential, 1/3 acre lots, 30% impervious: TR-55 table 2-2a, p. 2-5
-    (LandCover.RESIDENTIAL_MEDIUM, None): {"A": 57, "B": 72, "C": 81, "D": 86},
-    # Developed - Residential, 1/4 acre lots, 38% impervious: TR-55 table 2-2a, p. 2-5
-    (LandCover.RESIDENTIAL_QUARTER_ACRE, None): {"A": 61, "B": 75, "C": 83, "D": 87},
-    # Developed - Residential (high density, 1/8 acre or smaller)
-    (LandCover.RESIDENTIAL_HIGH, None): {"A": 77, "B": 85, "C": 90, "D": 92},
-    # Developed - Commercial (85% impervious)
-    (LandCover.COMMERCIAL, None): {"A": 89, "B": 92, "C": 94, "D": 95},
-    # Developed - Industrial (72% impervious)
-    (LandCover.INDUSTRIAL, None): {"A": 81, "B": 88, "C": 91, "D": 93},
-    # Developed - Open space (parks, lawns)
-    (LandCover.OPEN_SPACE, HydrologicCondition.POOR): {
-        "A": 68,
-        "B": 79,
-        "C": 86,
-        "D": 89,
-    },
-    (LandCover.OPEN_SPACE, HydrologicCondition.FAIR): {
-        "A": 49,
-        "B": 69,
-        "C": 79,
-        "D": 84,
-    },
-    (LandCover.OPEN_SPACE, HydrologicCondition.GOOD): {
-        "A": 39,
-        "B": 61,
-        "C": 74,
-        "D": 80,
-    },
-    # Impervious - Paved (parking, roads)
-    (LandCover.PAVED, None): {"A": 98, "B": 98, "C": 98, "D": 98},
-    # Impervious - Streets and roads, paved; open ditches (including right-of-way):
-    # TR-55 table 2-2a, p. 2-5
-    (LandCover.PAVED_ROAD_OPEN_DITCHES, None): {"A": 83, "B": 89, "C": 92, "D": 93},
-    # Impervious - Gravel roads
-    (LandCover.GRAVEL, None): {"A": 76, "B": 85, "C": 89, "D": 91},
-    # Impervious - Dirt roads
-    (LandCover.DIRT, None): {"A": 72, "B": 82, "C": 87, "D": 89},
-    # Water: NEH 630 ch. 9, p. 9-1 (impervious and water surfaces are assigned CN 98)
-    (LandCover.WATER, None): {"A": 98, "B": 98, "C": 98, "D": 98},
+
+def _read_table() -> dict[tuple[str, str], dict[str, int]]:
+    with _TABLE_PATH.open(encoding="utf-8", newline="") as handle:
+        return {
+            (row["land_cover"], row["condition"] or _NONE): {
+                group: int(row[group]) for group in _HSG
+            }
+            for row in csv.DictReader(handle)
+        }
+
+
+_ROWS: Final = _read_table()
+"""CN of each soil group by (land cover, condition); ``none`` for a single row."""
+
+_CN_TABLE: Final[dict[tuple[LandCover, HydrologicCondition | None], dict[str, int]]] = {
+    (
+        LandCover(cover),
+        None if condition == _NONE else HydrologicCondition(condition),
+    ): (cns)
+    for (cover, condition), cns in _ROWS.items()
 }
+
+_TR55 = Source(
+    citation="USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical "
+    "Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+    locator="tables 2-2a, 2-2b and 2-2c, pp. 2-5 to 2-7; table 2-2d, footnote 1, "
+    "p. 2-8",
+    url="https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+)
+
+
+def _cn(x: Values) -> int:
+    return _ROWS[(x.choice("land_cover"), x.choice("condition"))][x.choice("hsg")]
+
+
+def _groups_in_order(run: Callable[..., Values]) -> None:
+    for cover, condition in _ROWS:
+        cns = [
+            run(hsg=group, land_cover=cover, condition=condition).integer("cn")
+            for group in _HSG
+        ]
+        assert cns == sorted(cns), (cover, condition, cns)
+
+
+TR55_CN: Final = FormulaSpec(
+    name="tr55_cn",
+    title="Curve number of a soil-cover complex from the TR-55 tables",
+    function="hydrolog.runoff.cn_lookup.table_curve_number",
+    family="classification",
+    equation="CN = T(land cover, condition, hydrologic soil group), T the TR-55 table",
+    latex=r"CN = T(\text{cover}, \text{condition}, \text{HSG})",
+    variables=(
+        Variable(
+            name="hsg",
+            symbol=r"\text{HSG}",
+            unit="-",
+            kind="choice",
+            description="Hydrologic soil group.",
+            choices=_HSG,
+        ),
+        Variable(
+            name="land_cover",
+            symbol=r"\text{cover}",
+            unit="-",
+            kind="choice",
+            description="Land cover class of Hydrolog.",
+            choices=tuple(cover.value for cover in LandCover),
+        ),
+        Variable(
+            name="condition",
+            symbol=r"\text{condition}",
+            unit="-",
+            kind="choice",
+            description="Hydrologic condition; none for a cover of a single row.",
+            choices=("poor", "fair", "good", _NONE),
+        ),
+    ),
+    outputs=(
+        Output(
+            name="cn",
+            unit="-",
+            kind="integer",
+            symbol="CN",
+            description="Curve number for ARC II and Ia = 0.2 S.",
+            physical=Range(low=1.0, high=100.0),
+        ),
+    ),
+    constraints=(
+        Constraint(
+            name="row_in_table",
+            cls="precondition",
+            check=lambda x: (x.choice("land_cover"), x.choice("condition")) in _ROWS,
+            text="the table has a row of the land cover in the condition",
+            source=_TR55,
+            satisfied={"land_cover": "forest", "condition": "good"},
+            violated={"land_cover": "row_crops", "condition": "fair"},
+        ),
+    ),
+    sources=(
+        _TR55,
+        Source(
+            citation="USDA-NRCS (2004). National Engineering Handbook, Part 630 "
+            "Hydrology, Chapter 9: Hydrologic Soil-Cover Complexes",
+            locator="p. 9-1: impervious and water surfaces are always assigned a CN "
+            "of 98",
+            url="https://www.hydrocad.net/neh/630ch9.pdf",
+        ),
+    ),
+    properties=Properties(
+        units="unit_specific",
+        limits=(
+            Limit(
+                name="groups_in_order",
+                text="CN does not fall from group A to D in any row",
+                check=_groups_in_order,
+            ),
+        ),
+    ),
+    validation=(
+        "NEH 630-9 (p. 9-1) derives the CN of its complexes from annual floods of "
+        "small agricultural watersheds of one soil group and one cover; the table "
+        "gives no error statistic"
+    ),
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "ARC (AMC) II and Ia = 0.2 S (TR-55 tables 2-2a to 2-2c, footnote 1)",
+        (
+            "herbaceous is the pasture, grassland or range row of table 2-2c, as "
+            "footnote 1 of table 2-2d directs for range in humid regions; table "
+            "2-2d itself (arid and semiarid rangelands) is not used"
+        ),
+        (
+            "row crops and small grain are the straight-row rows of table 2-2b, poor "
+            "and good only: TR-55 has no fair condition for them"
+        ),
+        "water is CN 98 (NEH 630-9 p. 9-1), not the 100 of some texts",
+    ),
+    no_traps_reason=(
+        "a lookup of categorical keys: no numeric class limit and no series"
+    ),
+    reference_cases=("tests/fixtures/formulas/cn-table-cases.json",),
+    tables=(
+        Table(
+            path="src/hydrolog/_data/tables/tr55_cn.csv",
+            sha256="781fdd02b39aa868571ec09cb92516716a79c0d74a77640fe810e794cfd3a6e8",
+            source=_TR55,
+            comparison=(
+                "tests/oracles/tr55_cn_text_layer.csv (transcribed from the PDF's "
+                "text layer by tests/oracles/transcribe_tr55_cn.py) against "
+                "tests/oracles/tr55_cn_hydrolog_0_8_1.csv (typed for Hydrolog 0.8.1), "
+                "compared by tests/unit/test_formulas_cn_table.py"
+            ),
+        ),
+    ),
+    base={"land_cover": "pasture", "condition": "fair"},
+)
+
+
+def table_curve_number(hsg: str, land_cover: str, condition: str) -> int:
+    """Return the curve number of a soil-cover complex, spec tr55_cn.
+
+    Parameters
+    ----------
+    hsg : {"A", "B", "C", "D"}
+        Hydrologic soil group.
+    land_cover : str
+        Land cover class (:class:`LandCover` value).
+    condition : {"poor", "fair", "good", "none"}
+        Hydrologic condition; ``none`` for a cover of a single row.
+
+    Returns
+    -------
+    int
+        Curve number.
+
+    Raises
+    ------
+    InvalidParameterError
+        If a choice is unknown or the table has no such row.
+    """
+    x = checked_inputs(TR55_CN, hsg=hsg, land_cover=land_cover, condition=condition)
+    return checked_outputs(TR55_CN, {"cn": _cn(x)}).integer("cn")
+
+
+SPECS: Final = (TR55_CN,)
+"""The Tier A formula of the module."""
+
+WEIGHTED_CN: Final = TierBSpec(
+    name="weighted_cn",
+    function="hydrolog.runoff.cn_lookup.calculate_weighted_cn",
+    definition="CN_w = sum(A_j CN_j) / sum(A_j), the area-weighted mean CN of the "
+    "parts",
+    convention="areas or shares in any one unit; a part of zero area counts nothing",
+    source=Source(
+        citation="USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, "
+        "Chapter 10",
+        locator="example 10-4, p. 10-12 (also KZGW 2017 eq. 6.3)",
+        url="https://www.hydrocad.net/neh/630ch10.pdf",
+    ),
+)
+
+TIER_B: Final = (WEIGHTED_CN,)
+"""The Tier B formula of the module (CMP-2.2)."""
 
 
 @dataclass
@@ -261,18 +343,21 @@ def get_cn(
     land_cover : LandCover | str
         Land cover type (enum or string name).
     condition : HydrologicCondition | str | None, optional
-        Hydrologic condition for land covers that support it.
-        If None and condition is required, defaults to FAIR.
+        Hydrologic condition for land covers that support it. Without it a cover
+        with a fair row takes FAIR; row crops and small grain, which TR-55 gives in
+        poor and good condition only, need it. Ignored for a cover of one row.
 
     Returns
     -------
     int
-        Curve Number (1-100).
+        Curve Number (1-100), of spec ``tr55_cn``.
 
     Raises
     ------
     InvalidParameterError
-        If HSG or land cover is invalid.
+        If HSG or land cover is invalid, or the cover has no row in the condition
+        (``details.reason`` ``required`` without a condition, ``choice`` with
+        another; ``details.allowed`` lists its conditions).
 
     Examples
     --------
@@ -315,28 +400,18 @@ def get_cn(
                 f"Invalid condition: '{condition}'. Valid options: {valid}"
             ) from None
 
-    # Look up CN value
-    # First try with specific condition
-    key = (land_cover, condition)
-    if key in _CN_TABLE:
-        return _CN_TABLE[key][hsg]
-
-    # Try without condition (for land covers that don't vary)
-    key_none = (land_cover, None)
-    if key_none in _CN_TABLE:
-        return _CN_TABLE[key_none][hsg]
-
-    # If condition was None but land cover requires it, default to FAIR
-    if condition is None:
-        key_fair = (land_cover, HydrologicCondition.FAIR)
-        if key_fair in _CN_TABLE:
-            return _CN_TABLE[key_fair][hsg]
-
-    # Land cover not found
-    raise InvalidParameterError(
-        f"No CN data for land cover '{land_cover.value}' "
-        f"with condition '{condition.value if condition else None}'"
-    )
+    conditions = [c for (cover, c) in _ROWS if cover == land_cover.value]
+    if conditions == [_NONE]:
+        return table_curve_number(hsg, land_cover.value, _NONE)
+    wanted = condition.value if condition is not None else "fair"
+    if wanted not in conditions:
+        reason = "choice" if condition is not None else "required"
+        raise InvalidParameterError(
+            f"TR-55 gives '{land_cover.value}' in the conditions {conditions} only: "
+            + ("give one of them" if condition is None else f"not '{wanted}'"),
+            details={"option": "condition", "reason": reason, "allowed": conditions},
+        )
+    return table_curve_number(hsg, land_cover.value, wanted)
 
 
 def lookup_cn(

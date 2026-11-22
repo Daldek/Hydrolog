@@ -66,7 +66,7 @@ from playwright.sync_api import (
 )
 from playwright.sync_api import Error as PlaywrightError
 
-from tests.conftest import recorded_fetch
+from tests.conftest import recorded_fetch, recorded_pmaxtp
 
 PREFIX = "/m/hydrolog"
 """Where the test host mounts the app, as Nogat's host would."""
@@ -119,6 +119,14 @@ PMAXTP_RUN = "**/api/run/precip/pmaxtp*"
 """The page's runs of ``precip pmaxtp``."""
 KAMIENNIK_POINT = {"latitude": 51.01544, "longitude": 15.88984}
 """Kamiennik's outlet at Świerzawa in Hydrograf (WGS84): the guide's PMAXTP point."""
+
+
+def pmaxtp_curve(probability: str = "1") -> dict[str, float]:
+    """Return the depth [mm] of every duration of :data:`PMAXTP_TABLE` at
+    ``probability`` [%], by duration [min] as text: the ``depth_duration_mm`` that
+    ``precip pmaxtp`` answers there (the curve of an Euler II storm)."""
+    table: dict[str, dict[str, float]] = recorded_pmaxtp(PMAXTP_TABLE)["data"]["ks"]
+    return {duration: float(depths[probability]) for duration, depths in table.items()}
 
 
 def pmaxtp_answer(
@@ -237,7 +245,7 @@ def kamiennik_inputs(**changes: Any) -> dict[str, Any]:
         "origin": {
             "label": "kamiennik.json",
             "title": "Z pliku: kamiennik.json",
-            "detail": "wczytano 4 lis 2026, 10:00 · 21 pól",
+            "detail": "wczytano 4 lis 2026, 10:00 · 22 pola",
             "mark": None,
             "values": KAMIENNIK,
         },

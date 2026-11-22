@@ -409,7 +409,7 @@ export default function Statystyka() {
   }
 
   const spec = result
-    ? exportSpec({ options: run.options, envelope: run.envelope, ticked, chartSvg: tab === "chart" ? chartSvg : null, pasted: texts.pasted })
+    ? exportSpec({ options: run.options, envelope: run.envelope, ticked, chartSvg: tab === "chart" ? chartSvg : null })
     : null;
 
   let leftBody;

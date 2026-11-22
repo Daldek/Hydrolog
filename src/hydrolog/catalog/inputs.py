@@ -20,6 +20,9 @@ both into the objects the library works with:
   ``rating_file`` -> :class:`Rating`, the storage-outflow table of ``route level-pool``;
 * :func:`table_hydrograph` -- one column of a table that is already read as a
   hydrograph, for a file that holds several (``route network``: a column per source);
+* :func:`load_depth_duration` -- an inline ``depth_duration_mm`` object *or* a
+  ``depth_duration_file`` (columns ``duration_min`` and ``depth_mm``, or the JSON of
+  ``precip pmaxtp``) -> the depth-duration curve of an Euler II storm;
 * :func:`read_json` -- a JSON document of a file (the network of ``route network``);
 * :func:`load_half_years` -- IMGW-PIB's half-year characteristics of one variable from
   Obserwator's export of ``pl.imgw.hydro_semiannual`` ->
@@ -33,17 +36,28 @@ Files
 CSV (comma or semicolon, detected from the header; UTF-8 with or without BOM; a header
 row; quoted fields; CRLF or LF; rows without any content are skipped) and JSON. The CSV
 written by Obserwator ``export_series``
-(``date,year,Q [m3/s],Q_flag,...,attribution_source,attribution_processed``) loads
-without preprocessing. JSON may be a list of records, an object of equal-length
-columns, or a plain list of numbers (one column called ``values``); a missing JSON
-value is ``null`` (``NaN`` is not JSON and is rejected).
+(``date,year,Q [m3/s],Q_flag,...,attribution,terms_notice``; 3.0.x and older put
+``attribution_source,attribution_processed`` before them) loads without preprocessing.
+JSON may be a list of records, an object of equal-length columns, or a plain list of
+numbers (one column called ``values``); a missing JSON value is ``null`` (``NaN`` is
+not JSON and is rejected).
+
+A station's series ``hydrolog-series/1`` (ADR-0020), alone or as the payload of
+Archiwista's hand-off ``nogat-handoff/1``, is read as two columns (ADR-0068): ``date``
+(``step`` ``day``) or ``year`` (``step`` ``year``) and its ``variable`` (``Q``), its
+``null`` values missing. A series takes these columns when its column options are left
+out, so daily values keep their dates and annual values their years; a hand-off's
+``attribution`` and ``terms_notice`` are its lines. A hand-off with another payload is
+refused (``details.reason`` ``handoff_payload``), and so are annual values where a
+command needs dates (``annual_series``).
 
 Attribution
 -----------
 The lines the data providers' terms require travel with the data (Nogat DEV-20.5,
 DEV-20.6): the CSV columns ``attribution`` and ``terms_notice`` (one line per cell from
-the first data row down, a cell may hold several lines) and Obserwator's
-``attribution_source`` and ``attribution_processed`` are not data: :func:`read_table`
+the first data row down, a cell may hold several lines) and the columns
+``attribution_source`` and ``attribution_processed`` of the files of Obserwator 3.0.x
+and older (3.1.0 no longer writes them, Nogat ECO-082) are not data: :func:`read_table`
 leaves them out of the table, keeps their lines in :attr:`Table.attribution` and cites
 them for the run (:func:`hydrolog._attribution.cite`). The fields ``attribution`` and
 ``terms_notice`` of a JSON object (a table of columns, a network, a watershed) are cited
@@ -80,7 +94,15 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import MISSING, dataclass, fields
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, NamedTuple, NoReturn, get_args, get_type_hints
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Final,
+    NamedTuple,
+    NoReturn,
+    get_args,
+    get_type_hints,
+)
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -103,11 +125,15 @@ if TYPE_CHECKING:
     from hydrolog.statistics.characteristic import HalfYearValues
 
 __all__ = [
+    "DEPTH_COLUMN",
     "DISCHARGE_COLUMN",
+    "DURATION_COLUMN",
     "TIME_COLUMN",
     "Rating",
     "Series",
+    "SeriesColumns",
     "Table",
+    "load_depth_duration",
     "load_half_years",
     "load_hydrograph",
     "load_rating",
@@ -271,12 +297,16 @@ class Table:
         have the same length.
     attribution : Attribution
         The providers' lines of the file's attribution columns or fields.
+    series : SeriesColumns or None
+        The columns of a ``hydrolog-series/1`` document, which a series takes when
+        its column options are left out; ``None`` for any other file.
     """
 
     source: Path
     columns: tuple[str, ...]
     data: dict[str, list[Any]]
     attribution: Attribution = Attribution()
+    series: SeriesColumns | None = None
 
     @property
     def n_rows(self) -> int:
@@ -473,9 +503,200 @@ def _table_from_csv(path: Path, text: str) -> Table:
     )
 
 
+SERIES_SCHEMA = "hydrolog-series/1"
+"""The ``schema`` of a station's series (ADR-0020), read as a table (ADR-0068)."""
+HANDOFF_SCHEMA = "nogat-handoff/1"
+"""The ``schema`` of Nogat's hand-off, read when its payload is a series (ADR-0068)."""
+_SERIES_FIELDS: Final[Mapping[str, tuple[str, ...]]] = {
+    "day": ("schema", "name", "variable", "unit", "step", "dates", "values"),
+    "year": (
+        "schema",
+        "name",
+        "variable",
+        "unit",
+        "step",
+        "statistic",
+        "year_type",
+        "years",
+        "values",
+    ),
+}
+_SERIES_CHOICES: Final[Mapping[str, tuple[str, ...]]] = {
+    "statistic": ("max", "min"),
+    "year_type": ("hydrological", "calendar"),
+}
+_VARIABLE = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
+
+
+@dataclass(frozen=True)
+class SeriesColumns:
+    """The columns of a table read from a ``hydrolog-series/1`` document.
+
+    Attributes
+    ----------
+    value : str
+        The column of the values, named by the document's ``variable``.
+    date : str or None
+        ``"date"`` for daily values (``step`` ``day``), else ``None``.
+    year : str or None
+        ``"year"`` for annual values (``step`` ``year``), else ``None``.
+    """
+
+    value: str
+    date: str | None
+    year: str | None
+
+
+def _series_payload(document: Mapping[str, Any], source: _Source) -> object:
+    """Return the series a document is or carries; ``None`` for another document.
+
+    A ``nogat-handoff/1`` must carry a ``hydrolog-series/1``: another payload is
+    refused, since no series option reads it.
+    """
+    kind = document.get("schema")
+    if kind == SERIES_SCHEMA:
+        return document
+    if kind != HANDOFF_SCHEMA:
+        return None
+    payload = document.get("payload")
+    carried = payload.get("schema") if isinstance(payload, Mapping) else None
+    if carried != SERIES_SCHEMA:
+        source.fail(
+            f"the hand-off carries {_shown(carried) if carried else 'no schema'}, "
+            f"not a series ({SERIES_SCHEMA})",
+            reason="handoff_payload",
+            value=_shown(carried),
+            hint=(
+                "A series option reads a hand-off of a station's series (Archiwista); "
+                "a network is read by 'route network'."
+            ),
+        )
+    return payload
+
+
+def _series_field(payload: Mapping[str, Any], name: str, source: _Source) -> str:
+    """Return a text field of a series document, refusing anything else."""
+    value = payload[name]
+    if not isinstance(value, str) or (name == "name" and not value):
+        source.fail(
+            f"the series' {name!r} must be a{' non-empty' if name == 'name' else ''} "
+            "text",
+            reason="type",
+            field=name,
+        )
+    if name == "variable" and not _VARIABLE.fullmatch(value):
+        source.fail(
+            f"the series' 'variable' {_shown(value)!r} is not a name (a letter, then "
+            "letters, digits or _)",
+            reason="invalid_value",
+            field=name,
+            value=_shown(value),
+        )
+    return value
+
+
+def _series_list(
+    payload: Mapping[str, Any], name: str, item: tuple[type, ...], source: _Source
+) -> list[Any]:
+    """Return a non-empty list field of a series document whose items are ``item``."""
+    cells = payload[name]
+    if not isinstance(cells, list) or not cells:
+        source.fail(
+            f"the series' {name!r} must be a non-empty list", reason="type", field=name
+        )
+    for index, cell in enumerate(cells):
+        if isinstance(cell, bool) or not isinstance(cell, item):
+            source.fail(
+                f"the series' {name!r}: item {index} is {_shown(cell)!r}",
+                reason="type",
+                field=name,
+                index=index,
+                value=_shown(cell),
+            )
+    return cells
+
+
+def _table_from_series(path: Path, payload: object, attribution: Attribution) -> Table:
+    """Read a ``hydrolog-series/1`` as the column ``date`` or ``year`` and its variable.
+
+    The document is checked as its schema (``hydrolog-series-1.schema.json``) checks
+    it, with the lengths of its lists, since the run needs it whole.
+    """
+    source = _Source(path=path)
+    if not isinstance(payload, Mapping):
+        source.fail("the series must be a JSON object", reason="shape")
+    step = payload.get("step")
+    if not isinstance(step, str) or step not in _SERIES_FIELDS:
+        source.fail(
+            f"the series' 'step' is {_shown(step)!r}, expected 'day' or 'year'",
+            reason="invalid_value",
+            field="step",
+            value=_shown(step),
+        )
+    allowed = _SERIES_FIELDS[step]
+    unknown = [str(name) for name in payload if name not in allowed]
+    if unknown:
+        source.fail(
+            f"the series of step {step!r} has unknown fields: {_listed(unknown)}",
+            reason="unknown_field",
+            fields=unknown,
+        )
+    missing = [name for name in allowed if name not in payload]
+    if missing:
+        source.fail(
+            f"the series of step {step!r} lacks the fields: {_listed(missing)}",
+            reason="missing_field",
+            fields=missing,
+        )
+    for name in ("name", "unit"):
+        _series_field(payload, name, source)
+    variable = _series_field(payload, "variable", source)
+    for name, choices in _SERIES_CHOICES.items():
+        if name in allowed and payload[name] not in choices:
+            source.fail(
+                f"the series' {name!r} is {_shown(payload[name])!r}, expected one of "
+                f"{', '.join(choices)}",
+                reason="invalid_value",
+                field=name,
+                value=_shown(payload[name]),
+            )
+    key, kind = ("date", str) if step == "day" else ("year", int)
+    keys = _series_list(payload, f"{key}s", (kind,), source)
+    values = _series_list(payload, "values", (int, float, type(None)), source)
+    if len(keys) != len(values):
+        message = f"the series has {len(keys)} {key}s and {len(values)} values"
+        if step == "day":
+            source.fail(
+                message, reason="length_mismatch", dates=len(keys), values=len(values)
+            )
+        source.fail(
+            message, reason="length_mismatch", years=len(keys), values=len(values)
+        )
+    if variable == key:
+        source.fail(
+            f"the series' variable {variable!r} is the name of its {key} column",
+            reason="duplicate_column",
+            columns=[key],
+        )
+    return Table(
+        source=path,
+        columns=(key, variable),
+        data={key: list(keys), variable: list(values)},
+        attribution=attribution,
+        series=SeriesColumns(
+            value=variable,
+            date=key if step == "day" else None,
+            year=key if step == "year" else None,
+        ),
+    )
+
+
 def _table_from_json(path: Path, document: Any) -> Table:
     source = _Source(path=path)
-    shapes = "a list of records, an object of equal-length columns or a list of numbers"
+    shapes = (
+        "a list of records, an object of equal-length columns, a list of numbers or "
+        f"a {SERIES_SCHEMA} (alone or in a {HANDOFF_SCHEMA})"
+    )
     if isinstance(document, list):
         if not document:
             source.fail("the JSON list is empty", reason="empty")
@@ -492,6 +713,9 @@ def _table_from_json(path: Path, document: Any) -> Table:
         source.fail(f"unsupported list content; expected {shapes}", reason="shape")
     if isinstance(document, Mapping):
         attribution = lines_of_document(document)
+        payload = _series_payload(document, source)
+        if payload is not None:
+            return _table_from_series(path, payload, attribution)
         document = {
             key: value
             for key, value in document.items()
@@ -533,8 +757,9 @@ def read_table(path: str | os.PathLike[str]) -> Table:
     NotFoundError
         If the file does not exist.
     InputDataError
-        If the file cannot be read or parsed, is empty, or has duplicate column names
-        or ragged rows.
+        If the file cannot be read or parsed, is empty, has duplicate column names or
+        ragged rows, is a ``hydrolog-series/1`` that breaks its schema or a
+        ``nogat-handoff/1`` that carries no series.
     """
     resolved = _file_path(path)
     text = _read_text(resolved)
@@ -872,6 +1097,19 @@ def _series_from_table(
     require_dates: bool,
 ) -> Series:
     source = _Source(path=table.source)
+    document = table.series
+    if document is not None:
+        if require_dates and document.date is None:
+            source.fail(
+                f"the file holds annual values ({SERIES_SCHEMA}, step 'year'); this "
+                "command needs daily values with their dates",
+                reason="annual_series",
+                hint="Hand off the station's daily values (step 'day') instead.",
+            )
+        if value_column is None:
+            value_column = document.value
+        if date_column is None and year_column is None:
+            date_column, year_column = document.date, document.year
     if value_column is None:
         if len(table.columns) != 1:
             raise InvalidParameterError(
@@ -935,16 +1173,20 @@ def load_series(
         Inline years of annual values without dates, one per value: whole numbers,
         strictly increasing (gaps allowed).
     input_file : str or os.PathLike, optional
-        CSV or JSON file (see :func:`read_table`).
+        CSV or JSON file (see :func:`read_table`), also a ``hydrolog-series/1`` alone
+        or in a ``nogat-handoff/1``.
     value_column : str, optional
-        Column with the values; may be omitted when the file has one column.
+        Column with the values; may be omitted when the file has one column or is a
+        ``hydrolog-series/1`` (its variable).
     date_column : str, optional
-        Column with ISO dates.
+        Column with ISO dates; ``date`` of a daily ``hydrolog-series/1`` when neither
+        this nor ``year_column`` is given.
     year_column : str, optional
         Column with the years of annual values without dates (whole numbers,
-        strictly increasing).
+        strictly increasing); ``year`` of an annual ``hydrolog-series/1`` when neither
+        this nor ``date_column`` is given.
     require_dates : bool, optional
-        Raise when no dates are given.
+        Raise when no dates are given (an annual ``hydrolog-series/1`` too).
 
     Returns
     -------
@@ -1768,3 +2010,148 @@ def load_stations(
             )
         seen[station.station_id] = row
     return result
+
+
+# --- the depth-duration curve of an Euler II storm ------------------------------------
+
+DURATION_COLUMN = "duration_min"
+"""The column of the durations [min] in a file of a depth-duration curve."""
+DEPTH_COLUMN = "depth_mm"
+"""The column of the depths [mm] in a file of a depth-duration curve."""
+_CURVE_FIELD = "depth_duration_mm"
+
+
+def _curve_of_document(path: Path, document: object) -> Mapping[Any, Any] | None:
+    """Return the curve a JSON document holds as an object, or ``None`` for a table.
+
+    The object is the ``depth_duration_mm`` of the document, of its ``result`` (the
+    envelope that ``precip pmaxtp --json`` prints) or the document itself (duration
+    -> depth); a list of records or an object of columns is a table.
+    """
+    source = _Source(path=path)
+    if isinstance(document, list):
+        return None
+    if not isinstance(document, Mapping):
+        source.fail(
+            "expected a depth-duration curve: an object of duration [min] to depth "
+            "[mm], a table with the columns duration_min and depth_mm, or what "
+            "`precip pmaxtp --json` prints",
+            reason="shape",
+        )
+    result = document.get("result")
+    holder = result if isinstance(result, Mapping) else document
+    if _CURVE_FIELD in holder:
+        curve = holder[_CURVE_FIELD]
+        if not isinstance(curve, Mapping):
+            source.fail(f"{_CURVE_FIELD!r} is not an object", reason="shape")
+        return curve
+    fields = {
+        key: value
+        for key, value in document.items()
+        if key not in ("attribution", "terms_notice")
+    }
+    if fields and all(isinstance(value, list) for value in fields.values()):
+        return None
+    if not fields:
+        source.fail("the curve has no point", reason="empty")
+    return fields
+
+
+def _curve_of_table(table: Table) -> dict[float, float]:
+    """Return the curve of the columns ``duration_min`` and ``depth_mm`` of a table."""
+    source = _Source(path=table.source)
+    durations = table.numbers(DURATION_COLUMN)
+    depths = table.numbers(DEPTH_COLUMN)
+    if not len(durations):
+        source.fail("the curve has no point", reason="empty")
+    curve: dict[float, float] = {}
+    rows: dict[float, int] = {}
+    for row, (duration, depth) in enumerate(
+        zip(durations.tolist(), depths.tolist(), strict=True), start=1
+    ):
+        if math.isnan(duration) or math.isnan(depth):
+            source.fail(
+                f"row {row} has no "
+                f"{DURATION_COLUMN if math.isnan(duration) else DEPTH_COLUMN}",
+                reason="missing_value",
+                row=row,
+                column=DURATION_COLUMN if math.isnan(duration) else DEPTH_COLUMN,
+            )
+        if duration in rows:
+            source.fail(
+                f"row {row}: the duration {duration:g} min is already in row "
+                f"{rows[duration]}",
+                reason="duplicate_duration",
+                row=row,
+                value=duration,
+            )
+        rows[duration] = row
+        curve[duration] = depth
+    return curve
+
+
+def load_depth_duration(
+    *,
+    depth_duration_mm: Mapping[str, Any] | None = None,
+    depth_duration_file: str | os.PathLike[str] | None = None,
+) -> Mapping[Any, Any]:
+    """Return the depth-duration curve of an Euler II storm, inline or from a file.
+
+    The values are checked by :class:`~hydrolog.precipitation.EulerIIHietogram`
+    (finite, not negative, not decreasing); this function reads them.
+
+    Parameters
+    ----------
+    depth_duration_mm : Mapping, optional
+        Inline curve: duration [min] (a JSON object key) -> depth [mm].
+    depth_duration_file : str or os.PathLike, optional
+        CSV with the columns ``duration_min`` and ``depth_mm``, or JSON: such a table
+        (records or columns), an object of duration -> depth, or an object with that
+        object as ``depth_duration_mm`` or ``result.depth_duration_mm`` (what
+        ``precip pmaxtp --json`` prints). The providers' lines of the file
+        (attribution columns or fields) are cited for the run.
+
+    Returns
+    -------
+    Mapping
+        Depth [mm] by duration [min] (numbers, or the keys of a JSON object).
+
+    Raises
+    ------
+    InvalidParameterError
+        If both or neither source is given (``details.option`` names it).
+    NotFoundError
+        If the file does not exist.
+    InputDataError
+        If the file cannot be read, has another shape, lacks a column or a value, or
+        gives a duration twice (``details.reason``, ``details.row``).
+    """
+    if depth_duration_mm is not None and depth_duration_file is not None:
+        raise InvalidParameterError(
+            "Give 'depth_duration_mm' or 'depth_duration_file', not both",
+            details={"option": "depth_duration_file", "reason": "conflict"},
+        )
+    if depth_duration_mm is not None:
+        return depth_duration_mm
+    if depth_duration_file is None:
+        raise InvalidParameterError(
+            "Option 'depth_duration_mm' or 'depth_duration_file' is required: an "
+            "Euler II storm is built from the depth-duration curve",
+            details={"option": "depth_duration_mm", "reason": "required"},
+            hint=(
+                "Give the depths of one probability by duration, e.g. the "
+                "depth_duration_mm of `precip pmaxtp`."
+            ),
+        )
+    path = _file_path(depth_duration_file, "depth_duration_file")
+    text = _read_text(path)
+    if _is_json(path, text):
+        document = _parse_json(path, text)
+        cite(lines_of_document(document))
+        curve = _curve_of_document(path, document)
+        if curve is not None:
+            return curve
+        return _curve_of_table(_table_from_json(path, document))
+    table = _table_from_csv(path, text)
+    cite(table.attribution)
+    return _curve_of_table(table)

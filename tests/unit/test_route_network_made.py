@@ -31,9 +31,18 @@ WATERSHED = {
     "flow_path_length_km": 6.0,
     "flow_path_slope_m_per_m": 0.02,
 }
+# A depth-duration curve whose depth of 60 min is the 45 mm of the Euler II storm.
+CURVE = {"5": 15.0, "10": 22.0, "20": 30.0, "30": 35.0, "60": 45.0}
 RAIN = {
     "kind": "design",
     "hietogram_type": "euler_ii",
+    "total_mm": 45,
+    "duration_min": 60,
+    "depth_duration_mm": CURVE,
+}
+BLOCK = {
+    "kind": "design",
+    "hietogram_type": "block",
     "total_mm": 45,
     "duration_min": 60,
 }
@@ -59,7 +68,7 @@ def stream(**fields):
 
 def reference(step=5.0):
     """The hydrograph of the generator for the rain and the watershed above."""
-    rain = EulerIIHietogram().generate(
+    rain = EulerIIHietogram(CURVE).generate(
         total_mm=45.0, duration_min=60.0, timestep_min=step
     )
     return HydrographGenerator(area_km2=12.0, cn=75, tc_min=90.0).generate(rain)
@@ -113,7 +122,7 @@ class TestTheSummary:
         )
 
     def test_the_rain_of_the_document_is_the_default_of_the_nodes_without_one(self):
-        own = {**RAIN, "total_mm": 20}
+        own = {**BLOCK, "total_mm": 20}
         content = document(
             made("A", rainfall=None),
             made("B", rainfall=own),
@@ -134,20 +143,26 @@ class TestTheSummary:
 
 class TestTheNotices:
     def test_a_notice_begins_with_the_id_of_its_node_and_names_it_in_details(self):
-        content = stream(rainfall={**RAIN, "duration_min": 62})
-
-        notices = route_network(network=content).notices
+        notices = route_network(network=stream(rainfall=BLOCK)).notices
 
         by_code = {notice.code: notice for notice in notices}
-        assert by_code["duration_not_covered"].level == "warning"
-        assert by_code["duration_not_covered"].message.startswith("A: ")
-        assert by_code["duration_not_covered"].details == {"node_id": "A"}
         assert by_code["tail_extended"].message.startswith("R: ")
         assert by_code["tail_extended"].details == {"node_id": "R"}
 
+    def test_a_storm_that_is_not_a_whole_number_of_steps_is_refused_naming_its_node(
+        self,
+    ):
+        content = stream(rainfall={**BLOCK, "duration_min": 62})
+
+        with pytest.raises(InvalidParameterError) as caught:
+            route_network(network=content)
+
+        assert caught.value.details["node_id"] == "A"
+        assert caught.value.details["reason"] == "not_multiple"
+
     def test_a_warning_of_the_library_is_a_notice_and_is_not_printed(self):
-        """Kirpich on 12 km2 with 10 m over 12 km: the area and the slope are outside
-        his data."""
+        """Kirpich on 12 km2 with 10 m over 12 km: the area, the length and the slope
+        are outside his data."""
         flat = {
             **WATERSHED,
             "length_km": 12.0,
@@ -161,13 +176,16 @@ class TestTheNotices:
             warnings.simplefilter("error")
             notices = route_network(network=content).notices
 
-        warned = [n for n in notices if n.code == "outside_typical_range"]
-        assert [n.level for n in warned] == ["warning", "warning"]
-        assert [n.message.split(" is outside typical range")[0] for n in warned] == [
+        warned = [n for n in notices if n.code == "outside_applicability"]
+        assert [n.level for n in warned] == ["warning"] * 3
+        assert [
+            n.message.split(" is outside its applicability")[0] for n in warned
+        ] == [
             "A: kirpich: area_km2=12.0",
+            "A: kirpich: length_km=12.0",
             f"A: kirpich: slope_m_per_m={10.0 / 12000.0}",
         ]
-        assert [n.details for n in warned] == [{"node_id": "A"}, {"node_id": "A"}]
+        assert [n.details for n in warned] == [{"node_id": "A"}] * 3
 
 
 class TestTheTables:
@@ -180,11 +198,13 @@ class TestTheTables:
 
         expected = reference().hydrograph
         table = Hydrograph(expected.times_min, expected.discharge_m3s).to_table()
-        assert (directory / "A.csv").read_text(encoding="utf-8") == table
+        assert (directory / "hydrolog_node-hydrograph_A.csv").read_text(
+            encoding="utf-8"
+        ) == table
         assert sorted(path.name for path in output.files) == [
-            "A.csv",
-            "OUT.csv",
-            "R.csv",
+            "hydrolog_node-hydrograph_A.csv",
+            "hydrolog_node-hydrograph_OUT.csv",
+            "hydrolog_node-hydrograph_R.csv",
         ]
 
 
@@ -226,6 +246,13 @@ class TestBadDocuments:
                 stream(watershed={**WATERSHED, "cn": None}),
                 "missing_field",
                 {"node_id": "A", "field": "watershed.cn"},
+            ),
+            (
+                stream(
+                    rainfall={k: v for k, v in RAIN.items() if k != "depth_duration_mm"}
+                ),
+                "missing_field",
+                {"node_id": "A", "field": "rainfall.depth_duration_mm"},
             ),
             (
                 stream(rainfall=None),
@@ -270,6 +297,17 @@ class TestBadDocuments:
                 run()
             assert caught.value.details["reason"] == "timestep_mismatch"
             assert caught.value.details["nodes"] == ["A", "B"]
+
+    def test_a_total_that_is_not_the_depth_of_the_curve_is_refused_at_the_run(self):
+        content = stream(rainfall={**RAIN, "total_mm": 20})
+
+        with pytest.raises(InvalidParameterError) as caught:
+            route_network(network=content)
+
+        assert caught.value.code == "validation_error"
+        assert caught.value.details["node_id"] == "A"
+        assert caught.value.details["reason"] == "total_mismatch"
+        assert caught.value.details["depth_mm"] == 45.0
 
 
 class TestInflows:

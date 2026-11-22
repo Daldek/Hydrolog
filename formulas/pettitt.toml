@@ -1,0 +1,178 @@
+schema = "nogat-formula-card/1"
+name = "pettitt"
+title = "Pettitt's change-point test: K, the change point and the approximate p"
+function = "hydrolog.statistics.homogeneity.pettitt"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "U_t = 2 sum_{i<=t} r_i - t (n + 1) = sum_{i<=t} sum_{j>t} sgn(x_i - x_j) for t = 1 … n - 1 with the mid-ranks r_i; K = max_t |U_t|, the change point the first t of K; p = min(1, 2 exp(-6 K^2 / (n^3 + n^2)))"
+latex = "U_t = 2\\sum_{i \\le t} r_i - t(n + 1),\\quad K = \\max_{1 \\le t < n} |U_t|,\\quad p = \\min\\left(1,\\ 2 e^{-6K^2/(n^3 + n^2)}\\right)"
+validation = "none: a test of the hypothesis of no change; its sources compare it with no observations"
+conventions = ["the mid-ranks of tied values (scipy's rankdata, R's rank)", "K over t = 1 … n - 1 (R's trend also takes t = n, where U_n = 0); the change point is the first t of K (R's trend returns every t of K), the number of values before the change, which names the year of the first value after it in homogeneity_tests", "p is Pettitt's approximation 2 exp(-6 K^2 / (n^3 + n^2)), capped at 1, good for p <= 0.5 (R's trend); it is conservative for short series: ten increasing values give 0.066 where the exact permutation p is 2 / C(10, 5) = 0.0079", "a p-value below the smallest positive float is set to it, the end of the physical range (0, 1]"]
+assumptions = ["independent values with one change of location at most"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/trend-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_series"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "the statistics rank the values, which doubling or negating them keeps or mirrors exactly"
+abs = 0.0
+
+[[properties.limits]]
+name = "complete_separation"
+text = "ten increasing values: K = n^2/4 = 25 at t = 5 and p = 2 exp(-6 625 / 1100)"
+
+[[properties.limits]]
+name = "pairwise_definition"
+text = "K and its t from the ranks equal those of the double sum of signs"
+
+[[properties.symmetries]]
+name = "negated_series"
+text = "the negated series has the same K, change point and p"
+
+[properties.symmetries.tolerance]
+reason = "the statistics rank the values, which doubling or negating them keeps or mirrors exactly"
+abs = 0.0
+
+[[sources]]
+citation = "Pohlert, T. trend: Non-Parametric Trend Tests and Change-Point Detection, R package version 1.1.10, CRAN"
+access = "open"
+locator = "R/pettitt.test.R and its help page: U_k = 2 sum_{i<=k} r_i - k (n + 1) of the ranks, U* = max |U_k|, the change point where |U_k| is largest, p = min(1, 2 exp(-6 U*^2 / (n^3 + n^2))), 'good for p <= 0.5' (after Verstraeten et al. 2006)"
+url = "https://cran.r-project.org/package=trend"
+
+[[sources]]
+citation = "Hussain, M.M. pyHomogeneity: a Python package for homogeneity tests of time series data, version 1.1, GitHub mmhs013/pyHomogeneity"
+access = "open"
+locator = "pyhomogeneity.py, __pettitt and pettitt_test: U = 2 cumsum(r) - k (n + 1) over k = 1 … n - 1, the first k of max |U|, p = 2 exp(-6 U^2 / (n^3 + n^2))"
+url = "https://github.com/mmhs013/pyHomogeneity"
+
+[[sources]]
+citation = "Pettitt, A.N. (1979). A non-parametric approach to the change-point problem. Journal of the Royal Statistical Society, Series C (Applied Statistics) 28(2), 126-135"
+access = "author-provided"
+
+[[variables]]
+name = "values"
+symbol = "x_i"
+unit = "m3/s"
+kind = "real_array"
+description = "The series in time order, e.g. annual maxima, in any unit."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the tests rank the values, so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below 0, so the same bound holds below 0"
+
+[variables.typical]
+low = 0.81
+low_inclusive = true
+high = 111.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 1.1, 1.2, 3.3 and 3.4, tables 1.1, 1.2, 3.10 and 3.13 (pp. 11-56): the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[constraints]]
+name = "enough_values"
+class = "precondition"
+text = "n >= 2: a split t of 1 … n - 1"
+
+[constraints.source]
+citation = "Hussain, M.M. pyHomogeneity: a Python package for homogeneity tests of time series data, version 1.1, GitHub mmhs013/pyHomogeneity"
+access = "open"
+locator = "pyhomogeneity.py, __pettitt and pettitt_test: U = 2 cumsum(r) - k (n + 1) over k = 1 … n - 1, the first k of max |U|, p = 2 exp(-6 U^2 / (n^3 + n^2))"
+url = "https://github.com/mmhs013/pyHomogeneity"
+
+[[constraints]]
+name = "values_not_all_equal"
+class = "precondition"
+text = "min(x) < max(x): equal values give U_t = 0 for every t, no change point"
+
+[constraints.source]
+citation = "Pohlert, T. trend: Non-Parametric Trend Tests and Change-Point Detection, R package version 1.1.10, CRAN"
+access = "open"
+locator = "R/pettitt.test.R and its help page: U_k = 2 sum_{i<=k} r_i - k (n + 1) of the ranks, U* = max |U_k|, the change point where |U_k| is largest, p = min(1, 2 exp(-6 U*^2 / (n^3 + n^2))), 'good for p <= 0.5' (after Verstraeten et al. 2006)"
+url = "https://cran.r-project.org/package=trend"
+
+[[outputs]]
+name = "k"
+unit = "-"
+kind = "integer"
+symbol = "K"
+description = "Pettitt's statistic, the largest |U_t|."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "p_value"
+unit = "-"
+kind = "real"
+symbol = "p"
+description = "The approximate two-sided p-value of no change; one below the smallest positive float is set to it."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "change_point_index"
+unit = "-"
+kind = "integer"
+symbol = "t"
+description = "The split t of K: the number of values before the change."
+
+[outputs.physical]
+low = 1.0
+low_inclusive = true
+
+[[traps]]
+name = "exp_overflow"
+description = "exp of a scaled input at its test bound."
+test = "exp(-6 K^2 / (n^3 + n^2)) of a long series with a step underflows: p is the smallest positive float, not 0 (test_a_long_step_keeps_a_p_value_above_zero)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case values-nan_element: a gap is refused"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "the cumulative sums of the mid-ranks are whole numbers and half-numbers, exact in float64 (limit pairwise_definition, test_k_of_a_long_series_is_exact)"
+
+[[oracles]]
+kind = "algorithm"
+description = "U_t by its double sum of signs of the pairs on either side of t, not the ranks"
+test = "tests/unit/test_formulas_trend.py (limit pairwise_definition)"
+conventions = []
+
+[[oracles]]
+kind = "frozen"
+description = "R 4.4.3 trend 1.1.10 pettitt.test on 13 series"
+test = "tests/oracles/trend_regime/r_oracle_outputs_headed.csv (tests/unit/test_formulas_trend.py, test_pettitt_is_rs)"
+conventions = ["R's estimate is every t of K, 1-based, the last value before the change: its smallest is the spec's change point"]

@@ -11,17 +11,23 @@ A reach is split into ``N`` equal sub-reaches of ``K / N`` in series, each with 
 same ``X`` (HEC-HMS). The splitting keeps the weights inside the window, and by the
 rule of thumb ``N = K / dt`` the travel time of a sub-reach is one time step. When no
 whole ``N`` fits the window the time step is divided into equal sub-steps instead.
+
+The scheme on the chosen grid is the formula
+:func:`~hydrolog.routing.formulas.muskingum.muskingum_route` (spec ``muskingum``);
+the choice of the grid is this module's Tier B rule ``muskingum_subreaches`` (ADR-0061).
 """
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Final
 
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.nogat_formulas import FormulaSpec, TierBSpec
 from hydrolog.routing._checks import in_range, positive, whole_number
-from hydrolog.routing._kernels import route_muskingum_cascade
+from hydrolog.routing.formulas._shared import hec_hms
+from hydrolog.routing.formulas.muskingum import WINDOW_ROUNDING, muskingum_route
 from hydrolog.routing.hydrograph import Hydrograph
 from hydrolog.routing.reach import (
     MAX_ORDINATES,
@@ -31,13 +37,10 @@ from hydrolog.routing.reach import (
     RoutingNotice,
 )
 
-__all__ = ["MAX_SUBSTEPS", "MuskingumReach", "subreach_window"]
+__all__ = ["MAX_SUBSTEPS", "SPECS", "TIER_B", "MuskingumReach", "subreach_window"]
 
 MAX_SUBSTEPS = 100
 """Largest number of sub-steps a time step is divided into to find a window."""
-
-_ROUNDING = 1e-9
-_SECONDS_PER_MINUTE = 60.0
 
 
 def subreach_window(k_min: float, x: float, step_min: float) -> tuple[int, int]:
@@ -64,8 +67,8 @@ def subreach_window(k_min: float, x: float, step_min: float) -> tuple[int, int]:
         The smallest (at least 1) and the largest number of sub-reaches; the window is
         empty, and no whole number fits, when the first exceeds the second.
     """
-    lowest = max(1, math.ceil(2.0 * k_min * x / step_min * (1.0 - _ROUNDING)))
-    highest = math.floor(2.0 * k_min * (1.0 - x) / step_min * (1.0 + _ROUNDING))
+    lowest = max(1, math.ceil(2.0 * k_min * x / step_min * (1.0 - WINDOW_ROUNDING)))
+    highest = math.floor(2.0 * k_min * (1.0 - x) / step_min * (1.0 + WINDOW_ROUNDING))
     return lowest, highest
 
 
@@ -259,30 +262,57 @@ class MuskingumReach(Reach):
         plan = self._plan(inflow.timestep_min, len(inflow))
         fine = inflow.refined(plan.substeps)
         step = fine.timestep_min
-        run = route_muskingum_cascade(
+        run = muskingum_route(
             fine.discharge_m3s,
-            self.k_min / plan.subreaches,
-            self.x,
             step,
+            self.k_min,
+            self.x,
             plan.subreaches,
             initial_outflow_m3s,
         )
         lowest, highest = subreach_window(self.k_min, self.x, step)
         return ReachRun(
-            outflow_m3s=run.outflow[:: plan.substeps],
-            storage_start_m3=run.storage_start * _SECONDS_PER_MINUTE,
-            storage_end_m3=run.storage_end * _SECONDS_PER_MINUTE,
-            storage_steady_m3=run.storage_steady * _SECONDS_PER_MINUTE,
+            outflow_m3s=run.outflow_m3s[:: plan.substeps],
+            storage_start_m3=run.storage_start_m3,
+            storage_end_m3=run.storage_end_m3,
+            storage_steady_m3=run.storage_steady_m3,
             parameters={
                 "k_min": self.k_min,
                 "x": self.x,
                 "subreaches": plan.subreaches,
                 "substeps": plan.substeps,
-                "c_current": run.weights[0],
-                "c_previous": run.weights[1],
-                "c_outflow": run.weights[2],
+                "c_current": run.c_current,
+                "c_previous": run.c_previous,
+                "c_outflow": run.c_outflow,
                 "subreaches_min": lowest,
                 "subreaches_max": highest,
             },
             notices=plan.notices,
         )
+
+
+SPECS: Final[tuple[FormulaSpec, ...]] = ()
+"""The module computes through the spec ``muskingum``; it declares none itself."""
+
+TIER_B: Final = (
+    TierBSpec(
+        name="muskingum_subreaches",
+        function="hydrolog.routing.muskingum.subreach_window",
+        definition="the whole numbers N of equal sub-reaches whose weights are "
+        "non-negative on a step dt, ceil(2KX/dt) <= N <= floor(2K(1 - X)/dt), each "
+        "end to 1e-9 of itself; MuskingumReach routes with N = K/dt rounded (a half "
+        "up, at least 1), which lies in the window whenever a whole number does, and "
+        "divides a step without a window into the fewest of 2 to 100 equal sub-steps "
+        "that have one, the inflow linear between the ordinates",
+        convention="the travel time of a sub-reach is about one time step (HEC-HMS); "
+        "a number of sub-reaches the caller gives is never changed: outside the window "
+        "it is refused (unstable_timestep, ADR-0008)",
+        source=hec_hms(
+            "Muskingum Model",
+            "muskingum-model",
+            "the number of subreaches: the travel time through a subreach "
+            "approximately equal to the simulation time step",
+        ),
+    ),
+)
+"""The rule of the grid of a Muskingum reach (CMP-2.2)."""

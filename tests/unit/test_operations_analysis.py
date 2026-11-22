@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from hydrolog._attribution import CHMI_PROCESSED, CHMI_SOURCE, SOILGRIDS_SOURCE
+from hydrolog._attribution import CHMU_PROCESSED, CHMU_SOURCE, SOILGRIDS_SOURCE
 from hydrolog.catalog import Command, get_command, run_command
 from hydrolog.catalog.envelope import sha256_file
 from hydrolog.catalog.groups import collect_commands
@@ -69,6 +69,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = REPO_ROOT / "tests" / "fixtures"
 OBSERWATOR_EXPORT = FIXTURES / "obserwator_series_export.csv"
 DAILY_FLOWS = FIXTURES / "daily_flows_3y.csv"
+# A synthetic station of 15 complete hydrological years (2009-2023): the low-flow fit
+# by maximum likelihood needs more years than the three of daily_flows_3y.csv.
+DAILY_FLOWS_15Y = FIXTURES / "daily_flows_15y.csv"
+# Its annual minima [m3/s], hydrological years 2009-2023.
+MINIMA_15Y = [0.94, 0.77, 1.03, 1.35, 1.36, 0.67, 1.12, 2.01, 1.29, 1.22, 1.02]
+MINIMA_15Y += [1.11, 1.6, 1.26, 1.65]
 ANNUAL_MAXIMA = FIXTURES / "annual_maxima.csv"
 NETWORK_SEGMENTS = FIXTURES / "network_segments.csv"
 RATING_PAIRS = FIXTURES / "rating_curve_pairs.csv"
@@ -348,7 +354,8 @@ class TestMorphometryWatershed:
         with pytest.raises(NotFoundError):
             run("morphometry watershed", watershed_file=str(tmp_path / "none.json"))
 
-    def test_absurd_magnitudes_are_a_calculation_error_not_a_crash(self):
+    def test_absurd_magnitudes_are_refused_not_a_crash(self):
+        """An area of 1e300 km2 cannot lie within 1e-300 km of its outlet."""
         absurd = {
             "area_km2": 1e300,
             "perimeter_km": 1e300,
@@ -356,9 +363,10 @@ class TestMorphometryWatershed:
             "elevation_min_m": 0,
             "elevation_max_m": 1,
         }
-        with pytest.raises(CalculationError) as caught:
+        with pytest.raises(InvalidParameterError) as caught:
             run("morphometry watershed", watershed=absurd)
-        assert caught.value.code == "calculation_error"
+        assert caught.value.details["reason"] == "outside_physical_range"
+        assert caught.value.details["constraint"] == "within_reach"
 
     def test_a_watershed_without_the_shape_fields_names_them(self, tmp_path):
         """Only the area is required to load; the shape indicators need more."""
@@ -417,21 +425,33 @@ class TestNetworkStats:
         assert result.statistics == direct.get_statistics()
         assert result.method == method
         assert result.n_segments == 9
-        assert result.stream_frequency_per_km2 == pytest.approx(9 / 12.0)
+        # Fs counts the 8 Strahler streams for either method (Horton 1945; Strahler
+        # 1957; Baścik 2006 eq. 1.2.22): 5 + 2 + 1, link 9 continues the stream of 7
+        assert result.stream_frequency_per_km2 == pytest.approx(8 / 12.0)
 
-    def test_known_strahler_orders_and_ratios(self):
-        """Hand-computed orders of the fixture network (5 + 2 + 2 segments)."""
+    def test_known_strahler_streams_and_ratios(self):
+        """Hand count of the fixture: 9 links, but 5 + 2 + 1 Strahler streams.
+
+        Link 9 continues the order-3 stream of link 7 (tributary 8 is of order 1):
+        N = {1: 5, 2: 2, 3: 1}, mean L3 = (2.2 + 3.0) / 1, Rb = {5 / 2, 2 / 1},
+        Rl = {1.45 / 0.92, 5.2 / 1.45} (Strahler 1957, Trans. AGU 38(6), p. 914).
+        """
         statistics = run(
             "network stats", segments_file=str(NETWORK_SEGMENTS)
         ).result.statistics
         assert statistics.max_order == 3
-        assert statistics.segment_counts == {1: 5, 2: 2, 3: 2}
+        assert statistics.segment_counts == {1: 5, 2: 2, 3: 1}
         assert statistics.total_lengths_km[1] == pytest.approx(
             1.2 + 0.8 + 1.0 + 0.9 + 0.7
         )
+        assert statistics.mean_lengths_km[3] == pytest.approx(5.2)
         assert statistics.bifurcation_ratios == {
             1: pytest.approx(2.5),
-            2: pytest.approx(1.0),
+            2: pytest.approx(2.0),
+        }
+        assert statistics.length_ratios == {
+            1: pytest.approx(1.45 / 0.92),
+            2: pytest.approx(5.2 / 1.45),
         }
         assert statistics.total_stream_length_km == pytest.approx(12.7)
         assert statistics.drainage_density is None
@@ -441,20 +461,24 @@ class TestNetworkStats:
             "network stats", segments_file=str(NETWORK_SEGMENTS), area_km2=10.0
         ).result
         assert with_area.statistics.drainage_density == pytest.approx(1.27)
-        assert with_area.stream_frequency_per_km2 == pytest.approx(0.9)
+        assert with_area.stream_frequency_per_km2 == pytest.approx(8 / 10.0)
 
-    def test_shreve_with_missing_magnitudes_has_ratios_only_between_present_ones(self):
-        """Regression: Shreve magnitudes 1, 2, 4, 5 (no 3) raised ``KeyError``."""
+    def test_shreve_magnitudes_have_no_horton_ratios(self):
+        """Magnitudes 1, 2, 4, 5 (no 3); Horton's ratios exist for Strahler orders only.
+
+        The fixture has no pass-through segment, so each segment is a Shreve link.
+        """
         result = run(
-            "network stats", segments_file=str(NETWORK_SEGMENTS), method="shreve"
-        ).result.statistics
-        assert result.segment_counts == {1: 5, 2: 2, 4: 1, 5: 1}
-        assert result.max_order == 5
-        # pairs (1, 2) and (4, 5) exist; the gaps 2-3 and 3-4 have no ratio
-        assert set(result.bifurcation_ratios) == {1, 4}
-        assert result.bifurcation_ratios[1] == pytest.approx(5 / 2)
-        assert result.bifurcation_ratios[4] == pytest.approx(1.0)
-        assert set(result.length_ratios) == {1, 4}
+            "network stats",
+            segments_file=str(NETWORK_SEGMENTS),
+            method="shreve",
+            area_km2=12.0,
+        ).result
+        assert result.statistics.segment_counts == {1: 5, 2: 2, 4: 1, 5: 1}
+        assert result.statistics.max_order == 5
+        assert result.statistics.bifurcation_ratios == {}
+        assert result.statistics.length_ratios == {}
+        assert result.stream_frequency_per_km2 == pytest.approx(8 / 12.0)
 
     def test_library_statistics_survive_non_contiguous_magnitudes(self):
         """Regression of ``StreamNetwork.get_statistics`` itself."""
@@ -599,7 +623,7 @@ class TestNetworkStats:
         assert document["result"]["statistics"]["segment_counts"] == {
             "1": 5,
             "2": 2,
-            "3": 2,
+            "3": 1,
         }
 
 
@@ -1085,13 +1109,14 @@ class TestFloodFrequency:
         )
 
     def test_a_single_distribution_the_method_cannot_fit_is_an_error(self):
-        with pytest.raises(CalculationError) as caught:
+        with pytest.raises(InvalidParameterError) as caught:
             stats.stats_flood_frequency(
                 values=[0.5, *[10.0] * 8, 10.5],
                 distribution="weibull",
                 fit_method="l_moments",
             )
-        assert caught.value.details["reason"] == "out_of_range"
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "l_moments_within_distribution"
 
     def test_a_fit_without_density_at_a_maximum_has_a_null_aic_and_a_notice(self):
         floods = [95.0, 102.0, 110.0, 118.0, 125.0, 133.0, 140.0, 152.0, 170.0]
@@ -1150,16 +1175,28 @@ class TestFloodFrequency:
         assert sorted(d.fit_method for d in fitted) == sorted(FIT_METHODS)
 
     def test_all_leaves_out_each_combination_without_parameters(self):
-        left_skewed = [0.5, *[10.0] * 8, 10.5]  # skewness below Weibull's -1.14
+        # skewness below Weibull's -1.14; the likelihood of the GEV and of Pearson III
+        # grows without limit as their upper bound reaches the largest value
+        left_skewed = [0.5, *[10.0] * 8, 10.5]
         output = run("stats flood-frequency", values=left_skewed, fit_method="all")
         fitted = {
             (d.distribution_name, d.fit_method) for d in output.result.distributions
         }
-        assert ("weibull", "mle") in fitted
         left_out = [n for n in output.notices if n.code == "distribution_left_out"]
-        expected = {("weibull", m) for m in ("moments", "l_moments", "least_squares")}
+        expected = {
+            ("weibull", "moments"): "out_of_range",
+            ("weibull", "l_moments"): "out_of_range",
+            ("weibull", "least_squares"): "out_of_range",
+            ("gev", "mle"): "unbounded_likelihood",
+            ("pearson3", "mle"): "unbounded_likelihood",
+            # the Weibull likelihood grows with its shape, beyond the 50 searched
+            ("weibull", "mle"): "unbounded_likelihood",
+            # the least squares of Pearson III lie beyond the skewness of -9
+            ("pearson3", "least_squares"): "not_converged",
+        }
         assert {
-            (n.details["distribution"], n.details["fit_method"]) for n in left_out
+            (n.details["distribution"], n.details["fit_method"]): n.details["reason"]
+            for n in left_out
         } == expected
         assert fitted.isdisjoint(expected)
 
@@ -1266,13 +1303,13 @@ class TestLowFlow:
     """``stats low-flow``."""
 
     def test_fisher_tippett_equals_the_library(self):
-        series = _daily()
+        series = _daily(DAILY_FLOWS_15Y)
         direct = LowFlowAnalysis(
             series.values, series.dates, np.array([2.0, 10.0, 50.0])
         )
         result = run(
             "stats low-flow",
-            input_file=str(DAILY_FLOWS),
+            input_file=str(DAILY_FLOWS_15Y),
             value_column="Q",
             date_column="date",
             return_periods=[2, 10, 50],
@@ -1287,11 +1324,22 @@ class TestLowFlow:
             == direct.empirical_non_exceedance().to_dict()
         )
         assert result.result.incomplete_years == []
-        assert result.result.n_years == 3
-        assert result.result.hydrological_years == [2022, 2023, 2024]
+        assert result.result.n_years == 15
+        assert result.result.hydrological_years == list(range(2009, 2024))
+        assert result.notices == ()
+
+    def test_fewer_than_ten_years_are_a_small_sample(self):
+        result = run(
+            "stats low-flow",
+            input_file=str(DAILY_FLOWS_15Y),
+            value_column="Q",
+            date_column="date",
+            last_year=2015,
+        )
+        assert result.result.hydrological_years == list(range(2009, 2016))
         assert [n.code for n in result.notices] == ["small_sample"]
-        assert result.notices[0].details == {"years": 3, "minimum": 10}
-        assert "Only 3 year(s)" in result.notices[0].message
+        assert result.notices[0].details == {"years": 7, "minimum": 10}
+        assert "Only 7 year(s)" in result.notices[0].message
 
     def test_annual_minima_follow_the_hydrological_year(self):
         values, dates = _boundary_series()
@@ -1357,22 +1405,24 @@ class TestLowFlow:
 
     def test_the_empirical_block_uses_the_convention_of_the_fitted_quantiles(self):
         """Regression: values descending with *exceedance* probabilities, so the deepest
-        low flow of the fixture (1.66) had T = 1.33 (probability 0.75) while the
+        low flow of a three-year series had T = 1.33 (probability 0.75) while the
         Fisher-Tippett block counts T with the non-exceedance probability 1 / T; now
-        F = m / (n + 1) = 0.25 and T = 1 / F = 4.
+        F = m / (n + 1): the deepest of these fifteen years, 0.67, has F = 1 / 16 and
+        T = 1 / F = 16.
         """
         result = run(
             "stats low-flow",
-            input_file=str(DAILY_FLOWS),
+            input_file=str(DAILY_FLOWS_15Y),
             value_column="Q",
             date_column="date",
             return_periods=[2, 10, 50],
         ).result
         empirical = result.empirical
-        assert empirical.values_ascending.tolist() == [1.66, 1.79, 1.88]
-        assert empirical.non_exceedance_probabilities.tolist() == [0.25, 0.5, 0.75]
-        np.testing.assert_allclose(empirical.return_periods, [4.0, 2.0, 4.0 / 3.0])
-        assert result.annual_minima == [1.79, 1.88, 1.66]
+        ranks = np.arange(1, 16)
+        assert empirical.values_ascending.tolist() == sorted(MINIMA_15Y)
+        np.testing.assert_allclose(empirical.non_exceedance_probabilities, ranks / 16)
+        np.testing.assert_allclose(empirical.return_periods, 16 / ranks)
+        assert result.annual_minima == MINIMA_15Y
         assert result.fisher_tippett.non_exceedance_probabilities.tolist() == [
             0.5,
             0.1,
@@ -1383,7 +1433,7 @@ class TestLowFlow:
         document = _json_roundtrip(
             run(
                 "stats low-flow",
-                input_file=str(DAILY_FLOWS),
+                input_file=str(DAILY_FLOWS_15Y),
                 value_column="Q",
                 date_column="date",
                 return_periods=[2, 10, 50],
@@ -1395,31 +1445,37 @@ class TestLowFlow:
             "return_periods",
         ]
         assert document["incomplete_years"] == []
-        assert document["hydrological_years"] == [2022, 2023, 2024]
+        assert document["hydrological_years"] == list(range(2009, 2024))
 
     def test_low_flow_quantiles_fall_with_the_return_period(self):
         quantiles = run(
             "stats low-flow",
-            input_file=str(DAILY_FLOWS),
+            input_file=str(DAILY_FLOWS_15Y),
             value_column="Q",
             date_column="date",
             return_periods=[2, 10, 50],
         ).result.fisher_tippett.quantiles
         assert np.all(np.diff(quantiles) < 0)
 
-    def test_fewer_than_three_complete_years_are_a_calculation_error(self):
+    @pytest.mark.parametrize(
+        ("path", "details"),
+        [
+            (DAILY_FLOWS, {"count": 3, "minimum": 4}),
+            (OBSERWATOR_EXPORT, {"count": 0, "minimum": 4, "incomplete_years": [2024]}),
+        ],
+    )
+    def test_fewer_than_four_complete_years_are_a_calculation_error(
+        self, path, details
+    ):
+        """Maximum likelihood needs more annual minima than its three parameters."""
         with pytest.raises(CalculationError) as caught:
             run(
                 "stats low-flow",
-                input_file=str(OBSERWATOR_EXPORT),
+                input_file=str(path),
                 value_column="Q",
                 date_column="date",
             )
-        assert caught.value.details == {
-            "count": 0,
-            "minimum": 3,
-            "incomplete_years": [2024],
-        }
+        assert caught.value.details == details
 
     def test_return_periods_are_checked(self):
         with pytest.raises(InvalidParameterError):
@@ -1760,7 +1816,7 @@ class TestRatingCurve:
             remove_outliers=True,
         )
         assert _fitted(result.result) == direct
-        assert result.notices == ()
+        assert [n.code for n in result.notices] == ["unreferenced_formula"]
 
     def test_inline_pairs_equal_the_file(self):
         levels, flows = _rating_pairs()
@@ -1847,7 +1903,10 @@ class TestRatingCurve:
             h0_initial=40.0
         )
         assert result.result.n_points == 13
-        assert [n.code for n in result.notices] == ["missing_pairs_removed"]
+        assert [n.code for n in result.notices] == [
+            "missing_pairs_removed",
+            "unreferenced_formula",
+        ]
         assert result.notices[0].details == {"missing": 2, "total": 15}
         assert "2 of 15 measurement pairs" in result.notices[0].message
 
@@ -1876,7 +1935,8 @@ class TestRatingCurve:
                 h0_initial=h0,
             )
         assert caught.value.details["option"] == "h0_initial"
-        assert caught.value.details["maximum"] == 62.0
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "start_below_levels"
 
     def test_the_default_initial_level_is_chosen_from_the_data_for_negative_levels(
         self,
@@ -1911,18 +1971,20 @@ class TestRatingCurve:
                 h0_initial=0.0,
             )
         assert caught.value.details["option"] == "h0_initial"
-        assert caught.value.details["maximum"] == -20.0
+        assert caught.value.details["constraint"] == "start_below_levels"
         assert "lower than every water level" in caught.value.hint
 
-    def test_a_numerically_failing_fit_is_a_calculation_error(self):
-        """Levels so large that the power law overflows: no fit, exit code 4."""
-        with pytest.raises(CalculationError) as caught:
+    def test_least_squares_without_a_minimum_are_refused(self):
+        """Discharges rising like an exponential: the search does not settle in its
+        10,000 evaluations (a calculation_error, exit code 13, up to 0.8.1)."""
+        with pytest.raises(InvalidParameterError) as caught:
             hydrometrics.hydrometrics_rating_curve(
-                water_levels=[1e250, 2e250, 3e250, 4e250],
-                discharges=[1.0, 2.0, 3.0, 4.0],
+                water_levels=[10.0, 20.0, 30.0], discharges=[1.0, 10.0, 1000.0]
             )
-        assert caught.value.code == "calculation_error"
-        assert caught.value.exit_code == 13
+        assert caught.value.code == "validation_error"
+        assert caught.value.exit_code == 2
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "least_squares_minimum"
 
     @pytest.mark.parametrize("threshold", [0.0, -1.0, float("nan")])
     def test_outlier_threshold_must_be_positive(self, threshold):
@@ -2104,9 +2166,11 @@ class TestSoilTexture:
         }
 
     def test_no_soil_data_is_an_error_not_loam(self):
+        """ADR-0066: the spec usda_texture refuses a zero total (positive_total)."""
         with pytest.raises(InvalidParameterError) as caught:
             soil.soil_texture(clay=0, sand=0, silt=0)
-        assert caught.value.details["reason"] == "no_data"
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "positive_total"
 
     @pytest.mark.parametrize(
         "amounts",
@@ -2207,7 +2271,7 @@ class TestSoilHsg:
             "sand_path": {"dataset": "global.isric.soilgrids", "attribution": [other]},
             "silt_path": {
                 "dataset": "global.isric.soilgrids",
-                "attribution": [CHMI_SOURCE, gugik],
+                "attribution": [CHMU_SOURCE, gugik],
             },
         }
         for name, sidecar in sidecars.items():
@@ -2219,8 +2283,8 @@ class TestSoilHsg:
         )
 
         assert document["attribution"] == [
-            CHMI_SOURCE,
-            CHMI_PROCESSED,
+            CHMU_SOURCE,
+            CHMU_PROCESSED,
             gugik,
             SOILGRIDS_SOURCE,
             other,
@@ -2740,20 +2804,22 @@ class TestReportGenerate:
             tc_method="kirpich",
             hietogram_type="beta",
             total_mm=50.0,
-            duration_min=62.0,  # not a multiple of the 5 min step
+            duration_min=60.0,
             timestep_min=5.0,
         )
         output = tmp_path / "raport.md"
         assert [record.path for record in result.files] == [str(output)]
         assert result.files[0].sha256 == sha256_file(output)
-        # Kirpich on 45.3 km2 with a flow path slope of 0.021: outside his data
+        # Kirpich on 45.3 km2 with a flow path of 14.2 km at 0.021: outside his data
+        # in the area, then in the length and the slope (Mota and Kobiyama 2015,
+        # ADR-0052), in the order of the checks
         assert [
             (notice.code, notice.details.get("parameter"), notice.details.get("field"))
             for notice in result.notices
         ] == [
-            ("outside_typical_range", "area_km2", "area_km2"),
-            ("outside_typical_range", "slope_m_per_m", "flow_path_slope_m_per_m"),
-            ("duration_not_covered", None, None),
+            ("outside_applicability", "area_km2", "area_km2"),
+            ("outside_applicability", "length_km", "flow_path_length_km"),
+            ("outside_applicability", "slope_m_per_m", "flow_path_slope_m_per_m"),
         ]
         document = _json_roundtrip(result)
         assert document["result"]["output_path"] == str(output)

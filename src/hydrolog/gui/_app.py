@@ -42,6 +42,7 @@ import re
 import secrets
 import shutil
 import time
+import urllib.parse
 import weakref
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from concurrent.futures import Future
@@ -59,12 +60,12 @@ from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import (
-    FileResponse,
     HTMLResponse,
     JSONResponse,
     PlainTextResponse,
     RedirectResponse,
     Response,
+    StreamingResponse,
 )
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
@@ -192,6 +193,8 @@ catalog documents, the same for every client, are logged only when answered with
 or more."""
 FILE_PATH: Final = re.compile(r"(/api/files/[^/?]+/)[^?]+")
 """A file's address in the API, whose name the access log writes ``[file]``."""
+FILE_CHUNK_BYTES: Final = 64 * 1024
+"""The size of the chunks a session file is sent in [B]."""
 
 
 class _NamelessLog:
@@ -479,6 +482,21 @@ def _no_file(shown: str) -> NotFoundError:
     )
 
 
+def _attachment(name: str) -> str:
+    """Return the ``Content-Disposition`` of a download named ``name`` (RFC 6266)."""
+    quoted = urllib.parse.quote(name)
+    if quoted != name:
+        return f"attachment; filename*=utf-8''{quoted}"
+    return f'attachment; filename="{name}"'
+
+
+async def _file_chunks(stream: anyio.AsyncFile[bytes]) -> AsyncIterator[bytes]:
+    """Yield an open file in chunks of :data:`FILE_CHUNK_BYTES`; close it at the end."""
+    async with stream:
+        while chunk := await stream.read(FILE_CHUNK_BYTES):
+            yield chunk
+
+
 def _too_large(limit: int) -> InvalidParameterError:
     return InvalidParameterError(
         f"The request is larger than {limit} bytes",
@@ -696,7 +714,7 @@ class _Gui:
         ``nogat.toml``, read at every request; ``None`` without it), which the page
         gives Nogat's app menu (DEV-15.4, ADR-0027). ``attribution`` is the complete
         lines of each provider Hydrolog knows (``imgw``, ``imgw_hydro``, ``pmaxtp``,
-        ``chmi``: ``attribution`` and ``terms_notice``), by which the page names the
+        ``chmu``: ``attribution`` and ``terms_notice``), by which the page names the
         provider of a hand-off that carries no lines of its own (ADR-0028).
         ``retired_lines`` maps each line Nogat retired (ECO-065) to its current line or
         ``None``, by which the page shows a kept depth's or an older hand-off's lines as
@@ -906,7 +924,22 @@ class _Gui:
             return Response(status_code=204)
         if not path.is_file() or path.is_symlink():
             raise _no_file(value)
-        return FileResponse(path, filename=path.name)
+        try:
+            # Opened before the answer starts: the page's DELETE api/session (pagehide)
+            # may delete the session meanwhile, and a file deleted after the headers
+            # would break the answer off; an open file stays readable (POSIX).
+            handle = await anyio.to_thread.run_sync(path.open, "rb")
+        except FileNotFoundError:
+            raise _no_file(value) from None
+        size = os.fstat(handle.fileno()).st_size
+        return StreamingResponse(
+            _file_chunks(anyio.wrap_file(handle)),
+            media_type=mimetypes.guess_type(path.name)[0] or "text/plain",
+            headers={
+                "content-length": str(size),
+                "content-disposition": _attachment(path.name),
+            },
+        )
 
     # --- „Zgłoś uwagę” and the admin page -------------------------------------------
 

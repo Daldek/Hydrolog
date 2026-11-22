@@ -1,0 +1,291 @@
+schema = "nogat-formula-card/1"
+name = "triangular_hyetograph"
+title = "Triangular design hyetograph of Yen and Chow: block integrals of a triangle"
+function = "hydrolog.precipitation.hietogram.triangular_hyetograph"
+family = "scheme"
+formula_version = 1
+status = "referenced"
+equation = "h = 2 P / Td, ta = r Td; cumulative share F(u) = u**2 / r for u <= r, else 1 - (1 - u)**2 / (1 - r), u = t / Td; P_j = P (F(j / n) - F((j - 1) / n)), n = Td / dt"
+latex = "h = \\frac{2P}{T_d},\\quad t_a = r\\,T_d,\\quad F(u) = \\begin{cases} u^2/r & u \\le r \\\\ 1 - (1-u)^2/(1-r) & u > r \\end{cases},\\quad P_j = P\\left[F\\left(\\tfrac{j}{n}\\right) - F\\left(\\tfrac{j-1}{n}\\right)\\right]"
+validation = "Chow et al. (1988, p. 464) tabulate r fitted to storms of cities of the USA, India and Canada; the triangle itself is a design shape and the sources give no error statistic of it"
+conventions = ["depths in mm per step; t_j the end of step j; h in mm/h through the units table", "each step holds the depth the continuous triangle gives it, the difference of the cumulative share at its ends (ADR-0046); the triangle is not sampled", "the storm is made of whole steps: Td = n dt (ADR-0046)"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/hyetographs-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+
+[properties.monotonic]
+total_mm = 1
+
+[[properties.scalings]]
+name = "depth"
+
+[properties.scalings.inputs]
+total_mm = 1.0
+
+[properties.scalings.outputs]
+intensities_mm = 1.0
+peak_intensity_mm_per_h = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling a total or a time is exact in binary; one rounding of a quotient but for subnormal values"
+abs = 1e-300
+rel = 1e-15
+
+[[properties.scalings]]
+name = "time"
+
+[properties.scalings.inputs]
+duration_min = 1.0
+timestep_min = 1.0
+
+[properties.scalings.outputs]
+times_min = 1.0
+peak_time_min = 1.0
+peak_intensity_mm_per_h = -1.0
+
+[properties.scalings.tolerance]
+reason = "doubling a total or a time is exact in binary; one rounding of a quotient but for subnormal values"
+abs = 1e-300
+rel = 1e-15
+
+[[properties.limits]]
+name = "exact_rational"
+text = "the steps equal the block integrals of the triangle in exact rational arithmetic"
+
+[[properties.conservation]]
+name = "steps_add_up"
+text = "the steps hold the total"
+
+[properties.conservation.tolerance]
+reason = "the steps are rounded products or differences of a total below 2 m; their exact sum (fsum) differs from it by a few units in its last place per million steps"
+abs = 1e-09
+
+[[properties.symmetries]]
+name = "mirror"
+text = "the peak at 1 - r gives the steps in reverse order"
+
+[properties.symmetries.tolerance]
+reason = "1 - r rounds once; the shares of the mirror differ by a few units in the last place of the total"
+abs = 1e-09
+
+[[sources]]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 14.3 Triangular hyetograph method, eqs. 14.3.1 to 14.3.3, Example 14.3.1, pp. 462-465 (after Yen and Chow 1980)"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[sources]]
+citation = "Yen, B.C. and Chow, V.T. (1980). Design hyetographs for small drainage structures. Journal of the Hydraulics Division, ASCE 106(HY6), 1055-1076"
+access = "author-provided"
+
+[[variables]]
+name = "total_mm"
+symbol = "P"
+unit = "mm"
+kind = "real"
+description = "Total depth of the storm."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 6.96
+low_inclusive = true
+high = 341.27
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixtures: the PMAXTP depths of IMGW-PIB for Kamiennik (51.015 N, 15.890 E) and Warsaw (52.23 N, 21.01 E), POT, recorded in November 2026"
+access = "open"
+locator = "tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm over durations of 5 min to 72 h and probabilities of 0.01 to 99.9 %"
+
+[[variables]]
+name = "duration_min"
+symbol = "T_d"
+unit = "min"
+kind = "real"
+description = "Duration of the storm, a whole number of steps."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 43200.0
+test_reason = "ten times the longest duration of the PMAXTP tables, 72 h"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 4320.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Ozga-Zieliński, B. (ed.) (2022). Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia - projekt PMAXTP. IMGW-PIB, Warszawa, ISBN 978-83-64979-48-4"
+access = "open"
+locator = "p. 10: the tables give 16 durations, 5 min to 72 h"
+url = "https://klimat.imgw.pl/opady-maksymalne/"
+
+[[variables]]
+name = "timestep_min"
+symbol = "\\Delta t"
+unit = "min"
+kind = "real"
+description = "Time step: the length of each block of the storm."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 43200.0
+test_reason = "ten times the longest duration of the PMAXTP tables, 72 h"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 60.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "The steps of the design storms of the sources: 5 min (DWD, Malitz 2009, slide 17; the shortest duration of the PMAXTP tables) to 1 h (KZGW 2017, example 6.1, p. 92)"
+access = "open"
+locator = "Malitz 2009 slide 17; KZGW 2017 p. 92"
+
+[[variables]]
+name = "peak_position"
+symbol = "r"
+unit = "-"
+kind = "real"
+description = "Storm advancement coefficient: the time of the peak over the duration."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+high = 1.0
+high_inclusive = false
+
+[variables.typical]
+low = 0.294
+low_inclusive = true
+high = 0.5
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "Table 14.3.2, p. 464: storm advancement coefficients r of 0.294 to 0.480 for cities of the USA, India and Canada; Hydrolog's default 0.5 puts the peak at the centre"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[constraints]]
+name = "step_within_duration"
+class = "precondition"
+text = "dt <= Td: the storm holds at least one step"
+
+[constraints.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[constraints]]
+name = "steps_representable"
+class = "precondition"
+text = "Td / dt <= 1,000,000: at most a million steps"
+
+[constraints.source]
+citation = "Hydrolog, ADR-0067: the precipitation formulas by specs"
+access = "open"
+locator = "docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3"
+
+[[constraints]]
+name = "whole_steps"
+class = "precondition"
+text = "Td = n dt for a whole n, to 1e-9 of Td: the storm is made of whole steps"
+
+[constraints.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 14.4, p. 466: a design hyetograph gives the depth of n successive intervals of duration dt over the total duration Td = n dt"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[constraints]]
+name = "peak_intensity_finite"
+class = "precondition"
+text = "2 P / Td is a finite intensity in float64 (a storm of a fraction of a second of 1e-300 mm or more is beyond it)"
+
+[constraints.source]
+citation = "Hydrolog, ADR-0067: the precipitation formulas by specs"
+access = "open"
+locator = "docs/decisions/0067-the-precipitation-formulas-by-specs.md, point 3"
+
+[[outputs]]
+name = "intensities_mm"
+unit = "mm"
+kind = "real_array"
+symbol = "P_j"
+description = "Depth of each step (the field keeps its name of earlier versions; the result's intensity_mm_per_h is the rate)."
+boundary_tolerance = 1e-09
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "times_min"
+unit = "min"
+kind = "real_array"
+symbol = "t_j"
+description = "End of each step from the start of the storm."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "peak_intensity_mm_per_h"
+unit = "mm/h"
+kind = "real"
+symbol = "h"
+description = "Intensity at the peak of the triangle."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "peak_time_min"
+unit = "min"
+kind = "real"
+symbol = "t_a"
+description = "Time of the peak from the start of the storm."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "range cases peak_position-physical_low_inside and physical_high_inside: r next to 0 and next to 1 divide by r and 1 - r and stay finite"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "conservation steps_add_up and test_a_storm_of_a_million_steps_holds_its_total"
+
+[[oracles]]
+kind = "exact"
+description = "the block integrals of the triangle in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_hyetographs.py (limit exact_rational)"
+conventions = []

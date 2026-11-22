@@ -1,0 +1,236 @@
+schema = "nogat-formula-card/1"
+name = "scs_cn_runoff"
+title = "Direct runoff of a storm by the SCS curve number"
+function = "hydrolog.runoff.scs_cn.runoff_depths"
+family = "scheme"
+formula_version = 1
+status = "referenced"
+equation = "Q(P) = (P - Ia)**2 / (P - Ia + S) for P > Ia, else 0; Ia = lambda * S; S of scs_cn_retention; P the cumulative depth after each step, the runoff of a step the difference of Q; C = Q / P of the storm"
+latex = "Q(P) = \\begin{cases} \\dfrac{(P - I_a)^2}{P - I_a + S} & P > I_a \\\\ 0 & P \\le I_a \\end{cases},\\quad I_a = \\lambda S,\\quad q_i = Q(P_i) - Q(P_{i-1}),\\quad C = \\frac{Q}{P}"
+validation = "NEH 630-9 (p. 9-1) derives the curve numbers of its tables from annual floods of small agricultural watersheds, generally under 1 square mile, and storms of one day or less; the sources give no error statistic of the equation"
+conventions = ["SI units: depths in mm", "the equation on the cumulative rainfall of the storm, the runoff of each step the difference of the cumulative runoff (NEH 630-10 example 10-6; KZGW 2017 eq. 6.2); a total is a storm of one step", "Ia = lambda S with lambda given; S from the CN by scs_cn_retention", "the CN of ARC (AMC) II unless converted by scs_cn_amc", "C = Q / P of the storm, 0 without rainfall"]
+assumptions = ["the CN of the NRCS tables assume lambda = 0.2; another lambda needs CN fitted for it (NEH 630-10 p. 10-4; Woodward et al. 2003), and the command scs effective then gives the notice ia_coefficient_nonstandard", "direct runoff of one storm, not an infiltration model or a continuous simulation (NEH 630-10 p. 10-19); not for snowmelt or rain on frozen ground (TR-55 p. 2-11)", "TR-55 (p. 2-11) finds the method less accurate for runoff below 0.5 in (12.7 mm); this limit of the output gives no notice"]
+notices = ["outside_applicability"]
+reference_cases = ["tests/fixtures/formulas/scs-cn-cases.json"]
+constraints = []
+constants = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+symmetries = []
+
+[properties.monotonic]
+precipitation_mm = 1
+cn = 1
+ia_coefficient = -1
+
+[[properties.limits]]
+name = "no_runoff_below_ia"
+text = "no runoff while the rainfall does not exceed Ia (NEH 630-10, eq. 10-9)"
+
+[[properties.limits]]
+name = "cn_100"
+text = "CN = 100 gives S = Ia = 0 and the rainfall of every step as runoff"
+
+[[properties.limits]]
+name = "ultimate_loss"
+text = "P - Q tends to S + Ia as P grows (NEH 630-10, eq. 10-16)"
+
+[[properties.limits]]
+name = "exact_rational"
+text = "Q equals the equation in exact rational arithmetic"
+
+[[properties.conservation]]
+name = "steps_add_up"
+text = "the runoff of the steps adds up to the runoff of the storm"
+
+[properties.conservation.tolerance]
+reason = "differences of the cumulative runoff, each within a few units in the last place of a depth below 10 m"
+abs = 1e-09
+
+[[sources]]
+citation = "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004)"
+access = "open"
+locator = "eqs. 10-9 to 10-11, pp. 10-2 to 10-4; example 10-6 and table 10-2, pp. 10-17 to 10-18 (cumulative rainfall of a storm)"
+url = "https://www.hydrocad.net/neh/630ch10.pdf"
+
+[[sources]]
+citation = "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)"
+access = "open"
+locator = "eqs. 2-1 to 2-4, p. 2-1"
+url = "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf"
+
+[[sources]]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "eq. 6.2, p. 88"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "precipitation_mm"
+symbol = "\\Delta P_i"
+unit = "mm"
+kind = "real_array"
+description = "Rainfall depth of each step of the storm (a total is one step)."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 350.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixtures: the PMAXTP depths of IMGW-PIB for Kamiennik (51.015 N, 15.890 E) and Warsaw (52.23 N, 21.01 E), POT, recorded in November 2026"
+access = "open"
+locator = "tests/fixtures/pmaxtp_kamiennik_pot.json and pmaxtp_warszawa_pot.json: 6.96 to 341.27 mm over durations of 5 min to 72 h and probabilities of 0.01 to 99.9 %"
+
+[[variables]]
+name = "cn"
+symbol = "CN"
+unit = "-"
+kind = "real"
+description = "Curve number of the antecedent runoff condition of the formula."
+
+[variables.physical]
+low = 1.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.applicability]
+low = 40.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.applicability.source]
+citation = "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)"
+access = "open"
+locator = "chapter 2, limitations, p. 2-11: when the weighted CN is less than 40, use another procedure"
+url = "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf"
+
+[variables.typical]
+low = 30.0
+low_inclusive = true
+high = 98.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's table of TR-55 curve numbers (cn list), the CN its users take for soil-cover complexes"
+access = "open"
+locator = "its least and largest CN, 30 (woods and brush, good, A) and 98 (impervious and water)"
+
+[[variables]]
+name = "ia_coefficient"
+symbol = "\\lambda"
+unit = "-"
+kind = "real"
+description = "Initial abstraction ratio Ia / S."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+high = 1.0
+high_inclusive = true
+
+[variables.typical]
+low = 0.05
+low_inclusive = true
+high = 0.2
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's command scs effective: the ratio 0.2 of the CN tables and 0.05 of Woodward et al. (2003), the two its catalog and GUI name"
+access = "open"
+locator = "catalog option ia_coefficient"
+
+[[outputs]]
+name = "total_effective_mm"
+unit = "mm"
+kind = "real"
+symbol = "Q"
+description = "Direct runoff of the storm."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "effective_mm"
+unit = "mm"
+kind = "real_array"
+symbol = "q_i"
+description = "Direct runoff of each step."
+boundary_tolerance = 1e-09
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "runoff_coefficient"
+unit = "-"
+kind = "real"
+symbol = "C"
+description = "Direct runoff over the rainfall of the storm."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "retention_mm"
+unit = "mm"
+kind = "real"
+symbol = "S"
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "initial_abstraction_mm"
+unit = "mm"
+kind = "real"
+symbol = "I_a"
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "limit cn_100: P - Ia + S is P itself at CN 100 and a step of no rainfall gives no runoff"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case precipitation_mm-nan_element: a gap is refused before the cumulative sum"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_a_long_storm_matches_its_total_summed_exactly"
+
+[[oracles]]
+kind = "exact"
+description = "Q in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_scs_cn.py (limit exact_rational)"
+conventions = []

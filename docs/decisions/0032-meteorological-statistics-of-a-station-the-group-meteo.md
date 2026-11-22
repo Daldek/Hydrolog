@@ -5,6 +5,8 @@
 - Amends: [ADR-0009](0009-compact-index-line-for-large-groups.md) (the groups `tc`, `hydrometrics` and `meteo` get one index line each in `AGENTS.md`, chosen to keep the guide within its budget)
 - Builds on: plan `docs/plans/2026-11-13-station-analyses.md` (decision D12 with D1, D2 and D13, step S4), Nogat's plan `2026-11-12-station-data-and-analyses` (step H3: M1 to M14; decisions D8, D12), approved by the author on 2026-11-13; ADR-0029 (the reference period), ADR-0031 (`stats harmonics` and Sen's slope, which serve M12 and M13), ADR-0028 (the providers' lines), ADR-0022
 - Amended by [ADR-0033](0033-review-of-the-station-analyses.md) (2026-11-13): one name per concept, variant options, the reference period of normals and the list of spells (its points 1, 2, 4 and 6)
+- Amended by [ADR-0044](0044-normals-spells-frost-days-and-the-hydrothermal-season.md) (2026-11-18): multi-month normals from the monthly normals, a spell in the year it ends, the freeze-thaw days beside FD, the hydrothermal season of April to September (its points 3, 4, 6 and 8)
+- Amended by [ADR-0059](0059-the-meteorological-indices-by-specs.md) (2026-11-19): the indices declared by specs beside the series, Kaczorowska's classes of the percentage rounded to a whole percent, a half up (its point 5)
 
 ## Context
 
@@ -44,3 +46,8 @@ The guide has a budget of 16,384 bytes (DOC-1.7). After S3 `AGENTS.md` has 16,32
 - **Kaczorowska's annual limits for months**, as the mockup: her classes are defined for years and seasons, and limits for months are published (Gąsiorek and Musiał, 2011, Table 1).
 - **A dry-day threshold of 0.1 mm** by default, as the mockup: the plan and the ETCCDI's CDD and CWD use 1 mm; 0.1 mm is a value of `threshold_mm`.
 - **A reference period for normals beside the period of the data** (the mockup's anomalies against 1991–2020 in every year, the SPI calibrated on 1991–2020 for the whole record): D12 has no such option and D1 makes the chosen period the data; left as an open question for the author.
+
+## Erratum (2026-11-21, Nogat ECO-082)
+
+ČHMÚ's daily weather series of the Context is Obserwator's dataset `cz.chmu.meteo_daily` since Obserwator 3.1.0 (Nogat
+ECO-082: identifiers by the national acronym without diacritics); its columns are unchanged.

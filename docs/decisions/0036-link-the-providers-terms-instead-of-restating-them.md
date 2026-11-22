@@ -46,3 +46,8 @@ PMAXTP: …”; ČHMÚ still has none. The kit's regulamin lost its block `imgw-
 - The private API's `hydrolog-gui-session/1` has one more field.
 - Files written before and handed out (CSV columns, a report, an SVG, a hand-off) keep their old lines; Hydrolog does
   not rewrite them, and reads them as point 3 says when they come back as input.
+
+## Erratum (2026-11-21, Nogat ECO-082)
+
+The provider and the regulamin's block named `chmi` in points 1 and 5 are `chmu` since Nogat ECO-082 (identifiers by
+the national acronym without diacritics); their lines are unchanged.

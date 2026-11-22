@@ -17,7 +17,6 @@ from hydrolog._attribution import cite, lines_of_kartograf
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput
 from hydrolog.catalog.notices import notice
-from hydrolog.exceptions import InvalidParameterError
 from hydrolog.operations._outputs import conflict_error, plan_output, plan_outputs
 from hydrolog.soil import (
     HSG_CODES,
@@ -62,10 +61,11 @@ def soil_texture(*, clay: float, sand: float, silt: float) -> SoilTextureResult:
     """USDA texture class and Hydrologic Soil Group (``soil texture``).
 
     Classifies the sample with the USDA texture triangle
-    (:func:`hydrolog.soil.classify_usda_texture`) and maps the class to its
-    Hydrologic Soil Group (:func:`hydrolog.soil.texture_to_hsg`; the table of
-    Kartograf ADR-025, milder than TR-55 for ``sandy_loam``, ``clay_loam`` and
-    ``silty_clay_loam``).
+    (:func:`hydrolog.soil.classify_usda_texture`, spec ``usda_texture``) and maps the
+    class to its Hydrologic Soil Group (:func:`hydrolog.soil.texture_to_hsg`, spec
+    ``texture_hsg``: TR-55 appendix A, with sandy loam B, stricter than TR-55's A,
+    and clay loam and silty clay loam C, milder than TR-55's D, as NEH 630 ch. 7
+    names their typical groups).
 
     Parameters
     ----------
@@ -82,16 +82,11 @@ def soil_texture(*, clay: float, sand: float, silt: float) -> SoilTextureResult:
     Raises
     ------
     InvalidParameterError
-        If an amount is not a finite number, is negative, or all three are zero (no
-        soil data).
+        If an amount is not a finite number or is negative (``details.reason``
+        ``outside_physical_range``), or all three are zero (no soil data:
+        ``precondition_failed``, ``details.constraint`` ``positive_total``).
     """
     name = classify_usda_texture(clay=clay, sand=sand, silt=silt)
-    if clay + sand + silt <= 0:
-        raise InvalidParameterError(
-            "clay, sand and silt must not all be zero (no soil data)",
-            details={"option": "clay", "reason": "no_data"},
-            hint="Give the contents of the three fractions.",
-        )
     group = texture_to_hsg(name)
     return SoilTextureResult(
         texture_class=name,

@@ -1,0 +1,148 @@
+schema = "nogat-formula-card/1"
+name = "clark_lag"
+title = "Lag of Clark's model: the centroid of the time-area curve plus R"
+function = "hydrolog.runoff.clark_iuh.clark_lag_time"
+family = "scheme"
+formula_version = 1
+status = "oracle only"
+equation = "t_lag = tc / 2 + R"
+latex = "t_{lag} = \\frac{t_c}{2} + R"
+validation = "none: an exact property of the model; Clark's tc and R are calibrated on gauged floods (HEC-HMS), and the sources give no error statistic"
+conventions = ["the lag from the instant of a unit of rainfall to the centroid of the response, in min; the unit hydrograph of D lags a further D / 2 after the rainfall's beginning", "the centroid of HEC-HMS's elliptical time-area curve is tc / 2 whatever its factor (1.414): the areas its two halves cut off from the line A = 1 are equal"]
+assumptions = ["the time-area curve of an elliptical watershed (spec clark); another curve has another centroid"]
+notices = []
+reference_cases = []
+no_traps_reason = "half of one input plus another: no denominator, iteration, gap or long sum"
+constraints = []
+traps = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+tc_min = 1
+r_min = 1
+
+[[properties.scalings]]
+name = "time"
+
+[properties.scalings.inputs]
+tc_min = 1.0
+r_min = 1.0
+
+[properties.scalings.outputs]
+lag_time_min = 1.0
+
+[properties.scalings.tolerance]
+reason = "halving and adding doubled numbers is exact in binary, but for subnormal times"
+abs = 1e-300
+rel = 0.0
+
+[[properties.limits]]
+name = "time_area_centroid"
+text = "tc / 2 is the centroid of the time-area curve: the integral of 1 - A(t) / A over the curve, its two halves cancelling the factor 1.414"
+
+[[properties.limits]]
+name = "unit_hydrograph_centroid"
+text = "the first moment of the spec clark's unit hydrograph on a fine grid, less D / 2, is tc / 2 + R"
+
+[[sources]]
+citation = "USACE-HEC (2000). Hydrologic Modeling System HEC-HMS, Technical Reference Manual (CPD-74B, March 2000)"
+access = "open"
+locator = "Clark's unit hydrograph model, eq. 50, p. 59: the time-area curve of an elliptical watershed, whose centroid is at tc / 2; eqs. 47-49, p. 58: the linear reservoir S = R O, whose response has the first moment R"
+url = "https://www.hec.usace.army.mil/software/hec-hms/documentation/HEC-HMS_Technical%20Reference%20Manual_%28CPD-74B%29.pdf"
+
+[[sources]]
+citation = "Nash, J.E. (1959). Systematic determination of unit hydrograph parameters. Journal of Geophysical Research 64(1): 111-115"
+access = "open"
+locator = "the theorem of moments: the first moment of a linear system's response to an input is the input's first moment plus the IUH's, so translation and reservoir add their lags (not opened)"
+url = "https://doi.org/10.1029/JZ064i001p00111"
+
+[[variables]]
+name = "tc_min"
+symbol = "t_c"
+unit = "min"
+kind = "real"
+description = "Time of concentration, the translation time of the watershed."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 4500.0
+test_reason = "ten times the longest time of concentration of the hand-offs (450 min)"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 450.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: Kirpich's tc of the flow paths of the 27 watersheds, the default method of hydrograph generate, 1.04 to 450 min"
+
+[[variables]]
+name = "r_min"
+symbol = "R"
+unit = "min"
+kind = "real"
+description = "Storage constant of the linear reservoir, S = R O."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 10440.0
+test_reason = "ten times the longest R of the Polish calibrations, 17.4 h (Wałęga and Cupak 2013)"
+
+[variables.typical]
+low = 0.2
+low_inclusive = true
+high = 1050.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Wałęga, A. and Cupak, A. (2013). In Węglarczyk, S. (ed.), Problemy obliczania przepływów ekstremalnych, Monografie Komitetu Gospodarki Wodnej PAN 35, pp. 145-151"
+access = "open"
+locator = "table 2, p. 148: R of 12.14 and 17.4 h calibrated for the Stobnica (335.84 km2); and Hydrolog's R/tc of 0.2 to 1.5 times the typical tc of 1 to 450 min, R from 0.2 min"
+url = "https://kgw.pan.pl/files/35_Praca_zbiorowa_red_Stanisaw_Wglarczyk.pdf"
+
+[[constants]]
+name = "centroid_share"
+value = 0.5
+unit = "-"
+symbol = "1/2"
+
+[constants.source]
+citation = "USACE-HEC (2000). Hydrologic Modeling System HEC-HMS, Technical Reference Manual (CPD-74B, March 2000)"
+access = "open"
+locator = "Clark's unit hydrograph model, eq. 50, p. 59: At / A = 1.414 (t / tc)^1.5 for t <= tc / 2 and 1 - 1.414 (1 - t / tc)^1.5 for t >= tc / 2"
+url = "https://www.hec.usace.army.mil/software/hec-hms/documentation/HEC-HMS_Technical%20Reference%20Manual_%28CPD-74B%29.pdf"
+
+[[outputs]]
+name = "lag_time_min"
+unit = "min"
+kind = "real"
+symbol = "t_{lag}"
+description = "Lag time, the first moment of Clark's instantaneous unit hydrograph from the instant of the rainfall."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[oracles]]
+kind = "algorithm"
+description = "the centroid of the time-area curve by adaptive quadrature (scipy.integrate.quad, SciPy 1.18.1)"
+test = "tests/unit/test_formulas_unit_hydrographs.py (limit time_area_centroid)"
+conventions = []
+
+[[oracles]]
+kind = "algorithm"
+description = "the first moment of the unit hydrograph of the spec clark on a grid of 0.25 min, less D / 2"
+test = "tests/unit/test_formulas_unit_hydrographs.py (limit unit_hydrograph_centroid)"
+conventions = []

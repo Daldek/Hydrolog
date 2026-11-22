@@ -41,6 +41,18 @@ DATES = Option(
     ),
 )
 
+SERIES_DOCUMENT_PL = (
+    "Szereg stacji `hydrolog-series/1`, sam albo w przekazaniu `nogat-handoff/1` z "
+    "Archiwisty, ma kolumny `date` (wartości dobowe) albo `year` (roczne) i swojej "
+    "zmiennej (np. `Q`)."
+)
+SERIES_DOCUMENT = (
+    "A station's series `hydrolog-series/1`, alone or in Archiwista's hand-off "
+    "`nogat-handoff/1`, has the columns `date` (daily values) or `year` (annual "
+    "values) and its variable (e.g. `Q`)."
+)
+"""What an `input_file` of a series says of a station's series (ADR-0068)."""
+
 INPUT_FILE = Option(
     name="input_file",
     type="path",
@@ -48,12 +60,12 @@ INPUT_FILE = Option(
     description_pl=(
         "Plik CSV (przecinek lub średnik, wiersz nagłówka) albo JSON z szeregiem, np. "
         "eksport szeregu z Obserwatora. Kolumny wskazują `value_column` i "
-        "`date_column`."
+        f"`date_column`. {SERIES_DOCUMENT_PL}"
     ),
     description=(
         "CSV file (comma or semicolon, header row) or JSON file with the series, e.g. "
         "an Obserwator series export. The columns are named by `value_column` and "
-        "`date_column`."
+        f"`date_column`. {SERIES_DOCUMENT}"
     ),
 )
 

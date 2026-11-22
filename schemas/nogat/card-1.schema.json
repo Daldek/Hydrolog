@@ -1,0 +1,386 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Daldek/Nogat/schemas/formula/card-1.schema.json",
+  "title": "nogat-formula-card/1",
+  "description": "The card of a Tier A formula, `formulas/<name>.toml`, generated from its FormulaSpec by `card()` of Nogat standards/reference/nogat_formulas.py and checked fresh (CMP-2.6). Every project that computes copies this file byte for byte into `schemas/nogat/` (CMP-8.1); Nogat gathers the projects' cards into one catalogue. A card holds no null: an unbounded end of a range has no `low` or `high` (a physical range then has a test bound, CMP-1.3), and an applicability range no source states is the string `unstated` (CMP-1.4). Keys and texts are English.",
+  "type": "object",
+  "required": [
+    "schema",
+    "name",
+    "title",
+    "function",
+    "family",
+    "formula_version",
+    "status",
+    "equation",
+    "latex",
+    "validation",
+    "conventions",
+    "assumptions",
+    "notices",
+    "reference_cases",
+    "properties",
+    "sources",
+    "variables",
+    "constraints",
+    "constants",
+    "outputs",
+    "traps",
+    "oracles",
+    "tables"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "nogat-formula-card/1"},
+    "name": {"description": "The spec's name, the card's file name and the id in documents", "$ref": "#/$defs/name"},
+    "title": {"type": "string", "minLength": 1, "pattern": "^[^\\n]+$"},
+    "function": {
+      "description": "Import path of the function",
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)+$"
+    },
+    "family": {
+      "description": "The family of its numerical traps (CMP-6.6)",
+      "enum": ["empirical", "scheme", "statistic", "index", "classification"]
+    },
+    "formula_version": {
+      "description": "Incremented with every change of the formula's results (CMP-2.8)",
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {"enum": ["referenced", "oracle only", "unreferenced"]},
+    "equation": {"description": "The equation in plain text", "$ref": "#/$defs/text"},
+    "latex": {"description": "The equation in LaTeX", "$ref": "#/$defs/text"},
+    "validation": {
+      "description": "What the source reports of the formula's agreement with observations, or `none`",
+      "$ref": "#/$defs/text"
+    },
+    "conventions": {"description": "Conventions of CMP-2.3", "$ref": "#/$defs/texts"},
+    "assumptions": {"$ref": "#/$defs/texts"},
+    "notices": {
+      "description": "Codes of every notice its results can carry",
+      "type": "array",
+      "items": {"$ref": "#/$defs/name"},
+      "uniqueItems": true
+    },
+    "reference_cases": {
+      "description": "Reference-case files relative to the project's root (CMP-6.1)",
+      "$ref": "#/$defs/texts"
+    },
+    "no_traps_reason": {
+      "description": "Why none of its family's traps applies; present when `traps` is empty",
+      "$ref": "#/$defs/text"
+    },
+    "properties": {"$ref": "#/$defs/properties"},
+    "sources": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/source"}},
+    "variables": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/variable"}},
+    "constraints": {"type": "array", "items": {"$ref": "#/$defs/constraint"}},
+    "constants": {"type": "array", "items": {"$ref": "#/$defs/constant"}},
+    "outputs": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/output"}},
+    "traps": {"type": "array", "items": {"$ref": "#/$defs/trap"}},
+    "oracles": {"type": "array", "items": {"$ref": "#/$defs/oracle"}},
+    "tables": {"type": "array", "items": {"$ref": "#/$defs/table"}}
+  },
+  "if": {"properties": {"traps": {"maxItems": 0}}},
+  "then": {"required": ["no_traps_reason"]},
+  "$defs": {
+    "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "text": {"type": "string", "minLength": 1},
+    "texts": {"type": "array", "items": {"$ref": "#/$defs/text"}},
+    "source": {
+      "description": "A source; `author-provided` is one an auditor cannot open (CMP-2.4)",
+      "type": "object",
+      "required": ["citation", "access"],
+      "additionalProperties": false,
+      "properties": {
+        "citation": {"$ref": "#/$defs/text"},
+        "locator": {"description": "Equation, table or page", "$ref": "#/$defs/text"},
+        "url": {"type": "string", "format": "uri"},
+        "access": {"enum": ["open", "author-provided"]}
+      }
+    },
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "low": {"type": "number"},
+        "high": {"type": "number"},
+        "low_inclusive": {"type": "boolean"},
+        "high_inclusive": {"type": "boolean"},
+        "test_low": {"description": "The finite end a test uses for an unbounded low end", "type": "number"},
+        "test_high": {"description": "The finite end a test uses for an unbounded high end", "type": "number"},
+        "test_reason": {"$ref": "#/$defs/text"},
+        "source": {"$ref": "#/$defs/source"}
+      },
+      "dependentRequired": {
+        "low": ["low_inclusive"],
+        "high": ["high_inclusive"],
+        "low_inclusive": ["low"],
+        "high_inclusive": ["high"],
+        "test_low": ["test_reason"],
+        "test_high": ["test_reason"]
+      },
+      "not": {
+        "anyOf": [
+          {"required": ["low", "test_low"]},
+          {"required": ["high", "test_high"]}
+        ]
+      }
+    },
+    "physical_range": {
+      "description": "Values that can exist; each end is finite or has a test bound (CMP-1.3)",
+      "allOf": [
+        {"$ref": "#/$defs/range"},
+        {"anyOf": [{"required": ["low"]}, {"required": ["test_low"]}]},
+        {"anyOf": [{"required": ["high"]}, {"required": ["test_high"]}]}
+      ]
+    },
+    "applicability_range": {
+      "description": "Values the formula was derived or validated for, with the source that states them (CMP-1.4)",
+      "allOf": [{"$ref": "#/$defs/range"}, {"required": ["source"]}]
+    },
+    "typical_range": {
+      "description": "Values met in the ecosystem's use, closed, with source (CMP-1.5)",
+      "allOf": [
+        {"$ref": "#/$defs/range"},
+        {
+          "required": ["low", "high", "source"],
+          "properties": {"low_inclusive": {"const": true}, "high_inclusive": {"const": true}}
+        }
+      ]
+    },
+    "kind": {"enum": ["real", "real_array", "integer", "choice"]},
+    "choices": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/text"}},
+    "variable": {
+      "type": "object",
+      "required": ["name", "symbol", "unit", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"description": "Public name with its unit (CMP-4.3)", "$ref": "#/$defs/name"},
+        "symbol": {"description": "LaTeX symbol", "type": "string"},
+        "unit": {"$ref": "#/$defs/text"},
+        "kind": {"$ref": "#/$defs/kind"},
+        "description": {"$ref": "#/$defs/text"},
+        "choices": {"$ref": "#/$defs/choices"},
+        "physical": {"$ref": "#/$defs/physical_range"},
+        "applicability": {
+          "oneOf": [{"const": "unstated"}, {"$ref": "#/$defs/applicability_range"}]
+        },
+        "typical": {"$ref": "#/$defs/typical_range"},
+        "gaps_allowed": {"type": "boolean"},
+        "dims": {"type": "integer", "minimum": 1},
+        "min_length": {"type": "integer", "minimum": 0},
+        "max_length": {"type": "integer", "minimum": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "choice"}}},
+          "then": {
+            "required": ["choices"],
+            "properties": {"physical": false, "applicability": false, "typical": false}
+          },
+          "else": {
+            "required": ["physical", "applicability", "typical"],
+            "properties": {"choices": false}
+          }
+        },
+        {
+          "if": {"properties": {"kind": {"const": "real_array"}}},
+          "then": {"required": ["gaps_allowed", "dims", "min_length"]},
+          "else": {
+            "properties": {"gaps_allowed": false, "dims": false, "min_length": false, "max_length": false}
+          }
+        }
+      ]
+    },
+    "constraint": {
+      "description": "A relation between inputs: its class says what a violation gives (CMP-1.6, CMP §3)",
+      "type": "object",
+      "required": ["name", "class", "text", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "class": {"enum": ["physical", "precondition", "applicability"]},
+        "text": {"$ref": "#/$defs/text"},
+        "source": {"$ref": "#/$defs/source"}
+      }
+    },
+    "constant": {
+      "type": "object",
+      "required": ["name", "value", "unit", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "symbol": {"type": "string"},
+        "value": {"type": "number"},
+        "exact": {"description": "The exact rational value, `n/d`", "type": "string", "pattern": "^-?[0-9]+(/[0-9]+)?$"},
+        "unit": {"$ref": "#/$defs/text"},
+        "source": {"$ref": "#/$defs/source"}
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["name", "unit", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "unit": {"$ref": "#/$defs/text"},
+        "kind": {"$ref": "#/$defs/kind"},
+        "symbol": {"type": "string"},
+        "description": {"$ref": "#/$defs/text"},
+        "physical": {"$ref": "#/$defs/range"},
+        "boundary_tolerance": {
+          "description": "Absolute distance beyond a bound that is set to the bound; absent means four units in the last place of the bound (CMP-3.4)",
+          "type": "number",
+          "minimum": 0
+        },
+        "gaps_allowed": {"type": "boolean"},
+        "gaps_from": {"description": "The array input whose gaps the output may copy", "$ref": "#/$defs/name"},
+        "choices": {"$ref": "#/$defs/choices"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "choice"}}},
+          "then": {"required": ["choices"], "properties": {"physical": false}},
+          "else": {"required": ["physical"], "properties": {"choices": false}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "real_array"}}},
+          "then": {"required": ["gaps_allowed"]},
+          "else": {"properties": {"gaps_allowed": false, "gaps_from": false}}
+        }
+      ]
+    },
+    "tolerance": {
+      "description": "An absolute and/or relative tolerance with its reason (CMP-6.8)",
+      "type": "object",
+      "required": ["reason"],
+      "additionalProperties": false,
+      "properties": {
+        "abs": {"type": "number", "minimum": 0},
+        "rel": {"type": "number", "minimum": 0},
+        "reason": {"$ref": "#/$defs/text"}
+      },
+      "anyOf": [{"required": ["abs"]}, {"required": ["rel"]}]
+    },
+    "exponents": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/name"},
+      "additionalProperties": {"type": "number"}
+    },
+    "property": {
+      "type": "object",
+      "required": ["name", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"$ref": "#/$defs/text"},
+        "text": {"$ref": "#/$defs/text"},
+        "tolerance": {"$ref": "#/$defs/tolerance"},
+        "source": {"$ref": "#/$defs/source"}
+      }
+    },
+    "properties": {
+      "description": "Properties that hold, tested by the reference module (CMP-6.5)",
+      "type": "object",
+      "required": ["units", "monotonic", "scalings", "limits", "conservation", "symmetries"],
+      "additionalProperties": false,
+      "properties": {
+        "units": {"enum": ["homogeneous", "unit_specific"]},
+        "monotonic": {
+          "description": "Sign of the change of the first output with each input",
+          "type": "object",
+          "propertyNames": {"$ref": "#/$defs/name"},
+          "additionalProperties": {"enum": [1, -1]}
+        },
+        "scalings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "inputs", "outputs", "tolerance"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {"$ref": "#/$defs/text"},
+              "inputs": {"$ref": "#/$defs/exponents"},
+              "outputs": {"$ref": "#/$defs/exponents"},
+              "tolerance": {"$ref": "#/$defs/tolerance"}
+            }
+          }
+        },
+        "limits": {
+          "type": "array",
+          "items": {
+            "allOf": [{"$ref": "#/$defs/property"}, {"properties": {"tolerance": false}}]
+          }
+        },
+        "conservation": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {"$ref": "#/$defs/property"},
+              {"required": ["tolerance"], "properties": {"source": false}}
+            ]
+          }
+        },
+        "symmetries": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {"$ref": "#/$defs/property"},
+              {"required": ["tolerance"], "properties": {"source": false}}
+            ]
+          }
+        }
+      },
+      "if": {"properties": {"units": {"const": "homogeneous"}}},
+      "then": {"properties": {"scalings": {"minItems": 1}}},
+      "else": {"properties": {"scalings": {"maxItems": 0}}}
+    },
+    "trap": {
+      "description": "A trap of the formula's family that applies, with its test (CMP-6.6)",
+      "type": "object",
+      "required": ["name", "description", "test"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "enum": [
+            "difference_denominator",
+            "singular_at_bound",
+            "exp_overflow",
+            "unbounded_iteration",
+            "stability_bound",
+            "gap_propagation",
+            "many_small_terms",
+            "moment_cancellation",
+            "class_limit"
+          ]
+        },
+        "description": {"$ref": "#/$defs/text"},
+        "test": {"$ref": "#/$defs/text"}
+      }
+    },
+    "oracle": {
+      "description": "An exact solution or different algorithm (CMP-6.2), an established implementation (CMP-6.3) or a frozen oracle (CMP-6.4)",
+      "type": "object",
+      "required": ["kind", "description", "test", "conventions"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"enum": ["exact", "algorithm", "established", "frozen"]},
+        "description": {"$ref": "#/$defs/text"},
+        "test": {"$ref": "#/$defs/text"},
+        "conventions": {"$ref": "#/$defs/texts"}
+      }
+    },
+    "table": {
+      "description": "A published table kept as a data file, transcribed twice (CMP-2.5)",
+      "type": "object",
+      "required": ["path", "sha256", "comparison", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {"$ref": "#/$defs/text"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "comparison": {"$ref": "#/$defs/text"},
+        "source": {"$ref": "#/$defs/source"}
+      }
+    }
+  }
+}

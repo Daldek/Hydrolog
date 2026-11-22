@@ -26,7 +26,7 @@ def generate_watershed_section(
     mean_slope_percent: float | None = None,
     channel_length_km: float | None = None,
     channel_slope_m_per_m: float | None = None,
-    cn: int | None = None,
+    cn: float | None = None,
     name: str | None = None,
     form_factor: float | None = None,
     compactness: float | None = None,
@@ -35,6 +35,7 @@ def generate_watershed_section(
     include_shape_indicators: bool = True,
     flow_path_length_km: float | None = None,
     flow_path_slope_m_per_m: float | None = None,
+    flow_path_equal_area_slope_m_per_m: float | None = None,
 ) -> str:
     """
     Generate watershed parameters section.
@@ -63,7 +64,7 @@ def generate_watershed_section(
         Main channel length [km].
     channel_slope_m_per_m : float, optional
         Main channel slope [m/m].
-    cn : int, optional
+    cn : float, optional
         Curve Number.
     name : str, optional
         Watershed name.
@@ -81,6 +82,8 @@ def generate_watershed_section(
         Length of the longest flow path, from the most distant point to the outlet [km].
     flow_path_slope_m_per_m : float, optional
         Slope of the longest flow path [m/m].
+    flow_path_equal_area_slope_m_per_m : float, optional
+        Equal-area slope of the profile of the longest flow path [m/m] (Lutz's Jg).
 
     Returns
     -------
@@ -215,6 +218,15 @@ def generate_watershed_section(
             (
                 PARAMETER_LABELS["flow_path_slope_m_per_m"],
                 f"{flow_path_slope_m_per_m:.4f}",
+                UNITS["slope_m_per_m"],
+            )
+        )
+
+    if flow_path_equal_area_slope_m_per_m is not None:
+        params_data.append(
+            (
+                PARAMETER_LABELS["flow_path_equal_area_slope_m_per_m"],
+                f"{flow_path_equal_area_slope_m_per_m:.5f}",
                 UNITS["slope_m_per_m"],
             )
         )

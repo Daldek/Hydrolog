@@ -12,19 +12,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from hydrolog.catalog import run_command
+from hydrolog.catalog import get_command, run_command, validate_command
 from hydrolog.exceptions import CalculationError, InputDataError, InvalidParameterError
-from hydrolog.statistics import (
-    fit_gamma,
-    month_precipitation_class,
-    pci_class,
-    precipitation_concentration_index,
-    precipitation_spells,
-    precipitation_sums,
-    si_class,
-    sielianinov_class,
-    year_precipitation_class,
-)
+from hydrolog.statistics import precipitation_spells, precipitation_sums
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "meteo_daily.csv"
 
@@ -99,7 +89,7 @@ class TestMonthlyRulesOfWmo1203:
 class TestPrecipitationIndices:
     """Hand-computed sequences of the indices of ``meteo precipitation``."""
 
-    def test_the_normal_needs_eighty_percent_of_the_years(self):
+    def test_the_normal_needs_eighty_percent_of_the_years_of_each_month(self):
         every = _days("2001-01-01", 1826)  # 2001-2005, 2004 a leap year
         dates = [day for n, day in enumerate(every) if n != 400]  # 2002-02-05 absent
         result = _result(
@@ -110,13 +100,37 @@ class TestPrecipitationIndices:
         )
         assert result["period"]["normal_mm"] == pytest.approx(365.25)
         assert result["period"]["normal_years"] == 4
+        # 2002-02-05 and 2003-02-05 absent: February has sums in 3 of 5 years
+        dates = [day for n, day in enumerate(every) if n not in (400, 765)]
+        output = run_command(
+            "meteo precipitation",
+            {"index": "sums", "dates": dates, "precipitation_mm": [1.0] * len(dates)},
+        )
+        assert output.result.period.months[1].normal_mm is None
+        assert output.result.period.normal_mm is None
+        assert output.result.period.djf_normal_mm is None
+        assert output.result.period.mam_normal_mm == pytest.approx(92.0)
+        assert "normal_not_computed" in [item.code for item in output.notices]
+
+    def test_annual_normal_is_the_sum_of_the_monthly_normals(self):
+        """WMO-No. 1203 (2017), 4.3.3: annual normals from the monthly normals.
+
+        2002-02-05 and 2003-03-12 absent: 3 of 5 years lack an annual sum, but every
+        month has sums in 4 of 5 years, so every monthly normal and their sum exist
+        (February 28.25 days of 1 mm, the others the days of the month).
+        """
+        every = _days("2001-01-01", 1826)
         dates = [day for n, day in enumerate(every) if n not in (400, 800)]
         output = run_command(
             "meteo precipitation",
             {"index": "sums", "dates": dates, "precipitation_mm": [1.0] * len(dates)},
         )
-        assert output.result.period.normal_mm is None
-        assert "normal_not_computed" in [item.code for item in output.notices]
+        period = output.result.period
+        assert period.normal_mm == pytest.approx(365.25)
+        assert period.normal_years == 4
+        assert period.winter_normal_mm == pytest.approx(30 + 31 + 31 + 28.25 + 31 + 30)
+        assert period.djf_normal_mm == pytest.approx(31 + 31 + 28.25)
+        assert "normal_not_computed" not in [item.code for item in output.notices]
 
     def test_maxima_of_one_and_two_days_with_their_dates(self):
         dates = _days("2001-01-01", 365)
@@ -176,14 +190,6 @@ class TestPrecipitationIndices:
             100 * above / sum(wet)
         )
 
-    def test_pci_of_equal_months_and_of_one_month_and_the_classes(self):
-        assert precipitation_concentration_index([10.0] * 12) == pytest.approx(100 / 12)
-        assert precipitation_concentration_index([0.0] * 11 + [50.0]) == 100.0
-        assert pci_class(10.0) == "uniform"
-        assert pci_class(10.5) == "moderate"
-        assert si_class(0.19) == "very_equable"
-        assert si_class(1.2) == "extreme"
-
 
 class TestSpells:
     """The run logic of ``stats threshold-events`` on dry and wet days."""
@@ -199,35 +205,6 @@ class TestSpells:
         ]
         wet = precipitation_spells(values, _days("2001-01-01", 9), kind="wet")
         assert [s.duration_days for s in wet.spells] == [1, 1]
-
-
-class TestSpiAndClasses:
-    """Thom's fit, the SPI and the classes of relative precipitation."""
-
-    def test_thom_estimates_of_a_sample(self):
-        sample = np.array([0.0, 10.0, 20.0, 40.0, 30.0])
-        alpha, beta, q = fit_gamma(sample)
-        positive = sample[sample > 0]
-        a = math.log(positive.mean()) - np.log(positive).mean()
-        assert alpha == pytest.approx((1 + math.sqrt(1 + 4 * a / 3)) / (4 * a))
-        assert beta == pytest.approx(positive.mean() / alpha)
-        assert q == pytest.approx(0.2)
-
-    def test_classes_of_years_and_months(self):
-        # Kaczorowska (1962), whole percent: 89 dry, 90 normal, 151 extremely wet
-        assert year_precipitation_class(89.4) == "dry"
-        assert year_precipitation_class(89.6) == "normal"
-        assert year_precipitation_class(151.0) == "extremely_wet"
-        # months (Gąsiorek and Musiał, 2011, Table 1): 24.9 extremely dry, 125 normal
-        assert month_precipitation_class(24.9) == "extremely_dry"
-        assert month_precipitation_class(125.0) == "normal"
-        assert month_precipitation_class(200.5) == "extremely_wet"
-
-    def test_sielianinov_classes_of_skowera_and_pula(self):
-        assert sielianinov_class(0.4) == "extremely_dry"
-        assert sielianinov_class(0.41) == "very_dry"
-        assert sielianinov_class(1.6) == "optimal"
-        assert sielianinov_class(3.01) == "extremely_wet"
 
 
 class TestTemperatureSnowHydrothermal:
@@ -266,7 +243,9 @@ class TestTemperatureSnowHydrothermal:
         )["years"][0]
         may = year["months"][1]
         assert may["coefficient"] == pytest.approx(10 * 62 / (12 * 31))
-        assert year["season_coefficient"] == pytest.approx(10 * 62 / (12 * 365))
+        # the season: the 183 days of April to September above 10 °C (Miś, 2026)
+        assert year["season_coefficient"] == pytest.approx(10 * 62 / (12 * 183))
+        assert year["season_days"] == 183
 
 
 class TestEtccdiCountsOfTheFixtureYear:
@@ -282,6 +261,10 @@ class TestEtccdiCountsOfTheFixtureYear:
         ]
         year = next(row for row in days if row["year"] == 2021)
         assert year["frost_days"] == sum(t < 0 for t in tmin)  # FD
+        # the „dzień przymrozkowy” of the Słownik meteorologiczny and of IMGW-PIB
+        assert year["freeze_thaw_days"] == sum(
+            n < 0 < x for n, x in zip(tmin, tmax, strict=True)
+        )
         assert year["ice_days"] == sum(t < 0 for t in tmax)  # ID
         assert year["summer_days"] == sum(t > 25 for t in tmax)  # SU
         assert year["hot_days"] == sum(t > 30 for t in tmax)
@@ -425,6 +408,38 @@ class TestErrors:
                 },
             )
         assert caught.value.details["reason"] == "too_few_wet_days"
+
+    @pytest.mark.parametrize("percentiles", [[100], [50, 100]])
+    def test_percentile_100_is_refused_by_the_catalog(self, percentiles):
+        """The declared range is the code's open interval (0, 100): the catalog
+        refuses 100 before the operation runs (research meteo-indices §26)."""
+        with pytest.raises(InvalidParameterError) as caught:
+            run_command(
+                "meteo precipitation",
+                {
+                    "index": "heavy",
+                    "dates": _days("2001-01-01", 30),
+                    "precipitation_mm": [5.0] * 30,
+                    "percentiles": percentiles,
+                },
+            )
+        assert caught.value.code == "validation_error"
+        assert caught.value.details["option"] == "percentiles"
+        assert caught.value.details["reason"] == "exclusive_maximum"
+        assert caught.value.details["exclusive_maximum"] == 100
+        assert caught.value.details["value"] == 100
+        assert caught.value.details["index"] == len(percentiles) - 1
+
+    def test_a_percentile_below_100_passes_the_catalog(self):
+        command = get_command("meteo precipitation")
+        options = validate_command(
+            command,
+            {"index": "heavy", "input_file": str(FIXTURE), "percentiles": [99.9]},
+        )
+        assert options["percentiles"] == [99.9]
+        schema = command.option("percentiles").json_schema()
+        assert schema["items"]["exclusiveMaximum"] == 100
+        assert "maximum" not in schema["items"]
 
     def test_a_period_without_values(self):
         with pytest.raises(CalculationError) as caught:

@@ -2,10 +2,14 @@
 
 - Status: accepted
 - Date: 2026-11-02
+- Amended by [ADR-0070](0070-the-notice-outside-applicability.md) (2026-11-21): `OutsideTypicalRange` and `outside_typical_range` are
+  `OutsideApplicability` and `outside_applicability`
 - Amended by [ADR-0017](0017-typical-ranges-in-the-catalog.md) (2026-11-04): the bounds of the `outside_typical_range`
   notices come from one table
 - Amended by [ADR-0025](0025-the-structure-alone-in-the-schematic.md) (2026-11-10): `route schematic` has the
   option `structure_only`, which lays out the structure of a draft alone
+- Amended by [ADR-0046](0046-design-hyetographs-of-whole-steps-and-exact-blocks.md) (2026-11-18): the notice
+  `duration_not_covered` is removed from `NOTICES` and from the routing notices.
 - Amends: [ADR-0001](0001-catalog-english-and-operation-ids.md) (the derivation of `check` and `families`),
   [ADR-0002](0002-result-envelope-and-domain-documents.md) (notices gain `details`),
   [ADR-0006](0006-mcp-server-conformance.md) (a catalog command that is not an MCP tool),

@@ -1,0 +1,323 @@
+schema = "nogat-formula-card/1"
+name = "linear_reservoir_cascade"
+title = "Cascade of n equal linear reservoirs, exact for an inflow linear between the ordinates (Nash)"
+function = "hydrolog.routing.formulas.cascade.cascade_route"
+family = "scheme"
+formula_version = 1
+status = "oracle only"
+equation = "O(t) = O0 Q(n, t/K) + integral from 0 to t of u(t - s) I(s) ds, u(t) = (t/K)^(n-1) exp(-t/K) / (K Gamma(n)), I linear between the ordinates; at the ordinates O[j] = O0 (1 - P(n, x_j)) + I[0] (P(n, x_j) - (1 - (V(x_j) - V(x_(j-1))) / a)) + sum_(m < j) h_m I[j-m], x_j = j a, a = dt / K, V(x) = x Q(n, x) + n P(n+1, x), h_0 = 1 - V(a) / a, h_m = -(V((m+1)a) - 2 V(m a) + V((m-1)a)) / a; storage at the end K [sum over the segments of the water not yet released + O0 (n - V(x_N))] [m3]"
+latex = "O(t) = O_0\\,Q\\!\\left(n, \\tfrac{t}{K}\\right) + \\int_0^t u(t-s)\\,I(s)\\,ds,\\quad u(t) = \\frac{1}{K\\,\\Gamma(n)}\\left(\\frac{t}{K}\\right)^{n-1}e^{-t/K},\\quad h_m = -\\frac{V((m+1)a) - 2V(ma) + V((m-1)a)}{a},\\ V(x) = x\\,Q(n, x) + n\\,P(n+1, x),\\ a = \\frac{\\Delta t}{K}"
+validation = "none: n and K are calibrated on observed floods or follow from the reach (Kalinin-Milyukov); the sources report no agreement of the cascade itself with observations"
+conventions = ["SI units: discharge in m3/s, time in min, storage in m3 (K in min times a discharge in m3/s times the 60 s of a minute of the units table)", "the inflow is linear between the ordinates and equal to the initial outflow before the first one: every reservoir starts at rest with O0, and the inflow jumps to I[0] at the first ordinate", "the outflow at an ordinate is the exact response to that inflow, not a trapezoid or Euler step; between the ordinates it is not linear, so the trapezoid volume of the outflow differs from its integral", "a weight that rounding puts below zero is set to zero, and so are a remainder n - V and an outflow that rounding puts below zero", "n need not be whole: Gamma(n) and P(n, x) of SciPy's gammainc and gammaincc", "only the given ordinates are routed: CascadeReach takes K or K = L / (n c) from the length and the celerity of a reach, and extends the time axis (Tier B, ADR-0008)"]
+assumptions = ["each reservoir is linear, S = K O, with K constant over the flood", "no backwater: the outflow does not depend on the water downstream"]
+notices = []
+reference_cases = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+symmetries = []
+
+[properties.monotonic]
+inflow_m3s = 1
+initial_outflow_m3s = 1
+
+[[properties.scalings]]
+name = "discharge"
+
+[properties.scalings.inputs]
+inflow_m3s = 1.0
+initial_outflow_m3s = 1.0
+
+[properties.scalings.outputs]
+outflow_m3s = 1.0
+storage_start_m3 = 1.0
+storage_end_m3 = 1.0
+storage_steady_m3 = 1.0
+
+[properties.scalings.tolerance]
+reason = "a power of two scales every product, sum and convolution of the kernel exactly in binary, but for subnormal discharges, which round to fewer digits"
+abs = 1e-300
+rel = 0.0
+
+[[properties.scalings]]
+name = "time"
+
+[properties.scalings.inputs]
+timestep_min = 1.0
+k_min = 1.0
+
+[properties.scalings.outputs]
+storage_start_m3 = 1.0
+storage_end_m3 = 1.0
+storage_steady_m3 = 1.0
+
+[properties.scalings.tolerance]
+reason = "a power of two scales every product, sum and convolution of the kernel exactly in binary, but for subnormal discharges, which round to fewer digits"
+abs = 1e-300
+rel = 0.0
+
+[[properties.limits]]
+name = "steady_state"
+text = "an inflow equal to the initial outflow passes unchanged: the weights add up to one"
+
+[[properties.limits]]
+name = "step_response"
+text = "a steady inflow into a cascade at rest at another outflow gives O0 + (I - O0) P(n, t / K), the gamma distribution function"
+
+[properties.limits.source]
+citation = "Ponce, V.M. (online). Linear reservoirs and numerical diffusion, San Diego State University"
+access = "open"
+locator = "the Nash cascade and the Kalinin-Milyukov method: n reservoirs of S = K O in series, impulse response of mean n K"
+url = "https://ponce.sdsu.edu/linear_reservoirs_and_numerical_diffusion.html"
+
+[[properties.limits]]
+name = "matrix_exponential"
+text = "for whole n the outflow and the storage equal the exact solution of the linear ODEs of the chain of reservoirs"
+
+[[properties.limits]]
+name = "moments"
+text = "the response to a unit hat has the mass one and the mean delay n K exactly, and the variance n K^2 + dt^2 / 6"
+
+[[properties.limits]]
+name = "bounded_by_its_inputs"
+text = "every outflow lies between the least and the largest of the inflow and the initial outflow"
+
+[[properties.conservation]]
+name = "volume"
+text = "inflow volume - outflow volume - (storage at the end - storage at the start) lies within the error of the trapezoid rule on the outflow, (|I[0] - O0| / 2 + max |I[t] - I[t-1]| / 4) dt"
+
+[properties.conservation.tolerance]
+reason = "relative to the largest volume or storage: the storage follows from continuity of the exact solution, so only the trapezoid's error on the outflow, bounded by the law, separates the volumes; the second differences of V divided by dt / K lose digits like 1e-16 (K / dt)^2 for a short step"
+abs = 1e-09
+
+[[sources]]
+citation = "Nash, J.E. (1957). The form of the instantaneous unit hydrograph, IAHS Publication 45, 114-121"
+access = "author-provided"
+locator = "the cascade of n equal linear reservoirs and its gamma impulse response"
+
+[[sources]]
+citation = "Ponce, V.M. (online). Linear reservoirs and numerical diffusion, San Diego State University"
+access = "open"
+locator = "the Nash cascade and the Kalinin-Milyukov method: n reservoirs of S = K O in series, impulse response of mean n K"
+url = "https://ponce.sdsu.edu/linear_reservoirs_and_numerical_diffusion.html"
+
+[[variables]]
+name = "inflow_m3s"
+symbol = "I_t"
+unit = "m3/s"
+kind = "real_array"
+description = "Inflow at t = 0, dt, 2 dt, ...: the hydrograph that enters the reach, linear between its ordinates."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 2
+max_length = 1000000
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s"
+
+[[variables]]
+name = "timestep_min"
+symbol = "\\Delta t"
+unit = "min"
+kind = "real"
+description = "Time step of the inflow and of the outflow."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1440.0
+test_reason = "a day, the step of a series of daily discharges (IMGW-PIB)"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 720.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "steps of 5 min (Hydrograf's networks, tests/fixtures/handoff_hydrograf_network*.json) to 12 h (the Iowa example and NEH 630 ch. 17 example 17-2, 0.5 d)"
+
+[[variables]]
+name = "n"
+symbol = "n"
+unit = "-"
+kind = "real"
+description = "Number of equal reservoirs in series; need not be whole."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000000.0
+test_reason = "the cascade of a million reservoirs of the tests of the reach, whose delay outlasts the series (test_a_reach_that_holds_the_water_longer_than_the_series_keeps_the_start)"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 8.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "n of 1 to 8 in tests/unit/test_routing_cascade.py and 2.5 in docs/USAGE.md (route cascade)"
+
+[[variables]]
+name = "k_min"
+symbol = "K"
+unit = "min"
+kind = "real"
+description = "Storage constant of one reservoir."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 12000.0
+test_reason = "ten times the longest storage constant of Hydrolog's routing tests, the Iowa example's 20 h (1,200 min)"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 80.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "K of 5 to 40 min in tests/unit/test_routing_cascade.py and 80 min in docs/USAGE.md (route cascade)"
+
+[[variables]]
+name = "initial_outflow_m3s"
+symbol = "O_0"
+unit = "m3/s"
+kind = "real"
+description = "Outflow at the first ordinate; the reach starts at rest with it."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s"
+
+[[constraints]]
+name = "representable"
+class = "precondition"
+text = "n >= 2.2e-308, 0 < dt / K, and the grid of N dt / K, the largest discharge over dt / K and the storage n K max(I, O0) are finite in float64"
+
+[constraints.source]
+citation = "IEEE 754 binary64, the float64 of NumPy: largest finite number 1.8e308, smallest normal 2.2e-308; SciPy's scipy.special.gammainc and gammaincc (1.18.1) give P(a, x) = 0 and Q(a, x) <= 0 for a subnormal shape a"
+access = "open"
+locator = "x = m dt / K on the grid of the ordinates, the inflow over dt / K, the storage n K I, and n as the shape of P and Q"
+
+[[outputs]]
+name = "outflow_m3s"
+unit = "m3/s"
+kind = "real_array"
+symbol = "O_t"
+description = "Outflow at the ordinates of the inflow."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[[outputs]]
+name = "storage_start_m3"
+unit = "m3"
+kind = "real"
+symbol = "S"
+description = "Water held by the reservoirs at the first ordinate."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "storage_end_m3"
+unit = "m3"
+kind = "real"
+symbol = "S"
+description = "Water held by the reservoirs at the last ordinate."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "storage_steady_m3"
+unit = "m3"
+kind = "real"
+symbol = "S"
+description = "Water they would hold at rest under the last inflow, n K I[-1]."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "the weights divide second differences of V by dt / K, which underflows for a step far shorter than K: precondition representable refuses dt / K = 0, an inflow over it that overflows and a subnormal n, for which SciPy's P and Q fail (test_a_step_ratio_beyond_float64_is_refused, test_a_subnormal_number_of_reservoirs_is_refused)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases inflow_m3s-nan_element and inflow_m3s-inf_element: a gap is refused, the convolution would carry it to every later ordinate"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_a_long_steady_inflow_stays_steady: 200,000 ordinates of a steady inflow, convolved by the FFT, stay steady to 1e-12"
+
+[[oracles]]
+kind = "established"
+description = "the step response P(n, t / K) of SciPy's scipy.special.gammainc (regularised lower incomplete gamma function)"
+test = "tests/unit/test_formulas_cascade.py (limit step_response)"
+conventions = ["SciPy: gammainc(a, x) = P(a, x), shape first; the cascade: P(n, t / K) for an inflow that steps at the first ordinate"]
+
+[[oracles]]
+kind = "algorithm"
+description = "for whole n, the linear ODEs of the chain solved over each step by the matrix exponential (scipy.linalg.expm), exact for an inflow linear over the step"
+test = "tests/unit/test_formulas_cascade.py (limit matrix_exponential)"
+conventions = []
+
+[[oracles]]
+kind = "exact"
+description = "the moments of the impulse response, mean n K and variance n K^2, of the gamma density"
+test = "tests/unit/test_formulas_cascade.py (limit moments)"
+conventions = []

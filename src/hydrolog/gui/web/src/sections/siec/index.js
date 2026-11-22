@@ -50,7 +50,7 @@ import { panelOrigins, siecAddition, siecFill, siecInputs, siecOrigins } from ".
 import { canonical } from "../../handoff/validate.js";
 import { html, useEffect, useMemo, useRef, useState } from "../../html.js";
 import { common, t } from "../../labels/common.js";
-import { describeError } from "../../labels/errors.js";
+import { describeError, isCurveError } from "../../labels/errors.js";
 import { handoffLabels as handoffTexts } from "../../labels/handoff.js";
 import { hydrogram as rainTexts } from "../../labels/hydrogram.js";
 import { routing } from "../../labels/info/routing.js";
@@ -60,6 +60,7 @@ import { usePersistentState } from "../../persist.js";
 import { navigate } from "../../router.js";
 import { useStore } from "../../store.js";
 import { ConfirmDialog } from "../../ui/confirm.js";
+import { fileName } from "../../ui/export-panel.js";
 import { registerInfo } from "../../ui/info.js";
 import { Seg } from "../../ui/seg.js";
 import { isPhone, openPanel } from "../../ui/sheet.js";
@@ -98,6 +99,7 @@ import {
   newState,
   NO_RAINFALL_KEY,
   nodeComputed,
+  namePart,
   placementNotes,
   placeSkeleton,
   SECTION,
@@ -201,7 +203,9 @@ function mergeKey(prefix, keys) {
 }
 
 /**
- * An error of the server in Polish, with the node and field it names.
+ * An error of the server in Polish, with the node and field it names: in Sieć's words of
+ * the structure and the document, but an error of Euler II's depth-duration curve in the
+ * curve's (labels/errors.js).
  *
  * @param {unknown} error an ApiError or anything thrown
  * @param {object} [rules] the inflow rules of the schema (the words of upstream_count)
@@ -213,7 +217,7 @@ function runFailure(error, rules = {}) {
   const details = doc.details || {};
   const described = describeError(doc);
   const reason = typeof details.reason === "string" ? details.reason : null;
-  const own = reason ? problemText({ ...details, reason }, rules) : null;
+  const own = reason && !isCurveError(details) ? problemText({ ...details, reason }, rules) : null;
   const field = typeof details.field === "string" ? details.field : null;
   const text = own || described.text;
   return {
@@ -1070,7 +1074,7 @@ export default function Siec({ active, path = [] }) {
   const problemCount = structure.length + (built ? built.problems.length : 0);
   const save = () => {
     if (!built || !state.skeleton.length) return;
-    const file = `${stem}.json`;
+    const file = fileName("network", [namePart(state)], "json");
     downloadBlob(new Blob([`${JSON.stringify({ ...built.document, ...linesFields(lines) }, null, 2)}\n`], { type: "application/json" }), file);
     update({ ...latest.current, savedKey: inputsKey(latest.current) });
     toast(valid ? t(texts.file.saved, { name: file }) : t(texts.file.draftSaved, { name: file, count: problemCount }));

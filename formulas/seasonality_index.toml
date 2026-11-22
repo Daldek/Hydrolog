@@ -1,0 +1,135 @@
+schema = "nogat-formula-card/1"
+name = "seasonality_index"
+title = "Walsh and Lawler's seasonality index of twelve monthly totals"
+function = "hydrolog.statistics.regime.seasonality_index"
+family = "index"
+formula_version = 1
+status = "referenced"
+equation = "SI = (1/R) sum |x_n - R/12| over the twelve monthly totals x_n, R = sum x_n"
+latex = "\\mathrm{SI} = \\frac{1}{R}\\sum_{n=1}^{12}\\left|x_n - \\frac{R}{12}\\right|,\\quad R = \\sum_{n=1}^{12} x_n"
+validation = "none: an index of the monthly totals"
+conventions = ["computed as the sum of |x_n / R - 1/12|, which equals the equation without R/12, which underflows for a subnormal R", "precipitation_seasonality gives the twelve normals of a reference period or the twelve monthly sums of a year with all of them, flow_regime the monthly volumes of a discharge series; a total of 0 has no index"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/meteo-indices-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "totals_in_another_unit"
+
+[properties.scalings.inputs]
+monthly_mm = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "doubling every total leaves each share exact"
+abs = 0.0
+
+[[properties.limits]]
+name = "exact_oracle"
+text = "SI equals the equation in exact fractions"
+
+[[properties.limits]]
+name = "one_wet_month"
+text = "one month with all the precipitation gives 11/6"
+
+[[properties.symmetries]]
+name = "months_in_another_order"
+text = "the months in reverse order give the same index"
+
+[properties.symmetries.tolerance]
+reason = "twelve terms summed in another order"
+abs = 1e-14
+
+[[sources]]
+citation = "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247"
+access = "open"
+locator = "eq. 1, p. 225: SI = (1/R) sum |x_n - R/12|, R the annual total; 0 when every month has the same total, 1.83 when one month has all of it"
+
+[[sources]]
+citation = "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)"
+access = "open"
+locator = "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83"
+url = "https://cran.r-project.org/package=hydroTSM"
+
+[[sources]]
+citation = "Walsh, R. P. D. and Lawler, D. M. (1981). Rainfall seasonality: description, spatial patterns and change through time. Weather 36(7), 201-208"
+access = "author-provided"
+locator = "the index; not opened here: as Sumner et al. (2001) and hydroTSM print it"
+
+[[variables]]
+name = "monthly_mm"
+symbol = "x_n"
+unit = "mm"
+kind = "real_array"
+description = "The twelve monthly totals in any order: precipitation, or runoff volumes in any unit (the index has none)."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 12
+max_length = 12
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 26470.0
+test_reason = "a month holds less than the world's greatest 12-month rainfall, 26,470 mm at Cherrapunji, 1 August 1860 - 31 July 1861 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 0.4
+low_inclusive = true
+high = 295.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the monthly sums of 1991-2020: 0.4 to 295.0 mm"
+
+[[constraints]]
+name = "a_positive_total"
+class = "precondition"
+text = "the total of the twelve months is positive"
+
+[constraints.source]
+citation = "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247"
+access = "open"
+locator = "eq. 1, p. 225: SI = (1/R) sum |x_n - R/12|, R the annual total; 0 when every month has the same total, 1.83 when one month has all of it"
+
+[[outputs]]
+name = "si"
+unit = "-"
+kind = "real"
+symbol = "\\mathrm{SI}"
+description = "The index: 0 for equal months, 11/6 for one wet month."
+boundary_tolerance = 1e-12
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.8333333333333333
+high_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "precondition a_positive_total: R divides"
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "limit exact_oracle: a single month of 1e-300 mm gives 11/6"
+
+[[oracles]]
+kind = "exact"
+description = "the equation in exact fractions (fractions.Fraction) of the normals of Warszawa and of seeded monthly totals"
+test = "tests/unit/test_formulas_meteo_precipitation.py (limit exact_oracle)"
+conventions = []

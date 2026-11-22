@@ -2,9 +2,9 @@
 
 ## Hydrological Toolkit Library
 
-**Version:** 1.9
-**Date:** 2026-11-14
-**Status:** v0.8.0 frozen on 2026-11-16 for the first joint release of the Nogat ecosystem
+**Version:** 1.10
+**Date:** 2026-11-22
+**Status:** v0.9.0, the release of the Nogat ecosystem's standard 1.1 (the previous releases: 0.8.0, the first joint release of the ecosystem, and the patch release 0.8.1)
 
 ---
 
@@ -77,7 +77,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - Beta distribution (configurable α, β; default α=2, β=5)
 - Block distribution (constant intensity)
 - Triangular distribution
-- DVWK Euler Type II distribution (`EulerIIHietogram`)
+- Euler type II design storm of ATV-DVWK-A 118 (`EulerIIHietogram`), built from the depth-duration curve of one probability (PMAXTP, KOSTRA-DWD or a local formula): the increments of the curve, the peak interval from 0.3 of the duration; until 0.8.1 a fixed `r^-0.7` approximation that took only the total ([ADR-0042](decisions/0042-the-euler-type-ii-storm-from-a-depth-duration-curve.md))
 
 **Interpolation (v0.3.0):**
 - IDW (Inverse Distance Weighting)
@@ -87,20 +87,20 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - Kriging (optional - not implemented)
 
 **PMAXTP design depth (ADR-0018):** ✅
-- `precip pmaxtp` fetches the PMAXTP depth (IMGW-PIB's atlas of maximum precipitation) of a point in Poland, for one of its 16 durations (5 min to 72 h) and 27 probabilities (0.01 % to 99.9 %), by POT or AMP, from IMGW-PIB through Obserwator (extra `pmaxtp`); the only command that uses the network
-- The depth is the `total_mm` of `precip hietogram` and `hydrograph generate`, which do not fetch it; a depth from elsewhere is still given as `total_mm`
+- `precip pmaxtp` fetches the PMAXTP depth (IMGW-PIB's atlas of maximum precipitation) of a point in Poland, for one of its 16 durations (5 min to 72 h) and 27 probabilities (0.01 % to 99.9 %), by POT or AMP, from IMGW-PIB through Obserwator (extra `pmaxtp`), with the depths of all 16 durations at the probability (`depth_duration_mm`); the only command that uses the network
+- The depth is the `total_mm` of `precip hietogram` and `hydrograph generate`, and the depths are the curve of their Euler II storm (`depth_duration_mm`, ADR-0042); those commands do not fetch them, and a depth or a curve from elsewhere is still given as `total_mm` or `depth_duration_mm`
 
 ---
 
 #### 2.1.3 Module `time` - Characteristic Times (v0.1.0)
 
-**Time of concentration (tc) - 6 methods:**
-- Kirpich formula: `tc = 0.0195 × L^0.77 × S^(-0.385)`
-- NRCS formula: `tc = 0.01416 × L^0.8 × (S+25.4)^0.7 × Y^-0.5`
-- Giandotti formula: `tc = (4√A + 1.5L) / (0.8 × √Hmean)`
-- FAA formula: `tc = 22.213 × (1.1 - C) × L^0.5 / S^(1/3)`
-- Kerby formula: `tc = 36.37 × (L × N)^0.467 × S^(-0.2335)`
-- Kerby-Kirpich method: `tc = t_overland(Kerby) + t_channel(Kirpich)`
+**Time of concentration (tc) - 6 methods** (each declared by a spec, ADR-0050: its equation, units, constants and applicability ranges are in [FORMULAS.md](FORMULAS.md)):
+- Kirpich (1940; Fang et al. 2005, eq. 3.14): the length and slope of the longest flow path
+- NRCS lag equation (USDA-NRCS 2010, NEH 630 ch. 15, eq. 15-4b): the length of the longest flow path, the average land slope of the catchment and CN
+- Giandotti (1934; Autorità di bacino del fiume Po 2001): area, main channel length and H = mean elevation − outlet elevation
+- FAA (AC 150/5320-5B, 1970, fig. 7): overland flow time from the overland length and slope and C
+- Kerby (1959; Fang et al. 2005, eq. 3.12): overland flow time from the overland length and slope and N
+- Kerby-Kirpich (Roussel et al. 2005; Cleveland et al. 2012): Kerby on the overland segment plus Kirpich on the rest of the longest flow path
 
 **Input parameters** (each method takes those its source defines, ADR-0019):
 - Length and slope of the longest flow path, from the hydraulically most distant point to the outlet [km, m/m] (Kirpich, NRCS, Kerby-Kirpich)
@@ -119,11 +119,13 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - Catchment width [km]
 
 **Shape indices:**
-- Form factor Cf = A / L²
-- Compactness coefficient Cz = P / √A
-- Circularity ratio Ck
-- Elongation ratio Cw
-- Lemniscate ratio Cl
+- Form factor Cf (`form_factor`)
+- Compactness coefficient Cz (`compactness_coefficient`, Gravelius)
+- Circularity ratio Ck (`circularity_ratio`, Miller)
+- Elongation ratio Ce (`elongation_ratio`, Schumm; Polish Cw)
+- Lemniscate ratio k (`lemniscate_ratio`, Chorley; Polish Cl)
+
+Their equations, ranges and sources are those of the specs (`docs/FORMULAS.md`).
 
 **Morphometric parameters:**
 - Elevation: max, min, mean [m a.s.l.]
@@ -158,13 +160,16 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - Shreve method
 
 **Indices:**
-- Bifurcation ratio (`bifurcation_ratio`)
+- Bifurcation ratio (`bifurcation_ratio`), Rb = N_u / N_(u+1) of streams
 - Drainage density (`drainage_density`)
-- Stream frequency (`stream_frequency`)
+- Stream frequency (`stream_frequency`), number of Strahler streams / area (Horton 1945)
 
 **Network statistics (`NetworkStatistics`):**
-- Number of streams by order
+- Number of streams by order (`segment_counts`): a stream of order u runs from where order u
+  begins to its junction with a stream of an equal or higher order (Strahler 1957), so a
+  lower-order tributary does not split it; for Shreve, the links between confluences
 - Mean stream length by order
+- Horton's bifurcation and length ratios, for Strahler orders only
 - Maximum stream order
 
 ---
@@ -246,7 +251,7 @@ Other groups: `precip`, `hydrograph`, `route`, `morphometry`, `network`, `stats`
 
 #### 2.1.8 Module `visualization` - Plots (v0.5.0)
 
-The module requires the extra `viz`: `pip install "hydrolog[viz] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"`
+The module requires the extra `viz`: `pip install "hydrolog[viz] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"`
 
 **Hyetographs:**
 - `plot_hietogram()` - rainfall intensity plot with an optional cumulative line
@@ -383,7 +388,7 @@ group `nogat.gui`.
   `<data_dir>/hydrolog/stats.jsonl`)
 - „Zgłoś uwagę”: a text and the context the page adds, no contact field, kept in SQLite
   `<data_dir>/hydrolog/feedback.sqlite3`; the operator's admin panel `admin/` is Nogat's kit
-  panel `<nogat-admin>` (kit 1.0.0) with „Zgłoszenia”, „Statystyki” and „Stan”, signed in with
+  panel `<nogat-admin>` (kit 1.1.0) with „Zgłoszenia”, „Statystyki” and „Stan”, signed in with
   the key of `HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE` (ADR-0038)
 - `gui serve` keeps Nogat's logs (`nogat-log/1`: access, application and lifecycle, no IP
   address) in `<state_dir>/hydrolog/logs/` and deletes each file 14 days after its date
@@ -433,8 +438,8 @@ group `nogat.gui`.
 
 ### 2.3 ⏳ FUTURE SCOPE - Planned for the Future
 
-**After v0.8.0:**
-- Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - project owner decision of 2026-10-19: in scope, but after the next release (then 1.0.0, now 0.8.0: the author's decision of 2026-11-14)
+**After v0.9.0:**
+- Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - project owner decision of 2026-10-19: in scope, but after the release then planned (then 1.0.0, released as 0.8.0: the author's decision of 2026-11-14); not in 0.9.0
 - Rational method (Q = CIA) for small catchments
 - Parameter calibration
 - Uncertainty analysis (Monte Carlo)
@@ -571,11 +576,11 @@ hydrolog/
 - SciPy >= 1.10 (statistical distributions, gamma function, optimization - required since v0.7.0)
 - platformdirs >= 4.0 (the user config, data and state directories)
 
-**Optional (extras, `"hydrolog[...] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"`):**
+**Optional (extras, `"hydrolog[...] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"`):**
 - `raster`: rasterio >= 1.3 + pyproj >= 3.6 (commands `soil hsg` and `soil hsg-stats`, `hydrolog.soil.raster`)
 - `mcp`: mcp >= 2.3, < 3 (MCP server `hydrolog mcp`)
-- `gui`: starlette >= 1.10, < 2 + uvicorn >= 0.54, < 1 + obserwator >= 3.0.0.dev0, < 4 (web GUI `hydrolog gui serve`, ADR-0014)
-- `pmaxtp`: obserwator >= 3.0.0.dev0, < 4 (the PMAXTP depth of `precip pmaxtp`, ADR-0018)
+- `gui`: starlette >= 1.10, < 2 + uvicorn >= 0.54, < 1 + obserwator >= 3.1.0, < 4 (web GUI `hydrolog gui serve`, ADR-0014)
+- `pmaxtp`: obserwator >= 3.1.0, < 4 (the PMAXTP depth of `precip pmaxtp`, ADR-0018)
 - `viz`: matplotlib >= 3.7 + seaborn >= 0.12 (module `visualization`)
 - `all`: all of the above
 
@@ -633,9 +638,11 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | **v0.6.3** | FAA + Kerby + Kerby-Kirpich tc, API audit, WatershedParameters extension | `time.concentration`, `morphometry.watershed_params`, `reports` | ✅ Released |
 | **v0.6.4** | WatershedParams extension + UH ordinates + docs audit | `morphometry.watershed_params`, `runoff.generator`, `reports`, `docs` | ✅ Released |
 | **v0.7.0** | Hydrological statistics + Hydrometry | `statistics`, `hydrometrics`, `visualization.statistics` | ✅ Released |
-| **v0.8.0** | Command catalog, catalog-based CLI, MCP server, HSG, result serialization, calculation fixes, station analyses | `catalog`, `operations`, `mcp`, `soil`, `cli`, `agent_guide`, `statistics`, `hydrometrics` | 🔄 In preparation |
-| **v0.8.0** | Flood routing | `routing` | ✅ Merged into `develop` (ADR-0007) |
-| **v0.8.0** | Web GUI, standalone and as a Nogat module | `gui`, `catalog` | ✅ Merged into `develop` (ADR-0014, ADR-0015) |
+| **v0.8.0** | Command catalog, catalog-based CLI, MCP server, HSG, result serialization, calculation fixes, station analyses | `catalog`, `operations`, `mcp`, `soil`, `cli`, `agent_guide`, `statistics`, `hydrometrics` | ✅ Released |
+| **v0.8.0** | Flood routing | `routing` | ✅ Released (ADR-0007) |
+| **v0.8.0** | Web GUI, standalone and as a Nogat module | `gui`, `catalog` | ✅ Released (ADR-0014, ADR-0015) |
+| **v0.8.1** | Defect fixes: rating curves, low-flow thresholds, the SCS unit hydrograph of a long step, warnings, GUI time axis | `hydrometrics`, `statistics`, `runoff`, `gui` | ✅ Released |
+| **v0.9.0** | Formulas declared by specs with `formula_versions` (Nogat's computation standard), gross formula defects fixed, notice `outside_applicability`, file names of Nogat DEV-19.21, ČHMÚ as `chmu`, Nogat standard 1.1 | `nogat_formulas`, every computing module, `catalog`, `gui` | ✅ Released |
 
 ---
 
@@ -701,6 +708,6 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 
 ---
 
-**Document version:** 1.9
-**Last updated:** 2026-11-16
-**Status:** v0.8.0 frozen on 2026-11-16 for the first joint release of the Nogat ecosystem
+**Document version:** 1.10
+**Last updated:** 2026-11-22
+**Status:** v0.9.0, the release of the Nogat ecosystem's standard 1.1 (the previous releases: 0.8.0, the first joint release of the ecosystem, and the patch release 0.8.1)

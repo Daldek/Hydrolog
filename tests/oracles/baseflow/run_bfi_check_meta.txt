@@ -1,0 +1,18 @@
+run_bfi_check.R and run_bfi_check.out: the R run of the research ResFloodFrequency
+(Nogat's computation-standard audit, 2026-11-18), copied byte for byte from
+~/tmp/research-ResFloodFrequency/ladson/ (files of 2026-11-18 18:27 CET).
+
+tool: R version 4.5.3 (2026-03-11), the research's conda environment
+packages: base R only; BFI.R of github.com/TonyLadson/BaseflowSeparation_LyneHollick,
+  commit 8d09646 (2014-02-12), unchanged (BFI.R in this directory, the same bytes)
+platform: x86_64-conda-linux-gnu (Linux x86_64)
+date: 2026-11-18
+script: run_bfi_check.R (run from the research's ladson/ directory, which held BFI.R
+  and BassRiver@Loch.csv)
+data: BassRiver@Loch.csv of github.com/TonyLadson/data (commit aa9e8ff, 2013-10-01),
+  the 67 daily flows [ML/d] of Ladson et al. (2013), Table 3, unchanged
+
+The output prints the BFI to 7 decimals and the daily baseflow to 4: the research
+compared them by eye; tests/unit/test_formulas_baseflow.py reads them. The run of this
+branch, at full precision and in the frozen-oracle format of Nogat CMP-6.4, is
+lyne_hollick_r.R with lyne_hollick_r.csv and lyne_hollick_bfi_r.csv.

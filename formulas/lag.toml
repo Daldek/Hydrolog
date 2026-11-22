@@ -1,0 +1,306 @@
+schema = "nogat-formula-card/1"
+name = "lag"
+title = "Lag routing: the inflow translated by a fixed time, linear between the ordinates"
+function = "hydrolog.routing.formulas.lag.lag_route"
+family = "scheme"
+formula_version = 1
+status = "oracle only"
+equation = "O(t) = I(t - lag), I = O0 before the first ordinate; with lag / dt = w + f, 0 <= f < 1: O[j] = (1 - f) I[j - w] + f I[j - w - 1]; storage at the start lag O0, at the end the integral of I over the last lag minutes, at rest lag I[-1] [m3]"
+latex = "O(t) = I(t - \\tau),\\quad O_j = (1 - f)\\,I_{j-w} + f\\,I_{j-w-1},\\ \\frac{\\tau}{\\Delta t} = w + f,\\ 0 \\le f < 1,\\quad S(t) = \\int_{t-\\tau}^{t} I(s)\\,ds"
+validation = "none: the lag is the travel time of a reach, set from its length and the celerity or calibrated (HEC-HMS TRM, Lag model); the source reports no agreement with observations"
+conventions = ["SI units: discharge in m3/s, time in min, storage in m3 (a lag in min times a discharge in m3/s times the 60 s of a minute of the units table)", "before the first ordinate the inflow is the initial outflow (the reach at rest, ADR-0008); HEC-HMS TRM Lag model eq. 1 writes O_t = I_t for t < lag instead", "a lag that is not a whole number of steps interpolates the inflow linearly between the two ordinates around t - lag, which flattens sharp peaks; one step before the first ordinate the inflow is O0, so the outflow ordinates follow an inflow that rises linearly from O0 to I[0] over that step, while the storages hold O0 up to the first ordinate", "a lag within 1e-9 steps of a whole number counts as whole (LAG_ROUNDING); the storages keep the lag as given", "only the given ordinates are routed: LagReach extends the time axis by the lag (Tier B, ADR-0008) and adds the notice lag_interpolated for a lag that is not a whole number of steps"]
+assumptions = ["the reach translates the wave without attenuation, its travel time constant over the flood", "no backwater: the outflow does not depend on the water downstream"]
+notices = []
+reference_cases = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+symmetries = []
+
+[properties.monotonic]
+inflow_m3s = 1
+initial_outflow_m3s = 1
+
+[[properties.scalings]]
+name = "discharge"
+
+[properties.scalings.inputs]
+inflow_m3s = 1.0
+initial_outflow_m3s = 1.0
+
+[properties.scalings.outputs]
+outflow_m3s = 1.0
+storage_start_m3 = 1.0
+storage_end_m3 = 1.0
+storage_steady_m3 = 1.0
+
+[properties.scalings.tolerance]
+reason = "a power of two scales every product and sum of the shift and the transit volume exactly in binary, and leaves lag / dt unchanged, but for subnormal discharges, which round to fewer digits"
+abs = 1e-300
+rel = 0.0
+
+[[properties.scalings]]
+name = "time"
+
+[properties.scalings.inputs]
+timestep_min = 1.0
+lag_min = 1.0
+
+[properties.scalings.outputs]
+storage_start_m3 = 1.0
+storage_end_m3 = 1.0
+storage_steady_m3 = 1.0
+
+[properties.scalings.tolerance]
+reason = "a power of two scales every product and sum of the shift and the transit volume exactly in binary, and leaves lag / dt unchanged, but for subnormal discharges, which round to fewer digits"
+abs = 1e-300
+rel = 0.0
+
+[[properties.limits]]
+name = "whole_step_shift"
+text = "a lag of two steps copies each inflow ordinate two ordinates later, the initial outflow before"
+
+[[properties.limits]]
+name = "half_step_interpolation"
+text = "a lag of two and a half steps averages the inflow two and three steps earlier (Hydrolog's catalog example of route lag)"
+
+[properties.limits.source]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Lag Model"
+access = "open"
+locator = "eq. 1: O_t = I_(t - lag) for t >= lag and O_t = I_t before; the lag suits short reaches with a predictable travel time"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/lag-model"
+
+[[properties.limits]]
+name = "steady_state"
+text = "an inflow equal to the initial outflow passes unchanged"
+
+[[properties.limits]]
+name = "muskingum_one_step"
+text = "a lag of one step equals the Muskingum scheme with X = 0.5 and K = dt in one sub-reach (HEC-HMS)"
+
+[[properties.limits]]
+name = "convex_shifts"
+text = "a lag of w + f steps is (1 - f) times the shift by w steps plus f times the shift by w + 1"
+
+[[properties.conservation]]
+name = "volume"
+text = "inflow volume - outflow volume - (storage at the end - storage at the start) = J (u_end - u_end^2 / (2 dt)) - J (u - u^2 / (2 dt)) - f (1 - f) dt (slope change across the window) / 2, J = I[0] - O0, u = min(lag, dt), u_end = min(lag - T, dt) for a lag beyond the series T: exact for a whole number of steps and I[0] = O0"
+
+[properties.conservation.tolerance]
+reason = "relative to the largest volume or storage: the volumes and the transit volume are sums of exact trapezoids, rounding at 1e-16 each; the shift takes the lag a rounding of 1e-9 steps from a whole number as whole, while the storages keep the lag"
+abs = 1e-09
+
+[[sources]]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Lag Model"
+access = "open"
+locator = "eq. 1: O_t = I_(t - lag) for t >= lag and O_t = I_t before; the lag suits short reaches with a predictable travel time"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/lag-model"
+
+[[variables]]
+name = "inflow_m3s"
+symbol = "I_t"
+unit = "m3/s"
+kind = "real_array"
+description = "Inflow at t = 0, dt, 2 dt, ...: the hydrograph that enters the reach, linear between its ordinates."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 2
+max_length = 1000000
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s"
+
+[[variables]]
+name = "timestep_min"
+symbol = "\\Delta t"
+unit = "min"
+kind = "real"
+description = "Time step of the inflow and of the outflow."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1440.0
+test_reason = "a day, the step of a series of daily discharges (IMGW-PIB)"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 720.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "steps of 5 min (Hydrograf's networks, tests/fixtures/handoff_hydrograf_network*.json) to 12 h (the Iowa example and NEH 630 ch. 17 example 17-2, 0.5 d)"
+
+[[variables]]
+name = "lag_min"
+symbol = "\\tau"
+unit = "min"
+kind = "real"
+description = "Lag, the travel time of the reach."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 50000.0
+test_reason = "ten times the longest lag of the tests of the lag, 5,000 min, a lag beyond the cap of the extension"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 60.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "lags of 5 to 30 min in tests/unit/test_routing_core.py and of 10 to 60 min in docs/USAGE.md (route lag, networks)"
+
+[[variables]]
+name = "initial_outflow_m3s"
+symbol = "O_0"
+unit = "m3/s"
+kind = "real"
+description = "Outflow at the first ordinate; the reach starts at rest with it."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s"
+
+[[constraints]]
+name = "representable"
+class = "precondition"
+text = "lag / dt and the water in transit lag max(I, O0) are finite in float64"
+
+[constraints.source]
+citation = "IEEE 754 binary64, the float64 of NumPy: largest finite number 1.8e308"
+access = "open"
+locator = "the lag over the step, and the water in transit lag max(I, O0)"
+
+[[outputs]]
+name = "outflow_m3s"
+unit = "m3/s"
+kind = "real_array"
+symbol = "O_t"
+description = "Outflow at the ordinates of the inflow."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[[outputs]]
+name = "storage_start_m3"
+unit = "m3"
+kind = "real"
+symbol = "S"
+description = "Water in transit at the first ordinate, lag O0."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "storage_end_m3"
+unit = "m3"
+kind = "real"
+symbol = "S"
+description = "Water in transit at the last ordinate, the inflow of the last lag minutes."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "storage_steady_m3"
+unit = "m3"
+kind = "real"
+symbol = "S"
+description = "Water in transit at rest under the last inflow, lag I[-1]."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "lag_steps"
+unit = "-"
+kind = "real"
+symbol = "w + f"
+description = "The lag over the time step."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "lag_fraction"
+unit = "-"
+kind = "real"
+symbol = "f"
+description = "The weight of the earlier ordinate: the part of a step by which the lag misses a whole number of steps."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = false
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases inflow_m3s-nan_element and inflow_m3s-inf_element: a gap is refused, the shift would carry it lag minutes later"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_a_long_transit_volume_sums_exactly: the transit volume of a lag of 100,000 steps against math.fsum of the same trapezoids"
+
+[[oracles]]
+kind = "algorithm"
+description = "the Muskingum scheme with X = 0.5 and K = dt in one sub-reach (hydrolog.routing.formulas.muskingum.muskingum_route, spec muskingum), the lag of one step"
+test = "tests/unit/test_formulas_lag.py (limit muskingum_one_step)"
+conventions = []
+
+[[oracles]]
+kind = "exact"
+description = "the shift by a whole number of steps, and a fractional lag as the convex combination of the two shifts around it"
+test = "tests/unit/test_formulas_lag.py (limits whole_step_shift, half_step_interpolation, convex_shifts)"
+conventions = []

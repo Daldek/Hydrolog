@@ -22,10 +22,11 @@ junction, remove, rename, describe), ``editor/history.js``, the hints of
 ``editor/geometry.js`` and ``words.js`` are checked on small networks. The rainfall of
 Hydrogram's step 2 and of Sieć's network (plan 2026-11-10-network-wizard, D4) goes from
 ``rainfall`` of hydrolog-network/1 to the step's inputs and back (``mapping.js``'
-``rainfallInputs``, ``rainfallOf``), and ``RainStep`` shows a subcatchment's „Jak w
-sieci” with the network's time step read-only. A subcatchment made from rainfall goes to
-Hydrogram's inputs and back (``subcatchmentInputs``, ``subcatchmentNode``; D3): the
-inputs of each model choice, the guide's subcatchments and a hand-off's. The origin
+``rainfallInputs``, ``rainfallOf``), Euler II's depth-duration curve with it (PMAXTP's
+fetched one, a document's under „Hietogram”), and ``RainStep`` shows a subcatchment's
+„Jak w sieci” with the network's time step read-only. A subcatchment made from rainfall
+goes to Hydrogram's inputs and back (``subcatchmentInputs``, ``subcatchmentNode``; D3):
+the inputs of each model choice, the guide's subcatchments and a hand-off's. The origin
 of each node (D9) follows Nogat's precedence (``nodeOrigins``, a key of no node left
 out and said) and is written again by Sieć under the current ids with the changes
 marked (``siecNodeProvenance``), renamed, edited, drawn and added nodes included.
@@ -391,6 +392,8 @@ def test_validation_of_real_commands(page: Any) -> None:
         const musk = m.fieldModel(await doc('route muskingum'));
         const lag = m.fieldModel(await doc('route lag'));
         const net = m.fieldModel(await doc('route network'));
+        const rain = m.fieldModel(await doc('meteo precipitation'),
+          {values: {'#one_of': 1}});
         const lutzValues = {area_km2: '45,3', lutz_length_km: '8,2',
           lutz_centroid_length_km: '4,5', lutz_slope_m_per_m: '0,023',
           lutz_manning_n: '0,035'};
@@ -415,6 +418,10 @@ def test_validation_of_real_commands(page: Any) -> None:
             discharge_m3s: '1; 2', output: '../x.csv'}),
           net: [m.validate(net, {network: '[1]'}).network,
                 m.validate(net, {network: '{'}).network],
+          percentiles: [
+            m.validate(rain, {index: 'heavy', percentiles: '50; 100'}).percentiles,
+            m.validate(rain, {index: 'heavy', percentiles: '0,5; 99,9'}).percentiles,
+          ],
         };""",
     )
     assert got["nash"] == {
@@ -454,6 +461,11 @@ def test_validation_of_real_commands(page: Any) -> None:
     wrong_kind, broken = got["net"]
     assert wrong_kind == "Oczekiwano obiektu JSON · type"
     assert broken.startswith("Nieprawidłowy JSON: ") and broken.endswith(" · type")
+    # The open interval (0, 100) of the catalog, as the run refuses it
+    assert got["percentiles"] == [
+        "Wartość 2: Musi być mniejsza od 100 (podano 100) · exclusive_maximum",
+        None,
+    ]
 
 
 def test_options_sent_by_a_form(page: Any) -> None:
@@ -772,12 +784,17 @@ def test_errors_of_the_server_in_polish(page: Any) -> None:
         "amc",
         "Dozwolone wartości: I, II, III",
     )
-    # A library relation error names its field (Lc of Lutz), so it stands on it.
-    assert (library["option"], library["reason"]) == (
-        "lutz_centroid_length_km",
-        "maximum",
-    )
-    assert library["title"] == INVALID
+    # A library relation error names its field (Lc of Lutz), so it stands on it: the
+    # spec lutz's constraint centroid_within_length, worded in Polish by its name
+    assert library == {
+        "option": "lutz_centroid_length_km",
+        "reason": "outside_physical_range",
+        "title": INVALID,
+        "text": "Długość do środka ciężkości Lc nie może być większa od długości"
+        " cieku L: obie biegną wzdłuż cieku głównego od przekroju zamykającego, Lc"
+        " do punktu najbliższego środka ciężkości zlewni, L do działu wodnego",
+        "english": False,
+    }
     assert (group["option"], group["reason"]) == ("precipitation_mm", "one_of")
     assert group["text"] == (
         "Podaj dokładnie jedną kompletną grupę: precipitation_mm albo values albo "
@@ -843,6 +860,16 @@ def test_notices_in_polish(page: Any) -> None:
            details: {curves: ['all pairs', '1981-1990'], b: [6.23341, 6.49733],
              h0: [-205.651, -87.9713]}},
           {code: 'no_such_code', message: 'Something odd'},
+          {code: 'outside_applicability', message: 'm',
+           details: {method: 'rating_curve_fit', parameter: 'gaugings',
+             field: 'gaugings', value: 6, minimum: 12, maximum: null,
+             constraint: 'enough_gaugings', condition: 'n >= 12', source: 'WMO'}},
+          {code: 'outside_applicability', message: 'm',
+           details: {method: 'kirpich', parameter: 'length_km', field: 'length_km',
+             value: 0.05, minimum: 0.1, maximum: null, constraint: null,
+             condition: null, source: null}},
+          {code: 'unreferenced_formula', message: 'm',
+           details: {formula: 'rybczynski_zones', title: 'Zones', formula_version: 1}},
         ].map(notices.describeNotice);""",
     )
     assert got == [
@@ -876,6 +903,24 @@ def test_notices_in_polish(page: Any) -> None:
             "english": False,
         },
         {"text": "Something odd" + EN, "english": True},
+        # a range with one end: the end it has, and a constraint by its name
+        {
+            "text": "Krzywa przepływu: liczba par stan–przepływ = 6, mniej niż 12: "
+            "WMO-No. 1044 (tom II, rozdz. 1.5.1) zaleca do krzywej przepływu co "
+            "najmniej 12–15 pomiarów przepływu z okresu analizy, więc krzywa jest "
+            "mniej pewna.",
+            "english": False,
+        },
+        {
+            "text": "kirpich: length_km = 0,05 poniżej zakresu stosowania, od 0,1.",
+            "english": False,
+        },
+        {
+            "text": "Strefy stanów wody wg Rybczyńskiego (źródła nie otwarto) "
+            "(wersja 1): źródła nie podają przykładu z wynikiem tej metody i nie ma "
+            "niezależnego sposobu jej sprawdzenia, więc wyniku nie zweryfikowano.",
+            "english": False,
+        },
     ]
 
 
@@ -885,7 +930,7 @@ def test_ranges_of_applicability(page: Any) -> None:
         page,
         """const range = {minimum: 0, maximum: 80};
         const slope = {method: 'kirpich', parameter: 'slope_m_per_m',
-          inputs: ['flow_path_slope_m_per_m'], minimum: 0.03,
+          inputs: ['flow_path_slope_m_per_m'], minimum: 0.025,
           maximum: 0.1, unit: 'm/m', source: 'Kirpich (1940)'};
         const years = {method: 'flood_frequency', parameter: 'years', inputs: [],
           result: 'n_years', minimum: 30, maximum: null, unit: 'years', source: 'KZGW'};
@@ -943,7 +988,7 @@ def test_ranges_of_applicability(page: Any) -> None:
     ]
     assert got["scale"] == [1, 102.76, None, None]
     assert got["text"] == [
-        "od 0,03 do 0,1 m/m",
+        "od 0,025 do 0,1 m/m",
         "najwyżej 52 km²",
         "co najmniej 30 lat",
         f"od 170 do 70{NBSP}000 km²",
@@ -1035,6 +1080,7 @@ def test_result_view_of_real_runs(page: Any) -> None:
             .map((t) => t.value),
           csv: rv.resultCsv(a),
           scalarCsv: rv.resultCsv(k),
+          kirpich: kirpich.body.result.tc_min,
           cells: ['a,b', 'say "hi"', 'x\\ny', null, 1.5].map(rv.csvCell),
           empty: rv.analyzeResult(null),
           // A field named as an option takes the command's own label of it first
@@ -1084,7 +1130,7 @@ def test_result_view_of_real_runs(page: Any) -> None:
     assert "parameters.length_km,8.2,km" in scalars
     tc = next(line for line in scalars if line.startswith("tc_min,"))
     _, value, unit = tc.split(",")
-    assert unit == "min" and math.isclose(float(value), 85.97, rel_tol=1e-3)
+    assert unit == "min" and float(value) == got["kirpich"]
     assert got["cells"] == ['"a,b"', '"say ""hi"""', '"x\ny"', "", "1.5"]
     empty = got["empty"]
     assert (empty["schema"], empty["series"], empty["scalars"]) == (None, [], [])
@@ -2498,6 +2544,95 @@ def test_a_rainfall_goes_to_the_steps_inputs_and_back(page: Any) -> None:
     }
     # „Brak” and „Jak w sieci” are no rainfall of their own
     assert got["kinds"] == [None, None]
+
+
+# Euler II (ATV-DVWK-A 118) is built from the depth-duration curve of one probability:
+# PMAXTP's fetch keeps it, a run and a document carry it, and „Hietogram” has only the
+# curve a document came with.
+EULER = """const mp = await import('./src/handoff/mapping.js');
+const hs = await import('./src/sections/hydrogram/state.js');
+const curve = {'5': 21.02, '10': 26.19, '15': 29.8, '30': 37.13, '45': 42.24,
+               '60': 46.28};
+const options = {latitude: 51.0154, longitude: 15.89, duration_min: 60,
+                 probability_percent: 1, method: 'POT'};
+const atlas = {...hs.initialRain(), rain_source: 'pmaxtp', pmaxtp_latitude: '51,0154',
+  pmaxtp_longitude: '15,89', pmaxtp_probability_pct: '1', pmaxtp_duration_min: '60',
+  hietogram_type: 'euler_ii', peak_position: '0,4'};
+const fetched = hs.pmaxtpRecord(options, {depth_mm: 46.28, depth_duration_mm: curve});
+const old = hs.pmaxtpRecord(options, {depth_mm: 46.28});
+const storm = {kind: 'design', hietogram_type: 'euler_ii', total_mm: 46.28,
+               duration_min: 60, depth_duration_mm: curve};
+const own = {rainfall: {source: 'pmaxtp', latitude: 51.0154, longitude: 15.89,
+                        probability_percent: 1, duration_min: 60, method: 'POT'}};
+const design = {...hs.initialRain(), ...mp.rainfallInputs(storm)};
+const bare = {...hs.initialRain(), rain_source: 'design', hietogram_type: 'euler_ii',
+              total_mm: '40', duration_min: '60'};
+return {
+  sent: hs.rainOptions({...atlas, pmaxtp_fetched: fetched}),
+  triangle: hs.rainOptions({...atlas, hietogram_type: 'triangular',
+                            pmaxtp_fetched: fetched}),
+  depthWithoutCurve: [hs.pmaxtpDepth({...atlas, pmaxtp_fetched: old}),
+    hs.pmaxtpDepth({...atlas, hietogram_type: 'beta', pmaxtp_fetched: old})],
+  written: mp.rainfallOf({...atlas, pmaxtp_fetched: fetched}),
+  design: [design.rain_source, mp.rainfallOf(design)],
+  ownPoint: mp.rainfallInputs(storm, own).pmaxtp_fetched,
+  bare: mp.rainfallOf(bare),
+  shapes: [hs.offeredShapes(bare), hs.offeredShapes(design), hs.offeredShapes(atlas)],
+  placed: [
+    {option: 'depth_duration_mm', reason: 'not_covered', duration_min: 2,
+     durations_min: [5, 4320]},
+    {option: 'depth_duration_mm', reason: 'not_covered', duration_min: 90,
+     durations_min: [5, 60]},
+    {option: 'depth_duration_mm', reason: 'decreasing'},
+  ].map((details) => hs.optionField(atlas, hs.errorOption(details))),
+};"""
+
+
+def test_euler_ii_takes_the_curve_of_its_pmaxtp_depth_or_of_its_document(
+    page: Any,
+) -> None:
+    got = js(page, EULER)
+    curve = {"5": 21.02, "10": 26.19, "15": 29.8, "30": 37.13, "45": 42.24, "60": 46.28}
+    storm = {
+        "kind": "design",
+        "hietogram_type": "euler_ii",
+        "total_mm": 46.28,
+        "duration_min": 60,
+        "depth_duration_mm": curve,
+    }
+    # A run of PMAXTP's Euler II sends the fetched depth and its curve, no peak position
+    # (a triangular one keeps it, without the curve)
+    assert got["sent"] == {key: value for key, value in storm.items() if key != "kind"}
+    assert "depth_duration_mm" not in got["triangle"]
+    assert got["triangle"]["peak_position"] == 0.4
+    # A depth kept without its curve is fetched again for Euler II only
+    assert got["depthWithoutCurve"] == [None, 46.28]
+    # The network's document carries the curve; read back, it is the same rainfall, as
+    # „Hietogram” with the document's curve, or PMAXTP's record at the record's point
+    assert got["written"] == storm
+    assert got["design"] == ["design", storm]
+    assert got["ownPoint"] == {
+        "latitude": 51.0154,
+        "longitude": 15.89,
+        "duration_min": 60,
+        "probability_percent": 1,
+        "method": "POT",
+        "depth_mm": 46.28,
+        "depth_duration_mm": curve,
+    }
+    # „Hietogram” without a curve offers no Euler II; one kept goes without a curve,
+    # which Hydrolog refuses rather than computing another storm
+    assert got["bare"] == {
+        "kind": "design",
+        "hietogram_type": "euler_ii",
+        "total_mm": 40,
+        "duration_min": 60,
+    }
+    every = ["block", "triangular", "beta", "euler_ii"]
+    assert got["shapes"] == [every[:3], every, every]
+    # A curve that does not reach down to the step is the step's error, one that does
+    # not reach the duration the duration's, any other the fetched depth's
+    assert got["placed"] == ["timestep_min", "pmaxtp_duration_min", "pmaxtp_depth"]
 
 
 # RainStep for a subcatchment in Sieć: „Jak w sieci” with the network's rainfall in

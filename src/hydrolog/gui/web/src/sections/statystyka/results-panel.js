@@ -272,7 +272,6 @@ function Tiles({ result, fit, best, stressed, second }) {
  * @returns {object} the table and its note
  */
 function Distributions({ fits, best, stressed, second, ticked, onTick, active, onActive }) {
-  const critical = adCritical(fits[0]);
   const named = namesMethods(fits);
   const columns = [
     {
@@ -301,13 +300,14 @@ function Distributions({ fits, best, stressed, second, ticked, onTick, active, o
     { key: "aic", label: texts.results.aic, format: (value) => (typeof value === "number" ? num(value, 1) : "—") },
     {
       key: "ad_statistic",
-      label: html`${texts.results.ad}${critical !== null ? html` <span class="u">${t(texts.results.adCritical, { value: num(critical, 2) })}</span>` : null}`,
+      label: texts.results.ad,
       format: (value, fit) => {
         const limit = adCritical(fit);
         if (typeof value !== "number") return "—";
         if (limit === null) return num(value, 2);
         const ok = value < limit;
-        return html`${num(value, 2)} <span class=${ok ? "ok-mark" : "bad-mark"} title=${ok ? texts.results.adOk : texts.results.adBad}>${ok ? "✓" : "✗"}</span>`;
+        const title = t(ok ? texts.results.adOk : texts.results.adBad, { value: num(limit, 2) });
+        return html`${num(value, 2)} <span class=${ok ? "ok-mark" : "bad-mark"} title=${title}>${ok ? "✓" : "✗"}</span>`;
       },
     },
     { key: "ks_p_value", label: texts.results.ks, format: (value) => (typeof value === "number" ? num(value, 2) : "—") },

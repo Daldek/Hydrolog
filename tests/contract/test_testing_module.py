@@ -77,7 +77,9 @@ def test_the_fixture_tables_are_the_files_that_route_network_writes_from_its_fil
     )
 
     assert tables(case.output_dir) == tables(tmp_path / "real")
-    assert sorted(tables(case.output_dir)) == sorted(f"{n}.csv" for n in case.nodes)
+    assert sorted(tables(case.output_dir)) == sorted(
+        f"hydrolog_node-hydrograph_{n}.csv" for n in case.nodes
+    )
 
 
 def test_the_tables_of_an_inline_network_are_the_files_that_route_network_writes(
@@ -155,7 +157,7 @@ def test_the_envelope_is_the_line_that_precip_hietogram_prints(tmp_path: Path) -
     assert printed.count("\n") == 1
 
 
-def test_the_default_envelope_is_the_euler_ii_design_of_40_mm_in_an_hour() -> None:
+def test_the_default_envelope_is_the_beta_design_of_40_mm_in_an_hour() -> None:
     envelope = testing.hietogram_envelope()
 
     assert envelope["schema"] == "hydrolog-result/1"
@@ -163,7 +165,7 @@ def test_the_default_envelope_is_the_euler_ii_design_of_40_mm_in_an_hour() -> No
     assert envelope["version"] == hydrolog.__version__
     result = envelope["result"]
     assert result["schema"] == "hydrolog-precip-hietogram/1"
-    assert (result["hietogram_type"], result["n_steps"]) == ("euler_ii", 6)
+    assert (result["hietogram_type"], result["n_steps"]) == ("beta", 6)
     assert sum(result["depths_mm"]) == pytest.approx(40.0)
 
 

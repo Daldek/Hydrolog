@@ -7,13 +7,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from hydrolog.catalog import run_command
+from hydrolog.catalog import get_command, run_command
 from hydrolog.exceptions import CalculationError, InputDataError, InvalidParameterError
 from hydrolog.operations import stats_low_flow_sequences
 from hydrolog.statistics import (
     calculate_characteristic_values,
     duration_curve,
-    exceedance_values,
     runoff_volumes,
     threshold_events,
     threshold_runs,
@@ -163,10 +162,6 @@ class TestCharacteristicValues:
 
 
 class TestDurationCurve:
-    def test_weibull_positions_interpolated_between_ranks(self):
-        values = np.array([10.0, 20.0, 30.0, 40.0])  # positions 20, 40, 60, 80 %
-        assert exceedance_values(values, [20, 50, 80]).tolist() == [40.0, 25.0, 10.0]
-
     def test_classes_from_a_multiple_of_the_width_with_cumulative_days(self):
         values = np.array([31.0, 38.0, 45.0, 45.0, 52.0])
         dates = np.array(
@@ -263,6 +258,51 @@ class TestLowFlowSequencesWithGaps:
                 },
             )
         assert caught.value.details == {"option": option, "reason": "not_applicable"}
+
+
+@pytest.mark.parametrize(
+    ("command", "options", "option", "index"),
+    [
+        (
+            "stats duration-curve",
+            {"exceedance_percents": [50, 100]},
+            "exceedance_percents",
+            1,
+        ),
+        (
+            "stats low-flow-sequences",
+            {"threshold_method": "exceedance", "exceedance_percent": 100},
+            "exceedance_percent",
+            None,
+        ),
+    ],
+)
+def test_an_exceedance_percentage_of_100_is_refused_by_the_catalog(
+    command, options, option, index
+):
+    """The declared range is the computation's open interval (0, 100): the catalog
+    declared an inclusive maximum of 100, which the commands refuse (research
+    flood-frequency §4.1); it refuses 100 before the command runs."""
+    with pytest.raises(InvalidParameterError) as caught:
+        run_command(
+            command,
+            {
+                "input_file": str(FIXTURES / "station_daily.csv"),
+                "value_column": "Q",
+                "date_column": "date",
+                **options,
+            },
+        )
+    details = caught.value.details
+    assert (details["option"], details["reason"], details["exclusive_maximum"]) == (
+        option,
+        "exclusive_maximum",
+        100,
+    )
+    assert details.get("index") == index
+    schema = get_command(command).option(option).json_schema()
+    bound = schema if index is None else schema["items"]
+    assert (bound["exclusiveMaximum"], "maximum" in bound) == (100, False)
 
 
 def _two_hydrological_years(low: dict[int, float], base: float) -> dict[str, list]:
@@ -379,14 +419,15 @@ class TestRatingCurvePeriods:
 
     def test_a_period_that_mixes_two_stage_regimes_is_implausible(self):
         """Daily pairs that span a change of the stage-discharge relation (zero flow at
-        20 cm, from 2004 at 80 cm) fit a curve of neither: b above 4 and H0 far below
+        20 cm, from 2004 at 60 cm) fit a curve of neither: b above 4 and H0 far below
         the stages, as IMGW-PIB 150170070 in 1981-1990 (b = 6.50, H0 = -88 cm). Such a
-        curve is given but flagged; the curves of one relation are not."""
+        curve is given but flagged; the curves of one relation are not. (With zero flow
+        at 80 cm from 2004 the least squares of the mixed pairs have no minimum.)"""
         before = np.linspace(40.0, 160.0, 40)
         after = np.linspace(85.0, 160.0, 40)
         levels, discharges, dates = [], [], []
         for year in range(2001, 2007):
-            stages, zero = (before, 20.0) if year < 2004 else (after, 80.0)
+            stages, zero = (before, 20.0) if year < 2004 else (after, 60.0)
             levels += [*stages]
             discharges += [*(0.01 * (stages - zero) ** 1.6)]
             dates += [str(day) for day in days(f"{year}-01-01", 40)]
@@ -442,6 +483,44 @@ class TestRatingCurvePeriods:
         assert "implausible_rating_curve" not in {
             n["code"] for n in envelope["notices"]
         }
+
+    def test_a_period_whose_least_squares_have_no_minimum_says_so(self):
+        """A year of pairs that rise as an exponential of the stage, Q = 0.6 e^(0.03 H),
+        has no curve Q = a (H - H0)^b: its least squares fall toward the exponential as
+        H0 goes to minus infinity. Its period was `fit_failed` (0.9.0.dev4) and is now
+        `no_least_squares_minimum`; the years of one power law keep their curves."""
+        stages = np.linspace(40.0, 160.0, 40)
+        levels, discharges, dates = [], [], []
+        for year in (2001, 2002, 2003):
+            power = year < 2003
+            levels += [*stages]
+            discharges += [
+                *(
+                    0.01 * (stages - 20.0) ** 1.6
+                    if power
+                    else 0.6 * np.exp(0.03 * stages)
+                )
+            ]
+            dates += [str(day) for day in days(f"{year}-01-01", 40)]
+        result = run_command(
+            "hydrometrics rating-curve",
+            {
+                "water_levels": levels,
+                "discharges": discharges,
+                "dates": dates,
+                "years_per_period": 1,
+            },
+        ).to_dict()["result"]
+        assert [p["reason"] for p in result["periods"]] == [
+            None,
+            None,
+            "no_least_squares_minimum",
+        ]
+        assert [p["b"] for p in result["periods"]] == [
+            pytest.approx(1.6),
+            pytest.approx(1.6),
+            None,
+        ]
 
     def test_years_need_dates(self):
         with pytest.raises(InvalidParameterError) as caught:

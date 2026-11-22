@@ -1,0 +1,169 @@
+schema = "nogat-formula-card/1"
+name = "recession_constant"
+title = "Recession constant of the total flow: the median daily ratio of runs of falling flow"
+function = "hydrolog.statistics.baseflow.recession_ratio"
+family = "statistic"
+formula_version = 1
+status = "oracle only"
+equation = "k = median of Q_(t+1) / Q_t over the runs of at least min_days consecutive days with Q_t > 0 and Q_(t+1) < Q_t; half-life = ln 2 / (-ln k) (0 for k = 0)"
+latex = "k = \\operatorname{median}\\left\\{\\frac{Q_{t+1}}{Q_t}\\right\\},\\quad T_{1/2} = \\frac{\\ln 2}{-\\ln k}"
+validation = "none: the median ratio of the total flow is Hydrolog's own estimator; on WMO-No. 1029's Ngaruroro example (1963-1989) it gives k = 0.932 where WMO's master recession curve gives 0.9602 and lfstat's MRC 0.954 (the research of 2026-11-18): its segments include the quickflow after a peak"
+conventions = ["k is the daily ratio Q_(t+1) / Q_t of WMO-No. 1029 eq. 5.2, and the half-life ln 2 / (-ln k) is C ln 2 of its eq. 5.3", "segments of Hydrolog's own rule: every run of at least min_days falls, from the first day after a peak, no threshold (WMO starts below Q70 and two days after a peak, on segments of seven days, and fits them by regression)", "the median of all the ratios of all the segments pooled, not a regression through the origin (WMO's master recession curve) nor the mean of the segments' constants (WMO's individual recession segments)", "a fall is strict: a day of equal flow (a tie) ends a run, as a rise does", "a day without a value or a day without flow (Q_t = 0) ends a run; a fall to 0 is the last ratio of its run, so k = 0 and a half-life of 0 only when min_days is 1"]
+assumptions = ["the recession is exponential within each segment (WMO-No. 1029 eq. 5.1)", "the series is daily: k is per day and the half-life in days"]
+notices = []
+reference_cases = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_series"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+k = 0.0
+half_life_days = 0.0
+
+[properties.scalings.tolerance]
+reason = "doubling every value of a series doubles every term of the recursion and of the sums exactly, so no rounding changes; a result below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[properties.limits]]
+name = "exponential_recession"
+text = "two recessions Q_t = Q_0 0.95^t parted by a rise: k = 0.95 and the half-life ln 2 / (-ln 0.95), from both segments"
+
+[properties.limits.source]
+citation = "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029"
+access = "open"
+locator = "sect. 5.3, p. 45, eqs. 5.1 to 5.3"
+url = "https://library.wmo.int/idurl/4/32176"
+
+[[sources]]
+citation = "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029"
+access = "open"
+locator = "sect. 5.3, p. 45, eqs. 5.1 to 5.3: Q_t = Q_0 exp(-t/C), k = Q_t/Q_(t-1), C = -dt/ln(k); 'A minimum length in the order of five to seven days is, however, commonly used'"
+url = "https://library.wmo.int/idurl/4/32176"
+
+[[variables]]
+name = "values"
+symbol = "Q_t"
+unit = "m3/s"
+kind = "real_array"
+description = "Daily discharge on consecutive days; a gap (NaN) is a day without a value."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)"
+
+[variables.typical]
+low = 0.5
+low_inclusive = true
+high = 125.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "IMGW-PIB, public hydrological data: daily discharge of the Nysa Kłodzka at Kłodzko (station 150160180) in 2010, files codz_2010_01 to codz_2010_12; and Hydrolog's synthetic station of the GUI guide, tests/fixtures/station_daily.csv"
+access = "open"
+locator = "Kłodzko 2010: 4.93 to 96.0 m3/s; station_daily.csv, 2018-11 to 2023-10: 0.52 to 122.34 m3/s"
+url = "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/"
+
+[[variables]]
+name = "min_days"
+symbol = "m"
+unit = "d"
+kind = "integer"
+description = "Shortest recession segment: falls in a row."
+applicability = "unstated"
+
+[variables.physical]
+low = 1.0
+low_inclusive = true
+test_high = 365.0
+test_reason = "a segment of a year of falling daily flow; longer ones only test the count"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 5.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's catalog and tests: the defaults of stats baseflow (alpha 0.925, passes 3, recession segments of 5 days), with which Obserwator calls it, and alpha 0.98 of the worked example of Ladson et al. (2013) in its verification"
+access = "open"
+locator = "src/hydrolog/catalog/groups/stats.py (stats baseflow); tests/unit/test_station_regime.py (TestBaseflow)"
+
+[[constraints]]
+name = "recession_segment"
+class = "precondition"
+text = "a run of at least min_days days with 0 < Q_(t+1) / Q_t < 1"
+
+[constraints.source]
+citation = "WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029"
+access = "open"
+locator = "sect. 5.3, p. 45: the recession is analysed on segments of a minimum length"
+url = "https://library.wmo.int/idurl/4/32176"
+
+[[outputs]]
+name = "k"
+unit = "-"
+kind = "real"
+symbol = "k"
+description = "Daily recession constant of the total flow."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = false
+
+[[outputs]]
+name = "half_life_days"
+unit = "d"
+kind = "real"
+symbol = "T_{1/2}"
+description = "Days in which such a recession halves the flow."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "n_segments"
+unit = "-"
+kind = "integer"
+description = "Recession segments found."
+
+[outputs.physical]
+low = 1.0
+low_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "test_a_ratio_next_to_one_has_a_finite_half_life and test_a_fall_to_no_flow_has_a_half_life_of_zero: ln k at both ends of (0, 1)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "test_a_gap_ends_a_segment: a day without a value ends a run and is never a ratio"
+
+[[oracles]]
+kind = "exact"
+description = "the runs found by a scan of the days and the median of their ratios in exact rational arithmetic (fractions, statistics.median)"
+test = "tests/unit/test_formulas_baseflow.py::test_the_recession_constant_is_the_exact_median"
+conventions = []

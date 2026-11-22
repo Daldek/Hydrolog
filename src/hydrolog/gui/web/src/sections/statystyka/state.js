@@ -287,8 +287,8 @@ export function resolveColumn(value, columns) {
 /**
  * Read the columns of a series file in the browser: a CSV with a header (comma, semicolon
  * or tab) or a JSON document (records, columns or a list of numbers), as Hydrolog reads it:
- * the columns of the providers' lines (attribution.js LINE_COLUMNS: DEV-20.5's and
- * Obserwator's) are not data and are left out.
+ * the columns of the providers' lines (attribution.js LINE_COLUMNS: DEV-20.5's and the two
+ * more of Obserwator 3.0.x) are not data and are left out.
  *
  * @param {string} text the file's text
  * @returns {{columns: string[], rows: number, cells: (column: string) => unknown[]}} the

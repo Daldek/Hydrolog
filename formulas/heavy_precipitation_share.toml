@@ -1,0 +1,226 @@
+schema = "nogat-formula-card/1"
+name = "heavy_precipitation_share"
+title = "Precipitation of the days above a threshold and its share of the wet days'"
+function = "hydrolog.statistics.meteo_precipitation.heavy_precipitation_share"
+family = "index"
+formula_version = 1
+status = "referenced"
+equation = "R = the sum of P over the days with P > Pt (R95p for the 95th percentile of the wet days), D their number, PRCPTOT the sum of P over the days with P >= Pw; share = 100 R / PRCPTOT (R95pTOT); Pt >= Pw"
+latex = "R = \\sum_{P_i > P_t} P_i,\\quad \\mathrm{PRCPTOT} = \\sum_{P_i \\ge P_w} P_i,\\quad s = \\frac{100\\,R}{\\mathrm{PRCPTOT}},\\quad P_t \\ge P_w"
+validation = "none: an index of the daily precipitation"
+conventions = ["a day counts above the threshold when P > Pt (strictly), a wet day when P >= Pw; a missing day (NaN) is left out", "R is R95p of ClimPACT and of the ETCCDI's list (a sum in mm), the share R95pTOT of ClimPACT (100 R / PRCPTOT); ECA&D's R95pTOT divides by the precipitation of every day", "the series function takes the days of a complete year, the threshold of wet_day_percentile, and rounds R and PRCPTOT to 1e-6 mm; a year without a wet day has no share"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/meteo-indices-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+precipitation_mm = 1
+threshold_mm = -1
+
+[[properties.scalings]]
+name = "precipitation_in_another_unit"
+
+[properties.scalings.inputs]
+precipitation_mm = 1.0
+wet_day_mm = 1.0
+threshold_mm = 1.0
+
+[properties.scalings.outputs]
+heavy_mm = 1.0
+wet_day_total_mm = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling every value is exact in binary"
+abs = 0.0
+
+[[properties.limits]]
+name = "exact_oracle"
+text = "R, D and the share equal their values in exact fractions"
+
+[[sources]]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[sources]]
+citation = "ClimPACT2, the indices of the Expert Team on Sector-specific Climate Indices (ET-SCI)"
+access = "open"
+locator = "climate.indices.csv: R95p, the annual sum of the precipitation of the days above the 95th percentile of the wet days; R95pTOT = 100 R95p / PRCPTOT"
+url = "https://github.com/ARCCSS-extremes/climpact"
+
+[[variables]]
+name = "precipitation_mm"
+symbol = "P_i"
+unit = "mm"
+kind = "real_array"
+description = "Daily precipitation of the days of a period; NaN on a missing day, which is left out."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 75.8
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the daily precipitation: 0 to 75.8 mm"
+
+[[variables]]
+name = "wet_day_mm"
+symbol = "P_w"
+unit = "mm"
+kind = "real"
+description = "The least precipitation of a wet day."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[variables]]
+name = "threshold_mm"
+symbol = "P_t"
+unit = "mm"
+kind = "real"
+description = "The threshold, a percentile of the wet days of a reference period."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 16.8
+low_inclusive = true
+high = 29.43
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the 95th and 99th percentiles of the wet days of 1991-2020: 16.8 and 29.43 mm"
+
+[[constraints]]
+name = "a_wet_day"
+class = "precondition"
+text = "at least one day has P >= P_w"
+
+[constraints.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[constraints]]
+name = "threshold_of_a_wet_day"
+class = "precondition"
+text = "Pt >= Pw: a day above the threshold is a wet day"
+
+[constraints.source]
+citation = "ETCCDI (2009). Climate Change Indices: definitions of the 27 core indices. Expert Team on Climate Change Detection and Indices"
+access = "open"
+locator = "SDII: the precipitation of the wet days (RR >= 1 mm) of a period over their number; PRCPTOT: the precipitation of the wet days of the year; R95pTOT: the annual total of the days with RR > RRwn95, the 95th percentile of the precipitation of the wet days of the base period 1961-1990"
+url = "https://etccdi.pacificclimate.org/list_27_indices.shtml"
+
+[[outputs]]
+name = "heavy_mm"
+unit = "mm"
+kind = "real"
+symbol = "R"
+description = "The precipitation of the days above the threshold (R95p)."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "heavy_days"
+unit = "d"
+kind = "integer"
+symbol = "D"
+description = "The days above the threshold."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "wet_day_total_mm"
+unit = "mm"
+kind = "real"
+symbol = "\\mathrm{PRCPTOT}"
+description = "The precipitation of the wet days."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "share_percent"
+unit = "%"
+kind = "real"
+symbol = "s"
+description = "R in % of PRCPTOT (R95pTOT of ClimPACT)."
+boundary_tolerance = 1e-09
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "precondition a_wet_day: PRCPTOT > 0, the sum of values of at least Pw > 0"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case precipitation_mm-nan_element: a missing day is left out"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "limit exact_oracle: the sums of 365 days against exact fractions to 1e-14"
+
+[[oracles]]
+kind = "exact"
+description = "R, D and the share in exact fractions (fractions.Fraction) of the wet days 1 to 100 mm and of seeded series with gaps"
+test = "tests/unit/test_formulas_meteo_precipitation.py (limit exact_oracle)"
+conventions = []

@@ -45,7 +45,9 @@ A subcatchment makes its own hydrograph when it has a ``watershed`` (the object 
                    "elevation_min_m": 210.0, "elevation_max_m": 330.0, "cn": 75},
      "runoff": {"model": "curve-number", "tc_min": 90.0},
      "rainfall": {"kind": "design", "hietogram_type": "euler_ii",
-                  "total_mm": 45.0, "duration_min": 60.0}}
+                  "total_mm": 41.77, "duration_min": 60.0,
+                  "depth_duration_mm": {"5": 13.11, "10": 20.48, "15": 24.99,
+                                        "30": 33.1, "45": 38.09, "60": 41.77}}}
 
 The rainfall belongs to the subcatchment; the document can also have ``rainfall`` at
 its top, which the subcatchments that have none of their own take, and ``timestep_min``

@@ -193,6 +193,13 @@ class TestFormatCommand:
         assert format_command("tc kirpich", {"length_km": -1}) == (
             "hydrolog tc kirpich --length-km=-1"
         )
+        assert format_command(
+            "meteo precipitation",
+            {"index": "heavy", "input_file": "p.csv", "percentiles": [50, 100]},
+        ) == (
+            "hydrolog meteo precipitation --index heavy --input-file p.csv "
+            "--percentiles 50,100"
+        )
 
     @pytest.mark.parametrize(
         ("command", "options", "option", "reason"),

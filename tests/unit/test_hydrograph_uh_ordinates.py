@@ -12,7 +12,7 @@ RAIN = {
     "cn": 72,
     "hietogram_type": "beta",
     "total_mm": 60.0,
-    "duration_min": 120.0,
+    "duration_min": 140.0,
     "alpha": 2.0,
     "beta": 5.0,
 }

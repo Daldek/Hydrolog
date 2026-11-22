@@ -1,0 +1,182 @@
+schema = "nogat-formula-card/1"
+name = "isohyet_precipitation"
+title = "Areal precipitation by the isohyet method"
+function = "hydrolog.precipitation.interpolation.isohyet_precipitation"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "P = sum(A_i (v_i + v_(i+1)) / 2) / sum(A_i), zone i between the isohyets v_i and v_(i+1)"
+latex = "\\bar{P} = \\frac{\\sum_i A_i \\frac{v_i + v_{i+1}}{2}}{\\sum_i A_i}"
+validation = "none: Chow et al. (1988, p. 80) call the method the most accurate of the three where the isohyets are drawn with the topography; no error statistic"
+conventions = ["depths in mm, areas in km2 (any one unit gives the same mean, so shares of the watershed do too)", "the mean of a zone is the mean of its two isohyets (KZGW 2017, eq. 2.2); an edge zone takes a notional bound that makes that mean the depth estimated for it (Chow et al. 1988, Fig. 3.4.3c: bounds 0 and 56 mm for 5 and 53 mm)", "the areas are divided by their sum, the watershed's area when the zones tile it"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/areal-precipitation-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+isohyet_values_mm = 1
+
+[[properties.scalings]]
+name = "depth"
+
+[properties.scalings.inputs]
+isohyet_values_mm = 1.0
+
+[properties.scalings.outputs]
+areal_precipitation_mm = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling the depths doubles every product exactly in binary; the sums round once, but for subnormal values"
+abs = 1e-300
+rel = 1e-15
+
+[[properties.scalings]]
+name = "area"
+
+[properties.scalings.inputs]
+zone_areas_km2 = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "doubling the depths doubles every product exactly in binary; the sums round once, but for subnormal values"
+abs = 1e-300
+rel = 1e-15
+
+[[properties.limits]]
+name = "exact_rational"
+text = "the mean equals it in exact rational arithmetic"
+
+[[properties.symmetries]]
+name = "order"
+text = "the isohyets and zones read from the other end give the same mean"
+
+[properties.symmetries.tolerance]
+reason = "the same terms summed in another order: correctly rounded sums of products that each round once"
+abs = 1e-12
+rel = 1e-12
+
+[[sources]]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 3.4, Fig. 3.4.3(c), p. 80: the isohyets 10 to 50 mm and the zones of 0.20 to 3.01 km2 of the example"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[sources]]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "ch. II.1, eq. 2.2, pp. 16-17: metoda izohiet, the mean between neighbouring isohyets times the area between them (after Byczkowski 1996)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "isohyet_values_mm"
+symbol = "v_i"
+unit = "mm"
+kind = "real_array"
+description = "Values of the consecutive isohyets that bound the zones."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 2
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1825.0
+test_reason = "the world's largest daily rainfall, 1,825 mm at Foc-Foc, La Réunion, 7-8 January 1966 (WMO Archive of Weather and Climate Extremes)"
+
+[variables.typical]
+low = 10.0
+low_inclusive = true
+high = 50.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 3.4, Fig. 3.4.3(c), p. 80: the isohyets 10 to 50 mm and the zones of 0.20 to 3.01 km2 of the example"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[variables]]
+name = "zone_areas_km2"
+symbol = "A_i"
+unit = "km2"
+kind = "real_array"
+description = "Area of each zone between two consecutive isohyets."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 149000000.0
+test_reason = "the land area of the Earth, about 149 million km2"
+
+[variables.typical]
+low = 0.2
+low_inclusive = true
+high = 3.01
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 3.4, Fig. 3.4.3(c), p. 80: the isohyets 10 to 50 mm and the zones of 0.20 to 3.01 km2 of the example"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[constraints]]
+name = "zone_count"
+class = "precondition"
+text = "n isohyets bound n - 1 zones"
+
+[constraints.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 3.4, Fig. 3.4.3(c), p. 80: the isohyets 10 to 50 mm and the zones of 0.20 to 3.01 km2 of the example"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[constraints]]
+name = "area_positive"
+class = "precondition"
+text = "sum(A_i) > 0: the zones cover some of the watershed"
+
+[constraints.source]
+citation = "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill, New York"
+access = "open"
+locator = "sec. 3.4, Fig. 3.4.3(c), p. 80: the isohyets 10 to 50 mm and the zones of 0.20 to 3.01 km2 of the example"
+url = "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf"
+
+[[outputs]]
+name = "areal_precipitation_mm"
+unit = "mm"
+kind = "real"
+symbol = "\\bar{P}"
+description = "Mean precipitation over the watershed."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases of both arrays, nan_element: a gap is refused"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "the sums by math.fsum; limit exact_rational"
+
+[[oracles]]
+kind = "exact"
+description = "the area-weighted mean of the zones in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_areal_precipitation.py (limit exact_rational)"
+conventions = []

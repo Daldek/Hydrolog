@@ -121,7 +121,7 @@ from hydrolog.statistics.baseflow import (
 from hydrolog.statistics.baseflow import (
     MIN_YEAR_DAYS as BASEFLOW_MIN_YEAR_DAYS,
 )
-from hydrolog.statistics.harmonics import MAX_HARMONICS, MIN_YEAR_VALUES
+from hydrolog.statistics.harmonics import MAX_HARMONICS, MIN_YEAR_VALUES, PERIOD_DAYS
 from hydrolog.statistics.volumes import DAY_SECONDS
 
 __all__ = [
@@ -165,8 +165,10 @@ Distribution = Literal["all", "log_normal", "gev", "pearson3", "weibull"]
 
 _DISTRIBUTIONS: tuple[str, ...] = ("all", "log_normal", "gev", "pearson3", "weibull")
 _FIT_METHOD_CHOICES: tuple[str, ...] = (*FIT_METHODS, "all")
-# Three parameters cannot be estimated from fewer than three annual values.
+# Three parameters cannot be estimated from fewer than three annual values; the
+# maximum likelihood of the low-flow fit needs more values than parameters.
 _MIN_ANNUAL_VALUES = 3
+_MIN_ANNUAL_MINIMA = 4
 _MIN_TREND_VALUES = 3  # the Mann-Kendall test of the library needs 3 observations
 _NUMERIC_WARNINGS: tuple[type[Warning], ...] = (UserWarning, RuntimeWarning)
 _ONE_DAY = np.timedelta64(1, "D")
@@ -199,9 +201,10 @@ class FloodFrequencyResult(JsonResultMixin):
     distributions : list of FrequencyAnalysisResult
         Fitted distributions: parameters, quantiles for the return periods with the
         probability density at each [1/(m³/s)], goodness of fit (K-S,
-        Anderson-Darling, AIC) and the ``fit_method`` that gave them. One per
-        distribution requested (all four for ``distribution="all"``), each by each
-        of the four methods for ``fit_method="all"``; sorted by AIC (best first).
+        Anderson-Darling with the critical values of the fit from a parametric
+        bootstrap for the L-moments, AIC) and the ``fit_method`` that gave them. One
+        per distribution requested (all four for ``distribution="all"``), each by
+        each of the four methods for ``fit_method="all"``; sorted by AIC (best first).
     empirical : EmpiricalFrequency
         Empirical frequency of the sample (Weibull plotting positions; values sorted
         descending, exceedance probabilities and return periods of exceedance).
@@ -481,8 +484,14 @@ def _annual_extremes(
     return extremes, notices
 
 
-def _require_years(extremes: AnnualExtremes, what: str, *, advice: str = "") -> None:
-    """Require ``_MIN_ANNUAL_VALUES`` complete hydrological years.
+def _require_years(
+    extremes: AnnualExtremes,
+    what: str,
+    *,
+    advice: str = "",
+    minimum: int = _MIN_ANNUAL_VALUES,
+) -> None:
+    """Require ``minimum`` complete hydrological years (by default 3).
 
     Parameters
     ----------
@@ -492,6 +501,8 @@ def _require_years(extremes: AnnualExtremes, what: str, *, advice: str = "") -> 
         Name of the analysis for the message.
     advice : str, optional
         Sentence appended to the hint when years were skipped.
+    minimum : int, optional
+        Number of complete years required.
 
     Raises
     ------
@@ -500,13 +511,12 @@ def _require_years(extremes: AnnualExtremes, what: str, *, advice: str = "") -> 
         were skipped, ``incomplete_years``).
     """
     count = len(extremes.years)
-    if count >= _MIN_ANNUAL_VALUES:
+    if count >= minimum:
         return
     message = (
-        f"{what} needs at least {_MIN_ANNUAL_VALUES} complete hydrological years, "
-        f"got {count}"
+        f"{what} needs at least {minimum} complete hydrological years, got {count}"
     )
-    details: dict[str, Any] = {"count": count, "minimum": _MIN_ANNUAL_VALUES}
+    details: dict[str, Any] = {"count": count, "minimum": minimum}
     hint = "Provide a longer series."
     if extremes.incomplete:
         message += f"; incomplete years: {describe_incomplete_years(extremes)}"
@@ -653,11 +663,14 @@ def stats_characteristic(
     October) and of its half-years (XI-IV, V-X) of the period, the first degree, and
     the highest, mean, median and lowest of each over the years, the second degree
     (WWQ ... NNQ for discharge, WWW ... NNW for the stage, WWT ... NNT for water
-    temperature), following the IMGW-PIB methodology. The first degree comes from a
-    daily series (:func:`hydrolog.statistics.calculate_characteristic_values`) or
-    from IMGW-PIB's published half-year characteristics, whose annual maximum is the
-    larger of the half-year maxima
-    (:func:`hydrolog.statistics.characteristic_values_from_half_years`).
+    temperature). The first degree comes from a daily series
+    (:func:`hydrolog.statistics.calculate_characteristic_values`): the extremes of
+    the daily values, with the years with missing days, so that its maxima are as a
+    rule lower and its minima higher than IMGW-PIB's, which come from all
+    observations; or from IMGW-PIB's published half-year characteristics, whose
+    annual maximum is the larger of the half-year maxima
+    (:func:`hydrolog.statistics.characteristic_values_from_half_years`), the mode that
+    gives IMGW-PIB's characteristic values.
 
     Parameters
     ----------
@@ -767,7 +780,10 @@ def stats_daily(
 
     For every day of the hydrological year (1 = 1 November) gives the maximum, mean,
     median, minimum and number of observations over all years of the series
-    (:func:`hydrolog.statistics.calculate_daily_statistics`).
+    (:func:`hydrolog.statistics.calculate_daily_statistics`). The days are counted,
+    not dated: from 1 March a leap year's days are one higher than a common year's,
+    so a day after 28 February pools two calendar dates and day 366 holds the leap
+    years only.
 
     Parameters
     ----------
@@ -828,8 +844,9 @@ def stats_monthly(
     """Monthly statistics with a confidence interval (``stats monthly``).
 
     Per calendar month (1-12) gives the maximum, mean, median, minimum, standard
-    deviation (``ddof=1``), coefficient of variation, skewness and the t-Student
-    confidence interval of the mean over all values of that month
+    deviation (``ddof=1``), coefficient of variation, skewness of all values of that
+    month and the t-Student confidence interval of its long-term mean, built on the
+    means of the month in the separate years
     (:func:`hydrolog.statistics.calculate_monthly_statistics`). The series must hold
     values in every calendar month.
 
@@ -855,9 +872,12 @@ def stats_monthly(
     -------
     OperationOutput
         ``result`` is a :class:`~hydrolog.statistics.MonthlyStatistics`; the notices
-        report removed missing values and months with a single value (they have no
+        report removed missing values, months with a single value (they have no
         standard deviation, coefficient of variation, skewness or confidence
-        interval: ``None`` in JSON), and numerical warnings.
+        interval: ``None`` in JSON), months with more values but all of one year
+        (no confidence interval), and numerical warnings. A month with a value
+        below zero or with values all zero has no coefficient of variation
+        (``None``): it is defined for a quantity with a true zero.
 
     Raises
     ------
@@ -900,6 +920,14 @@ def stats_monthly(
     single = [month for month in range(1, 13) if counts[month - 1] == 1]
     if single:
         notices.append(notice("single_value_month", months=single))
+    years = dates_array.astype("datetime64[Y]").astype(int)
+    one_year = [
+        month
+        for month in range(1, 13)
+        if counts[month - 1] > 1 and np.unique(years[months == month]).size == 1
+    ]
+    if one_year:
+        notices.append(notice("single_year_month", months=one_year))
     return OperationOutput(result, [*notices, *numeric])
 
 
@@ -976,10 +1004,10 @@ def stats_flood_frequency(
         warnings of the fit: a sample of fewer than 10 years (``small_sample``) or of
         fewer than the 30 years of the KZGW 2017 methodology (``short_record``), a
         K-S test that is not valid for fitted parameters (``ks_test_approximate``), a
-        combination of a distribution and a method that gives it no parameters, left
-        out when several are fitted (``distribution_left_out``), and annual maxima
-        without density under a fitted distribution, whose AIC is then null
-        (``outside_support``).
+        combination of a distribution and a method that gives it no parameters (also
+        maximum likelihood whose likelihood has no maximum), left out when several
+        are fitted (``distribution_left_out``), and annual maxima without density
+        under a fitted distribution, whose AIC is then null (``outside_support``).
 
     Raises
     ------
@@ -1111,9 +1139,13 @@ def stats_low_flow(
     smallest values (GEV for minima) to them and estimates the low-flow quantile of
     every return period: the value not exceeded once in ``T`` years, with
     non-exceedance probability ``1 / T`` (:class:`hydrolog.statistics.LowFlowAnalysis`;
-    WMO No. 1029, 2009; Tallaksen and van Lanen, 2004). The empirical block uses the
-    same convention (ascending annual minima with non-exceedance probabilities
-    ``F = m / (n + 1)`` and return periods ``T = 1 / F``).
+    WMO No. 1029, 2009; Tallaksen and van Lanen, 2004). The three parameters are
+    estimated by maximum likelihood, which needs 4 annual minima. A discharge cannot
+    be negative: a quantile of Q below 0 is null with the notice
+    ``negative_quantiles`` (stages, ``parameter`` H of ``half_year_file``, keep
+    theirs). The empirical block uses the same convention (ascending annual minima
+    with non-exceedance probabilities ``F = m / (n + 1)`` and return periods
+    ``T = 1 / F``).
 
     Parameters
     ----------
@@ -1131,7 +1163,8 @@ def stats_low_flow(
         Obserwator's export of IMGW-PIB's half-year characteristics
         (``pl.imgw.hydro_semiannual``), instead of a daily series.
     parameter : {"Q", "H"}, optional
-        The variable of ``half_year_file`` (its columns), by default ``"Q"``.
+        The variable of ``half_year_file`` (its columns), by default ``"Q"``; a daily
+        series is taken as discharges.
     return_periods : sequence of float, optional
         Return periods [years], each greater than 1, by default
         ``DEFAULT_RETURN_PERIODS``.
@@ -1146,18 +1179,23 @@ def stats_low_flow(
     OperationOutput
         ``result`` is a :class:`LowFlowFrequencyAnalysis`; the notices report removed
         missing values, skipped incomplete years (code ``incomplete_years``) and the
-        warnings of the fit (fewer than 10 years: ``small_sample``).
+        warnings of the fit (fewer than 10 years: ``small_sample``; quantiles that
+        would be negative discharges, null: ``negative_quantiles``).
 
     Raises
     ------
     InvalidParameterError
         If the series options are inconsistent, ``parameter`` is not allowed, a
-        return period is not greater than 1 or ``first_year`` is after
-        ``last_year``.
+        return period is not greater than 1, ``first_year`` is after ``last_year``,
+        or the annual minima are refused by the spec ``fisher_tippett_minima``:
+        ``details.reason`` ``precondition_failed`` with ``details.constraint``
+        ``values_not_all_equal`` or ``likelihood_has_a_maximum`` (no maximum of the
+        likelihood inside the shapes searched), or ``outside_physical_range`` for a
+        negative discharge minimum.
     NotFoundError, InputDataError
         If a file does not exist or cannot be read.
     CalculationError
-        If there are fewer than 3 annual minima, the period has no value or the fit
+        If there are fewer than 4 annual minima, the period has no value or the fit
         fails.
     """
     cite(attribution)
@@ -1180,14 +1218,16 @@ def stats_low_flow(
         minima = half.values
         require_count(
             len(minima),
-            _MIN_ANNUAL_VALUES,
+            _MIN_ANNUAL_MINIMA,
             "Low-flow frequency analysis",
             unit="annual minima",
         )
         with capture_warnings(_NUMERIC_WARNINGS) as numeric:
             fitted: LowFlowFrequencyResult = _fit(
                 "the Fisher-Tippett distribution",
-                lambda: fit_fisher_tippett_minima(minima, periods),
+                lambda: fit_fisher_tippett_minima(
+                    minima, periods, discharge=parameter == "Q"
+                ),
             )
         result = LowFlowFrequencyAnalysis(
             n_years=len(minima),
@@ -1210,7 +1250,7 @@ def stats_low_flow(
     series = select_years(series, first_year, last_year)
     dates_array = _dates_of(series)
     extremes, year_notices = _annual_extremes(series, "min")
-    _require_years(extremes, "Low-flow frequency analysis")
+    _require_years(extremes, "Low-flow frequency analysis", minimum=_MIN_ANNUAL_MINIMA)
     # The analysis takes the complete years of the days it is given; hand it those
     # only, so that the skipped years are reported once, in the notice above.
     complete = np.isin(hydrological_year(dates_array), extremes.years)
@@ -1874,6 +1914,50 @@ def _years_left_out(series: Series, kept: Sequence[int], minimum: int) -> list[N
     ]
 
 
+def _harmonic_years_left_out(
+    series: Series, kept: Sequence[int], harmonics: int
+) -> list[Notice]:
+    """Return the notices of the years with a value that have no fit of their own.
+
+    A year with fewer than :data:`MIN_YEAR_VALUES` days with a value is short
+    (``short_years_left_out``); one with as many that the fit refuses, its values all
+    equal or a gap of ``PERIOD_DAYS / (2 harmonics)`` days or more, has none
+    (``years_without_fit``).
+    """
+    present, counts = np.unique(
+        hydrological_year(_dates_of(series)[~np.isnan(series.values)]),
+        return_counts=True,
+    )
+    left_out = [
+        (int(year), int(count))
+        for year, count in zip(present.tolist(), counts.tolist(), strict=True)
+        if year not in kept
+    ]
+    short = [year for year, count in left_out if count < MIN_YEAR_VALUES]
+    refused = [year for year, count in left_out if count >= MIN_YEAR_VALUES]
+    notices: list[Notice] = []
+    if short:
+        notices.append(
+            notice(
+                "short_years_left_out",
+                count=len(short),
+                minimum=MIN_YEAR_VALUES,
+                years=short,
+            )
+        )
+    if refused:
+        notices.append(
+            notice(
+                "years_without_fit",
+                count=len(refused),
+                harmonics=harmonics,
+                max_gap_days=PERIOD_DAYS / (2 * harmonics),
+                years=refused,
+            )
+        )
+    return notices
+
+
 def stats_regime(
     *,
     values: Sequence[float] | None = None,
@@ -2164,14 +2248,18 @@ def stats_harmonics(
     OperationOutput
         ``result`` is a :class:`~hydrolog.statistics.AnnualCycle`; the notices report
         removed missing values, years with too few values for a fit of their own
-        (``short_years_left_out``) and a period shorter than 30 years
-        (``short_reference_period``).
+        (``short_years_left_out``), years whose values the fit refuses
+        (``years_without_fit``: all equal, or a gap the harmonics cannot span) and a
+        period shorter than 30 years (``short_reference_period``).
 
     Raises
     ------
     InvalidParameterError
-        If the series options are inconsistent, ``harmonics`` is not 1 to 4 or
-        ``first_year`` is after ``last_year``.
+        If the series options are inconsistent, ``harmonics`` is not 1 to 4,
+        ``first_year`` is after ``last_year``, or the spec ``harmonic_fit`` refuses the
+        period (``details.reason`` ``precondition_failed``: a gap of ``365.25 / (2
+        harmonics)`` days or more between the days with a value, ``year_covered``, or
+        values all equal, ``values_not_all_equal``).
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError
@@ -2213,7 +2301,7 @@ def stats_harmonics(
         )
     result: AnnualCycle = annual_cycle(series.values, _dates_of(series), harmonics)
     notices.extend(
-        _years_left_out(series, [row.year for row in result.years], MIN_YEAR_VALUES)
+        _harmonic_years_left_out(series, [row.year for row in result.years], harmonics)
     )
     notices.extend(
         reference_period_notices(
@@ -2243,7 +2331,8 @@ def stats_baseflow(
     each gapless span of at least 60 days of the daily discharge (Nathan and McMahon,
     1990), in the standard of Ladson et al. (2013): the baseflow index of the period
     and of each year with at least 300 days with a baseflow, the recession constant
-    (Tallaksen, 1995) and the daily baseflow of one year
+    of the total flow (the median daily ratio on falls of 5 days or more, quickflow
+    included) and the daily baseflow of one year
     (:func:`hydrolog.statistics.baseflow_separation`).
 
     Parameters
@@ -2276,16 +2365,20 @@ def stats_baseflow(
     -------
     OperationOutput
         ``result`` is a :class:`~hydrolog.statistics.BaseflowSeparation`; the notices
-        report years with too few days for an index of their own
-        (``short_years_left_out``) and a period shorter than 30 years
-        (``short_reference_period``).
+        report an ``alpha`` outside the values its sources validated
+        (``outside_applicability``, spec ``lyne_hollick``), years with too few days
+        for an index of their own (``short_years_left_out``) and a period shorter
+        than 30 years (``short_reference_period``).
 
     Raises
     ------
     InvalidParameterError
         If the series options are inconsistent, ``alpha`` is outside (0, 1),
         ``passes`` is not an odd number of at least 3, ``first_year`` is after
-        ``last_year`` or ``series_year`` has no value in the period.
+        ``last_year`` or ``series_year`` has no value in the period; if a
+        discharge is negative (``outside_physical_range``) or no water flowed on
+        the days with a baseflow (``precondition_failed``, constraint
+        ``positive_flow_volume``).
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError
@@ -2340,16 +2433,20 @@ def stats_baseflow(
             },
             hint="Fill the gaps of the series or choose other years.",
         )
-    result: BaseflowSeparation = baseflow_separation(
-        series.values,
-        dates_array,
-        alpha=level,
-        passes=passes,
-        series_year=series_year,
-    )
-    notices = _years_left_out(
-        series, [row.year for row in result.years], BASEFLOW_MIN_YEAR_DAYS
-    )
+    with capture_warnings() as warned:
+        result: BaseflowSeparation = baseflow_separation(
+            series.values,
+            dates_array,
+            alpha=level,
+            passes=passes,
+            series_year=series_year,
+        )
+    notices = [
+        *warned,
+        *_years_left_out(
+            series, [row.year for row in result.years], BASEFLOW_MIN_YEAR_DAYS
+        ),
+    ]
     notices.extend(
         reference_period_notices(
             result.period_years, result.first_year, result.last_year
@@ -2376,9 +2473,11 @@ def stats_mann_kendall(
     Non-parametric test for a monotonic trend in a series ordered in time (Mann,
     1945; Kendall, 1975): the S statistic, its variance corrected for tied values
     (Kendall, 1975; Hirsch, Slack and Smith, 1982; Gilbert, 1987, Eq. 16.3), the
-    continuity-corrected Z score and the two-sided p-value, with Sen's (1968) slope,
-    Conover's (1980) intercept and the 100 (1 - alpha) % confidence interval of the
-    slope (Gilbert, 1987) built on that variance
+    continuity-corrected Z score and the two-sided p-value (exact below 10 values,
+    Gilbert, 1987, section 16.4.1; else from the normal distribution), with Sen's
+    (1968) slope, Conover's (1980) intercept and, from 10 values, the
+    100 (1 - alpha) % confidence interval of the slope (Gilbert, 1987) built on that
+    variance
     (:func:`hydrolog.statistics.mann_kendall_test`). The slope is per year with the
     years of the values, otherwise per step of the series (a missing value keeps its
     step).

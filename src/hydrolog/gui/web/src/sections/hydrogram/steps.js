@@ -125,7 +125,7 @@ function typicalNote(id, keys, text, plain) {
     .filter((range) => keys.includes(rangeKey(range)))
     .map((range) => {
       const mark = rangeMark(range);
-      return `${symbolOf(entry, range.parameter)} ${rangeText(range)}${mark ? ` (${mark})` : ""}`;
+      return `${symbolOf(entry, range.parameter, range.method)} ${rangeText(range)}${mark ? ` (${mark})` : ""}`;
     });
   return words.length ? t(text, { ranges: words.join(", ") }) : plain;
 }
@@ -193,8 +193,10 @@ function WatershedStep(props) {
     event.currentTarget.value = "";
     if (file) onFile(file);
   };
+  // The explanation of the field a single calculation reads: CN of the losses, Jg of Lutz
+  const infoOf = { cn: "losses-scs-cn", flow_path_equal_area_slope_m_per_m: "uh-nash" };
   const row = (name) => {
-    const extra = name === "cn" ? { info: html`<${InfoButton} id="losses-scs-cn" values=${infoValues} />` } : {};
+    const extra = infoOf[name] ? { info: html`<${InfoButton} id=${infoOf[name]} values=${infoValues} />` } : {};
     return html`<${WatershedRow} key=${name} name=${name} ...${props} extra=${extra} />`;
   };
   return html`

@@ -20,6 +20,8 @@ from hydrolog.catalog.groups._series import (
     HALF_YEAR_FILE,
     INPUT_FILE,
     PERIOD_OPTIONS,
+    SERIES_DOCUMENT,
+    SERIES_DOCUMENT_PL,
     VALUE_COLUMN,
     VALUES,
 )
@@ -31,6 +33,10 @@ _DAILY_FLOWS = f"{_FIXTURES}/daily_flows_3y.csv"
 _ANNUAL_MAXIMA = f"{_FIXTURES}/annual_maxima.csv"
 _STATION_DAILY = f"{_FIXTURES}/station_daily.csv"
 _STATION_HALF_YEARS = f"{_FIXTURES}/station_half_years.csv"
+# A synthetic station of 15 complete hydrological years (2009-2023): its daily
+# discharge and its half-years, for the low-flow fit (maximum likelihood needs years).
+_DAILY_FLOWS_15Y = f"{_FIXTURES}/daily_flows_15y.csv"
+_HALF_YEARS_15Y = f"{_FIXTURES}/station_half_years_15y.csv"
 
 # Errors of the commands that read a dated daily series.
 _STATION_ERRORS = (
@@ -134,27 +140,29 @@ COMMANDS: tuple[Command, ...] = (
             "Compute first- and second-degree characteristic values (WQ…NQ, WWQ…NNQ)"
         ),
         description_pl=(
-            "Wg IMGW-PIB: minimum, średnia i maksimum każdego roku hydrologicznego "
-            "(XI–X) i półrocza (I stopień) oraz w okresie ich największa, średnia, "
-            "mediana i najmniejsza (II stopień: WWQ…NNQ, WWW…NNW). Z szeregu dobowego "
-            "albo pliku półroczy IMGW-PIB; kwantyle wezbrań: `stats flood-frequency`."
+            "I stopień: minimum, średnia i maksimum każdego roku hydrologicznego "
+            "(XI–X) i półrocza; II stopień: ich największa, średnia, mediana i "
+            "najmniejsza w okresie (WWQ…NNQ, WWW…NNW). Szereg dobowy daje ekstrema "
+            "wartości dobowych, łagodniejsze od publikowanych przez IMGW-PIB, i "
+            "zachowuje lata niepełne. Kwantyle wezbrań: `stats flood-frequency`."
         ),
         description=(
-            "Per IMGW-PIB: the minimum, mean and maximum of each hydrological year "
-            "(Nov–Oct) and half-year (first degree) and, over the period, their "
-            "highest, mean, median and lowest (second degree: WWQ…NNQ, WWW…NNW). From "
-            "a daily series or IMGW-PIB's half-year file; flood quantiles: `stats "
-            "flood-frequency`."
+            "First degree: min, mean and max of each hydrological year (Nov–Oct) and "
+            "half-year; second degree: their highest, mean, median and lowest over the "
+            "period (WWQ…NNQ, WWW…NNW). A daily series gives extremes of daily values, "
+            "milder than IMGW-PIB's, and keeps incomplete years. Flood quantiles: "
+            "`stats flood-frequency`."
         ),
         result_schema="hydrolog-stats-characteristic/1",
         cardinality="bounded",
         rules=(
-            "Give a daily series with dates or `half_year_file`.",
+            "Give a daily series with dates, or `half_year_file` for IMGW-PIB's "
+            "values.",
             "The period is the whole record unless `first_year`/`last_year` are given.",
-            "Read `notices` and `labels`; results are in the unit of the series.",
+            "Read `notices` and `labels`; results are in the series' unit.",
         ),
         rules_pl=(
-            "Podaj szereg dobowy z datami albo `half_year_file`.",
+            "Podaj szereg dobowy z datami albo `half_year_file` dla wartości IMGW-PIB.",
             "Okres to całe wielolecie, chyba że podasz `first_year`/`last_year`.",
             "Czytaj `notices` i `labels`; wyniki są w jednostce szeregu.",
         ),
@@ -498,7 +506,7 @@ COMMANDS: tuple[Command, ...] = (
                 ),
                 default=(1.0, 5.0, 10.0, 30.0, 50.0, 70.0, 90.0, 95.0, 99.0),
                 exclusive_minimum=0,
-                maximum=100,
+                exclusive_maximum=100,
                 unit="%",
             ),
             Option(
@@ -843,16 +851,18 @@ COMMANDS: tuple[Command, ...] = (
             "Metoda najmniejszych kwadratów: średnia i 1–4 harmoniki o okresie "
             "365,25 d na dniu roku hydrologicznego (1 = 1 XI) dla całego okresu i "
             "każdego roku z co najmniej 300 wartościami: amplituda harmoniki, dzień "
-            "jej pierwszego maksimum i udział w wariancji. Do cyklu rocznego "
-            "temperatury wody lub powietrza albo przepływu; średnie dobowe: `stats "
-            "daily`."
+            "jej pierwszego maksimum i udział w wariancji. Dni z danymi nie mogą "
+            "mieć luki 365,25/(2·harmoniki) dni lub dłuższej, a wartości muszą się "
+            "różnić. Do cyklu rocznego temperatury wody lub powietrza albo "
+            "przepływu; średnie dobowe: `stats daily`."
         ),
         description=(
             "Least squares fit of the mean and 1–4 harmonics of period 365.25 d on "
-            "the day of the hydrological year (1 = 1 Nov), over the period and in "
-            "each year with 300 or more values: each harmonic's amplitude, day of its "
-            "first maximum and share of the variance. Use for the annual cycle of "
-            "water or air temperature or flow; for daily means use `stats daily`."
+            "the day of the hydrological year (1 = 1 Nov), over the period and each "
+            "year of 300+ values: each harmonic's amplitude, day of its first maximum "
+            "and share of the variance. Needs no gap of 365.25/(2·harmonics) days and "
+            "values not all equal. For the annual cycle of water or air temperature "
+            "or flow; daily means: `stats daily`."
         ),
         result_schema="hydrolog-stats-harmonics/1",
         cardinality="bounded",
@@ -931,16 +941,17 @@ COMMANDS: tuple[Command, ...] = (
             "Filtr cyfrowy Lyne'a i Hollicka (3 przejścia, odbicie 30 dni na końcach; "
             "Nathan i McMahon 1990, Ladson i in. 2013) na każdym ciągłym odcinku co "
             "najmniej 60 dni przepływów dobowych: wskaźnik BFI = ΣQb/ΣQ okresu i lat z "
-            "300 dniami, stała recesji k (mediana Q(t+1)/Q(t) spadków od 5 dni; "
-            "Tallaksen 1995) i dobowy przepływ podziemny jednego roku."
+            "300 dniami, stała recesji k przepływu całkowitego (mediana Q(t+1)/Q(t) "
+            "spadków od 5 dni, z odpływem po szczycie; nie krzywa recesji WMO) i "
+            "dobowy przepływ podziemny jednego roku."
         ),
         description=(
             "Lyne and Hollick's digital filter (3 passes, 30 days reflected at each "
             "end; Nathan and McMahon 1990, Ladson et al. 2013) on each gapless span "
             "of 60 or more days of daily discharge: the baseflow index BFI = ΣQb/ΣQ "
             "of the period and of each year with 300 days, the recession constant k "
-            "(median Q(t+1)/Q(t) of falls of 5 days or more; Tallaksen 1995) and the "
-            "daily baseflow of one year."
+            "of the total flow (median Q(t+1)/Q(t) on 5+ day falls, quickflow "
+            "included; not WMO's recession curve) and the daily baseflow of a year."
         ),
         result_schema="hydrolog-stats-baseflow/1",
         cardinality="bounded",
@@ -953,6 +964,7 @@ COMMANDS: tuple[Command, ...] = (
             "`series_year` to domyślnie ostatni pełny rok.",
         ),
         errors=_STATION_ERRORS,
+        typical_ranges=(RangeCheck("lyne_hollick", "alpha", ("alpha",)),),
         example_results=(
             {
                 "alpha": 0.925,
@@ -982,7 +994,7 @@ COMMANDS: tuple[Command, ...] = (
                 ),
                 default=0.925,
                 exclusive_minimum=0,
-                maximum=1,
+                exclusive_maximum=1,
             ),
             Option(
                 name="passes",
@@ -1029,22 +1041,26 @@ COMMANDS: tuple[Command, ...] = (
         summary=("Compute day-of-year statistics over all years of a daily series"),
         description_pl=(
             "Maksimum, średnia, mediana, minimum i liczba obserwacji dla każdej "
-            "doby roku hydrologicznego (1 = 1 XI, do 366) ze wszystkich lat. Do "
-            "krzywych reżimu dobowego; wartości miesięczne daje `stats monthly`. "
+            "doby roku hydrologicznego (1 = 1 XI, do 366) ze wszystkich lat. Doby są "
+            "liczone: od 1 III doba roku przestępnego ma numer o 1 większy, więc "
+            "dalsza doba łączy dwie daty, a doba 366 jest tylko z lat przestępnych. "
+            "Do krzywych reżimu dobowego; wartości miesięczne daje `stats monthly`. "
             "Wymaga dat; NaN jest pomijane. Wynik to tablice o jednakowej długości."
         ),
         description=(
             "Maximum, mean, median, minimum and count for each day of the "
-            "hydrological year (1 = 1 Nov, up to 366) over all years. Use for daily"
-            " regime curves; for monthly values use `stats monthly`. Needs dates; "
-            "NaN is skipped. The result is arrays of equal length."
+            "hydrological year (1 = 1 Nov, up to 366) over all years. Days are "
+            "counted: from 1 Mar a leap year's day is one higher, so a later day pools "
+            "two dates and day 366 holds leap years only. Use for daily regime "
+            "curves; for monthly values use `stats monthly`. Needs dates; NaN is "
+            "skipped. The result is arrays of equal length."
         ),
         result_schema="hydrolog-stats-daily/1",
         cardinality="bounded",
         rules=(
             "Give dates with the values, or a file with a date column.",
             "Check `notices` for skipped missing values.",
-            "Days without observations are absent from the arrays.",
+            "Days without observations are not in the arrays.",
         ),
         rules_pl=(
             "Podaj daty z wartościami albo plik z kolumną dat.",
@@ -1090,25 +1106,26 @@ COMMANDS: tuple[Command, ...] = (
         description_pl=(
             "Dla miesięcy 1–12: maksimum, średnia, mediana, minimum, odchylenie "
             "standardowe, współczynnik zmienności, skośność i przedział ufności "
-            "średniej. Do tabel reżimu miesięcznego; wartości dobowe daje `stats "
-            "daily`. Wymaga dat i wartości we wszystkich 12 miesiącach."
+            "średniej wieloletniej ze średnich miesiąca w kolejnych latach (wartości "
+            "dobowe nie są niezależne). Współczynnik zmienności jest `null` dla "
+            "miesiąca z wartością poniżej 0 albo z samych zer (wymaga prawdziwego "
+            "zera, jak przepływ). Do tabel reżimu miesięcznego; wartości dobowe daje "
+            "`stats daily`. Wymaga dat i wartości we wszystkich 12 miesiącach."
         ),
         description=(
             "For months 1–12: maximum, mean, median, minimum, standard deviation, "
             "variation coefficient, skewness and the confidence interval of the "
-            "mean. Use for monthly regime tables; for daily values use `stats "
-            "daily`. Needs dates and values in all 12 months."
+            "long-term mean from the yearly means of the month. The variation "
+            "coefficient is null for a month with a value below 0 or all 0. Use for "
+            "monthly regime tables; for daily values use `stats daily`."
         ),
         result_schema="hydrolog-stats-monthly/1",
         cardinality="bounded",
         rules=(
+            "Give values for all 12 months, else calculation_error.",
             (
-                "Give values for all 12 months, otherwise a calculation_error is "
-                "returned."
-            ),
-            (
-                "Check `notices` for `single_value_month`: such a month has null spread"
-                " values."
+                "Check `notices` for `single_value_month` and `single_year_month` "
+                "(null spread or interval)."
             ),
             "Results are in the unit of the series.",
         ),
@@ -1118,8 +1135,8 @@ COMMANDS: tuple[Command, ...] = (
                 "calculation_error."
             ),
             (
-                "Sprawdź `notices` (`single_value_month`): taki miesiąc ma `null` w "
-                "miarach rozrzutu."
+                "Sprawdź `notices` (`single_value_month`, `single_year_month`): taki "
+                "miesiąc ma `null` w miarach rozrzutu albo w przedziale ufności."
             ),
             "Wyniki są w jednostce szeregu.",
         ),
@@ -1134,7 +1151,7 @@ COMMANDS: tuple[Command, ...] = (
             {
                 "months": [1.0, 2.0, 3.0],
                 "mean_values": [6.09946, 6.86659, 7.22269],
-                "ci_lower": [5.98154, 6.71963, 7.10644],
+                "ci_lower": [5.18291, 6.29446, 6.92101],
                 "confidence_level": 0.9,
             },
         ),
@@ -1200,8 +1217,8 @@ COMMANDS: tuple[Command, ...] = (
                 "years."
             ),
             (
-                "Rank distributions by `aic`; `ks_valid=false` means the KS p-value is "
-                "indicative."
+                "Rank by `aic`; the KS p-value is indicative; `ad_critical_values` "
+                "only for L-moments."
             ),
         ),
         rules_pl=(
@@ -1211,8 +1228,8 @@ COMMANDS: tuple[Command, ...] = (
             ),
             ("Sprawdź `notices`: `incomplete_years` i próby krótsze niż 30 lat."),
             (
-                "Porządkuj rozkłady wg `aic`; `ks_valid=false` oznacza orientacyjne "
-                "p-value KS."
+                "Porządkuj rozkłady wg `aic`; p-value KS jest orientacyjne; "
+                "`ad_critical_values` tylko dla L-momentów."
             ),
         ),
         errors=(
@@ -1345,18 +1362,21 @@ COMMANDS: tuple[Command, ...] = (
                 "missing day are skipped."
             ),
             (
-                "Check `notices` for `incomplete_years` and samples shorter than 10 "
-                "years."
+                "Check `notices` for `incomplete_years`, `negative_quantiles` (null) "
+                "and samples under 10 years."
             ),
-            "At least 3 complete hydrological years are required.",
+            "At least 4 complete hydrological years are required.",
         ),
         rules_pl=(
             (
                 "Podaj szereg dobowy z datami albo `half_year_file`; lata z "
                 "brakującym dniem są pomijane."
             ),
-            ("Sprawdź `notices`: `incomplete_years` i próby krótsze niż 10 lat."),
-            "Wymagane są co najmniej 3 kompletne lata hydrologiczne.",
+            (
+                "Sprawdź `notices`: `incomplete_years`, `negative_quantiles` (null) i "
+                "próby krótsze niż 10 lat."
+            ),
+            "Wymagane są co najmniej 4 kompletne lata hydrologiczne.",
         ),
         errors=(
             "validation_error",
@@ -1367,16 +1387,14 @@ COMMANDS: tuple[Command, ...] = (
         ),
         example_results=(
             {
-                "n_years": 3,
-                "hydrological_years": [2022, 2023, 2024],
-                "annual_minima": [1.79, 1.88, 1.66],
+                "n_years": 15,
+                "hydrological_years": list(range(2009, 2024)),
                 "incomplete_years": [],
                 "source": "daily",
             },
             {
-                "n_years": 5,
-                "hydrological_years": [2019, 2020, 2021, 2022, 2023],
-                "annual_minima": [0.54, 1.54, 1.48, 0.52, 0.99],
+                "n_years": 15,
+                "hydrological_years": list(range(2009, 2024)),
                 "source": "half_years",
             },
         ),
@@ -1392,12 +1410,12 @@ COMMANDS: tuple[Command, ...] = (
         one_of=(*DATED_ONE_OF, ("half_year_file",)),
         examples=(
             {
-                "input_file": _DAILY_FLOWS,
+                "input_file": _DAILY_FLOWS_15Y,
                 "value_column": "Q",
                 "date_column": "date",
                 "return_periods": [2, 10, 50],
             },
-            {"half_year_file": _STATION_HALF_YEARS, "return_periods": [2, 10]},
+            {"half_year_file": _HALF_YEARS_15Y, "return_periods": [2, 10]},
         ),
     ),
     Command(
@@ -1509,7 +1527,7 @@ COMMANDS: tuple[Command, ...] = (
                     "in (0, 100), 70 gives Q70, 90 gives Q90; default 70."
                 ),
                 exclusive_minimum=0,
-                maximum=100,
+                exclusive_maximum=100,
                 unit="%",
             ),
             Option(
@@ -1591,27 +1609,28 @@ COMMANDS: tuple[Command, ...] = (
             "slope"
         ),
         description_pl=(
-            "Nieparametryczny test Manna–Kendalla (S, Z, dwustronne p-value, kierunek "
-            "trendu) z nachyleniem Sena, wyrazem wolnym Conovera i przedziałem ufności "
-            "nachylenia 1 − alpha wg Gilberta. Do trendów wartości rocznych i oceny "
-            "stacjonarności przed `stats flood-frequency`. NaN jest pomijane. "
-            "Wariancja S z poprawką na powtórzenia wartości (Kendall 1975)."
+            "Nieparametryczny test Manna–Kendalla (S, Z, dwustronne p-value: dokładne "
+            "poniżej 10 wartości, z rozkładu normalnego od 10; kierunek trendu) z "
+            "nachyleniem Sena, wyrazem wolnym Conovera i przedziałem ufności "
+            "nachylenia 1 − alpha wg Gilberta (od 10 wartości). Do trendów wartości "
+            "rocznych i oceny stacjonarności przed `stats flood-frequency`. NaN jest "
+            "pomijane. Wariancja S z poprawką na powtórzenia wartości (Kendall 1975)."
         ),
         description=(
-            "Non-parametric Mann–Kendall test (S, Z, two-sided p-value, trend "
-            "direction) with Sen's slope, Conover's intercept and Gilbert's 1 − alpha "
-            "confidence interval of the slope. Use for trends of annual values and to "
-            "check stationarity before `stats flood-frequency`. NaN is skipped. "
-            "Var(S) is corrected for tied values (Kendall 1975)."
+            "Non-parametric Mann–Kendall test (S, Z, two-sided p-value, exact below "
+            "10 values; trend direction) with Sen's slope, Conover's intercept and "
+            "Gilbert's 1 − alpha slope interval (from 10 values). Use for trends of "
+            "annual values and to check stationarity before `stats flood-frequency`. "
+            "NaN is skipped. Var(S) is corrected for ties (Kendall 1975)."
         ),
         result_schema="hydrolog-stats-mann-kendall/1",
         rules=(
-            "Pass values in time order, at least 3; `years` make the slope per year.",
+            "Pass 3 to 5,000 values in time order; `years` make the slope per year.",
             "A trend is detected when `p_value` is below `alpha`.",
             "Check `notices` for skipped missing values.",
         ),
         rules_pl=(
-            "Podaj wartości w kolejności czasowej, co najmniej 3; z `years` nachylenie "
+            "Podaj od 3 do 5000 wartości w kolejności czasowej; z `years` nachylenie "
             "jest na rok.",
             "Trend jest wykryty, gdy `p_value` jest mniejsze niż `alpha`.",
             "Sprawdź `notices` pod kątem pominiętych braków danych.",
@@ -1658,11 +1677,11 @@ COMMANDS: tuple[Command, ...] = (
             replace(
                 VALUES,
                 description_pl=(
-                    "Szereg w kolejności czasowej, np. maksima roczne (co najmniej 3 "
+                    "Szereg w kolejności czasowej, np. maksima roczne (od 3 do 5000 "
                     "wartości). Długie szeregi podawaj w pliku (`input_file`)."
                 ),
                 description=(
-                    "Series in time order, e.g. annual maxima (at least 3 values). "
+                    "Series in time order, e.g. annual maxima (3 to 5,000 values). "
                     "Give long series in a file (`input_file`)."
                 ),
             ),
@@ -1685,12 +1704,12 @@ COMMANDS: tuple[Command, ...] = (
                 description_pl=(
                     "Plik CSV (przecinek lub średnik, wiersz nagłówka) albo JSON z "
                     "szeregiem; wiersze w kolejności czasowej. Kolumny wskazują "
-                    "`value_column` i `year_column`."
+                    f"`value_column` i `year_column`. {SERIES_DOCUMENT_PL}"
                 ),
                 description=(
                     "CSV file (comma or semicolon, header row) or JSON file with the "
                     "series; rows in time order. The columns are named by "
-                    "`value_column` and `year_column`."
+                    f"`value_column` and `year_column`. {SERIES_DOCUMENT}"
                 ),
             ),
             VALUE_COLUMN,
@@ -1719,7 +1738,7 @@ COMMANDS: tuple[Command, ...] = (
                 ),
                 default=0.05,
                 exclusive_minimum=0,
-                maximum=1,
+                exclusive_maximum=1,
             ),
             ATTRIBUTION,
         ),
@@ -1860,12 +1879,12 @@ COMMANDS: tuple[Command, ...] = (
                 description_pl=(
                     "Plik CSV (przecinek lub średnik, wiersz nagłówka) albo JSON z "
                     "szeregiem. Kolumny wskazują `value_column` oraz `date_column` "
-                    "albo `year_column`."
+                    f"albo `year_column`. {SERIES_DOCUMENT_PL}"
                 ),
                 description=(
                     "CSV file (comma or semicolon, header row) or JSON file with the "
                     "series. The columns are named by `value_column` and "
-                    "`date_column` or `year_column`."
+                    f"`date_column` or `year_column`. {SERIES_DOCUMENT}"
                 ),
             ),
             VALUE_COLUMN,
@@ -1912,7 +1931,7 @@ COMMANDS: tuple[Command, ...] = (
                 ),
                 default=0.05,
                 exclusive_minimum=0,
-                maximum=1,
+                exclusive_maximum=1,
             ),
             *PERIOD_OPTIONS,
             ATTRIBUTION,

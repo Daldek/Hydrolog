@@ -170,7 +170,7 @@ def plot_uh_comparison(
 
             if isinstance(result, (IUHResult, ClarkIUHResult)):
                 qp = result.peak_ordinate_per_min
-                qp_str = f"{qp:.4f} [1/min]"
+                qp_str = "-" if qp is None else f"{qp:.4f} [1/min]"
             else:
                 qp = result.peak_discharge_m3s
                 qp_str = f"{qp:.3f}"
@@ -194,7 +194,8 @@ def plot_uh_comparison(
                 else:
                     tb_str = "-"
 
-            rows.append([name, f"{tp:.1f}", qp_str, tb_str])
+            tp_str = "-" if tp is None else f"{tp:.1f}"
+            rows.append([name, tp_str, qp_str, tb_str])
 
         # Create table
         table = ax_table.table(

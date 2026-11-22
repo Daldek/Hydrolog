@@ -1,0 +1,148 @@
+schema = "nogat-formula-card/1"
+name = "si_class"
+title = "Walsh and Lawler's class of a seasonality index"
+function = "hydrolog.statistics.meteo_precipitation.si_class"
+family = "classification"
+formula_version = 1
+status = "referenced"
+equation = "SI < 0.2 very equable, [0.2, 0.4) equable with a wetter season, [0.4, 0.6) rather seasonal, [0.6, 0.8) seasonal, [0.8, 1.0) markedly seasonal, [1.0, 1.2) most in three months, from 1.2 extreme"
+latex = "\\mathrm{SI} < 0.2,\\ [0.2, 0.4),\\ [0.4, 0.6),\\ [0.6, 0.8),\\ [0.8, 1.0),\\ [1.0, 1.2),\\ \\ge 1.2"
+validation = "none: a classification"
+conventions = ["the table's classes are of two decimals (<= 0.19, 0.20-0.39 ... >= 1.20); each class runs up to the next limit: 0.199 is very equable, 0.2 equable with a wetter season, 1.2 extreme"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/meteo-indices-cases.json"]
+constraints = []
+oracles = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.limits]]
+name = "ordered_classes"
+text = "a larger index never gives a more equable class"
+
+[[sources]]
+citation = "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247"
+access = "open"
+locator = "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, 0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme"
+
+[[sources]]
+citation = "Zambrano-Bigiarini, M. hydroTSM: time series management and analysis for hydrological modelling, R package (CRAN)"
+access = "open"
+locator = "si(): the seasonality index of Walsh and Lawler (1981), from 0 to 1.83, and its seven classes"
+url = "https://cran.r-project.org/package=hydroTSM"
+
+[[variables]]
+name = "si"
+symbol = "\\mathrm{SI}"
+unit = "-"
+kind = "real"
+description = "A seasonality index."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+high = 1.8333333333333333
+high_inclusive = true
+
+[variables.typical]
+low = 0.31
+low_inclusive = true
+high = 0.85
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's test fixture tests/fixtures/warszawa_okecie_1991_2020.csv.gz: the daily data of IMGW-PIB's synop station Warszawa-Okęcie (352200375), 1991-2020"
+access = "open"
+locator = "the yearly SI of 1991-2020: 0.31 to 0.85"
+
+[[constants]]
+name = "very_equable_below"
+value = 0.2
+unit = "-"
+symbol = "0.2"
+
+[constants.source]
+citation = "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247"
+access = "open"
+locator = "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, 0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme"
+
+[[constants]]
+name = "equable_wetter_season_below"
+value = 0.4
+unit = "-"
+symbol = "0.4"
+
+[constants.source]
+citation = "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247"
+access = "open"
+locator = "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, 0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme"
+
+[[constants]]
+name = "rather_seasonal_below"
+value = 0.6
+unit = "-"
+symbol = "0.6"
+
+[constants.source]
+citation = "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247"
+access = "open"
+locator = "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, 0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme"
+
+[[constants]]
+name = "seasonal_below"
+value = 0.8
+unit = "-"
+symbol = "0.8"
+
+[constants.source]
+citation = "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247"
+access = "open"
+locator = "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, 0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme"
+
+[[constants]]
+name = "markedly_seasonal_below"
+value = 1.0
+unit = "-"
+symbol = "1"
+
+[constants.source]
+citation = "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247"
+access = "open"
+locator = "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, 0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme"
+
+[[constants]]
+name = "most_in_three_months_below"
+value = 1.2
+unit = "-"
+symbol = "1.2"
+
+[constants.source]
+citation = "Sumner, G., Homar, V. and Ramis, C. (2001). Precipitation seasonality in eastern and southern coastal Spain. International Journal of Climatology 21, 219-247"
+access = "open"
+locator = "Table II, p. 226, after Walsh and Lawler (1981): <= 0.19 very equable, 0.20-0.39 equable but with a definite wetter season, 0.40-0.59 rather seasonal with a short drier season, 0.60-0.79 seasonal, 0.80-0.99 markedly seasonal with a long drier season, 1.00-1.19 most rain in 3 months or less, >= 1.20 extreme"
+
+[[outputs]]
+name = "index_class"
+unit = "-"
+kind = "choice"
+description = "The class, the most equable first."
+choices = ["very_equable", "equable_wetter_season", "rather_seasonal", "seasonal", "markedly_seasonal", "most_in_three_months", "extreme"]
+
+[[traps]]
+name = "class_limit"
+description = "A value exactly at a limit of a published class or table."
+test = "reference cases si-class-*: each limit and just below it"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case si-nan: NaN is refused; a year without an index has no class"

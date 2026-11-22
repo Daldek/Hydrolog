@@ -1,0 +1,216 @@
+schema = "nogat-formula-card/1"
+name = "rating_curve"
+title = "Discharge at a water level by the power-law rating curve"
+function = "hydrolog.hydrometrics.rating_curve.rating_discharge"
+family = "empirical"
+formula_version = 1
+status = "oracle only"
+equation = "Q = a * (H - H0)**b for H > H0; Q = 0 for H <= H0"
+latex = "Q = \\begin{cases} a\\,(H - H_0)^{b} & H > H_0 \\\\ 0 & H \\le H_0 \\end{cases}"
+validation = "none: WMO-No. 1044 presents the equation as the rating of section and channel controls (sects. 1.3 and 1.5.4 to 1.5.6) and reports no statistic of its agreement with gaugings; a curve's fit to its gaugings is that of spec rating_curve_fit"
+conventions = ["H and H0 in one unit of the levels, cm as IMGW-PIB gives them or m; a in m3/s per (unit of H)^b, so the same curve with the levels in m has a 100^b times larger and H0 100 times smaller (symmetry levels_in_another_unit); Q in m3/s", "Q = 0 at and below H0, the gauge height of zero flow (WMO's e): no flow over the control, whatever b", "H0 is the stage of zero flow, not the gauge zero (the datum of the staff gauge)"]
+assumptions = ["one stage-discharge relation of one control (a section or a channel control) over the levels: no shift, hysteresis or variable backwater"]
+notices = []
+reference_cases = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+water_levels = 1
+a = 1
+h0 = -1
+
+[[properties.scalings]]
+name = "discharge"
+
+[properties.scalings.inputs]
+a = 1.0
+
+[properties.scalings.outputs]
+discharge_m3s = 1.0
+
+[properties.scalings.tolerance]
+reason = "a doubled doubles every product exactly, but one below the smallest normal float, which keeps fewer digits"
+abs = 2.2250738585072014e-308
+
+[[properties.limits]]
+name = "unit_head"
+text = "the discharge at a head of one unit is a (WMO's C)"
+
+[properties.limits.source]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[properties.limits]]
+name = "no_flow_at_or_below_zero_flow"
+text = "no discharge at and below H0, also for b = 0"
+
+[[properties.limits]]
+name = "exact_decimal"
+text = "Q equals the curve evaluated at 50 decimal digits"
+
+[[properties.symmetries]]
+name = "levels_in_another_unit"
+text = "levels and H0 in a unit twice as small with a times 2^-b give the same discharges: the curve in cm and in m is one curve"
+
+[properties.symmetries.tolerance]
+reason = "(2 head)^b against 2^b head^b and the rounding of 2^-b: a few units in the last place of b's power; a below the normal floats gives discharges below 1e-200 m3/s"
+abs = 1e-200
+rel = 1e-13
+
+[[sources]]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.5.4, eq. 1.4, pp. II.1-6 to II.1-7: Q = C (h - e)^beta, h the gauge height, e the gauge height of zero flow for a control of regular shape, or of effective zero flow for a control of irregular shape, C the discharge when the head h - e equals 1, beta the slope of the rating on logarithmic paper"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[sources]]
+citation = "ISO 1100-2:2010. Hydrometry - Measurement of liquid flow in open channels - Part 2: Determination of the stage-discharge relationship"
+access = "author-provided"
+locator = "the power-law rating equation and its fit to gaugings"
+
+[[variables]]
+name = "water_levels"
+symbol = "H"
+unit = "cm"
+kind = "real_array"
+description = "Water levels H at which the discharge is read, in the unit of the curve's levels."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 0
+
+[variables.physical]
+test_low = -10000.0
+test_high = 10000.0
+test_reason = "100 m above or below a gauge's zero in cm: the stages of the largest rivers in flood range over a few tens of metres, so every stage of a gauge lies within"
+
+[variables.typical]
+low = -10.0
+low_inclusive = true
+high = 330.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041"
+access = "open"
+locator = "stages of -10 cm (below the gauge zero, the catalog's example) to 329 cm (station_daily.csv); 6 to 161 cm at 150170070"
+
+[[variables]]
+name = "a"
+symbol = "a"
+unit = "m3/s per cm^b"
+kind = "real"
+description = "The discharge at a head H - H0 of one unit of H (WMO's C)."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "the discharge at a head of one cm cannot exceed the largest discharge of any river, below a million m3/s"
+
+[variables.typical]
+low = 0.003
+low_inclusive = true
+high = 0.04
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041"
+access = "open"
+locator = "the curves fitted to them with levels in cm: a 0.0049 to 0.035, b 1.28 to 3.02 (all the pairs of 150170070), H0 -25.2 to 52.6 cm"
+
+[[variables]]
+name = "b"
+symbol = "b"
+unit = "-"
+kind = "real"
+description = "The exponent of the head (WMO's beta)."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 20.0
+test_reason = "five times the largest exponent of a plausible curve (4, ADR-0041), three times the exponent of the curve of two relations at IMGW-PIB 150170070 (6.6)"
+
+[variables.typical]
+low = 1.2
+low_inclusive = true
+high = 3.1
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041"
+access = "open"
+locator = "the curves fitted to them with levels in cm: a 0.0049 to 0.035, b 1.28 to 3.02 (all the pairs of 150170070), H0 -25.2 to 52.6 cm"
+
+[[variables]]
+name = "h0"
+symbol = "H_0"
+unit = "cm"
+kind = "real"
+description = "The gauge height of zero flow, or of effective zero flow (WMO's e)."
+applicability = "unstated"
+
+[variables.physical]
+test_low = -10000.0
+test_high = 10000.0
+test_reason = "100 m above or below a gauge's zero in cm: the stages of the largest rivers in flood range over a few tens of metres, so every stage of a gauge lies within"
+
+[variables.typical]
+low = -30.0
+low_inclusive = true
+high = 55.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041"
+access = "open"
+locator = "the curves fitted to them with levels in cm: a 0.0049 to 0.035, b 1.28 to 3.02 (all the pairs of 150170070), H0 -25.2 to 52.6 cm"
+
+[[constraints]]
+name = "finite_discharge"
+class = "precondition"
+text = "a (max(H) - H0)**b < 1.8e308: the discharge at every level is a float64 number"
+
+[constraints.source]
+citation = "NumPy documentation, numpy.finfo"
+access = "open"
+locator = "float64: the largest number 1.7976931348623157e+308"
+url = "https://numpy.org/doc/stable/reference/generated/numpy.finfo.html"
+
+[[outputs]]
+name = "discharge_m3s"
+unit = "m3/s"
+kind = "real_array"
+symbol = "Q"
+description = "The discharge at each level."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "the fractional power of the head at its bound 0: test_the_power_at_the_stage_of_zero_flow_is_finite"
+
+[[traps]]
+name = "exp_overflow"
+description = "exp of a scaled input at its test bound."
+test = "the power of a head with a large b: test_a_power_that_overflows_is_refused (the precondition finite_discharge)"
+
+[[oracles]]
+kind = "exact"
+description = "the curve evaluated with Python's decimal at 50 digits, rounded once"
+test = "tests/unit/test_formulas_hydrometrics.py (limit exact_decimal)"
+conventions = []

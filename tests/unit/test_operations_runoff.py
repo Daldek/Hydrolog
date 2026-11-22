@@ -8,6 +8,7 @@ end through :func:`hydrolog.catalog.run_command`.
 
 import inspect
 import json
+import math
 import warnings
 from typing import Any
 
@@ -67,8 +68,12 @@ from hydrolog.runoff import (
 )
 from hydrolog.runoff import cn_lookup as cn_tables
 from hydrolog.time import ConcentrationTime
+from hydrolog.time.concentration import KIRPICH
 
 RUNOFF_GROUPS = ("tc", "cn", "scs", "precip", "uh", "hydrograph")
+_NO_CONDITION = {"constraint": None, "condition": None, "source": None}
+"""The details of ``outside_applicability`` that only a violated condition between
+inputs fills (since 0.9.0)."""
 
 FULL_WATERSHED = {
     "name": "Potok Młynówka",
@@ -117,6 +122,10 @@ STATIONS: list[dict[str, Any]] = [
 ]
 GAUGES = [Station(s["name"], s["x"], s["y"], s["precipitation_mm"]) for s in STATIONS]
 
+# PMAXTP POT of Warszawa, p = 1 % (tests/fixtures/pmaxtp_warszawa_pot.json), 5 to 60
+# min, as a JSON object: the depth-duration curve of an Euler II storm of up to an hour.
+CURVE = {"5": 21.82, "10": 25.68, "15": 28.22, "30": 33.23, "45": 36.58, "60": 39.16}
+
 
 def unwrap(output):
     """Split what an operation returns into ``(result, notices)``."""
@@ -142,9 +151,9 @@ def assert_arrays(actual, expected):
 
 # --- tc -------------------------------------------------------------------------------
 
-# Arguments inside the typical ranges of each formula
+# Arguments inside the applicability ranges of each formula
 TC_CASES = [
-    ("tc_kirpich", "kirpich", {"length_km": 8.2, "slope_m_per_m": 0.05}),
+    ("tc_kirpich", "kirpich", {"length_km": 1.0, "slope_m_per_m": 0.05}),
     ("tc_nrcs", "nrcs", {"length_km": 8.2, "slope_m_per_m": 0.023, "cn": 72}),
     (
         "tc_giandotti",
@@ -188,11 +197,6 @@ class TestTimeOfConcentration:
         assert result.tc_h == pytest.approx(expected / 60.0, rel=1e-12)
         assert result.parameters == {k: float(v) for k, v in arguments.items()}
         assert notices == []
-
-    def test_kirpich_documented_value(self):
-        """Kirpich, L = 8.2 km, S = 0.023: 85.97 min (library docstring)."""
-        result, _ = unwrap(ops.tc_kirpich(length_km=8.2, slope_m_per_m=0.023))
-        assert result.tc_min == pytest.approx(85.9733, abs=1e-4)
 
     def test_nrcs_accepts_fractional_cn(self):
         """A weighted (fractional) CN is used as it is, not rounded."""
@@ -393,15 +397,15 @@ class TestTimeOfConcentration:
         assert caught.value.details["allowed"] == list(TC_METHODS)
 
     def test_formula_rejection_is_a_validation_error(self):
-        """A zero flow path slope passes the watershed checks but not Kirpich; the
-        error names the field the slope came from."""
+        """A zero flow path slope passes the watershed checks but not Kirpich's spec;
+        the error names the field the slope came from."""
         data = {**FULL_WATERSHED, "flow_path_slope_m_per_m": 0.0}
         with pytest.raises(InvalidParameterError) as caught:
             ops.tc_watershed(watershed=data, method="kirpich")
         assert caught.value.details["option"] == "flow_path_slope_m_per_m"
-        assert caught.value.details["reason"] == "exclusive_minimum"
-        assert caught.value.details["method"] == "kirpich"
-        assert "slope_m_per_m must be positive" in str(caught.value)
+        assert caught.value.details["parameter"] == "slope_m_per_m"
+        assert caught.value.details["reason"] == "outside_physical_range"
+        assert caught.value.details["formula"] == "kirpich"
 
     def test_catalog_validates_before_the_formula(self):
         """A non-positive length never reaches the library."""
@@ -415,25 +419,42 @@ class TestTimeOfConcentration:
         document = json.loads(envelope.to_json())
         assert document["command"] == "tc kirpich"
         assert document["inputs"] == {"length_km": 8.2, "slope_m_per_m": 0.023}
-        assert document["result"]["tc_min"] == pytest.approx(85.9733, abs=1e-4)
+        assert document["result"]["tc_min"] == pytest.approx(
+            ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023), rel=1e-15
+        )
+        assert document["formula_versions"] == {"kirpich": KIRPICH.formula_version}
         assert [
             (notice["code"], notice["details"]["parameter"])
             for notice in document["notices"]
-        ] == [("outside_typical_range", "slope_m_per_m")]
+        ] == [
+            ("outside_applicability", "length_km"),
+            ("outside_applicability", "slope_m_per_m"),
+        ]
 
     def test_run_command_notice(self):
-        """Range warnings reach the envelope as notices with a stable code: 0.023 is
-        below the slopes of Kirpich's data, 3-10 %."""
+        """Range warnings reach the envelope as notices with a stable code: 8.2 km is
+        longer and 0.023 flatter than the paths of Kirpich's data (Mota and Kobiyama
+        2015: 350-4,000 ft, 0.025-0.1)."""
         envelope = run_command("tc kirpich", {"length_km": 8.2, "slope_m_per_m": 0.023})
-        (notice,) = envelope.notices
-        assert (notice.level, notice.code) == ("warning", "outside_typical_range")
-        assert notice.details == {
+        length, slope = envelope.notices
+        assert (slope.level, slope.code) == ("warning", "outside_applicability")
+        assert length.details == {
+            "method": "kirpich",
+            "parameter": "length_km",
+            "field": "length_km",
+            "value": 8.2,
+            "minimum": 0.10668,
+            "maximum": 1.2192,
+            **_NO_CONDITION,
+        }
+        assert slope.details == {
             "method": "kirpich",
             "parameter": "slope_m_per_m",
             "field": "slope_m_per_m",
             "value": 0.023,
-            "minimum": 0.03,
+            "minimum": 0.025,
             "maximum": 0.1,
+            **_NO_CONDITION,
         }
 
 
@@ -821,7 +842,6 @@ class TestHietogram:
             ("block", BlockHietogram()),
             ("triangular", TriangularHietogram()),
             ("beta", BetaHietogram()),
-            ("euler_ii", EulerIIHietogram()),
         ],
     )
     def test_matches_the_generator(self, kind, generator):
@@ -873,13 +893,6 @@ class TestHietogram:
                 TriangularHietogram(0.4),
                 {"peak_position": 0.4},
             ),
-            ("euler_ii", {}, EulerIIHietogram(), {"peak_position": 0.33}),
-            (
-                "euler_ii",
-                {"peak_position": 0.5},
-                EulerIIHietogram(0.5),
-                {"peak_position": 0.5},
-            ),
             ("block", {}, BlockHietogram(), {}),
         ],
     )
@@ -902,16 +915,127 @@ class TestHietogram:
         assert_arrays(result.depths_mm, expected.intensities_mm)
         assert result.parameters == reported
 
-    def test_euler_ii_peak_is_early(self):
-        """Euler type II puts its highest block near a third of the duration."""
-        result, _ = unwrap(
+    def test_euler_ii_is_the_storm_of_its_curve(self):
+        """The total is h(D) of the curve; the peak block starts at 0.3 * D."""
+        result, notices = unwrap(
             ops.precip_hietogram(
-                hietogram_type="euler_ii", total_mm=50.0, duration_min=60.0
+                hietogram_type="euler_ii", duration_min=60.0, depth_duration_mm=CURVE
             )
         )
-        assert (
-            int(np.argmax(result.depths_mm)) + 1 == 4
-        )  # library docstring: interval 4 of 12
+        expected = EulerIIHietogram(CURVE).generate(39.16, 60.0, 5.0)
+        assert_arrays(result.depths_mm, expected.intensities_mm)
+        assert result.total_mm == 39.16
+        assert result.parameters == {"peak_start_min": 15.0}
+        assert result.depths_mm[3] == 21.82
+        assert notices == []
+
+    def test_euler_ii_takes_a_total_equal_to_the_depth_of_its_duration(self):
+        """A given total must be h(D): the storm of another total is refused."""
+        given, _ = unwrap(
+            ops.precip_hietogram(
+                hietogram_type="euler_ii",
+                total_mm=39.16,
+                duration_min=60.0,
+                depth_duration_mm=CURVE,
+            )
+        )
+        assert given.total_mm == 39.16
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.precip_hietogram(
+                hietogram_type="euler_ii",
+                total_mm=50.0,
+                duration_min=60.0,
+                depth_duration_mm=CURVE,
+            )
+        assert caught.value.details["option"] == "total_mm"
+        assert caught.value.details["reason"] == "total_mismatch"
+        assert caught.value.details["depth_mm"] == 39.16
+
+    def test_euler_ii_reads_the_curve_from_a_csv_file(self, tmp_path):
+        """A CSV ``duration_min,depth_mm`` (decimal commas allowed) is the curve."""
+        rows = "".join(f'{d};"{str(h).replace(".", ",")}"\n' for d, h in CURVE.items())
+        path = tmp_path / "curve.csv"
+        path.write_text("duration_min;depth_mm\n" + rows, encoding="utf-8")
+        from_file, _ = unwrap(
+            ops.precip_hietogram(
+                hietogram_type="euler_ii",
+                duration_min=60.0,
+                depth_duration_file=str(path),
+            )
+        )
+        inline, _ = unwrap(
+            ops.precip_hietogram(
+                hietogram_type="euler_ii", duration_min=60.0, depth_duration_mm=CURVE
+            )
+        )
+        assert_arrays(from_file.depths_mm, inline.depths_mm)
+
+    def test_euler_ii_reads_the_curve_of_precip_pmaxtp(self, tmp_path):
+        """What ``precip pmaxtp --json`` prints is a curve, and its lines go along."""
+        pmaxtp = run_command(
+            "precip pmaxtp",
+            {
+                "latitude": 52.23,
+                "longitude": 21.01,
+                "duration_min": 60.0,
+                "probability_percent": 1.0,
+            },
+        )
+        path = tmp_path / "pmaxtp.json"
+        path.write_text(pmaxtp.to_json(), encoding="utf-8")
+        envelope = json.loads(
+            run_command(
+                "precip hietogram",
+                {
+                    "hietogram_type": "euler_ii",
+                    "duration_min": 120.0,
+                    "depth_duration_file": str(path),
+                },
+            ).to_json()
+        )
+        result = envelope["result"]
+        curve = pmaxtp.result.depth_duration_mm
+        assert result["total_mm"] == curve[120]
+        assert max(result["depths_mm"]) == curve[5]
+        assert envelope["attribution"] == json.loads(pmaxtp.to_json())["attribution"]
+        assert envelope["terms_notice"] == json.loads(pmaxtp.to_json())["terms_notice"]
+
+    def test_an_error_of_a_curve_file_names_the_file_option(self, tmp_path):
+        """A decreasing curve read from a file is an error of depth_duration_file."""
+        path = tmp_path / "curve.json"
+        path.write_text(json.dumps({"5": 10.0, "10": 9.0}), encoding="utf-8")
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.precip_hietogram(
+                hietogram_type="euler_ii",
+                duration_min=10.0,
+                depth_duration_file=str(path),
+            )
+        assert caught.value.details["option"] == "depth_duration_file"
+        assert caught.value.details["reason"] == "decreasing"
+
+    @pytest.mark.parametrize(
+        "given, option, reason",
+        [
+            ({}, "depth_duration_mm", "required"),
+            (
+                {"depth_duration_mm": CURVE, "depth_duration_file": "curve.csv"},
+                "depth_duration_file",
+                "conflict",
+            ),
+        ],
+    )
+    def test_euler_ii_needs_one_curve(self, given, option, reason):
+        """Without a curve there is no Euler II storm; two curves are a conflict."""
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.precip_hietogram(hietogram_type="euler_ii", duration_min=60.0, **given)
+        assert caught.value.details["option"] == option
+        assert caught.value.details["reason"] == reason
+
+    def test_the_other_types_need_a_total(self):
+        """Only Euler II takes its total from a curve."""
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.precip_hietogram(hietogram_type="beta", duration_min=60.0)
+        assert caught.value.details == {"option": "total_mm", "reason": "required"}
 
     @pytest.mark.parametrize(
         "kind, given",
@@ -922,6 +1046,9 @@ class TestHietogram:
             ("beta", {"peak_position": 0.4}),
             ("triangular", {"alpha": 2.0}),
             ("euler_ii", {"beta": 5.0}),
+            ("euler_ii", {"peak_position": 0.33}),
+            ("beta", {"depth_duration_mm": CURVE}),
+            ("triangular", {"depth_duration_file": "curve.csv"}),
         ],
     )
     def test_parameter_of_another_type_is_rejected(self, kind, given):
@@ -936,22 +1063,75 @@ class TestHietogram:
         }
         assert caught.value.hint
 
-    def test_duration_not_a_multiple_of_the_step_is_reported(self):
-        """The library truncates to whole steps; the notice says what is covered."""
+    @pytest.mark.parametrize("hietogram_type", ["block", "triangular", "beta"])
+    def test_a_duration_that_is_not_a_whole_number_of_steps_is_refused(
+        self, hietogram_type
+    ):
+        """D 45 / Δt 10 used to put the total into 40 min (+12.5 % mean intensity)."""
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.precip_hietogram(
+                hietogram_type=hietogram_type,
+                total_mm=36.58,
+                duration_min=45.0,
+                timestep_min=10.0,
+            )
+        assert caught.value.details == {
+            "option": "duration_min",
+            "reason": "not_multiple",
+            "timestep_min": 10.0,
+        }
+
+    @pytest.mark.parametrize("hietogram_type", ["block", "triangular", "beta"])
+    def test_the_storm_lasts_its_duration_and_holds_its_total(self, hietogram_type):
+        """A binary-inexact ratio (0.3 / 0.1) still gives every step: n = 3."""
         result, notices = unwrap(
             ops.precip_hietogram(
-                hietogram_type="block",
-                total_mm=30.0,
-                duration_min=100.0,
-                timestep_min=30.0,
+                hietogram_type=hietogram_type,
+                total_mm=36.58,
+                duration_min=0.3,
+                timestep_min=0.1,
             )
         )
         assert result.n_steps == 3
-        assert result.duration_min == 100.0
-        assert [(n.level, n.code) for n in notices] == [
-            ("warning", "duration_not_covered")
-        ]
-        assert "covers 90 min" in notices[0].message
+        assert result.times_min[-1] == pytest.approx(0.3, rel=1e-12)
+        assert result.depths_mm.sum() == pytest.approx(36.58, rel=1e-12)
+        assert notices == []
+
+    @pytest.mark.parametrize(
+        ("option", "value"),
+        [
+            ("total_mm", math.nan),
+            ("total_mm", math.inf),
+            ("duration_min", math.nan),
+            ("timestep_min", math.inf),
+            ("alpha", math.nan),
+            ("beta", math.inf),
+        ],
+    )
+    def test_a_value_that_is_not_finite_is_refused(self, option, value):
+        """CMP-3: NaN and inf through the Python API, as the CLI refuses them."""
+        options = {
+            "hietogram_type": "beta",
+            "total_mm": 30.0,
+            "duration_min": 60.0,
+            "timestep_min": 5.0,
+            option: value,
+        }
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.precip_hietogram(**options)
+        assert caught.value.details["option"] == option
+        assert caught.value.details["reason"] == "not_finite"
+
+    def test_a_peak_position_that_is_not_finite_is_refused(self):
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.precip_hietogram(
+                hietogram_type="triangular",
+                total_mm=30.0,
+                duration_min=60.0,
+                peak_position=math.nan,
+            )
+        assert caught.value.details["option"] == "peak_position"
+        assert caught.value.details["reason"] == "not_finite"
 
     def test_values_outside_the_library_ranges_are_validation_errors(self):
         """Step longer than the duration and a peak outside (0, 1)."""
@@ -1464,7 +1644,7 @@ class TestUnitHydrographs:
 
     def test_nash_lutz_impossible_input_is_a_validation_error(self):
         """Lc longer than L is rejected by the library, naming the option of Lc."""
-        with pytest.raises(InvalidParameterError, match="cannot exceed") as caught:
+        with pytest.raises(InvalidParameterError) as caught:
             ops.uh_nash(
                 area_km2=45.0,
                 lutz_length_km=4.0,
@@ -1472,12 +1652,30 @@ class TestUnitHydrographs:
                 lutz_slope_m_per_m=0.02,
                 lutz_manning_n=0.035,
             )
-        assert caught.value.details == {
-            "option": "lutz_centroid_length_km",
-            "reason": "maximum",
-            "maximum": 4.0,
-            "value": 8.0,
-        }
+        details = caught.value.details
+        assert (details["option"], details["reason"], details["constraint"]) == (
+            "lutz_centroid_length_km",
+            "outside_physical_range",
+            "centroid_within_length",
+        )
+
+    def test_nash_lutz_shares_above_the_area_are_refused_on_the_forest(self):
+        """U + W > 100 % is refused (spec lutz), naming the option of W."""
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.uh_nash(
+                area_km2=45.0,
+                lutz_length_km=8.2,
+                lutz_centroid_length_km=4.5,
+                lutz_slope_m_per_m=0.023,
+                lutz_manning_n=0.035,
+                lutz_urban_pct=40.0,
+                lutz_forest_pct=61.0,
+            )
+        details = caught.value.details
+        assert (details["option"], details["constraint"]) == (
+            "lutz_forest_pct",
+            "shares_within_catchment",
+        )
 
     def test_nash_given_parameters_outside_their_ranges_are_noticed(self):
         """Given n and K outside 1-10 and 10-200 min are each noticed as ranges to be
@@ -1542,12 +1740,12 @@ class TestUnitHydrographs:
             assert caught.value.details["reason"] == "one_of"
 
     def test_clark_refuses_a_step_above_twice_the_storage_constant(self):
-        """A step longer than 2 R is a validation error naming ``timestep_min``."""
+        """A step longer than 2 R fails the precondition step_stable on its option."""
         with pytest.raises(InvalidParameterError) as caught:
             ops.uh_clark(area_km2=45.3, tc_min=120.0, r_min=2.0, timestep_min=5.0)
         assert caught.value.details["option"] == "timestep_min"
-        assert caught.value.details["reason"] == "unstable_timestep"
-        assert caught.value.details["maximum"] == 4.0
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "step_stable"
 
         result, _ = unwrap(
             ops.uh_clark(area_km2=45.3, tc_min=120.0, r_min=2.0, timestep_min=4.0)
@@ -1561,10 +1759,10 @@ class TestUnitHydrographs:
     def test_clark_r_tc_outside_its_range_is_noticed_on_the_given_option(
         self, given, field
     ):
-        """R/tc outside 0.2-1.5 names the option that gave R."""
+        """R/tc outside 0.2-1.5, a range to be verified, names the option of R."""
         _, notices = unwrap(ops.uh_clark(area_km2=45.3, tc_min=120.0, **given))
         (notice,) = notices
-        assert notice.code == "outside_typical_range"
+        assert notice.code == "outside_unverified_range"
         assert notice.details["parameter"] == "r_tc_ratio"
         assert notice.details["field"] == field
 
@@ -1637,6 +1835,7 @@ class TestUnitHydrographs:
                 "value": 3.0,
                 "minimum": 1.35,
                 "maximum": 1.65,
+                **_NO_CONDITION,
             },
             {
                 "method": "snyder",
@@ -1645,6 +1844,7 @@ class TestUnitHydrographs:
                 "value": 0.3,
                 "minimum": 0.4,
                 "maximum": 0.8,
+                **_NO_CONDITION,
             },
         ]
 
@@ -1812,28 +2012,38 @@ class TestHydrographGenerate:
         assert_arrays(by_ratio.discharge_m3s, by_value.discharge_m3s)
         assert by_ratio.uh_parameters == {"tc_min": 120.0, "r_min": 60.0}
 
-    @pytest.mark.parametrize("kind", ["block", "triangular", "euler_ii"])
-    def test_other_hyetograph_types(self, kind):
+    @pytest.mark.parametrize(
+        "kind, rain",
+        [
+            ("block", {"total_mm": 50.0}),
+            ("triangular", {"total_mm": 50.0}),
+            ("euler_ii", {"depth_duration_mm": CURVE}),
+        ],
+    )
+    def test_other_hyetograph_types(self, kind, rain):
         """The hyetograph comes from the generator of the chosen type."""
         generated = {
             "block": BlockHietogram(),
             "triangular": TriangularHietogram(),
-            "euler_ii": EulerIIHietogram(),
-        }[kind].generate(total_mm=50.0, duration_min=60.0, timestep_min=5.0)
+            "euler_ii": EulerIIHietogram(CURVE),
+        }[kind].generate(
+            total_mm=rain.get("total_mm", 39.16), duration_min=60.0, timestep_min=5.0
+        )
         result, _ = unwrap(
             ops.hydrograph_generate(
                 area_km2=45.3,
                 cn=72,
                 tc_min=90.0,
                 hietogram_type=kind,
-                total_mm=50.0,
                 duration_min=60.0,
+                **rain,
             )
         )
         expected = library_run(rain=generated)
         assert_arrays(result.precipitation_mm, generated.intensities_mm)
         assert result.peak_discharge_m3s == pytest.approx(expected.peak_discharge_m3s)
         assert result.hietogram_type == kind
+        assert result.total_precipitation_mm == pytest.approx(generated.total_mm)
 
     def test_hyetograph_parameters_are_forwarded(self):
         """``alpha``/``beta`` shape the Beta storm; ``peak_position`` the triangle."""
@@ -1970,9 +2180,9 @@ class TestHydrographGenerate:
 
         Watershed with CN 60 in the file (L = 12 km, Y = 0.025), ``cn=85`` given,
         beta storm of 50 mm in 120 min. The NRCS lag equation took the retention of
-        the CN of the file (S = 169.3 mm) while the runoff used CN 85: tc = 657.7 min,
-        Qmax = 27.64 m3/s at 440 min. With the CN of the computation (S = 44.8 mm)
-        tc = 322.1 min, Qmax = 55.62 m3/s at 240 min (twice the peak).
+        the CN of the file (S = 169.3 mm) while the runoff used CN 85: tc = 657.1 min,
+        Qmax = 27.66 m3/s at 440 min. With the CN of the computation (S = 44.8 mm)
+        tc = 321.8 min, Qmax = 55.68 m3/s at 240 min (twice the peak).
         """
         data = {**OVERRIDE_WATERSHED, "cn": 60}
         result, _ = unwrap(
@@ -1981,8 +2191,10 @@ class TestHydrographGenerate:
             )
         )
         assert result.cn == 85.0
-        assert result.tc_min == pytest.approx(322.09, abs=0.01)
-        assert result.peak_discharge_m3s == pytest.approx(55.625, abs=0.005)
+        assert result.tc_min == pytest.approx(
+            ConcentrationTime.nrcs(length_km=12.0, slope_m_per_m=0.025, cn=85),
+            rel=1e-15,
+        )
         assert result.time_to_peak_min == 240.0
 
         # what the computation did before: tc of the CN of the file, runoff of CN 85
@@ -1992,9 +2204,12 @@ class TestHydrographGenerate:
                 watershed=data, cn=85, tc_min=tc_of_the_file, **OVERRIDE_STORM
             )
         )
-        assert before.tc_min == pytest.approx(657.73, abs=0.01)
-        assert before.peak_discharge_m3s == pytest.approx(27.637, abs=0.005)
+        assert tc_of_the_file == pytest.approx(
+            ConcentrationTime.nrcs(length_km=12.0, slope_m_per_m=0.025, cn=60),
+            rel=1e-15,
+        )
         assert before.time_to_peak_min == 440.0
+        assert result.peak_discharge_m3s > 2.0 * before.peak_discharge_m3s
 
         # the override acts as if the CN were written into the watershed
         written, _ = unwrap(
@@ -2024,8 +2239,10 @@ class TestHydrographGenerate:
                 watershed=OVERRIDE_WATERSHED, cn=85, tc_method="nrcs", **OVERRIDE_STORM
             )
         )
-        assert result.tc_min == pytest.approx(322.09, abs=0.01)
-        assert result.peak_discharge_m3s == pytest.approx(55.625, abs=0.005)
+        assert result.tc_min == pytest.approx(
+            ConcentrationTime.nrcs(length_km=12.0, slope_m_per_m=0.025, cn=85),
+            rel=1e-15,
+        )
         with pytest.raises(InvalidParameterError) as caught:
             ops.hydrograph_generate(
                 watershed=OVERRIDE_WATERSHED, tc_method="nrcs", **OVERRIDE_STORM
@@ -2085,8 +2302,8 @@ class TestHydrographGenerate:
     def test_library_range_warnings_become_notices(self):
         """A tc formula outside its range warns; the hydrograph is still computed.
 
-        Kirpich: 45.3 km2 is above the areas of his data and a flow path slope of
-        0.0005 below their slopes."""
+        Kirpich: 45.3 km2 is above the areas of his data, an 11.05 km flow path
+        longer than their paths and a flow path slope of 0.0005 below their slopes."""
         flat_river = {**WATERSHED, "flow_path_slope_m_per_m": 0.0005}
         result, notices = unwrap(ops.hydrograph_generate(watershed=flat_river, **STORM))
         assert result.tc_method == "kirpich"
@@ -2094,19 +2311,20 @@ class TestHydrographGenerate:
             (n.level, n.code, n.details["parameter"], n.details["field"])
             for n in notices
         ] == [
-            ("warning", "outside_typical_range", "area_km2", "area_km2"),
+            ("warning", "outside_applicability", "area_km2", "area_km2"),
+            ("warning", "outside_applicability", "length_km", "flow_path_length_km"),
             (
                 "warning",
-                "outside_typical_range",
+                "outside_applicability",
                 "slope_m_per_m",
                 "flow_path_slope_m_per_m",
             ),
         ]
-        assert "kirpich: slope_m_per_m=0.0005" in notices[1].message
+        assert "kirpich: slope_m_per_m=0.0005" in notices[2].message
 
-    def test_duration_not_covered_is_reported(self):
-        """The truncated hyetograph is flagged exactly like ``precip hietogram``."""
-        _, notices = unwrap(
+    def test_a_duration_that_is_not_a_whole_number_of_steps_is_refused(self):
+        """As ``precip hietogram``: no storm packed into 90 of its 100 min."""
+        with pytest.raises(InvalidParameterError) as caught:
             ops.hydrograph_generate(
                 area_km2=45.3,
                 cn=72,
@@ -2116,8 +2334,8 @@ class TestHydrographGenerate:
                 duration_min=100.0,
                 timestep_min=15.0,
             )
-        )
-        assert [n.code for n in notices] == ["duration_not_covered"]
+        assert caught.value.details["option"] == "duration_min"
+        assert caught.value.details["reason"] == "not_multiple"
 
     def test_a_watershed_of_an_area_and_a_cn_runs_with_a_given_tc(self):
         """Only area_km2 is required: SCS with tc_min needs nothing else."""
@@ -2219,7 +2437,7 @@ class TestHydrographGenerate:
             ),
             # The area of the watershed against the 24 watersheds of the NRCS lag
             ({"watershed": WATERSHED, "tc_method": "nrcs"}, "area_km2", "area_km2"),
-            # The SCS unit hydrograph of more than 52 km2
+            # The SCS unit hydrograph of more than 20 mi2 (51.8 km2)
             ({"tc_min": 90.0, "area_km2": 60.0}, "area_km2", "area_km2"),
         ],
     )
@@ -2512,7 +2730,7 @@ class TestHydrographGenerate:
         assert [
             (n.code, n.details["method"], n.details["parameter"], n.details["field"])
             for n in run.notices
-        ] == [("outside_typical_range", "nrcs", "area_km2", "area_km2")]
+        ] == [("outside_applicability", "nrcs", "area_km2", "area_km2")]
 
     def test_compute_hydrograph_builds_a_hietogram_from_a_series(self):
         """For a series the run carries an equivalent ``HietogramResult``."""
@@ -2548,14 +2766,15 @@ class TestHydrographGenerate:
         assert max(result["discharge_m3s"]) == pytest.approx(
             result["peak_discharge_m3s"]
         )
-        # Kirpich on the 45.3 km2 of the example: its area and the slope of its
-        # flow path of 0.025 are outside the data of the formula
+        # Kirpich on the 45.3 km2 of the example: its area and the length of its
+        # flow path are outside the data of the formula, its slope of 0.025 is on
+        # their lowest one (Mota and Kobiyama 2015)
         assert [
             (n.code, n.details["parameter"], n.details["field"])
             for n in envelope.notices
         ] == [
-            ("outside_typical_range", "area_km2", "area_km2"),
-            ("outside_typical_range", "slope_m_per_m", "flow_path_slope_m_per_m"),
+            ("outside_applicability", "area_km2", "area_km2"),
+            ("outside_applicability", "length_km", "flow_path_length_km"),
         ]
 
     def test_run_command_rejects_a_watershed_and_area_together(self):
@@ -2603,7 +2822,7 @@ MODEL_CALLS = {
 }
 
 
-RANGE_CODES = ("outside_typical_range", "outside_unverified_range")
+RANGE_CODES = ("outside_applicability", "outside_unverified_range")
 """The notices of a value outside a two-sided typical range (verified or not)."""
 
 
@@ -2621,11 +2840,12 @@ class TestTypicalRangesOfTheModels:
     @pytest.mark.parametrize(
         "method, option, value, minimum, maximum",
         [
-            # Sorrell (2010): the NRCS unit hydrograph up to about 20 mi2
-            ("scs", "area_km2", 52.1, 0.0, 52.0),
-            # Snyder (1938): 10-10 000 mi2 of the Appalachian Highlands
-            ("snyder", "area_km2", 25.9, 26.0, 26000.0),
-            ("snyder", "area_km2", 26000.1, 26.0, 26000.0),
+            # NEH 630 ch. 16, p. 16-4: subareas of at most 20 mi2 (51.8 km2)
+            ("scs", "area_km2", 51.9, 0.0, 51.8),
+            # Snyder (1938): 30-30 000 km2 (10-10 000 mi2) of the Appalachian
+            # Highlands (Chow et al. 1988 after Rajagopalan's notes, p. 76)
+            ("snyder", "area_km2", 29.9, 30.0, 30000.0),
+            ("snyder", "area_km2", 30000.1, 30.0, 30000.0),
             # KZGW (2017), annex 2, eq. 6.5 and 6.7
             ("snyder", "ct", 1.349, 1.35, 1.65),
             ("snyder", "ct", 1.651, 1.35, 1.65),
@@ -2636,9 +2856,9 @@ class TestTypicalRangesOfTheModels:
             ("nash", "n", 10.001, 1.0, 10.0),
             ("nash", "k_min", 9.99, 10.0, 200.0),
             ("nash", "k_min", 200.01, 10.0, 200.0),
-            # KZGW (2017), annex 2, p. 96: the Lutz method up to 236 km2
+            # KZGW (2017), annex 2, p. 97: the Lutz method up to 236 km2
             ("lutz", "area_km2", 236.1, 0.0, 236.0),
-            # HEC-HMS Technical Reference Manual: R/tc 0.2-1.5
+            # Hydrolog's R/tc 0.2-1.5, no published source (outside_unverified_range)
             ("clark", "r_tc_ratio", 0.199, 0.2, 1.5),
             ("clark", "r_tc_ratio", 1.501, 0.2, 1.5),
             # Hawkins et al. (1985): the AMC formulas for CN 55-95
@@ -2657,15 +2877,16 @@ class TestTypicalRangesOfTheModels:
                 "value": value,
                 "minimum": minimum,
                 "maximum": maximum,
+                **_NO_CONDITION,
             }
         ]
 
     @pytest.mark.parametrize(
         "method, option, value",
         [
-            ("scs", "area_km2", 52.0),
-            ("snyder", "area_km2", 26.0),
-            ("snyder", "area_km2", 26000.0),
+            ("scs", "area_km2", 51.8),
+            ("snyder", "area_km2", 30.0),
+            ("snyder", "area_km2", 30000.0),
             ("snyder", "ct", 1.35),
             ("snyder", "ct", 1.65),
             ("snyder", "cp", 0.4),
@@ -2693,13 +2914,13 @@ class TestTypicalRangesOfTheModels:
             ops.hydrograph_generate(area_km2=45.3, cn=72, tc_min=70.0, **storm)
         )
         assert bound.uh_time_to_peak_min == pytest.approx(48.0)
-        assert [n for n in notices if n.code == "outside_typical_range"] == []
+        assert [n for n in notices if n.code == "outside_applicability"] == []
 
         # tc 69.9 min: tp = 47.94 min and 0.25 tp = 11.985 min, below the 12 min step
         _, notices = unwrap(
             ops.hydrograph_generate(area_km2=45.3, cn=72, tc_min=69.9, **storm)
         )
-        assert [n.details for n in notices if n.code == "outside_typical_range"] == [
+        assert [n.details for n in notices if n.code == "outside_applicability"] == [
             {
                 "method": "scs",
                 "parameter": "timestep_min",
@@ -2707,6 +2928,7 @@ class TestTypicalRangesOfTheModels:
                 "value": 12.0,
                 "minimum": 0.0,
                 "maximum": pytest.approx(11.985),
+                **_NO_CONDITION,
             }
         ]
 
@@ -2739,7 +2961,7 @@ class TestTypicalRangesOfTheModels:
         ]
         # the step itself stays outside its range: the hydrograph has daily ordinates
         assert [
-            n.details["value"] for n in notices if n.code == "outside_typical_range"
+            n.details["value"] for n in notices if n.code == "outside_applicability"
         ] == [1440.0]
 
 

@@ -2,12 +2,17 @@
 
 PMAXTP is the atlas of the maximum precipitation of a duration and a probability of
 exceedance that IMGW-PIB publishes for every point of Poland, estimated by two methods:
-POT (peaks over a threshold, the one IMGW-PIB recommends) and AMP (annual maxima).
+POT (peaks over a threshold) and AMP (annual maxima). IMGW-PIB recommends POT for
+p >= 50 % and treats the two as equivalent for p < 50 % (Ozga-Zieliński (red.) 2022,
+*Modele probabilistyczne opadów maksymalnych ... – projekt PMAXTP*, IMGW-PIB, p. 23).
+PMAXTP is not PMP, the physical upper bound of rainfall: it gives quantiles of a
+probability of exceedance.
 :func:`fetch_depth` asks Obserwator (``obserwator.fetch_pmaxtp``), which queries the
 PMAXTP API of IMGW-PIB for the table of a point, and picks the depth of one duration and
-one probability. It is the only network access of Hydrolog (ADR-0018): Obserwator is
-imported when a depth is fetched, and without it the fetch is a ``missing_dependency``
-error that names the extra.
+one probability, with the depths of every duration at that probability: the
+depth-duration curve that an Euler type II storm is built from. It is the only network
+access of Hydrolog (ADR-0018): Obserwator is imported when a depth is fetched, and
+without it the fetch is a ``missing_dependency`` error that names the extra.
 
 The durations and probabilities are those the tables of IMGW-PIB hold
 (:data:`DURATIONS_MIN`, :data:`PROBABILITIES_PERCENT`, as Obserwator documents them);
@@ -51,7 +56,8 @@ __all__ = [
 PmaxtpMethod = Literal["POT", "AMP"]
 """The estimation methods of PMAXTP: peaks over a threshold, annual maxima."""
 METHODS: Final[tuple[str, ...]] = ("POT", "AMP")
-"""The values of :data:`PmaxtpMethod`; POT is the default (IMGW-PIB recommends it)."""
+"""The values of :data:`PmaxtpMethod`; POT is Hydrolog's default (IMGW-PIB recommends it
+for p >= 50 % and treats AMP and POT as equivalent below)."""
 DURATIONS_MIN: Final[tuple[int, ...]] = (
     5,
     10,
@@ -131,6 +137,9 @@ class PmaxtpDepth:
         The duration [min], one of :data:`DURATIONS_MIN`.
     probability_percent : float
         The probability of exceedance [%], one of :data:`PROBABILITIES_PERCENT`.
+    depth_duration_mm : dict of int to float
+        The depth [mm] of every duration of :data:`DURATIONS_MIN` [min] at the
+        probability: the depth-duration curve of the point.
     """
 
     depth_mm: float
@@ -139,6 +148,7 @@ class PmaxtpDepth:
     method: str
     duration_min: float
     probability_percent: float
+    depth_duration_mm: dict[int, float]
 
 
 def _not_offered(
@@ -191,7 +201,7 @@ def _missing_obserwator(exc: ImportError) -> MissingDependencyError:
     """Build the ``missing_dependency`` error that names the extra ``pmaxtp``."""
     return MissingDependencyError(
         "precip pmaxtp fetches the depth through Obserwator, the optional extra "
-        f"'{EXTRA}' (obserwator>=3.0.0,<4): cannot import 'obserwator' ({exc})",
+        f"'{EXTRA}' (obserwator>=3.1.0,<4): cannot import 'obserwator' ({exc})",
         hint=INSTALL_HINT,
         details={"extra": EXTRA, "module": "obserwator"},
     )
@@ -220,7 +230,8 @@ def fetch_depth(
     Returns
     -------
     PmaxtpDepth
-        The depth of the cell of the PMAXTP table of the point.
+        The depth of the cell of the PMAXTP table of the point, with the depths of
+        every duration at the probability.
 
     Raises
     ------
@@ -234,7 +245,7 @@ def fetch_depth(
     HydrologError
         Code ``source_unavailable``: IMGW-PIB did not answer.
     InputDataError
-        If the answer of IMGW-PIB cannot be read or lacks the cell.
+        If the answer of IMGW-PIB cannot be read or lacks a depth of the probability.
     """
     method, duration, probability = _check(method, duration_min, probability_percent)
     try:
@@ -277,22 +288,26 @@ def fetch_depth(
             f"The PMAXTP answer of IMGW-PIB could not be read: {exc}",
             details={"source": _SOURCE},
         ) from exc
-    depth = result.data.get_precipitation(duration, probability)
-    if depth is None:
-        raise InputDataError(
-            f"The PMAXTP table of IMGW-PIB has no depth for {duration} min at "
-            f"{probability:g} %",
-            details={
-                "source": _SOURCE,
-                "duration_min": duration,
-                "probability_percent": probability,
-            },
-        )
+    curve: dict[int, float] = {}
+    for each in DURATIONS_MIN:
+        cell = result.data.get_precipitation(each, probability)
+        if cell is None:
+            raise InputDataError(
+                f"The PMAXTP table of IMGW-PIB has no depth for {each} min at "
+                f"{probability:g} %",
+                details={
+                    "source": _SOURCE,
+                    "duration_min": each,
+                    "probability_percent": probability,
+                },
+            )
+        curve[each] = float(cell)
     return PmaxtpDepth(
-        depth_mm=float(depth),
+        depth_mm=curve[duration],
         latitude=float(latitude),
         longitude=float(longitude),
         method=method,
         duration_min=float(duration_min),
         probability_percent=probability,
+        depth_duration_mm=curve,
     )

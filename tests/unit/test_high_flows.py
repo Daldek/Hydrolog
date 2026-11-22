@@ -13,11 +13,15 @@ _DISTRIBUTIONS = {
     "pearson3": (pearson3, (1.0, 100.0, 30.0)),
     "weibull": (weibull_min, (1.5, 20.0, 50.0)),
 }
-# Fitted by all four distributions and both methods; by the L-moments the lower bound
-# of Pearson III and of Weibull lies above its smallest value.
+# Fitted by all four distributions and every method but two (_NO_MAXIMUM); by the
+# L-moments the lower bound of Pearson III and of Weibull lies above its smallest value.
 _FLOODS = np.array(
     [95.0, 102.0, 110.0, 118.0, 125.0, 133.0, 140.0, 152.0, 170.0, 215.0, 290.0]
 )
+# The likelihood of Pearson III and of Weibull has no maximum on _FLOODS (a skewness
+# above 2, a shape below 1: test_maximum_likelihood.py), so maximum likelihood gives
+# them no parameters.
+_NO_MAXIMUM = {("pearson3", "mle"), ("weibull", "mle")}
 
 
 def _fit(analysis, distribution, fit_method):
@@ -81,13 +85,40 @@ class TestFloodFrequencyAnalysis:
             ks_warnings = [x for x in w if "Kolmogorov-Smirnov" in str(x.message)]
             assert len(ks_warnings) >= 1
 
-    def test_anderson_darling_statistic_present(self, synthetic_gev_data):
+    def test_ad_critical_values_are_those_of_a_fitted_gev(self):
+        """A GEV fitted by L-moments to 30 values: the 5 % point of A² is 0.535–0.576
+        (Monte Carlo of the audit, case AD-NULL-WITH-FITTED-PARAMETERS, ± 0.03), not
+        the 2.492 of a distribution given in advance; the points increase."""
+        from scipy.stats import genextreme
+
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
-        ffa = FloodFrequencyAnalysis(synthetic_gev_data)
-        result = ffa.fit_gev()
+        sample = genextreme.rvs(-0.1, loc=100, scale=30, size=30, random_state=1)
+        result = FloodFrequencyAnalysis(sample).fit_gev()
+        values = result.ad_critical_values
+        assert values is not None
+        assert 0.505 <= values["5%"] <= 0.606
+        levels = [values[key] for key in ("15%", "10%", "5%", "2.5%", "1%")]
+        assert levels == sorted(levels)
+
+    def test_a_misfit_is_rejected_at_five_percent(self):
+        """A GEV fitted to a bimodal sample (20 values about 100, 20 about 120):
+        A² = 1.32 lies above the bootstrap 5 % point (0.54) but below 2.492."""
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        rng = np.random.default_rng(1)
+        sample = np.concatenate([rng.normal(100, 5, 20), rng.normal(120, 5, 20)])
+        result = FloodFrequencyAnalysis(sample).fit_gev()
+        assert result.ad_critical_values is not None
+        assert result.ad_statistic > result.ad_critical_values["5%"]
+        assert result.ad_statistic < 2.492
+
+    def test_other_methods_have_no_ad_critical_values(self, synthetic_gev_data):
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        result = FloodFrequencyAnalysis(synthetic_gev_data).fit_gev(fit_method="mle")
         assert result.ad_statistic >= 0.0
-        assert isinstance(result.ad_critical_values, dict)
+        assert result.ad_critical_values is None
 
     def test_aic_present(self, synthetic_gev_data):
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
@@ -135,9 +166,14 @@ class TestFloodFrequencyAnalysis:
         assert len(result.quantiles) == 3
 
     @pytest.mark.parametrize(
-        "fit_method", ["mle", "moments", "l_moments", "least_squares"]
+        ("distribution", "fit_method"),
+        [
+            (distribution, fit_method)
+            for distribution in _DISTRIBUTIONS
+            for fit_method in ("mle", "moments", "l_moments", "least_squares")
+            if (distribution, fit_method) not in _NO_MAXIMUM
+        ],
     )
-    @pytest.mark.parametrize("distribution", list(_DISTRIBUTIONS))
     def test_densities_are_the_pdf_at_the_quantiles(self, distribution, fit_method):
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
@@ -219,16 +255,6 @@ class TestFitMethods:
             parameters, rel=0.01, abs=0.01
         )
 
-    def test_sample_l_moments_of_a_case_checked_by_hand(self):
-        from hydrolog.statistics.high_flows import _sample_l_moments
-
-        # 1, 2, 3, 4, 10: l1 is the mean, 4; l2 is half the mean difference of the
-        # 10 pairs, 40 / (2 * 10) = 2; l3 is the mean of (x_k - 2 x_j + x_i) / 3 over
-        # the 10 ordered triples, 30 / (3 * 10) = 1; t3 = l3 / l2 = 0.5
-        l1, l2, t3 = _sample_l_moments(np.array([4.0, 10.0, 1.0, 3.0, 2.0]))
-
-        assert (l1, l2, t3) == pytest.approx((4.0, 2.0, 0.5))
-
     @pytest.mark.parametrize("distribution", list(_DISTRIBUTIONS))
     def test_moments_are_the_unbiased_moments_of_the_sample(self, distribution):
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
@@ -277,32 +303,43 @@ class TestFitMethods:
             assert np.all(np.isfinite(result.quantiles))
 
     @pytest.mark.parametrize(
-        ("distribution", "fit_method", "sample", "reason"),
+        ("distribution", "fit_method", "sample", "constraint"),
         [
-            ("weibull", "moments", [0.0, *[10.0] * 8, 10.5], "out_of_range"),
-            ("weibull", "l_moments", [0.0, *[10.0] * 8, 10.5], "out_of_range"),
+            (
+                "weibull",
+                "moments",
+                [0.0, *[10.0] * 8, 10.5],
+                "skewness_within_distribution",
+            ),
+            (
+                "weibull",
+                "l_moments",
+                [0.0, *[10.0] * 8, 10.5],
+                "l_moments_within_distribution",
+            ),
             (
                 "weibull",
                 "least_squares",
                 [0.0, *[10.0] * 8, 10.5],
-                "out_of_range",
+                "skewness_within_distribution",
             ),
-            ("log_normal", "l_moments", [0.0, 5.0, 6.0, 7.0], "non_positive_values"),
-            ("gev", "moments", [5.0, 5.0, 5.0, 5.0], "constant_values"),
-            ("pearson3", "l_moments", [1.0, 2.0], "too_few_values"),
+            ("log_normal", "l_moments", [0.0, 5.0, 6.0, 7.0], "positive_values"),
+            ("gev", "moments", [5.0, 5.0, 5.0, 5.0], "values_not_all_equal"),
+            ("pearson3", "l_moments", [1.0, 2.0], "enough_values"),
         ],
     )
-    def test_no_parameters_is_a_calculation_error(
-        self, distribution, fit_method, sample, reason
+    def test_a_failed_precondition_is_refused(
+        self, distribution, fit_method, sample, constraint
     ):
-        from hydrolog.exceptions import CalculationError
+        from hydrolog.exceptions import InvalidParameterError
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
         analysis = FloodFrequencyAnalysis(np.array(sample))
 
-        with pytest.raises(CalculationError) as caught:
+        with pytest.raises(InvalidParameterError) as caught:
             _fit(analysis, distribution, fit_method)
-        assert caught.value.details["reason"] == reason
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == constraint
         assert caught.value.details["distribution"] == distribution
         assert caught.value.details["fit_method"] == fit_method
 
@@ -324,11 +361,12 @@ class TestEveryFitMethod:
 
         ranked = FloodFrequencyAnalysis(_FLOODS).fit_all(fit_method="all")
 
-        assert len(ranked) == 16
+        assert len(ranked) == 14
         assert set(ranked) == {
             f"{distribution}/{method}"
             for distribution in _DISTRIBUTIONS
             for method in FIT_METHODS
+            if (distribution, method) not in _NO_MAXIMUM
         }
 
     def test_each_item_is_the_fit_of_its_own_method(self):
@@ -372,24 +410,36 @@ class TestEveryFitMethod:
         from hydrolog._warnings import DistributionLeftOut
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
-        # skewness and L-skewness below the Weibull's (the Gumbel's) limit
+        # skewness and L-skewness below the Weibull's (the Gumbel's) limit; the
+        # likelihood of the GEV and Pearson III grows without limit as their upper
+        # bound reaches the largest value
         analysis = FloodFrequencyAnalysis(np.array([1.0, *[10.0] * 8, 10.5]))
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             ranked = analysis.fit_all(fit_method="all")
 
-        left_out = {"weibull/moments", "weibull/l_moments", "weibull/least_squares"}
-        assert len(ranked) == 13
-        assert "weibull/mle" in ranked
-        assert left_out.isdisjoint(ranked)
+        reasons = {
+            "weibull/moments": "out_of_range",
+            "weibull/l_moments": "out_of_range",
+            "weibull/least_squares": "out_of_range",
+            "gev/mle": "unbounded_likelihood",
+            "pearson3/mle": "unbounded_likelihood",
+            # the Weibull likelihood grows as its shape does (the reversed Gumbel's)
+            "weibull/mle": "unbounded_likelihood",
+            # the least squares of Pearson III lie beyond the skewness of -9
+            "pearson3/least_squares": "not_converged",
+        }
+        assert len(ranked) == 9
+        assert set(reasons).isdisjoint(ranked)
         notices = [
             w.message for w in caught if isinstance(w.message, DistributionLeftOut)
         ]
         assert {
-            f"{notice.details['distribution']}/{notice.details['fit_method']}"
+            f"{notice.details['distribution']}/{notice.details['fit_method']}": (
+                notice.details["reason"]
+            )
             for notice in notices
-        } == left_out
-        assert {notice.details["reason"] for notice in notices} == {"out_of_range"}
+        } == reasons
 
     def test_a_fit_outside_its_support_names_its_method(self):
         from hydrolog._warnings import OutsideSupport
@@ -429,15 +479,15 @@ class TestEveryFitMethod:
 
     def test_one_combination_raises_its_own_error(self):
         from hydrolog._warnings import DistributionLeftOut
-        from hydrolog.exceptions import CalculationError
+        from hydrolog.exceptions import InvalidParameterError
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
         analysis = FloodFrequencyAnalysis(np.array([1.0, *[10.0] * 8, 10.5]))
         with warnings.catch_warnings(record=True) as seen:
             warnings.simplefilter("always")
-            with pytest.raises(CalculationError) as caught:
+            with pytest.raises(InvalidParameterError) as caught:
                 analysis.fit_all(fit_method="moments", distribution="weibull")
-        assert caught.value.details["reason"] == "out_of_range"
+        assert caught.value.details["constraint"] == "skewness_within_distribution"
         assert caught.value.details["distribution"] == "weibull"
         assert not [w for w in seen if isinstance(w.message, DistributionLeftOut)]
 

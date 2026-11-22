@@ -59,7 +59,7 @@
         "pattern": "^([Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|([Cc][Oo][Mm]|[Ll][Pp][Tt])[1-9¹²³])(\\..*)?$"
       },
       "maxLength": 64,
-      "description": "Names the node and its file `<id>.csv`: letters, digits, `_`, `.` and `-`, not starting with `.` or `-` and not ending with `.`, not a device name of Windows (`con`, `prn`, `aux`, `nul`, `com1` to `com9`, `lpt1` to `lpt9`, any case, any extension); unique without regard to case."
+      "description": "Names the node and its file `hydrolog_node-hydrograph_<id>.csv`: letters, digits, `_`, `.` and `-`, not starting with `.` or `-` and not ending with `.`, not a device name of Windows (`con`, `prn`, `aux`, `nul`, `com1` to `com9`, `lpt1` to `lpt9`, any case, any extension); unique without regard to case."
     },
     "description": {
       "type": "string",
@@ -487,12 +487,12 @@
             "n": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Number of reservoirs in series; > 0, need not be whole. n = 1 is one reservoir (the most attenuation), a large n is a pure delay of the wave."
+              "description": "Number of reservoirs in series; > 0, need not be whole. At the same n K a smaller n attenuates more, a large n is a pure delay of the wave."
             },
             "k_min": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Storage constant K of one reservoir [min]; > 0; the reach delays the wave by n K. Instead of `length_km` and `celerity_m_per_s`."
+              "description": "Storage constant K of one reservoir [min]; > 0; the centroid of the wave moves by n K. Instead of `length_km` and `celerity_m_per_s`."
             },
             "length_km": {
               "type": "number",
@@ -568,7 +568,7 @@
                 "minimum": 0
               },
               "minItems": 1,
-              "description": "Storage of each row of the table [m3], not decreasing, not negative; from the empty state. With `outflow_m3s`, instead of `rating_file`."
+              "description": "Storage of each row of the table [m3], not decreasing, not negative; from the lowest state. With `outflow_m3s`, instead of `rating_file`."
             },
             "outflow_m3s": {
               "type": "array",
@@ -658,7 +658,7 @@
                 "minimum": 0
               },
               "minItems": 1,
-              "description": "Storage of each row of the table [m3], not decreasing, not negative; from the empty state. With `outflow_m3s`, instead of `rating_file`."
+              "description": "Storage of each row of the table [m3], not decreasing, not negative; from the lowest state. With `outflow_m3s`, instead of `rating_file`."
             },
             "outflow_m3s": {
               "type": "array",
@@ -856,6 +856,9 @@
         },
         "flow_path_slope_m_per_m": {
           "type": "number"
+        },
+        "flow_path_equal_area_slope_m_per_m": {
+          "type": "number"
         }
       },
       "additionalProperties": false
@@ -933,7 +936,7 @@
               "enum": [
                 "lutz"
               ],
-              "description": "Nash: how n and K are estimated from the watershed instead of being given (`nash_n`, `nash_k_min`); lutz: the Lutz method (1984, after KZGW 2017) from the watershed fields: L and J of the longest flow path (`flow_path_length_km`, `flow_path_slope_m_per_m`), `Lc_km`, `manning_n`, and `urban_pct` and `forest_pct` (0 without them). Needs `watershed` or `watershed_file`."
+              "description": "Nash: how n and K are estimated from the watershed instead of being given (`nash_n`, `nash_k_min`); lutz: the Lutz method (1984, after KZGW 2017) from the watershed fields: the length L of the longest flow path (`flow_path_length_km`), the equal-area slope Jg of its longitudinal profile (`flow_path_equal_area_slope_m_per_m`), `Lc_km`, `manning_n`, and `urban_pct` and `forest_pct` (0 without them). Needs `watershed` or `watershed_file`."
             },
             "clark_r_min": {
               "type": "number",
@@ -943,7 +946,7 @@
             "clark_r_tc_ratio": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Clark: ratio R/tc (> 0, typically 0.2-1.5), R = ratio · tc; alternative to `clark_r_min`."
+              "description": "Clark: ratio R/tc (> 0, typically 0.2-1.5, to be verified), R = ratio · tc; alternative to `clark_r_min`."
             },
             "snyder_length_km": {
               "type": "number",
@@ -994,22 +997,22 @@
                 "beta",
                 "euler_ii"
               ],
-              "description": "Temporal distribution of the rainfall; `alpha`, `beta` apply to beta, `peak_position` to triangular and euler_ii."
+              "description": "Temporal distribution of the rainfall; `alpha`, `beta` apply to beta, `peak_position` to triangular, `depth_duration_mm` to euler_ii."
             },
             "total_mm": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Total precipitation depth [mm]; > 0."
+              "description": "Total precipitation depth [mm]; > 0. For `euler_ii` the depth of its curve `depth_duration_mm` at `duration_min` (to 0.005 mm)."
             },
             "duration_min": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Rainfall duration [min]; > 0 and not shorter than the time step. The hyetograph has `int(duration_min / timestep_min)` steps; when the duration is not a multiple of the step the tail is not covered (a notice reports it)."
+              "description": "Rainfall duration [min]; > 0, not shorter than the time step and a whole number of steps: the hyetograph has `duration_min / timestep_min` steps and lasts the whole duration."
             },
             "alpha": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Parameter α of the Beta distribution (shape of the rising limb), > 0; only for `beta`; default 2. The pair (2; 5) gives an early peak (convective storm), (2; 2) a symmetric one, (5; 2) a late one."
+              "description": "Parameter α of the Beta distribution (shape of the rising limb), > 0; only for `beta`; default 2. The pair (2; 5) puts the peak at 0.2 of the duration, (2; 2) at the centre, (5; 2) at 0.8."
             },
             "beta": {
               "type": "number",
@@ -1018,9 +1021,13 @@
             },
             "peak_position": {
               "type": "number",
-              "maximum": 1,
               "exclusiveMinimum": 0,
-              "description": "Relative position of the peak within the duration, 0 < p < 1 (exclusive); only for `triangular` (default 0.5) and `euler_ii` (default 0.33)."
+              "exclusiveMaximum": 1,
+              "description": "Relative time of the peak of the triangle within the duration (Yen and Chow's storm advancement coefficient r), 0 < r < 1 (exclusive); only for `triangular`; default 0.5."
+            },
+            "depth_duration_mm": {
+              "type": "object",
+              "description": "Depth-duration curve of one probability for `euler_ii`: an object of duration [min] to depth [mm], e.g. `{\"5\": 8.48, \"10\": 12.16, ...}` or the `depth_duration_mm` of `precip pmaxtp`; not decreasing, from the time step to `duration_min`. Durations between its points are interpolated linearly in ln D. The blocks are its increments in the order of the durations: the first in the peak interval, the next before it back to t = 0, the rest after it (as itwh does; for an IDF curve the increments sorted from the largest)."
             }
           },
           "additionalProperties": false

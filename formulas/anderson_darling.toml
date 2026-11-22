@@ -1,0 +1,231 @@
+schema = "nogat-formula-card/1"
+name = "anderson_darling"
+title = "Anderson-Darling statistic A² of a sample against a fitted distribution"
+function = "hydrolog.statistics.frequency.anderson_darling"
+family = "statistic"
+formula_version = 1
+status = "oracle only"
+equation = "A² = -n - sum_i (2 i - 1) / n [ln F(x_(i)) + ln(1 - F(x_(n+1-i)))] over the ascending sample x_(1) <= ... <= x_(n), F the distribution function at the parameters, clipped to [cdf_clip, 1 - cdf_clip]"
+latex = "A^2 = -n - \\sum_{i=1}^{n} \\frac{2i - 1}{n}\\left[\\ln F(x_{(i)}) + \\ln\\left(1 - F(x_{(n+1-i)})\\right)\\right]"
+validation = "none: a distance between the sample and the fitted distribution"
+conventions = ["the statistic of a distribution given in advance (case 0 of Stephens 1974), here at the parameters estimated from the same sample: its critical values are not case 0's", "the critical values FloodFrequencyAnalysis gives a fit by L-moments are those of a parametric bootstrap of that fit (ADR-0048): 999 samples of n values drawn from it with the seed 20261118, each refitted by L-moments; a fit by another method has none", "F clipped to [cdf_clip, 1 - cdf_clip], so a value outside the support of the distribution adds a large finite term instead of an infinite one", "F of scipy.stats at the parameters of its lognorm, genextreme, pearson3 or weibull_min", "the sample in any unit, with loc and scale in it: A² has none"]
+assumptions = []
+notices = []
+reference_cases = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_sample"
+
+[properties.scalings.inputs]
+annual_maxima = 1.0
+loc = 1.0
+scale = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "(x - loc) / scale of the doubled sample, loc and scale is the same float, so F is"
+abs = 0.0
+
+[[properties.limits]]
+name = "integral_form"
+text = "n times the integral of (F_n(u) - u)² / (u (1 - u)) over [0, 1], in closed pieces at 50 digits, for the L-moment fits of two samples and a Weibull distribution that leaves a value outside its support"
+
+[[properties.symmetries]]
+name = "order"
+text = "the sample in the reverse order has the same A²"
+
+[properties.symmetries.tolerance]
+reason = "the statistic sorts the sample first"
+abs = 0.0
+
+[[sources]]
+citation = "NIST/SEMATECH e-Handbook of Statistical Methods (2012)"
+access = "open"
+locator = "sect. 1.3.5.14, Anderson-Darling test: A² = -N - S, S = sum (2i - 1) / N [ln F(Y_i) + ln(1 - F(Y_(N+1-i)))] of the ordered data"
+url = "https://www.itl.nist.gov/div898/handbook/eda/section3/eda35e.htm"
+
+[[sources]]
+citation = "Anderson, T.W. and Darling, D.A. (1954). A test of goodness of fit. Journal of the American Statistical Association 49(268), 765-769"
+access = "author-provided"
+locator = "the statistic W_n² and its computing form"
+
+[[sources]]
+citation = "Stephens, M.A. (1974). EDF statistics for goodness of fit and some comparisons. Journal of the American Statistical Association 69(347), 730-737"
+access = "author-provided"
+locator = "the computing form of A²; case 0, a distribution given in advance"
+
+[[variables]]
+name = "annual_maxima"
+symbol = "x_i"
+unit = "m3/s"
+kind = "real_array"
+description = "The sample: annual maxima, or any sample of the distribution."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0"
+
+[variables.typical]
+low = 0.81
+low_inclusive = true
+high = 111.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "distribution"
+symbol = "F"
+unit = "-"
+kind = "choice"
+description = "The distribution: the log-normal of location 0, the GEV, Pearson type III or the three-parameter Weibull distribution of scipy.stats."
+choices = ["log_normal", "gev", "pearson3", "weibull"]
+
+[[variables]]
+name = "shape"
+symbol = "k"
+unit = "-"
+kind = "real"
+description = "Shape: s of the log-normal, c of the GEV (scipy's sign, k of Hosking, -xi of Coles), the skewness of Pearson III, the Weibull shape."
+applicability = "unstated"
+
+[variables.physical]
+test_low = -9.0
+test_high = 50.0
+test_reason = "the shapes of Hydrolog's estimators: a Pearson III skewness above -9 by least squares, a GEV c and a Weibull shape of at most 50"
+
+[variables.typical]
+low = -0.6
+low_inclusive = true
+high = 2.7
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "loc"
+symbol = "\\xi"
+unit = "m3/s"
+kind = "real"
+description = "Location."
+applicability = "unstated"
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of the sample (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below its gauge's zero, so the same bound holds below 0"
+
+[variables.typical]
+low = -1.0
+low_inclusive = true
+high = 35.4
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "scale"
+symbol = "\\alpha"
+unit = "m3/s"
+kind = "real"
+description = "Scale."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000000.0
+test_reason = "the formulas are homogeneous in the unit of loc and scale (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 37.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54)"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[constraints]]
+name = "shape_of_the_distribution"
+class = "physical"
+text = "shape > 0 for the log-normal (s) and Weibull (k)"
+
+[constraints.source]
+citation = "Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272"
+access = "open"
+locator = "scipy.stats.lognorm, shape s > 0, and scipy.stats.weibull_min, shape c > 0"
+url = "https://docs.scipy.org/doc/scipy/reference/stats.html"
+
+[[constants]]
+name = "cdf_clip"
+value = 1e-10
+unit = "-"
+symbol = "\\epsilon"
+
+[constants.source]
+citation = "Hydrolog (2026). ADR-0048: Anderson-Darling critical values by a parametric bootstrap"
+access = "open"
+locator = "decision 1: A² keeps its form, F clipped to [1e-10, 1 - 1e-10]"
+url = "https://github.com/Daldek/Hydrolog/blob/main/docs/decisions/0048-anderson-darling-critical-values-by-a-parametric-bootstrap.md"
+
+[[outputs]]
+name = "a_squared"
+unit = "-"
+kind = "real"
+symbol = "A^2"
+description = "The statistic: n times the integral of the squared distance of the empirical and the fitted distribution functions, weighted by 1 / (F (1 - F))."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "limit integral_form: ln F at a value outside the support, where F = 0, is ln cdf_clip"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case annual_maxima-nan_element: a gap is refused"
+
+[[oracles]]
+kind = "exact"
+description = "the integral form of the definition, n times the integral of (F_n(u) - u)² / (u (1 - u)) du, in closed pieces at 50 digits (decimal)"
+test = "tests/unit/test_formulas_flood_frequency.py (limit integral_form)"
+conventions = []
+
+[[oracles]]
+kind = "established"
+description = "scipy.stats.anderson for the normal distribution (Pearson III of skewness 0) and the Gumbel distribution (the GEV of c = 0)"
+test = "tests/unit/test_formulas_flood_frequency.py (test_the_a_squared_is_scipys)"
+conventions = ["scipy.stats.anderson estimates the parameters itself (the mean and the standard deviation of ddof 1; the Gumbel's by maximum likelihood): they are given to the formula", "scipy takes ln F and ln(1 - F) as logcdf and logsf, unclipped"]

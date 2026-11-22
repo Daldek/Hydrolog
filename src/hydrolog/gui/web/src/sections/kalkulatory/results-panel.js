@@ -25,7 +25,7 @@ import { describeError } from "../../labels/errors.js";
 import { exportLabels } from "../../labels/exports.js";
 import { kalkulatory as texts } from "../../labels/kalkulatory.js";
 import { results as resultTexts } from "../../labels/results.js";
-import { CommandLine, copyText, ExportButtons, FileList, LINE_DELAY_MS } from "../../ui/export-panel.js";
+import { CommandLine, copyText, ExportButtons, FileList, fileName, LINE_DELAY_MS } from "../../ui/export-panel.js";
 import { InfoButton } from "../../ui/info-button.js";
 import { DataTable } from "../../ui/table.js";
 import { toast } from "../../ui/toast.js";
@@ -148,7 +148,7 @@ export function CompareResults({ run, rows, selected, onSelect, onUse, usable })
   const overland = rows.some((row) => row.ok && (row.method === "faa" || row.method === "kerby"));
   const chosen = rows.find((row) => row.method === selected) || null;
   const saveCsv = () => {
-    const name = "porownanie-tc.csv";
+    const name = fileName("tc-comparison", [], "csv");
     downloadBlob(new Blob([compareCsv(rows)], { type: "text/csv;charset=utf-8" }), name);
     toast(t(exportLabels.saved, { name }));
   };

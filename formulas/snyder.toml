@@ -1,0 +1,479 @@
+schema = "nogat-formula-card/1"
+name = "snyder"
+title = "Snyder's synthetic unit hydrograph: lag, peak, time base and widths"
+function = "hydrolog.runoff.snyder_uh.snyder_parameters"
+family = "empirical"
+formula_version = 1
+status = "referenced"
+equation = "tL = Ct (L Lc)^0.3 [h, L and Lc in km, Ct in SI units]; tD = tL / 5.5; tLR = tL + (D - tD) / 4; tpR = tLR + D / 2; qp = 0.275 Cp A / tL, qpR = 0.275 Cp A / tLR [m3/s per mm, A in km2, times in h]; tb = 0.556 A / qpR [h]; W50 = 770 (qpR / A)^-1.08 and W75 = 440 (qpR / A)^-1.08 [h, qpR / A in ft3/s per mi2 and in], 0.17829 and 0.10188 with qpR / A in m3/s per km2 and mm; times given in min"
+latex = "t_L = C_t\\,(L\\,L_c)^{0.3},\\quad t_D = \\frac{t_L}{5.5},\\quad t_{LR} = t_L + \\frac{D - t_D}{4},\\quad t_{pR} = t_{LR} + \\frac{D}{2},\\quad q_{pR} = \\frac{0.275\\,C_p\\,A}{t_{LR}},\\quad t_b = \\frac{0.556\\,A}{q_{pR}},\\quad W_{50} = 770 \\left(\\frac{q_{pR}}{A}\\right)^{-1.08}"
+validation = "Snyder (1938) derived the relations from watersheds of the Appalachian Highlands of 10 to 10,000 square miles (Chow et al. 1988 after Rajagopalan's notes, p. 76); Ct and Cp are regional and best found by calibration (HEC-HMS); the sources give no error statistic"
+conventions = ["SI units: A in km2, L and Lc in km; Ct in SI units holds Snyder's 0.75 (HEC-HMS: tp = C Ct (L Lc)^0.3, C = 0.75 in SI), so that its 1.35 to 1.65 is 0.75 times Snyder's 1.8 to 2.2 (KZGW 2017 p. 90)", "peaks in m3/s per mm of runoff: 0.275 and 0.556 per mm are Chow's 2.75 and 5.56 per cm (KZGW 2017 eqs. 6.7 and 6.11)", "times from the beginning of the unit rainfall, given in min: the lag tL is Snyder's tp of HEC-HMS and Chow, the time to peak is KZGW's tp = tL + tD / 2 for D = tD and tpR = tLR + D / 2 for another D", "tb is the base of the triangle of the peak qpR that holds 1 mm (KZGW 2017 eq. 6.11, Chow's C3 / qpR), not the end of the curve of snyder_shape", "the widths are those of Chow et al. (1988), from qpR per unit area, with Snyder's 770 and 440 converted exactly from ft3/s per mi2 and in (1 / 2323.2 m3/s per km2 and mm, the units table): 0.17829 and 0.10188; Chow's SI 2.14 and 1.22 per cm round them (0.17800 and 0.10148 per mm, 0.2 % and 0.4 % lower)", "L is the length of the main stream from the outlet to the divide, Lc the length along it to the point nearest the centroid (KZGW 2017 p. 90)"]
+assumptions = ["the coefficients Ct and Cp are those of the region, best calibrated on gauged watersheds of it (HEC-HMS); KZGW 2017 gives 1.35 to 1.65 and 0.4 to 0.8", "most watersheds of the ecosystem (the hand-offs' areas up to 250 km2) are smaller than Snyder's, 30 to 30,000 km2: they get the notice outside_applicability of snyder.area_km2"]
+notices = ["outside_applicability"]
+reference_cases = ["tests/fixtures/formulas/unit-hydrographs-cases.json"]
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+symmetries = []
+
+[properties.monotonic]
+length_km = 1
+centroid_length_km = 1
+ct = 1
+
+[[properties.limits]]
+name = "standard_duration"
+text = "the rainfall of the standard duration D = tD keeps the lag tL and the peak qp, with tpR = tL + tD / 2 (KZGW 2017 eqs. 6.4 and 6.8 to 6.10)"
+
+[properties.limits.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "eqs. 6.4 and 6.8 to 6.10, pp. 90-91"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[properties.limits]]
+name = "decimal_oracle"
+text = "every output equals the equations in decimal arithmetic of fifty digits, the widths from 770 and 440 in foot-pound units"
+
+[[properties.conservation]]
+name = "triangle_volume"
+text = "the triangle of the peak qpR and the base tb holds 1 mm over the watershed, qpR tb / 2 = A x 1 mm, within the rounding of 0.556"
+
+[properties.conservation.tolerance]
+reason = "0.556 rounds 2 x 1000 / 3600 = 0.5556 (KZGW 2017 eq. 6.11): the triangle holds 0.556 x 1.8 = 1.0008 mm"
+abs = 0.001
+
+[[sources]]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "eqs. 6.4 to 6.11, pp. 90-92; example 6.1, pp. 92-95"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[sources]]
+citation = "USACE-HEC (2000). Hydrologic Modeling System HEC-HMS, Technical Reference Manual (CPD-74B, March 2000)"
+access = "open"
+locator = "Snyder's unit hydrograph model, eqs. 30-32, pp. 54-55"
+url = "https://www.hec.usace.army.mil/software/hec-hms/documentation/HEC-HMS_Technical%20Reference%20Manual_%28CPD-74B%29.pdf"
+
+[[sources]]
+citation = "USACE-HEC. HEC-HMS Technical Reference Manual (online, read 2026-11-19), chapter Transform"
+access = "open"
+locator = "Snyder Unit Hydrograph Model, eqs. 1 to 5: tp = C Ct (L Lc)^0.3, C = 0.75 in SI and 1.00 in foot-pound units"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/transform/snyder-unit-hydrograph-model"
+
+[[sources]]
+citation = "Rajagopalan, B. CVEN 5333 lecture notes, Unit Hydrographs, after Chow, V.T., Maidment, D.R. and Mays, L.W. (1988), Applied Hydrology, chapter 7, University of Colorado Boulder"
+access = "open"
+locator = "Snyder's synthetic unit hydrograph, pp. 76-78, eqs. 7.7.2-7.7.6"
+url = "https://civil.colorado.edu/~balajir/CVEN5333/Lectures/Unit-Hydrographs-Chow-Chap7.pdf"
+
+[[sources]]
+citation = "Innovyze. InfoSWMM help, Snyder Unit Hydrograph Method (online, read 2026-11-19)"
+access = "open"
+locator = "the widths W50 and W75 of the unit hydrograph: C50 = 770 and C75 = 440 in U.S. customary units, 2.14 and 1.22 in S.I. units; C2 = 640 and 2.75 of the peak"
+url = "https://help.innovyze.com/space/infoswmm/17598671/Snyder+Unit+Hydrograph+Method"
+
+[[variables]]
+name = "area_km2"
+symbol = "A"
+unit = "km2"
+kind = "real"
+description = "Area of the watershed."
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000000.0
+test_reason = "a million km2, five times the basin of the Vistula (194,000 km2) and four thousand times the largest watershed Hydrograf hands over"
+
+[variables.applicability]
+low = 30.0
+low_inclusive = true
+high = 30000.0
+high_inclusive = true
+
+[variables.applicability.source]
+citation = "Rajagopalan, B. CVEN 5333 lecture notes, Unit Hydrographs, after Chow, V.T., Maidment, D.R. and Mays, L.W. (1988), Applied Hydrology, chapter 7, University of Colorado Boulder"
+access = "open"
+locator = "p. 76: Snyder's watersheds in the Appalachian Highlands, of 30 to 30,000 km2 (10 to 10,000 mi2)"
+url = "https://civil.colorado.edu/~balajir/CVEN5333/Lectures/Unit-Hydrographs-Chow-Chap7.pdf"
+
+[variables.typical]
+low = 0.0003
+low_inclusive = true
+high = 250.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 135 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)"
+
+[[variables]]
+name = "length_km"
+symbol = "L"
+unit = "km"
+kind = "real"
+description = "Length of the main stream from the outlet to the divide."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 2000.0
+test_reason = "twice the length of the Vistula (1,047 km), the longest river of Poland"
+
+[variables.typical]
+low = 0.05
+low_inclusive = true
+high = 29.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: the longest flow paths of the 27 watersheds that have one, 0.057 to 28.9 km (flow_path_length_km): Snyder's L runs from the outlet to the divide, and Lc along it to the point nearest the centroid"
+
+[[variables]]
+name = "centroid_length_km"
+symbol = "L_c"
+unit = "km"
+kind = "real"
+description = "Length along the main stream from the outlet to the point nearest the centroid of the watershed."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 2000.0
+test_reason = "twice the length of the Vistula (1,047 km), the longest river of Poland"
+
+[variables.typical]
+low = 0.05
+low_inclusive = true
+high = 29.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: the longest flow paths of the 27 watersheds that have one, 0.057 to 28.9 km (flow_path_length_km): Snyder's L runs from the outlet to the divide, and Lc along it to the point nearest the centroid"
+
+[[variables]]
+name = "ct"
+symbol = "C_t"
+unit = "-"
+kind = "real"
+description = "Time coefficient in SI units."
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 60.0
+test_reason = "ten times the largest Ct HEC-HMS reports, 8.0 in foot-pound units (6.0 in SI) near the Gulf of Mexico"
+
+[variables.applicability]
+low = 1.35
+low_inclusive = true
+high = 1.65
+high_inclusive = true
+
+[variables.applicability.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "p. 90, eq. 6.5: Ct from 1.35 to 1.65 in SI units, 0.75 times Snyder's 1.8 to 2.2"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[variables.typical]
+low = 1.35
+low_inclusive = true
+high = 1.65
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "p. 90, eq. 6.5: Ct from 1.35 to 1.65 in SI units"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "cp"
+symbol = "C_p"
+unit = "-"
+kind = "real"
+description = "Peak coefficient."
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 8.0
+test_reason = "ten times the largest Cp of the sources, 0.8"
+
+[variables.applicability]
+low = 0.4
+low_inclusive = true
+high = 0.8
+high_inclusive = true
+
+[variables.applicability.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona); and USACE-HEC (2000). Hydrologic Modeling System HEC-HMS, Technical Reference Manual (CPD-74B, March 2000)"
+access = "open"
+locator = "KZGW 2017, annex 2, p. 91, eq. 6.7: Cp from 0.4 to 0.8; HEC-HMS 2000, Snyder's unit hydrograph model, p. 54: 0.4 to 0.8"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[variables.typical]
+low = 0.4
+low_inclusive = true
+high = 0.8
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "p. 91, eq. 6.7: Cp from 0.4 to 0.8"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "duration_min"
+symbol = "D"
+unit = "min"
+kind = "real"
+description = "Duration of the unit of excess rainfall."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1440.0
+test_reason = "a day, the step of a daily rainfall series (E5b-07: tc 90.7 min at a step of 1440 min)"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 60.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2); and KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: 5 min; KZGW 2017, annex 2, ex. 6.1 and 6.2 (1 h) and 6.4 (0.5 h), pp. 92-110"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[constraints]]
+name = "representable"
+class = "precondition"
+text = "float64 holds the lag, the peaks, the time base and the widths as normal numbers"
+
+[constraints.source]
+citation = "IEEE 754 double precision (float64)"
+access = "open"
+locator = "normal numbers from 2.2e-308 to 1.8e308"
+
+[[constants]]
+name = "lag_exponent"
+value = 0.3
+unit = "-"
+symbol = "0.3"
+
+[constants.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "eq. 6.5, p. 90: tL = Ct (L Lc)^0.3; HEC-HMS (online), Snyder Unit Hydrograph Model, eq. 5; Chow et al. 1988 after Rajagopalan's notes, eq. 7.7.2, p. 76"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[constants]]
+name = "standard_ratio"
+value = 5.5
+unit = "-"
+symbol = "5.5"
+
+[constants.source]
+citation = "USACE-HEC (2000). Hydrologic Modeling System HEC-HMS, Technical Reference Manual (CPD-74B, March 2000)"
+access = "open"
+locator = "eq. 30: tp = 5.5 tr; KZGW 2017, annex 2, eq. 6.6, p. 91: tD = tL / 5.5"
+url = "https://www.hec.usace.army.mil/software/hec-hms/documentation/HEC-HMS_Technical%20Reference%20Manual_%28CPD-74B%29.pdf"
+
+[[constants]]
+name = "adjustment"
+value = 0.25
+unit = "-"
+symbol = "1/4"
+
+[constants.source]
+citation = "USACE-HEC (2000). Hydrologic Modeling System HEC-HMS, Technical Reference Manual (CPD-74B, March 2000)"
+access = "open"
+locator = "eq. 31: tpR = tp - (tr - tR) / 4; KZGW 2017, annex 2, eq. 6.8, p. 91: tLR = tL + 0.25 (D - tD)"
+url = "https://www.hec.usace.army.mil/software/hec-hms/documentation/HEC-HMS_Technical%20Reference%20Manual_%28CPD-74B%29.pdf"
+
+[[constants]]
+name = "peak_factor"
+value = 0.275
+unit = "m3 s^-1 km^-2 mm^-1 h"
+symbol = "0.275"
+
+[constants.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "eq. 6.7, p. 91: qp = 0.275 Cp A / tL in m3/s per mm; HEC-HMS 2000, eq. 32, and Chow et al. 1988 after Rajagopalan's notes, eq. 7.7.3, p. 77: C2 = 2.75 per cm"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[constants]]
+name = "base_factor"
+value = 0.556
+unit = "h m3 s^-1 km^-2 mm^-1"
+symbol = "0.556"
+
+[constants.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "eq. 6.11, p. 92: tb = 0.556 A / qpR; Chow et al. 1988 after Rajagopalan's notes, p. 78: C3 = 5.56 per cm"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[constants]]
+name = "width_50"
+value = 770.0
+unit = "h (ft3 s^-1 mi^-2 in^-1)^1.08"
+symbol = "770"
+
+[constants.source]
+citation = "Rajagopalan, B. CVEN 5333 lecture notes, Unit Hydrographs, after Chow, V.T., Maidment, D.R. and Mays, L.W. (1988), Applied Hydrology, chapter 7, University of Colorado Boulder"
+access = "open"
+locator = "p. 78: W = Cw qpR^-1.08 with Cw = 770 at 50 % of the peak in English units (2.14 in SI per cm); Innovyze, Snyder Unit Hydrograph Method: C50 = 770"
+url = "https://civil.colorado.edu/~balajir/CVEN5333/Lectures/Unit-Hydrographs-Chow-Chap7.pdf"
+
+[[constants]]
+name = "width_75"
+value = 440.0
+unit = "h (ft3 s^-1 mi^-2 in^-1)^1.08"
+symbol = "440"
+
+[constants.source]
+citation = "Rajagopalan, B. CVEN 5333 lecture notes, Unit Hydrographs, after Chow, V.T., Maidment, D.R. and Mays, L.W. (1988), Applied Hydrology, chapter 7, University of Colorado Boulder"
+access = "open"
+locator = "p. 78: Cw = 440 at 75 % of the peak in English units (1.22 in SI per cm); Innovyze, Snyder Unit Hydrograph Method: C75 = 440"
+url = "https://civil.colorado.edu/~balajir/CVEN5333/Lectures/Unit-Hydrographs-Chow-Chap7.pdf"
+
+[[constants]]
+name = "width_exponent"
+value = 1.08
+unit = "-"
+symbol = "1.08"
+
+[constants.source]
+citation = "Rajagopalan, B. CVEN 5333 lecture notes, Unit Hydrographs, after Chow, V.T., Maidment, D.R. and Mays, L.W. (1988), Applied Hydrology, chapter 7, University of Colorado Boulder"
+access = "open"
+locator = "p. 78: W = Cw qpR^-1.08, qpR per unit area"
+url = "https://civil.colorado.edu/~balajir/CVEN5333/Lectures/Unit-Hydrographs-Chow-Chap7.pdf"
+
+[[outputs]]
+name = "lag_time_min"
+unit = "min"
+kind = "real"
+symbol = "t_L"
+description = "Basin lag, from the centre of the rainfall of tD to the peak."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "standard_duration_min"
+unit = "min"
+kind = "real"
+symbol = "t_D"
+description = "Standard rainfall duration."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "adjusted_lag_time_min"
+unit = "min"
+kind = "real"
+symbol = "t_{LR}"
+description = "Lag of the duration D."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "time_to_peak_min"
+unit = "min"
+kind = "real"
+symbol = "t_{pR}"
+description = "Time to peak of the duration D from the beginning of the rainfall."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "standard_peak_discharge_m3s"
+unit = "m3/s per mm"
+kind = "real"
+symbol = "q_p"
+description = "Peak of the standard duration."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "peak_discharge_m3s"
+unit = "m3/s per mm"
+kind = "real"
+symbol = "q_{pR}"
+description = "Peak of the duration D."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "time_base_min"
+unit = "min"
+kind = "real"
+symbol = "t_b"
+description = "Base of the triangle of the peak qpR that holds 1 mm."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "width_50_min"
+unit = "min"
+kind = "real"
+symbol = "W_{50}"
+description = "Width of the unit hydrograph at 50 % of the peak qpR."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "width_75_min"
+unit = "min"
+kind = "real"
+symbol = "W_{75}"
+description = "Width of the unit hydrograph at 75 % of the peak qpR."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "the powers (L Lc)^0.3 and (qpR / A)^-1.08 at the bounds 0 of the inputs: range cases *-physical_low_inside, refused by the precondition representable where an output leaves the normal numbers"
+
+[[oracles]]
+kind = "exact"
+description = "every output in decimal arithmetic of fifty digits, the widths from Snyder's 770 and 440 in foot-pound units and the exact conversion of ft3/s per mi2 and in"
+test = "tests/unit/test_formulas_unit_hydrographs.py (limit decimal_oracle)"
+conventions = []

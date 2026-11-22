@@ -185,10 +185,11 @@ def test_every_local_file_the_page_links_exists(name: str) -> None:
     assert linked and missing == []
 
 
-def test_the_admin_page_is_the_kit_shell_alone() -> None:
-    """The admin page is Nogat's ``<nogat-admin>`` and nothing of the app's own
-    (DEV-15.13): ``noindex``, the kit's script and stylesheet on the tokens, the stored
-    theme, and no app menu, footer, regulamin link or script of the app."""
+def test_the_admin_page_is_the_kit_shell_with_hydrologs_note() -> None:
+    """The admin page is Nogat's ``<nogat-admin>`` (DEV-15.13): ``noindex``, the kit's
+    script and stylesheet on the tokens, the stored theme, and of the app only
+    ``admin.js`` after the kit (what the daily totals count); no app menu, footer or
+    regulamin link."""
     page = (WEB / "admin" / "index.html").read_text(encoding="utf-8")
     tags = re.findall(r"<(script|link|meta|nogat-[a-z-]+|footer)\b([^>]*)>", page)
     attributes = [
@@ -198,6 +199,7 @@ def test_the_admin_page_is_the_kit_shell_alone() -> None:
     assert [a.get("src") for tag, a in attributes if tag == "script"] == [
         "../theme-init.js",
         "../nogat/nogat-admin.js",
+        "admin.js",
     ]
     assert [a["href"] for tag, a in attributes if a.get("rel") == "stylesheet"] == [
         "../nogat/tokens.css",
@@ -218,7 +220,10 @@ def test_the_admin_page_is_the_kit_shell_alone() -> None:
         )
     ]
     assert "regulamin" not in page.lower()
-    assert sorted(path.name for path in (WEB / "admin").iterdir()) == ["index.html"]
+    assert sorted(path.name for path in (WEB / "admin").iterdir()) == [
+        "admin.js",
+        "index.html",
+    ]
 
 
 @pytest.mark.parametrize(

@@ -3,10 +3,10 @@
 Against the real server of ``gui_server``: a first visit shows the three steps empty and
 runs nothing until a model is chosen; the guide's worked example (Kamiennik at
 Świerzawa, ``tests/fixtures/kamiennik.json``, stored with ``seed_hydrogram`` with its
-PMAXTP depth remembered at the mockup's 105 mm) shows its result, „57,88 m³/s” at „6:40”
-and „1 046 713 m³”, as the server's ``hydrograph generate`` computed it.
+PMAXTP depth remembered at the mockup's 105 mm) shows its result, „57,90 m³/s” at „6:40”
+and „1 046 738 m³”, as the server's ``hydrograph generate`` computed it.
 PMAXTP fetches the depth of the point, p and the duration once (``precip pmaxtp``,
-answered from the table recorded at the outlet: 101,82 mm and „54,20 m³/s”), shows it
+answered from the table recorded at the outlet: 101,82 mm and „54,23 m³/s”), shows it
 read-only, kept with the inputs; a point outside the atlas stands on its field and
 an unreachable IMGW-PIB on the depth, with „Pobierz ponownie”. Switching the tc method,
 AMC and the unit hydrograph model reproduces the mockup's runs (Nash by Lutz in one run
@@ -58,6 +58,7 @@ from tests.e2e.conftest import (
     input_text,
     kamiennik_inputs,
     open_part,
+    pmaxtp_curve,
     pmaxtp_route,
     seed_hydrogram,
     sources_listed,
@@ -92,6 +93,7 @@ STEP_ONE = [
     "channel_length_km",
     "flow_path_length_km",
     "flow_path_slope_m_per_m",
+    "flow_path_equal_area_slope_m_per_m",
     "cn",
 ]
 """The fields of the watershed in step 1, which a run sends when they hold a value."""
@@ -124,30 +126,33 @@ LUTZ_OPTIONS = {
     "area_km2": 37.22,
     "lutz_length_km": 15.88,
     "lutz_centroid_length_km": 6.76,
-    "lutz_slope_m_per_m": 0.0114,
+    "lutz_slope_m_per_m": 0.00848,
     "lutz_manning_n": 0.035,
     "lutz_forest_pct": 57.4,
     "lutz_urban_pct": 1.0,
     "timestep_min": 10,
 }
-"""The example's Nash by Lutz as ``uh nash`` takes it (L and J of the longest flow path,
-which ``nash_estimation`` reads): the first of the two runs the page made before."""
+"""The example's Nash by Lutz as ``uh nash`` takes it (L of the longest flow path and J
+the equal-area slope of its profile, which ``nash_estimation`` reads): the first of the
+two runs the page made before."""
 # What the page writes in the KPI tiles (Qmax, time to peak, volume) for the mockup's
 # runs (its #hg-data, 6 tc methods x AMC I-III x 4 models), by (model, tc method, AMC),
 # as Hydrolog computes them: tc from the inputs each method's source defines (Kirpich
-# and NRCS from the longest flow path), Snyder's peak since its unit hydrograph peaks at
-# qpR, Nash by Lutz from L and J of the longest flow path (the mockup's tc and Snyder's
-# 29,14 came before those changes).
+# and NRCS from the longest flow path) with the sources' own constants in their units,
+# Snyder's peak since its unit hydrograph peaks at qpR and its L from the longest flow
+# path to the divide, Nash by Lutz from L of the longest flow path and J the equal-area
+# slope of its profile (ADR-0053; the mockup's tc and Snyder's 29,14 came before those
+# changes).
 MOCKUP = {
-    ("scs", "kirpich", "II"): ("57,88", "6:40", "1 046 713"),
-    ("scs", "nrcs", "II"): ("41,64", "9:00", "1 046 957"),
-    ("scs", "giandotti", "II"): ("45,57", "8:20", "1 046 934"),
-    ("scs", "kerby_kirpich", "II"): ("55,92", "6:50", "1 046 762"),
-    ("scs", "kirpich", "III"): ("111,08", "6:00", "2 112 788"),
-    ("scs", "kirpich", "I"): ("12,19", "7:50", "193 986"),
-    ("clark", "kirpich", "II"): ("52,74", "7:10", "1 046 551"),
-    ("nash", None, "II"): ("37,48", "9:10", "1 046 543"),
-    ("snyder", None, "II"): ("27,46", "11:00", "1 046 551"),
+    ("scs", "kirpich", "II"): ("57,90", "6:40", "1 046 738"),
+    ("scs", "nrcs", "II"): ("41,66", "9:00", "1 046 960"),
+    ("scs", "giandotti", "II"): ("45,56", "8:20", "1 046 934"),
+    ("scs", "kerby_kirpich", "II"): ("55,94", "6:50", "1 046 759"),
+    ("scs", "kirpich", "III"): ("111,13", "6:00", "2 112 838"),
+    ("scs", "kirpich", "I"): ("12,19", "7:50", "193 991"),
+    ("clark", "kirpich", "II"): ("52,76", "7:10", "1 046 551"),
+    ("nash", None, "II"): ("34,42", "9:40", "1 046 543"),
+    ("snyder", None, "II"): ("26,98", "11:00", "1 046 551"),
 }
 # Scroll containers that must not scroll sideways: the page and an open sheet.
 SIDEWAYS = """() => [document.documentElement,
@@ -414,7 +419,7 @@ def test_the_worked_example_shows_the_result_of_the_mockup(tab: Tab) -> None:
         [
             "37,22 km² · kamiennik.json",
             "105,0 mm · 12 h · p 1%",
-            "SCS · 187,4 min · Kirpich",
+            "SCS · 187,1 min · Kirpich",
         ]
     )
     # Step 1 says which of its fields the model reads: Kirpich the longest flow path's
@@ -431,16 +436,20 @@ def test_the_worked_example_shows_the_result_of_the_mockup(tab: Tab) -> None:
     assert needs.evaluate_all(
         "items => items.map((item) => item.closest('.frow').dataset.field)"
     ) == ["area_km2", "cn", "flow_path_length_km", "flow_path_slope_m_per_m"]
-    # The longest flow path's rows of step 1: its length in km, its slope in m/m with
-    # the slope in % beside it
+    # The longest flow path's rows of step 1: its length in km, its slopes in m/m with
+    # the slope in % beside each
     flow_path = page.locator(
         f'{LEFT} [data-step="watershed"] [data-field^="flow_path_"]'
     )
     expect(flow_path.locator("label")).to_contain_text(
-        ["Długość najdłuższej drogi spływu", "Spadek najdłuższej drogi spływu"]
+        [
+            "Długość najdłuższej drogi spływu",
+            "Spadek najdłuższej drogi spływu",
+            "Spadek wyrównany najdłuższej drogi spływu",
+        ]
     )
-    expect(flow_path.locator(".unit")).to_have_text(["km", "m/m"])
-    expect(flow_path.locator(".aux")).to_have_text("= 1,14 %")
+    expect(flow_path.locator(".unit")).to_have_text(["km", "m/m", "m/m"])
+    expect(flow_path.locator(".aux")).to_have_text(["= 1,14 %", "= 0,848 %"])
     expect(page.locator(f'{LEFT} [data-summary="ok"]')).to_have_text(
         "Model ma wszystkie potrzebne dane."
     )
@@ -448,7 +457,7 @@ def test_the_worked_example_shows_the_result_of_the_mockup(tab: Tab) -> None:
         ["CN 65", "S = 136,8 mm", "Ia = λ·S = 27,4 mm"]
     )
     expect(page.locator(f'{LEFT} [data-chips="uh"] .chip')).to_have_text(
-        ["tc = 187,4 min", "tp = 117,4 min", "qp = 3,96 m³/s na 1 mm"]
+        ["tc = 187,1 min", "tp = 117,3 min", "qp = 3,96 m³/s na 1 mm"]
     )
 
     # The hyetograph hangs above the hydrograph; the peak is the result's
@@ -457,7 +466,7 @@ def test_the_worked_example_shows_the_result_of_the_mockup(tab: Tab) -> None:
         "SCS · Kirpich · AMC II · PMAXTP p 1%, 12 h, Beta (2; 5) · Δt 10 min"
     )
     expect(chart.locator(".bars.bar-p rect")).to_have_count(72)
-    expect(chart.locator(".peak-label")).to_have_text("Qmax 57,88 m³/s · 6:40 h")
+    expect(chart.locator(".peak-label")).to_have_text("Qmax 57,90 m³/s · 6:40 h")
     effective = sum(1 for value in result["effective_precipitation_mm"] if value > 0)
     expect(chart.locator(".bars.bar-pe rect")).to_have_count(effective)
     parts = page.locator('[data-chart="cumulative"], [data-chart="uh"]')
@@ -467,22 +476,23 @@ def test_the_worked_example_shows_the_result_of_the_mockup(tab: Tab) -> None:
     )
 
     # The balance of the rainfall and the notes: Hydrolog's notices, the example lying
-    # outside Kirpich's data (the verdicts are compared below)
+    # outside Kirpich's data in its area and its flow path's length and slope (the
+    # verdicts are compared below)
     balance = page.locator(f'{RIGHT} [data-table="balance"] td:nth-child(2)')
     expect(balance).to_have_text(["105,00", "27,35", "49,53", "28,12", "136,77"])
     assert [notice["code"] for notice in envelope["notices"]] == [
-        "outside_typical_range"
-    ] * 2
-    expect(page.locator(f"{RIGHT} .notes li[data-code]")).to_have_count(2)
+        "outside_applicability"
+    ] * 3
+    expect(page.locator(f"{RIGHT} .notes li[data-code]")).to_have_count(3)
 
     # The table of the series: the peak row, P and Pe of the step ending at t
     page.locator(f"{CENTER} .view-bar").get_by_role("radio", name="Tabela").click()
     peak = page.locator(f"{CENTER} tr.peak")
     expect(peak.locator("th")).to_have_text("6:40")
-    expect(peak.locator("td").last).to_have_text("57,88")
+    expect(peak.locator("td").last).to_have_text("57,90")
     rows = page.locator(f"{CENTER} .dtable tbody tr")
     expect(rows).to_have_count(len(result["times_min"]))
-    expect(rows.nth(1).locator("td").nth(1)).to_have_text("0,30")
+    expect(rows.nth(1).locator("td").nth(1)).to_have_text("0,29")
 
     # Kalkulatory reads the whole watershed from the store
     stored = page.evaluate(
@@ -511,11 +521,11 @@ def test_the_tc_method_amc_and_model_reproduce_the_mockups_runs(tab: Tab) -> Non
     check("scs", "nrcs", "II")
     method.select_option("giandotti")
     check("scs", "giandotti", "II")
-    notices = page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
+    notices = page.locator(f'{RIGHT} .notes li[data-code="outside_applicability"]')
     expect(notices).to_have_text(re.compile(r"giandotti: area_km2 = 37,22 poza"))
     expect(warning(page, "area_km2")).to_have_text(
-        "Poza typowym zakresem od 170 do 70\u00a0000 (giandotti)"
-        " · outside_typical_range"
+        "Poza zakresem stosowania od 170 do 70\u00a0000 (giandotti)"
+        " · outside_applicability"
     )
     method.select_option("kerby_kirpich")
     sent = check("scs", "kerby_kirpich", "II")
@@ -579,14 +589,15 @@ def test_the_tc_method_amc_and_model_reproduce_the_mockups_runs(tab: Tab) -> Non
         choose(page, "hg-nash-source-label", "Podane n i K")
     given = asked.value.post_data_json
     assert isinstance(given, dict)
-    assert (given["nash_n"], given["nash_k_min"]) == (3.61, 92.13)
+    assert (given["nash_n"], given["nash_k_min"]) == (3.587, 104.3)
     assert "nash_estimation" not in given and given["watershed"] == SENT
     shows_peak(page, given)
 
     choose(page, "hg-uh-label", "Snyder")
     sent = check("snyder", None, "II")
+    # L is the longest flow path to the divide (15,88 km), not the channel (14,78 km)
     assert (sent["snyder_length_km"], sent["snyder_centroid_length_km"]) == (
-        14.78,
+        15.88,
         6.76,
     )
     choose(page, "hg-uh-label", "SCS")
@@ -634,7 +645,7 @@ def test_only_the_chosen_models_fields_exist_and_are_sent(tab: Tab) -> None:
     sent = asked.value.post_data_json
     assert isinstance(sent, dict)
     assert sent == {**KAMIENNIK, **PMAXTP_LINES}
-    shows(page, "57,88", "6:40", "1 046 713")
+    shows(page, "57,90", "6:40", "1 046 738")
     for name in others:
         expect(field(page, name)).to_have_count(0)
     line = page.locator(f"{RIGHT} .cli pre")
@@ -654,13 +665,14 @@ def test_choosing_a_model_marks_the_fields_it_lacks(tab: Tab) -> None:
     invalid = page.locator(f'{LEFT} [aria-invalid="true"]')
     expect(invalid).to_have_count(0)
 
-    # Nash by Lutz reads L and J of the longest flow path, for which the channel the
-    # watershed gives does not stand in, then Lc and Manning's n: exactly those
+    # Nash by Lutz reads L of the longest flow path and Jg, the equal-area slope of its
+    # profile, for which the channel the watershed gives does not stand in, then Lc and
+    # Manning's n: exactly those
     choose(page, "hg-uh-label", "Nash")
     expect(invalid).to_have_count(4)
     assert invalid.evaluate_all(IDS) == [
         "hg-flow_path_length_km",
-        "hg-flow_path_slope_m_per_m",
+        "hg-flow_path_equal_area_slope_m_per_m",
         "hg-Lc_km",
         "hg-manning_n",
     ]
@@ -673,9 +685,9 @@ def test_choosing_a_model_marks_the_fields_it_lacks(tab: Tab) -> None:
     )
     missing = page.locator(f'{LEFT} [data-summary="missing"]')
     expect(missing).to_have_text(
-        "Brakuje: Długość najdłuższej drogi spływu (krok 1), Spadek najdłuższej drogi"
-        " spływu (krok 1), Długość do środka ciężkości (krok 3), Szorstkość koryta"
-        " (krok 3)"
+        "Brakuje: Długość najdłuższej drogi spływu (krok 1), Spadek wyrównany"
+        " najdłuższej drogi spływu (krok 1), Długość do środka ciężkości (krok 3),"
+        " Szorstkość koryta (krok 3)"
     )
     missing.get_by_role("button", name="Szorstkość koryta").click()
     expect(field(page, "manning_n")).to_be_focused()
@@ -705,11 +717,21 @@ def test_choosing_a_model_marks_the_fields_it_lacks(tab: Tab) -> None:
     ) == (15.88, 0.0114)
     shows_peak(page, sent)
 
-    # Back to Nash by Lutz: Lc and Manning's n are left; the fields of step 1 that Lutz
-    # reads say so, the channel's do not
+    # Back to Nash by Lutz: the slope between the ends of the flow path, now given, does
+    # not stand in for Jg, which is asked for with Lc and Manning's n
     choose(page, "hg-uh-label", "Nash")
-    expect(invalid).to_have_count(2)
-    assert invalid.evaluate_all(IDS) == ["hg-Lc_km", "hg-manning_n"]
+    expect(invalid).to_have_count(3)
+    assert invalid.evaluate_all(IDS) == [
+        "hg-flow_path_equal_area_slope_m_per_m",
+        "hg-Lc_km",
+        "hg-manning_n",
+    ]
+    expect(message(page, "flow_path_equal_area_slope_m_per_m")).to_have_text(
+        "Podaj wartość: potrzebna dla metody Lutza · required"
+    )
+    field(page, "flow_path_equal_area_slope_m_per_m").fill("0,00848")
+    # The fields of step 1 that Lutz reads say so, the end-point slope and the
+    # channel's do not
     needs = page.locator(f"{LEFT} .frow .need")
     expect(needs).to_have_text(
         [
@@ -721,7 +743,7 @@ def test_choosing_a_model_marks_the_fields_it_lacks(tab: Tab) -> None:
     )
     assert needs.evaluate_all(
         "items => items.map((item) => item.closest('.frow').dataset.field)"
-    ) == ["area_km2", "cn", "flow_path_length_km", "flow_path_slope_m_per_m"]
+    ) == ["area_km2", "cn", "flow_path_length_km", "flow_path_equal_area_slope_m_per_m"]
     # Lutz refuses a centroid farther than the flow path is long: said before any run
     before = len(runs.generate)
     field(page, "manning_n").fill("0,035")
@@ -756,7 +778,7 @@ def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
     page = tab.page
     # Kirpich reads the longest flow path alone: the example's result without the
     # other fields
-    shows(page, "57,88", "6:40", "1 046 713")
+    shows(page, "57,90", "6:40", "1 046 738")
     assert runs.generate[-1]["watershed"] == {
         "name": "Kamiennik — Świerzawa",
         "area_km2": 37.22,
@@ -777,8 +799,8 @@ def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
         "„Długość zlewni”, „Wysokość min.”, „Wysokość maks.”."
     )
 
-    # Every model runs without them: Clark, Nash with n and K, Snyder with its own L
-    # (the watershed has no channel to take it from) and Lc
+    # Every model runs without them: Clark, Nash with n and K, Snyder with the
+    # watershed's longest flow path as L (to the divide, not the channel) and its own Lc
     with run_of(page, uh_model="clark") as answered:
         choose(page, "hg-uh-label", "Clark")
     shows_peak(page, answered.value.request.post_data_json)
@@ -789,15 +811,12 @@ def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
         field(page, "nash_k_min").fill("82")
     shows_peak(page, answered.value.request.post_data_json)
     choose(page, "hg-uh-label", "Snyder")
-    expect(message(page, "channel_length_km")).to_have_text(
-        "Podaj wartość: potrzebna dla modelu Snydera · required"
-    )
+    expect(message(page, "flow_path_length_km")).to_have_count(0)
     expect(message(page, "Lc_km")).to_have_text(
         "Podaj wartość: potrzebna dla modelu Snydera · required"
     )
     expect(field(page, "snyder_length_km")).to_have_count(0)
     expect(field(page, "snyder_centroid_length_km")).to_have_count(0)
-    field(page, "channel_length_km").fill("14,78")
     with run_of(page, uh_model="snyder", snyder_centroid_length_km=6.76) as answered:
         field(page, "Lc_km").fill("6,76")
     shows_peak(page, answered.value.request.post_data_json)
@@ -808,10 +827,7 @@ def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
         "flow_path_length_km",
         "flow_path_slope_m_per_m",
     }
-    assert all(
-        set(sent["watershed"]) <= allowed | {"channel_length_km", "Lc_km"}
-        for sent in runs.generate
-    )
+    assert all(set(sent["watershed"]) <= allowed | {"Lc_km"} for sent in runs.generate)
 
     # Step 1 complete: the hand-off is offered
     for name in ["perimeter_km", "length_km", "elevation_min_m", "elevation_max_m"]:
@@ -831,24 +847,29 @@ def test_a_value_outside_its_typical_range_is_a_warning_and_runs(tab: Tab) -> No
     assert {
         item["details"]["field"]: item["details"]["value"]
         for item in envelope["notices"]
-        if item["code"] == "outside_typical_range"
-    } == {"area_km2": 37.22, "flow_path_slope_m_per_m": 0.2}
+        if item["code"] == "outside_applicability"
+    } == {
+        "area_km2": 37.22,
+        "flow_path_length_km": 15.88,
+        "flow_path_slope_m_per_m": 0.2,
+    }
     expect(row).to_have_attribute("data-level", "warning")
     expect(warning(page, "flow_path_slope_m_per_m")).to_have_text(
-        "Poza typowym zakresem od 0,03 do 0,1 (kirpich) · outside_typical_range"
+        "Poza zakresem stosowania od 0,025 do 0,1 (kirpich) · outside_applicability"
     )
     expect(slope).to_have_attribute("aria-invalid", "false")
     # The run went on: the result is current, the notice is in Wyniki too
     shows_peak(
         page, {**KAMIENNIK, "watershed": {**SENT, "flow_path_slope_m_per_m": 0.2}}
     )
-    notices = page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
+    notices = page.locator(f'{RIGHT} .notes li[data-code="outside_applicability"]')
     expect(notices.filter(has_text="slope_m_per_m")).to_have_text(
-        re.compile(r"kirpich: slope_m_per_m = 0,2 poza typowym zakresem")
+        re.compile(r"kirpich: slope_m_per_m = 0,2 poza zakresem stosowania")
     )
     outside = page.locator(f'{LEFT} [data-summary="warnings"]')
     expect(outside).to_have_text(
-        "Poza typowym zakresem: Powierzchnia (krok 1), "
+        "Poza zakresem: Powierzchnia (krok 1), "
+        "Długość najdłuższej drogi spływu (krok 1), "
         "Spadek najdłuższej drogi spływu (krok 1)"
     )
     expect(page.locator(f'{LEFT} [data-summary="ok"]')).to_have_count(1)
@@ -863,13 +884,16 @@ def test_a_value_outside_its_typical_range_is_a_warning_and_runs(tab: Tab) -> No
     )
     expect(row.locator(".warn")).to_have_count(0)
     expect(notices.filter(has_text="slope_m_per_m")).to_have_count(0)
-    expect(outside).to_have_text("Poza typowym zakresem: Powierzchnia (krok 1)")
+    expect(outside).to_have_text(
+        "Poza zakresem: Powierzchnia (krok 1), "
+        "Długość najdłuższej drogi spływu (krok 1)"
+    )
 
     # A coefficient of a model: Snyder's Ct
     choose(page, "hg-uh-label", "Snyder")
     field(page, "snyder_ct").fill("2")
     expect(warning(page, "snyder_ct")).to_have_text(
-        "Poza typowym zakresem od 1,35 do 1,65 (snyder) · outside_typical_range"
+        "Poza zakresem stosowania od 1,35 do 1,65 (snyder) · outside_applicability"
     )
     expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
 
@@ -995,7 +1019,7 @@ def test_a_result_that_fails_to_draw_is_an_error_not_the_last_result(
     # A result that draws is current again; „Wyczyść” drops a failed one
     page.unroute(f"**{RUN}?*")
     field(page, "cn").fill("65")
-    shows(page, "57,88", "6:40", "1 046 713")
+    shows(page, "57,90", "6:40", "1 046 738")
     expect(center).to_have_count(0)
     page.route(f"**{RUN}?*", broken)
     field(page, "cn").fill("70")
@@ -1106,7 +1130,7 @@ def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
         "duration_min": "hietogram",
         "flow_path_length_km": "lutz",
         "Lc_km": "lutz",
-        "flow_path_slope_m_per_m": "lutz",
+        "flow_path_equal_area_slope_m_per_m": "lutz",
         "manning_n": "lutz",
     }
     assert got["given"] == {
@@ -1120,11 +1144,11 @@ def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
         "area_km2": "snyder",
         "cn": "losses",
         **pmaxtp,
-        "channel_length_km": "snyder",
+        "flow_path_length_km": "snyder",
         "Lc_km": "snyder",
     }
     # Snyder's own L and Lc of an earlier visit fill the watershed's empty fields only
-    assert got["migrated"]["watershed"] == {"channel_length_km": "12", "Lc_km": "6"}
+    assert got["migrated"]["watershed"] == {"flow_path_length_km": "12", "Lc_km": "6"}
     assert "snyder_length_km" not in got["migrated"]
     assert "snyder_centroid_length_km" not in got["migrated"]
     rain = [
@@ -1188,7 +1212,7 @@ def test_an_invalid_cn_stands_on_its_field_and_keeps_the_last_result(tab: Tab) -
     expect(stale.first).to_have_text(
         "Wynik dla poprzednich danych: popraw pole „CN dla AMC II” w panelu Dane."
     )
-    expect(kpi(page, "q")).to_have_text(re.compile(r"^57,88"))
+    expect(kpi(page, "q")).to_have_text(re.compile(r"^57,90"))
     page.wait_for_timeout(600)
     assert runs.generate == []  # invalid data run nothing
 
@@ -1207,7 +1231,7 @@ def test_an_invalid_cn_stands_on_its_field_and_keeps_the_last_result(tab: Tab) -
     )
     mark.get_by_role("button", name="przywróć").click()
     expect(cn).to_have_value("65")
-    shows(page, "57,88", "6:40", "1 046 713")
+    shows(page, "57,90", "6:40", "1 046 738")
 
 
 def test_ten_fast_edits_send_at_most_two_runs_and_show_the_last(tab: Tab) -> None:
@@ -1215,7 +1239,7 @@ def test_ten_fast_edits_send_at_most_two_runs_and_show_the_last(tab: Tab) -> Non
     seed_hydrogram(tab, kamiennik_inputs(rain_source="design", duration_min="720"))
     tab.open("#hydrogram")
     page = tab.page
-    shows(page, "57,88", "6:40", "1 046 713")
+    shows(page, "57,90", "6:40", "1 046 738")
     runs = Runs(page)
     badges: list[str] = []
     page.expose_function("hydrologBadge", lambda text: badges.append(text))
@@ -1280,7 +1304,7 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     page = open_hydrogram(tab)
     # A tc method's field missing: marked at once, nothing runs
     field(page, "tc_method").select_option("faa")
-    shows(page, "72,23", "4:30", "1 046 077")
+    shows(page, "72,22", "4:30", "1 046 077")
     runs = Runs(page)
     field(page, "runoff_coeff").fill("")
     expect(message(page, "runoff_coeff")).to_have_text(
@@ -1293,9 +1317,9 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     page.wait_for_timeout(600)
     assert runs.generate == []
     field(page, "runoff_coeff").fill("0,25")
-    shows(page, "72,23", "4:30", "1 046 077")
+    shows(page, "72,22", "4:30", "1 046 077")
     field(page, "tc_method").select_option("kirpich")
-    shows(page, "57,88", "6:40", "1 046 713")
+    shows(page, "57,90", "6:40", "1 046 738")
 
     # The highest elevation not above the lowest: an error at once
     before = len(runs.generate)
@@ -1306,14 +1330,15 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     page.wait_for_timeout(600)
     assert len(runs.generate) == before
     field(page, "elevation_max_m").fill("475,1")
-    shows(page, "57,88", "6:40", "1 046 713")
+    shows(page, "57,90", "6:40", "1 046 738")
 
-    # An error of the server on its field: Clark's step above 2R
+    # An error of the server on its field: Clark's step above 2R, the precondition
+    # step_stable of the spec clark named by its option
     choose(page, "hg-uh-label", "Clark")
     choose(page, "hg-clark-label", "R [min]")
     field(page, "clark_r_min").fill("4")
     expect(message(page, "timestep_min")).to_have_text(
-        re.compile(r" · unstable_timestep$")
+        re.compile(r" · precondition_failed$")
     )
     expect(page.locator(BADGE)).to_have_text("Błąd danych")
     expect(page.locator('[data-stale="error"]').first).to_have_text(
@@ -1326,36 +1351,46 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     expect(message(page, "timestep_min")).to_have_count(0)
     shows_peak(page, {**KAMIENNIK, "uh_model": "clark", "clark_r_min": 90})
     choose(page, "hg-uh-label", "SCS")
-    shows(page, "57,88", "6:40", "1 046 713")
+    shows(page, "57,90", "6:40", "1 046 738")
 
     # Kerby–Kirpich's channel is the flow path minus the overland segment: a flow path
-    # not longer than the overland one is the server's error on its field
+    # not longer than the overland one breaks the spec's constraint, which names no
+    # option; the page words it and puts it on the flow path's field, not above the
+    # steps
     field(page, "tc_method").select_option("kerby_kirpich")
     shows(page, *MOCKUP[("scs", "kerby_kirpich", "II")])
     field(page, "flow_path_length_km").fill("0,2")
     expect(message(page, "flow_path_length_km")).to_have_text(
-        "Musi być większa od 0,3 (podano 0,2) · exclusive_minimum"
+        "Długość najdłuższej drogi spływu musi być większa od długości spływu po stoku:"
+        " Kerby–Kirpich liczy resztę drogi jako przepływ korytem"
+        " · outside_physical_range"
     )
+    expect(page.locator(f"{LEFT} [data-form-error]")).to_have_count(0)
     expect(page.locator(BADGE)).to_have_text("Błąd danych")
     field(page, "flow_path_length_km").fill("15,88")
     shows(page, *MOCKUP[("scs", "kerby_kirpich", "II")])
     field(page, "tc_method").select_option("kirpich")
-    shows(page, "57,88", "6:40", "1 046 713")
+    shows(page, "57,90", "6:40", "1 046 738")
 
-    # A library error without an option stands above the steps, in English marked (EN)
+    # The hyetograph's refusals name their option, so they stand on its field in Polish:
+    # a duration shorter than the step, then one that is not a whole number of steps
     choose(page, "hg-rain-source-label", "Hietogram")
     field(page, "duration_min").fill("5")
-    above = page.locator(f"{LEFT} [data-form-error]")
-    expect(above).to_contain_text("Nieprawidłowe dane wejściowe")
-    expect(above).to_contain_text("cannot exceed duration_min (5.0) (EN)")
+    expect(message(page, "timestep_min")).to_contain_text("· maximum")
+    expect(page.locator(f"{LEFT} [data-form-error]")).to_have_count(0)
     expect(page.locator(BADGE)).to_have_text("Błąd danych")
     expect(page.locator(f"{LEFT} .calc-state")).to_have_text(
         "Błąd danych: wynik dla poprzednich danych"
     )
-    expect(kpi(page, "q")).to_have_text(re.compile(r"^57,88"))
+    field(page, "duration_min").fill("725")
+    expect(message(page, "duration_min")).to_have_text(
+        "Czas trwania musi być wielokrotnością kroku Δt = 10 min: hietogram składa"
+        " się z całych kroków · not_multiple"
+    )
+    expect(kpi(page, "q")).to_have_text(re.compile(r"^57,90"))
     field(page, "duration_min").fill("720")
-    expect(above).to_have_count(0)
-    shows(page, "57,88", "6:40", "1 046 713")
+    expect(message(page, "duration_min")).to_have_count(0)
+    shows(page, "57,90", "6:40", "1 046 738")
 
 
 # --- the watershed -------------------------------------------------------------
@@ -1373,7 +1408,7 @@ def test_a_watershed_file_is_read_in_the_browser(tab: Tab, tmp_path: Path) -> No
     expect(field(page, "area_km2")).to_have_value("20,5")
     source = page.locator(f"{LEFT} .handoff")
     expect(source.locator("strong")).to_have_text("Z pliku: potok.json")
-    expect(source.locator(".muted")).to_have_text(re.compile(r"· 20 pól$"))
+    expect(source.locator(".muted")).to_have_text(re.compile(r"· 21 pól$"))
     shows_peak(page, {**KAMIENNIK, "watershed": {name: own[name] for name in STEP_ONE}})
     expect(page.locator(".crumb-context")).to_have_text("Potok testowy · p 1% · 12 h")
     assert "Lc_km" not in page.evaluate(STORED)["watershed"]
@@ -1407,7 +1442,7 @@ def test_the_hydrograph_exports_csv_json_and_png(tab: Tab, tmp_path: Path) -> No
     buttons = page.locator(f"{RIGHT} .export-row button")
 
     name, data = download(page, buttons.filter(has_text="CSV"))
-    assert name == "Kamiennik — Świerzawa.csv"
+    assert name == "hydrolog_hydrograph_kamiennik-swierzawa.csv"
     header, *rows = list(csv.reader(io.StringIO(data.decode("utf-8"))))
     # The example's PMAXTP depth: DEV-20.5's two columns of its lines after the data
     assert header == [
@@ -1438,11 +1473,11 @@ def test_the_hydrograph_exports_csv_json_and_png(tab: Tab, tmp_path: Path) -> No
     assert routed["attribution"] == envelope["attribution"]
 
     name, data = download(page, buttons.filter(has_text="JSON"))
-    assert name == "Kamiennik — Świerzawa.result.json"
+    assert name == "hydrolog_hydrograph-result_kamiennik-swierzawa.json"
     assert json.loads(data) == envelope
 
     name, data = download(page, buttons.filter(has_text="PNG"))
-    assert name == "Kamiennik — Świerzawa.png"
+    assert name == "hydrolog_hydrograph_kamiennik-swierzawa.png"
     assert data[:8] == b"\x89PNG\r\n\x1a\n"
     box = page.locator(f"{CENTER} .chart.wide svg").bounding_box()
     assert box is not None
@@ -1601,12 +1636,13 @@ def test_the_explanations_show_exactly_the_ranges_hydrolog_serves(tab: Tab) -> N
         found for found in shown["uh-nash"]["ranges"] if found["method"] == "lutz"
     ]
 
-    # One row per range, with its source in Polish; the four unit hydrograph models
-    # serve one range of the time step, listed once
+    # One row per range, with its source in Polish; the time step has two ranges, each
+    # listed once: NEH 630's of the SCS unit hydrograph and the rule of thumb of Nash,
+    # Clark and Snyder, to be verified (ADR-0058)
     rows = {info: len(entry["rows"]) for info, entry in shown.items()}
     assert rows == {
         **{info: len(entry["ranges"]) for info, entry in shown.items()},
-        "rain-timestep": 1,
+        "rain-timestep": 2,
     }
     for info, entry in shown.items():
         sources = {
@@ -1622,7 +1658,8 @@ def test_the_explanations_show_exactly_the_ranges_hydrolog_serves(tab: Tab) -> N
     }
     assert "A: od 0,005 do 0,45 km²" in words["kirpich.area_km2"]
     assert "A: od 170 do 70\u00a0000 km²" in words["giandotti.area_km2"]
-    assert "Δt: najwyżej 0,25·tp (" in words["scs.timestep_min"]
+    # two ranges of the time step: each names its method
+    assert "Δt (scs): najwyżej 0,25·tp (" in words["scs.timestep_min"]
     assert "Długość szeregu N: co najmniej 30 lat" in words["flood_frequency.years"]
     assert "X: najwyżej 0,5" in words["muskingum.x"]
 
@@ -1635,30 +1672,37 @@ def test_the_explanations_check_hydrologs_ranges_against_the_watershed(
     title = popover.locator("#info-pop-title")
     rows = popover.locator(".range-list li")
     notes = page.locator(f'{RIGHT} [data-notes="gui"] li')
-    # The example's confirmations: SCS-CN, SCS and the time step against the unit
-    # hydrograph's time to peak (0,25 · 117,43 min); none for Kirpich, which Hydrolog's
-    # notices put outside its data
+    # The example's confirmations: SCS-CN (the runoff equation's CN and the AMC
+    # conversion's), SCS and the time step against the unit hydrograph's time to peak
+    # (0,25 · 117,28 min); none for Kirpich, which Hydrolog's notices put outside its
+    # data
     expect(notes).to_have_count(3)
     expect(notes.nth(0)).to_contain_text(
-        "SCS-CN: CN (AMC I i III) = 65 w zakresie stosowania."
+        "SCS-CN: CN = 65, CN (AMC I i III) = 65 w zakresie stosowania."
     )
     expect(notes.nth(1)).to_contain_text(
         "SCS: A = 37,22\u00a0km² w zakresie stosowania."
     )
     expect(notes.nth(2)).to_contain_text(
-        "Krok Δt = 10 min ≤ 0,25·tp hydrogramu jednostkowego (29,36 min)."
+        "Krok Δt = 10 min ≤ 0,25·tp hydrogramu jednostkowego (29,32 min)."
     )
     assert set(notes.evaluate_all("items => items.map((item) => item.className)")) == {
         "ok"
     }
-    # The note of the time step opens its explanation: the range of the four models once
+    # The note of the time step opens its explanation: NEH 630's range of the SCS unit
+    # hydrograph, checked, and the rule of thumb of the other models (ADR-0058)
     notes.nth(2).get_by_role("button", name="objaśnienie").click()
     expect(title).to_have_text("Krok czasowy Δt")
-    expect(rows).to_have_count(1)
-    expect(rows).to_have_attribute("data-range", "scs.timestep_min")
-    expect(rows).to_have_attribute("data-field", "timestep_min")
-    expect(rows).to_have_class("ok")
-    expect(rows).to_contain_text("Δt = 10 min: najwyżej 0,25·tp = 29,36 min (")
+    expect(rows).to_have_count(2)
+    expect(rows.nth(0)).to_have_attribute("data-range", "scs.timestep_min")
+    expect(rows.nth(0)).to_have_attribute("data-field", "timestep_min")
+    expect(rows.nth(0)).to_have_class("ok")
+    expect(rows.nth(0)).to_contain_text(
+        "Δt (scs) = 10 min: najwyżej 0,25·tp = 29,32 min ("
+    )
+    expect(rows.nth(1)).to_have_attribute(
+        "data-range", re.compile(r"^(nash|clark|snyder)\.timestep_min$")
+    )
     page.keyboard.press("Escape")
     expect(popover).to_be_hidden()
 
@@ -1705,11 +1749,11 @@ def test_the_fields_the_explanation_and_wyniki_agree_on_the_example(tab: Tab) ->
         name = checked_field(found, EXAMPLE)
         if name is not None and leaves(found, EXAMPLE[name]):
             outside.add(name)
-    assert outside == {"area_km2", "flow_path_slope_m_per_m"}
+    assert outside == {"area_km2", "flow_path_length_km", "flow_path_slope_m_per_m"}
     notices = [
         notice
         for notice in answered.value.json()["notices"]
-        if notice["code"] == "outside_typical_range"
+        if notice["code"] == "outside_applicability"
     ]
     assert {notice["details"]["field"] for notice in notices} == outside
 
@@ -1725,7 +1769,7 @@ def test_the_fields_the_explanation_and_wyniki_agree_on_the_example(tab: Tab) ->
     )
     # Wyniki: the same notices; the GUI confirms nothing of Kirpich
     expect(
-        page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
+        page.locator(f'{RIGHT} .notes li[data-code="outside_applicability"]')
     ).to_have_count(len(notices))
     expect(
         page.locator(f'{RIGHT} [data-notes="gui"] li').filter(has_text="Kirpich")
@@ -1837,10 +1881,10 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
           const variant = (patch) => ({...base, ...patch});
           const check = (patch, last) => s.checkInputs(variant(patch), models, last);
           const slope = {
-            level: 'warning', code: 'outside_typical_range', message: '',
+            level: 'warning', code: 'outside_applicability', message: '',
             details: {method: 'kirpich', parameter: 'slope_m_per_m',
               field: 'flow_path_slope_m_per_m', value: 0.2,
-              minimum: 0.03, maximum: 0.1},
+              minimum: 0.025, maximum: 0.1},
           };
           const steep = variant({
             watershed: {...read.texts, flow_path_slope_m_per_m: '0,2'},
@@ -1907,7 +1951,7 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
     assert {
         key: got["snyder"][key] for key in got["snyder"] if key.startswith("snyder")
     } == {
-        "snyder_length_km": 14.78,
+        "snyder_length_km": 15.88,
         "snyder_centroid_length_km": 6.76,
         "snyder_ct": 1.4,
     }
@@ -1958,7 +2002,8 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
         "errors": {},
         "warnings": {
             "flow_path_slope_m_per_m": (
-                "Poza typowym zakresem od 0,03 do 0,1 (kirpich) · outside_typical_range"
+                "Poza zakresem stosowania od 0,025 do 0,1 (kirpich)"
+                " · outside_applicability"
             )
         },
     }
@@ -2011,7 +2056,7 @@ def test_pmaxtp_fetches_the_depth_of_the_point_once_and_keeps_it(tab: Tab) -> No
     ]
     expect(page.locator(f'{LEFT} [data-attribution="pmaxtp"]')).to_be_hidden()
     # The run waits for the depth and takes it with its lines: the guide's numbers
-    shows(page, "54,20", "6:40", "977 225")
+    shows(page, "54,23", "6:40", "977 249")
     expect(kpi(page, "c")).to_have_text("0,258")
     assert [run["total_mm"] for run in runs.generate] == [101.82]
     assert runs.generate[0]["attribution"] == [
@@ -2021,12 +2066,13 @@ def test_pmaxtp_fetches_the_depth_of_the_point_once_and_keeps_it(tab: Tab) -> No
     assert page.evaluate(STORED)["pmaxtp_fetched"] == {
         **FETCHED,
         "depth_mm": 101.82,
+        "depth_duration_mm": pmaxtp_curve("1"),
         **lines,
     }
 
     # A reload shows the kept depth without fetching it again
     page.reload()
-    shows(page, "54,20", "6:40", "977 225")
+    shows(page, "54,23", "6:40", "977 249")
     expect(depth).to_have_value("101,82")
     page.wait_for_timeout(600)
     assert len(runs.pmaxtp) == 1
@@ -2078,7 +2124,7 @@ def test_a_point_outside_the_atlas_or_an_unreachable_imgw_stand_on_their_field(
         "Nie pobrano wysokości opadu PMAXTP"
     )
     expect(page.locator(f'{LEFT} [data-retry="pmaxtp"]')).to_have_count(0)
-    expect(kpi(page, "q")).to_have_text(re.compile(r"^57,88"))  # the last, marked
+    expect(kpi(page, "q")).to_have_text(re.compile(r"^57,90"))  # the last, marked
     assert runs.generate == []
 
     # IMGW-PIB unreachable: the error stands on the depth; „Pobierz ponownie” retries
@@ -2094,4 +2140,122 @@ def test_a_point_outside_the_atlas_or_an_unreachable_imgw_stand_on_their_field(
     with page.expect_response(lambda answer: PMAXTP in answer.url):
         page.locator(f'{LEFT} [data-retry="pmaxtp"]').click()
     expect(field(page, "pmaxtp_depth")).to_have_value("101,82")
-    shows(page, "54,20", "6:40", "977 225")
+    shows(page, "54,23", "6:40", "977 249")
+
+
+# --- Euler II -------------------------------------------------------------------
+
+
+def test_euler_ii_is_built_from_the_pmaxtp_depths_of_its_probability(tab: Tab) -> None:
+    # The example at 1 h and Δt 5 min, its depth kept from before the depths of every
+    # duration came: Beta runs with it, Euler II fetches them first
+    hour = {**FETCHED, "duration_min": 60}
+    seed_hydrogram(
+        tab,
+        kamiennik_inputs(
+            pmaxtp_duration_min="60",
+            pmaxtp_fetched={**hour, "depth_mm": 46.28},
+            timestep_min="5",
+        ),
+    )
+    runs = Runs(tab.page)
+    tab.open("#hydrogram")
+    page = tab.page
+    shows_peak(
+        page, {**KAMIENNIK, "total_mm": 46.28, "duration_min": 60, "timestep_min": 5}
+    )
+    assert runs.pmaxtp == []
+    with (
+        run_of(page, hietogram_type="euler_ii") as ran,
+        page.expect_response(lambda answer: PMAXTP in answer.url) as answered,
+    ):
+        choose(page, "hg-shape-label", "Euler II")
+    curve = pmaxtp_curve("1")
+    assert answered.value.request.post_data_json == hour
+    assert answered.value.json()["result"]["depth_duration_mm"] == curve
+    # The run sends the PMAXTP depth of D and the depths of every duration, no peak
+    # position: the step has none, its note says how the storm is built
+    options = ran.value.request.post_data_json
+    assert {key: options[key] for key in ("total_mm", "duration_min")} == {
+        "total_mm": 46.28,
+        "duration_min": 60,
+    }
+    assert options["depth_duration_mm"] == curve
+    assert "peak_position" not in options
+    expect(page.locator(f'{LEFT} [data-field="peak_position"]')).to_have_count(0)
+    expect(page.locator(f'{LEFT} [data-euler="pmaxtp"]')).to_contain_text("0,3·D")
+    expect(field(page, "pmaxtp_depth")).to_have_value("46,28")
+    # The peak block is the fourth of twelve and holds h(5 min) of p 1 %: 21,02 mm, i.e.
+    # 252,24 mm/h; the 15 min around it hold h(15 min) and the storm h(60 min)
+    shows_peak(page, options)
+    expect(page.locator(CENTER)).to_contain_text("Pmax 21,02 mm / 5 min · 0:15–0:20")
+    expect(page.locator(CENTER)).to_contain_text("PMAXTP p 1%, 1 h, Euler II")
+    rain = ran.value.json()["result"]["precipitation_mm"]
+    assert max(rain) == rain[3] == curve["5"]
+    assert math.isclose(sum(rain[1:4]), curve["15"], abs_tol=1e-9)
+    assert math.isclose(sum(rain), curve["60"], abs_tol=1e-9)
+    assert page.evaluate(STORED)["pmaxtp_fetched"]["depth_duration_mm"] == curve
+
+    # A step the duration is no multiple of, or shorter than the curve's first duration
+    # (nothing is extrapolated): Hydrolog's refusal stands on the field to change
+    field(page, "timestep_min").fill("7")
+    expect(message(page, "pmaxtp_duration_min")).to_contain_text("Δt = 7 min")
+    expect(message(page, "pmaxtp_duration_min")).to_contain_text("· not_multiple")
+    field(page, "timestep_min").fill("2")
+    expect(message(page, "timestep_min")).to_contain_text("zaczyna się od 5 min")
+    expect(message(page, "timestep_min")).to_contain_text("· not_covered")
+    expect(kpi(page, "q")).to_have_text(
+        re.compile(rf"^{comma(expected(options)['peak_discharge_m3s'])}")
+    )  # the last result, marked
+
+
+def test_hietogram_offers_no_euler_ii_and_a_kept_one_says_why(tab: Tab) -> None:
+    # Inputs kept before Euler II needed its curve: „Hietogram” Euler II, a typed total
+    seed_hydrogram(
+        tab,
+        kamiennik_inputs(
+            rain_source="design",
+            total_mm="40",
+            duration_min="60",
+            hietogram_type="euler_ii",
+            peak_position="0,33",
+            timestep_min="5",
+        ),
+    )
+    runs = Runs(tab.page)
+    with tab.page.expect_response(lambda answer: RUN in answer.url) as refused:
+        tab.open("#hydrogram")
+    page = tab.page
+    shapes = page.locator('[aria-labelledby="hg-shape-label"]')
+    expect(shapes.get_by_role("radio")).to_have_text(["Blokowy", "Trójkątny", "Beta"])
+    expect(shapes.locator('[aria-checked="true"]')).to_have_count(0)
+    note = page.locator(f'{LEFT} [data-euler="none"]')
+    expect(note).to_be_visible()
+    # Sent as it is, never as another storm: Hydrolog refuses it and the panel says why
+    assert refused.value.status == 400
+    assert [
+        (run["hietogram_type"], "depth_duration_mm" in run, "peak_position" in run)
+        for run in runs.generate
+    ] == [("euler_ii", False, False)]
+    expect(page.locator(f"{LEFT} [data-form-error]")).to_contain_text(
+        "Euler II buduje się z krzywej wysokość–czas trwania"
+    )
+    expect(page.locator(BADGE)).to_have_text("Błąd danych")
+    expect(page.locator(RIGHT)).to_contain_text("Wynik pojawi się po pierwszym")
+
+    # One click moves it to PMAXTP: the depths of every duration are fetched (the kept
+    # depth has none) and Euler II runs with them
+    with (
+        run_of(page, hietogram_type="euler_ii") as ran,
+        page.expect_response(lambda answer: PMAXTP in answer.url),
+    ):
+        note.get_by_role("button", name="Przełącz na PMAXTP").click()
+    options = ran.value.request.post_data_json
+    assert (options["total_mm"], options["depth_duration_mm"]) == (
+        101.82,
+        pmaxtp_curve("1"),
+    )
+    expect(shapes.get_by_role("radio", name="Euler II", exact=True)).to_have_attribute(
+        "aria-checked", "true"
+    )
+    shows_peak(page, options)

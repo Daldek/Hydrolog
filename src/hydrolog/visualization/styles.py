@@ -87,7 +87,7 @@ LABELS_PL = {
     "hypsometric_integral": "Całka hipsograficzna HI",
     # Network
     "stream_order": "Rząd cieku",
-    "segment_count": "Liczba segmentów",
+    "segment_count": "Liczba cieków",
     "stream_length": "Długość [km]",
     "bifurcation_ratio": "Współczynnik bifurkacji Rb",
     # Water balance

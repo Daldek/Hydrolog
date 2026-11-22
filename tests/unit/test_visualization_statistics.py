@@ -1,5 +1,7 @@
 """Smoke tests for statistics visualization functions."""
 
+from pathlib import Path
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -7,6 +9,20 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
+
+
+def _daily_flows_15y():
+    """Daily discharge and dates of 15 complete hydrological years (2009-2023).
+
+    The low-flow fit by maximum likelihood needs years enough for a maximum: five years
+    of uniform random flows have none.
+    """
+    rows = np.loadtxt(
+        FIXTURES / "daily_flows_15y.csv", delimiter=",", skiprows=1, dtype=str
+    )
+    return rows[:, 1].astype(np.float64), rows[:, 0].astype("datetime64[D]")
 
 
 class TestStatisticsVisualization:
@@ -38,14 +54,7 @@ class TestStatisticsVisualization:
         from hydrolog.statistics.low_flows import LowFlowAnalysis
         from hydrolog.visualization.statistics import plot_non_exceedance_curve
 
-        rng = np.random.default_rng(42)
-        dates = np.arange(
-            np.datetime64("2015-11-01"),
-            np.datetime64("2020-11-01"),
-            dtype="datetime64[D]",
-        )
-        values = rng.uniform(2, 30, size=len(dates))
-        lfa = LowFlowAnalysis(values, dates)
+        lfa = LowFlowAnalysis(*_daily_flows_15y())
         result = lfa.fit_fisher_tippett()
         fig = plot_non_exceedance_curve(result)
         assert isinstance(fig, plt.Figure)
@@ -60,13 +69,7 @@ class TestStatisticsVisualization:
         from hydrolog.statistics.low_flows import LowFlowAnalysis
         from hydrolog.visualization.statistics import plot_non_exceedance_curve
 
-        rng = np.random.default_rng(42)
-        dates = np.arange(
-            np.datetime64("2015-11-01"),
-            np.datetime64("2020-11-01"),
-            dtype="datetime64[D]",
-        )
-        lfa = LowFlowAnalysis(rng.uniform(2, 30, size=len(dates)), dates)
+        lfa = LowFlowAnalysis(*_daily_flows_15y())
         result = lfa.fit_fisher_tippett()
         points = []
         for empirical in (lfa.empirical_non_exceedance(), lfa.empirical_frequency()):
@@ -75,7 +78,7 @@ class TestStatisticsVisualization:
             points.append(np.asarray(offsets)[np.argsort(offsets[:, 0])])
             plt.close(fig)
         np.testing.assert_allclose(points[0], points[1])
-        assert points[0][0, 0] == pytest.approx(100.0 / 6.0)
+        assert points[0][0, 0] == pytest.approx(100.0 / 16.0)
         assert points[0][0, 1] == pytest.approx(lfa.annual_minima().min())
 
     def test_plot_daily_characteristics(self):

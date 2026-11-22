@@ -1,0 +1,147 @@
+schema = "nogat-formula-card/1"
+name = "scs_cn_amc"
+title = "Curve number of antecedent runoff condition I or III (Hawkins et al. 1985)"
+function = "hydrolog.runoff.scs_cn.amc_curve_number"
+family = "empirical"
+formula_version = 1
+status = "referenced"
+equation = "CN_x = CN / (k_x + (1 - k_x) * CN / 100), k_I = 2.281, k_III = 0.427 (S_x = k_x * S_II), rounded to the nearest integer, at least 1"
+latex = "CN_x = \\operatorname{round}\\frac{CN}{k_x + (1 - k_x)\\,CN/100},\\quad k_{I} = 2.281,\\ k_{III} = 0.427"
+validation = "Ponce and Hawkins (1996, p. 15) report the fits S_I = 2.281 S_II (r2 0.999, standard error 0.206 in) and S_III = 0.427 S_II (r2 0.994, 0.088 in) to NEH table 10-1, and standard errors of 1.0 CN (eq. 15) and 0.7 CN (eq. 16); against that table at CN 55 to 95 the rounded conversion differs by up to 2 CN for ARC I and 1 CN for ARC III (unrounded at most 2.45 CN for ARC I at CN 92 and 1.19 CN for ARC III at CN 79)"
+conventions = ["the fit of Hawkins et al. (1985) to the curves of NRCS, not NEH 630-10 table 10-1 itself (NEH 630-10 p. 10-6; it gives the table) nor Chow et al. (1988) eqs. 5.5.7-5.5.8, another fit", "rounded to the nearest integer as table 10-1 prints them, a half to the even integer; at least 1", "ARC II is the CN as given: no formula"]
+assumptions = ["NEH 630-10 (pp. 10-5, 10-7) found no relation between the rainfall of the five preceding days and the CN: the condition is chosen by the engineer"]
+notices = ["outside_applicability"]
+reference_cases = ["tests/fixtures/formulas/scs-cn-cases.json"]
+no_traps_reason = "the denominators k + (1 - k) CN / 100 lie between 0.43 and 2.28 for CN of 1 to 100; no logarithm, root or exponential"
+constraints = []
+traps = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+cn = 1
+
+[[properties.limits]]
+name = "no_retention"
+text = "CN 100 stays 100 in either condition (S = 0)"
+
+[[properties.limits]]
+name = "ratio_of_retention"
+text = "the converted CN is the CN of k_x S_II, rounded, in exact rational arithmetic"
+
+[[sources]]
+citation = "Ponce, V.M. and Hawkins, R.H. (1996). Runoff curve number: has it reached maturity? Journal of Hydrologic Engineering 1(1), 11-19, reporting Hawkins, R.H., Hjelmfelt, A.T. and Zevenbergen, A.W. (1985), Journal of Irrigation and Drainage Engineering 111(4), 330-340"
+access = "open"
+locator = "eqs. 13-16, p. 15 (S_I = 2.281 S_II, S_III = 0.427 S_II)"
+url = "https://www.uvm.edu/~bwemple/HydroModel/ponce1996.pdf"
+
+[[sources]]
+citation = "Banasik, K., Rutkowska, A. and Kohnová, S. (2014). Retention and curve number variability in a small agricultural catchment: the probabilistic approach. Water 6(5), 1118-1133, doi:10.3390/w6051118"
+access = "open"
+locator = "eqs. 12-13, p. 1124 (eq. 12 misprints 0.01381 for 0.01281)"
+url = "https://mdpi-res.com/d_attachment/water/water-06-01118/article_deploy/water-06-01118.pdf"
+
+[[variables]]
+name = "cn"
+symbol = "CN"
+unit = "-"
+kind = "real"
+description = "Curve number of the antecedent runoff condition of the formula."
+
+[variables.physical]
+low = 1.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.applicability]
+low = 55.0
+low_inclusive = true
+high = 95.0
+high_inclusive = true
+
+[variables.applicability.source]
+citation = "Ponce, V.M. and Hawkins, R.H. (1996). Runoff curve number: has it reached maturity? Journal of Hydrologic Engineering 1(1), 11-19, reporting Hawkins, R.H., Hjelmfelt, A.T. and Zevenbergen, A.W. (1985), Journal of Irrigation and Drainage Engineering 111(4), 330-340"
+access = "open"
+locator = "p. 15: eqs. 15-16 applicable in the range 55 <= CN <= 95"
+url = "https://www.uvm.edu/~bwemple/HydroModel/ponce1996.pdf"
+
+[variables.typical]
+low = 51.8
+low_inclusive = true
+high = 81.4
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf ADR-0075 (2026-11-08), the CN of soil-cover complexes of the 223 catchments of the Hydroni run h07 (2,941 km2)"
+access = "open"
+locator = "Consequences: CN of AMC II 51.8 to 81.4, median 70.8"
+url = "https://github.com/Daldek/Hydrograf/blob/develop/docs/decisions/0075-cn-of-soil-cover-complexes.md"
+
+[[variables]]
+name = "amc"
+symbol = "ARC"
+unit = "-"
+kind = "choice"
+description = "Antecedent runoff condition to convert to: I dry, III wet."
+choices = ["I", "III"]
+
+[[constants]]
+name = "ratio_i"
+value = 2.281
+unit = "-"
+symbol = "k_{I}"
+
+[constants.source]
+citation = "Ponce, V.M. and Hawkins, R.H. (1996). Runoff curve number: has it reached maturity? Journal of Hydrologic Engineering 1(1), 11-19, reporting Hawkins, R.H., Hjelmfelt, A.T. and Zevenbergen, A.W. (1985), Journal of Irrigation and Drainage Engineering 111(4), 330-340"
+access = "open"
+locator = "eq. 13, p. 15 (r2 = 0.999); Banasik et al. (2014) eq. 12"
+url = "https://www.uvm.edu/~bwemple/HydroModel/ponce1996.pdf"
+
+[[constants]]
+name = "ratio_iii"
+value = 0.427
+unit = "-"
+symbol = "k_{III}"
+
+[constants.source]
+citation = "Ponce, V.M. and Hawkins, R.H. (1996). Runoff curve number: has it reached maturity? Journal of Hydrologic Engineering 1(1), 11-19, reporting Hawkins, R.H., Hjelmfelt, A.T. and Zevenbergen, A.W. (1985), Journal of Irrigation and Drainage Engineering 111(4), 330-340"
+access = "open"
+locator = "eq. 14, p. 15 (r2 = 0.994); Banasik et al. (2014) eq. 13"
+url = "https://www.uvm.edu/~bwemple/HydroModel/ponce1996.pdf"
+
+[[constants]]
+name = "cn_scale"
+value = 100.0
+unit = "-"
+symbol = "100"
+
+[constants.source]
+citation = "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004)"
+access = "open"
+locator = "eq. 10-11, p. 10-4: CN = 1000/(10 + S), 100 at S = 0"
+url = "https://www.hydrocad.net/neh/630ch10.pdf"
+
+[[outputs]]
+name = "cn_adjusted"
+unit = "-"
+kind = "integer"
+symbol = "CN_x"
+description = "Curve number of the condition."
+
+[outputs.physical]
+low = 1.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[[oracles]]
+kind = "exact"
+description = "the CN of S_x = k_x S_II in exact rational arithmetic (fractions), rounded"
+test = "tests/unit/test_formulas_scs_cn.py (limit ratio_of_retention)"
+conventions = []

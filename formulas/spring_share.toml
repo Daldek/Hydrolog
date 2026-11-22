@@ -1,0 +1,133 @@
+schema = "nogat-formula-card/1"
+name = "spring_share"
+title = "The March-April share of the annual volume of the mean monthly flows"
+function = "hydrolog.statistics.regime.spring_share"
+family = "index"
+formula_version = 1
+status = "oracle only"
+equation = "s = (V_III + V_IV) / sum(V_m) with V_m = Qbar_m * d_m, d_m the days of month m, February 28.25"
+latex = "s = \\frac{V_{III} + V_{IV}}{\\sum_{m} V_m},\\quad V_m = \\bar{Q}_m\\,d_m"
+validation = "none: Hydrolog's descriptive index of the regime (ADR-0031)"
+conventions = ["the volumes are the long-term monthly means times the days of the month, February 28.25 days (the mean year of 365.25 days), not the days of the period's years", "the inputs run from November to October, as the outputs of parde_coefficients; March and April are the fifth and sixth", "the volumes in m3/s times days, a unit that cancels in the share"]
+assumptions = []
+notices = []
+reference_cases = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "discharge_in_another_unit"
+
+[properties.scalings.inputs]
+monthly_mean = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "doubling every discharge doubles each sum and mean exactly and leaves each quotient as it was; a mean below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[properties.limits]]
+name = "equal_months"
+text = "equal monthly means give the 61 days of March and April in the 365.25 of the mean year"
+
+[[properties.limits]]
+name = "all_in_spring"
+text = "flow in March and April only gives a share of one"
+
+[[properties.limits]]
+name = "exact_rational"
+text = "the share of the float inputs in exact rational arithmetic"
+
+[[sources]]
+citation = "Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063"
+access = "open"
+locator = "point 1: spring_share, the March-April share of the annual volume, the monthly means times the days of the month"
+
+[[variables]]
+name = "monthly_mean"
+symbol = "\\bar{Q}_m"
+unit = "m3/s"
+kind = "real_array"
+description = "The mean discharge of each month, November to October."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 12
+max_length = 12
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s, about five times the mean discharge of the Amazon (about 2.1e5 m3/s), the largest of any river"
+
+[variables.typical]
+low = 2.67
+low_inclusive = true
+high = 58.9
+high_inclusive = true
+
+[variables.typical.source]
+citation = "IMGW-PIB, public hydrological data: the monthly characteristics of station 150160180 Kłodzko on the Nysa Kłodzka, hydrological years 1971-2015 but 1997 (tests/fixtures/imgw_klodzko/imgw_150160180_mies_1971_2015.csv)"
+access = "open"
+locator = "the monthly means of discharge, 2.67 to 58.9 m3/s"
+url = "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/"
+
+[[constraints]]
+name = "positive_volume"
+class = "precondition"
+text = "0 < sum(V_m) < inf: some month has a positive mean, and float64 holds the volumes"
+
+[constraints.source]
+citation = "Hydrolog, ADR-0031 (2026): regime, seasonality, harmonics, Sen's slope and baseflow (docs/decisions/), restated in ADR-0063"
+access = "open"
+locator = "point 1: spring_share, the March-April share of the annual volume, the monthly means times the days of the month"
+
+[[constants]]
+name = "february_days"
+value = 28.25
+unit = "day"
+symbol = "d_{II}"
+exact = "113/4"
+
+[constants.source]
+citation = "Hydrolog, ADR-0031 (2026), restated in ADR-0063"
+access = "open"
+locator = "February of the mean year of 1901-2099, in which every fourth year is a leap year: 28 + 1/4 days, so the twelve months make 365.25 days; the other months have their days of a common year"
+
+[[outputs]]
+name = "spring_share"
+unit = "-"
+kind = "real"
+symbol = "s"
+description = "The share of March and April in the annual volume, 0 to 1."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "sum(V_m) -> 0 divides the share: the precondition positive_volume refuses twelve zero means (constraint case positive_volume-violated); a single month of 1e-300 m3/s gives a finite share (limit exact_rational)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case monthly_mean-nan_element: a gap is refused, the twelve means need values"
+
+[[oracles]]
+kind = "exact"
+description = "the share of the float inputs in exact rational arithmetic (fractions), February 113/4 days"
+test = "tests/unit/test_formulas_regime.py (limit exact_rational)"
+conventions = []

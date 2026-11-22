@@ -1,0 +1,80 @@
+schema = "nogat-formula-card/1"
+name = "texture_hsg"
+title = "Hydrologic soil group of a USDA texture class"
+function = "hydrolog.soil.texture.texture_to_hsg"
+family = "classification"
+formula_version = 1
+status = "referenced"
+equation = "HSG = G(texture class), G the table texture_hsg.csv: TR-55 appendix A, with sandy loam B and clay loam and silty clay loam C as NEH 630 ch. 7's typical textures and silt B as silt loam"
+latex = "\\mathrm{HSG} = G(\\mathrm{class})"
+validation = "none stated: TR-55 derives its texture groups from Brakensiek and Rawls (1983) for disturbed profiles; NEH 630 ch. 7 gives typical textures, not a fit"
+conventions = ["TR-55 appendix A gives the groups of disturbed soil profiles (urban areas, no significant compaction); the table applies them to every soil", "documented deviations from TR-55 appendix A: sandy loam B (TR-55 A), clay loam and silty clay loam C (TR-55 D), as NEH 630 ch. 7 p. 7-2 names the typical textures of groups B and C (Kartograf ADR-025, decision b): stricter than TR-55 for sandy loam, milder for the two clay loams", "silt, which TR-55 does not list, takes the group of silt loam, B; NEH 630 ch. 7 p. 7-2 puts well aggregated silt in group B", "NEH 630 ch. 7 would put loam and silt loam (and, by Ksat, silt) in C and loamy sand in B; the table keeps TR-55's groups for them (open question of ADR-0066)"]
+assumptions = ["the group of a texture alone: no water table, impermeable layer, rock fragments, bulk density or structure (NEH 630 ch. 7, table 7-1)"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/hsg-cases.json"]
+no_traps_reason = "a lookup of a categorical key: no numeric class limit and no series"
+constraints = []
+constants = []
+traps = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.limits]]
+name = "not_milder_as_ksat_falls"
+text = "along the classes in the order of falling saturated hydraulic conductivity of Rawls et al. (1982), sand, loamy sand, sandy loam, loam, silt loam, sandy clay loam, clay loam, silty clay loam, sandy clay, silty clay, clay, the group never gets milder (NEH 630 ch. 7 assigns the groups by falling Ksat; silt has no value)"
+
+[properties.limits.source]
+citation = "Rawls, W. J., Brakensiek, D. L. and Saxton, K. E. (1982). Estimation of soil water properties. Transactions of the ASAE 25(5): 1316-1320, 1328"
+access = "author-provided"
+locator = "Table 2: saturated hydraulic conductivity of eleven texture classes (no silt), quoted with the same values by MassDEP (2008), Massachusetts Stormwater Handbook, vol. 3, ch. 1, table 2.3.3, and by Kartograf 0.8.2 RAWLS_1982_KSAT_CM_H"
+
+[[sources]]
+citation = "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)"
+access = "open"
+locator = "appendix A, p. A-1, 'Disturbed soil profiles': HSG by soil texture, after Brakensiek and Rawls (1983)"
+url = "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf"
+
+[[sources]]
+citation = "USDA-NRCS (2009). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups (210-VI-NEH, January 2009)"
+access = "open"
+locator = "p. 7-2: the textures groups A to D 'typically' have; group B 'loamy sand or sandy loam', group C 'loam, silt loam, sandy clay loam, clay loam, and silty clay loam', well aggregated silt may be B"
+url = "https://www.hydrocad.net/neh/630ch7.pdf"
+
+[[variables]]
+name = "texture_class"
+symbol = "\\mathrm{class}"
+unit = "-"
+kind = "choice"
+description = "USDA texture class (spec usda_texture)."
+choices = ["sand", "loamy_sand", "sandy_loam", "loam", "silt_loam", "silt", "sandy_clay_loam", "clay_loam", "silty_clay_loam", "sandy_clay", "silty_clay", "clay"]
+
+[[outputs]]
+name = "hsg"
+unit = "-"
+kind = "choice"
+symbol = "\\mathrm{HSG}"
+description = "Hydrologic soil group, from A (low runoff potential) to D (high)."
+choices = ["A", "B", "C", "D"]
+
+[[oracles]]
+kind = "frozen"
+description = "Kartograf 0.8.2, kartograf.hydrology.hsg.TEXTURE_TO_HSG (its own copy of the table, ADR-025)"
+test = "tests/oracles/kartograf_0_8_2_texture_hsg.csv (written once by tests/oracles/kartograf_texture_oracle.py), compared by tests/unit/test_formulas_texture_hsg.py"
+conventions = []
+
+[[tables]]
+path = "src/hydrolog/_data/tables/texture_hsg.csv"
+sha256 = "f8e1d4b427ae6bb4c0abf7afbbbf9a70f3c32c42de0b5fe5a0ee2157daebef4a"
+comparison = "tests/oracles/tr55_hsg_text_layer.csv (read from the PDF's text layer by tests/oracles/transcribe_tr55_hsg.py) and tests/oracles/kartograf_0_8_2_texture_hsg.csv (Kartograf 0.8.2's table), compared with the data file by tests/unit/test_formulas_texture_hsg.py"
+
+[tables.source]
+citation = "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)"
+access = "open"
+locator = "appendix A, p. A-1, 'Disturbed soil profiles': HSG by soil texture, after Brakensiek and Rawls (1983)"
+url = "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf"

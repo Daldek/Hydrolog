@@ -1,0 +1,961 @@
+[
+  {
+    "formula": "muskingum_cunge",
+    "case_id": "mc_neh17_example17_4_celerity_given",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "locator": "example 17-4, pp. 17-36 to 17-43: the parameters of the text (K = 605.07 s, X = -0.254, C1 = 0.028, C2 = 0.355, C3 = 0.617, Cg = 0.595, Dg = 1.508, Dg(critical) = 3.93) and Table 17-18 (the routing)",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "inflow_m3s": [
+        0.0,
+        0.02095446647808,
+        0.03199803664896,
+        0.04615645994496,
+        0.06427924176384,
+        0.08664955057152,
+        0.11355055483392,
+        0.1458317599488,
+        0.18349316591616,
+        0.22738427813376,
+        0.27807143353344,
+        0.33668730597888,
+        0.40464773779968,
+        0.48393490825728,
+        0.57681416507904,
+        0.68724986678784,
+        0.82996677361152,
+        1.04857282930176,
+        1.4356641222144,
+        2.17133579667456,
+        3.39009287399424,
+        5.06984821383168,
+        7.1981424036864,
+        9.75996751486464,
+        12.54379670332416,
+        15.11638221620736,
+        17.12942684043264,
+        18.4866532975872,
+        19.2030695163648,
+        19.37382010131456,
+        19.0303367521536,
+        18.2728611058176,
+        17.23419917282304,
+        15.92567769180672,
+        14.43989275112448,
+        13.01244051442176,
+        11.80642601806848
+      ],
+      "timestep_min": 6.0,
+      "length_km": 0.79248,
+      "slope_m_per_m": 0.00091,
+      "celerity_m_per_s": 1.3097256,
+      "top_width_m": 13.59408,
+      "reference_discharge_m3s": 19.37382010131456,
+      "subreaches": 1,
+      "initial_outflow_m3s": 0.0
+    },
+    "expected": {
+      "outflow_m3s": [
+        0.0,
+        0.00736238011392,
+        0.01642377102336,
+        0.02746734119424,
+        0.0410594275584,
+        0.05776636704768,
+        0.07843766505984,
+        0.1033564900608,
+        0.1330891789824,
+        0.16791890029056,
+        0.20869515938304,
+        0.25598429319168,
+        0.31120214404608,
+        0.375198217344,
+        0.44967152388096,
+        0.53773691678208,
+        0.6456241022976,
+        0.79372120997376,
+        1.02875103668736,
+        1.44585818698752,
+        2.1563278679808,
+        3.2252888268288,
+        4.68728761637376,
+        6.55846483917312,
+        8.77284224266752,
+        11.13050288991744,
+        13.37178129767424,
+        15.29279617047552,
+        16.77036922564608,
+        17.76259153022976,
+        18.25785317712384,
+        18.28475418138624,
+        17.91153814330368,
+        17.18747637594624,
+        16.17684812107776,
+        15.00481384063488,
+        13.81352410450944
+      ],
+      "k_min": 10.0845,
+      "x": -0.254,
+      "c_current": 0.355,
+      "c_previous": 0.028,
+      "c_outflow": 0.617,
+      "courant_number": 0.595,
+      "grid_reynolds_number": 1.508,
+      "grid_reynolds_limit": 3.93
+    },
+    "printed_precision": {
+      "inflow_m3s": 0.00028316846592,
+      "outflow_m3s": 0.00028316846592,
+      "k_min": 0.00016666666666666666,
+      "x": 0.001,
+      "c_current": 0.001,
+      "c_previous": 0.001,
+      "c_outflow": 0.001,
+      "courant_number": 0.001,
+      "grid_reynolds_number": 0.001,
+      "grid_reynolds_limit": 0.01
+    },
+    "intermediate_rounding": [
+      {
+        "step": "the weights are computed with X rounded to -0.254 and K to 605.07 s (C2 = 0.35546, printed 0.355; the unrounded X gives 0.35564), and Dg = 1 - 2X with the rounded X (1.508 against 1.50888)",
+        "effect": {
+          "c_current": 0.00018258424053083723,
+          "c_previous": 0.0002933121414415257,
+          "c_outflow": 0.00011072790091068846,
+          "grid_reynolds_number": 0.0008825013652036652
+        }
+      },
+      {
+        "step": "Table 17-18 is routed with the weights printed to three decimals, 0.028, 0.355 and 0.617 (replayed in exact arithmetic it gives the printed table to 0.0049 ft3/s): against the unrounded weights at most 0.2447 ft3/s",
+        "effect": {
+          "outflow_m3s": 0.006928812500953423
+        }
+      }
+    ],
+    "conventions": [
+      "US units converted exactly with the units table (ft = 0.3048 m, ft3/s = 0.3048^3 m3/s), the printed precisions likewise",
+      "NEH computes with c, T and the reference discharge as printed: K = 2,600 / 4.297 = 605.07 s and X from T = 44.6 ft reproduce the printed values, so only the inflow column is a rounded input",
+      "the reference discharge is the inflow peak, 684.18 ft3/s; one distance step of 2,600 ft, the reach being shorter than NEH's dx = 2,735 ft (eq. 17-21, a rule of MuskingumCungeReach, Tier B)",
+      "NEH's C1 multiplies the previous inflow (c_previous), C2 the current inflow (c_current), C3 the previous outflow (c_outflow)",
+      "the reach starts dry: the initial outflow is the first inflow, 0"
+    ],
+    "second_source": {
+      "citation": "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum-Cunge Model",
+      "url": "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-cunge-model",
+      "access": "open",
+      "locator": "eqs. 12 and 13, K = dx / c and X = (1 - Q / (B S0 c dx)) / 2, and eqs. 8 to 10, the weights"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "muskingum_cunge",
+    "case_id": "mc_neh17_example17_5_reach",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "locator": "example 17-5, pp. 17-44 to 17-51: c = 1.779 ft/s and T = 738.3 ft at the peak inflow of 3,385.4 ft3/s, and the outflow of the second distance step in Table 17-20",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "inflow_m3s": [
+        0.0,
+        0.0226534772736,
+        0.03596239517184,
+        0.05351884005888,
+        0.07560598040064,
+        0.10250698466304,
+        0.13393868438016,
+        0.16961791108608,
+        0.2095446647808,
+        0.2534357769984,
+        0.30072491080704,
+        0.35084572927488,
+        0.40379823240192,
+        0.45929925172224,
+        0.516782450304,
+        0.57653099661312,
+        0.63797855371776,
+        0.70140829008384,
+        0.76625386877952,
+        0.83279845827072,
+        0.90075889009152,
+        0.969851995776,
+        1.04036094379008,
+        1.11228573413376,
+        1.1850600298752,
+        1.25896699948032,
+        1.3337234744832,
+        1.40961262334976,
+        1.48663444608,
+        1.56422260574208,
+        1.64294343926784,
+        1.72279694665728,
+        1.80463263330816,
+        1.8887336676864,
+        1.9765158921216,
+        2.06911198047744,
+        2.16850411201536,
+        2.27554179213312,
+        2.39192403162624,
+        2.51821716742656,
+        2.654704368,
+        2.80166880181248,
+        2.9576946265344,
+        3.12136599983616,
+        3.29126707938816,
+        3.4645661805312,
+        3.63956429246976,
+        3.81512874134016,
+        3.99154269560832,
+        4.17050516606976,
+        4.3551310058496,
+        4.54938457347072,
+        4.75779656438784,
+        4.98433133712384,
+        5.23323641866752,
+        5.50819299907584,
+        5.81429811073536,
+        6.1560824491008,
+        6.5369440357632,
+        6.96141356617728,
+        7.43572074659328,
+        7.96779429405696,
+        8.56924411567104,
+        9.252529623936,
+        10.04143696998912,
+        11.03705729616384,
+        12.50302044423168,
+        14.9243939963136,
+        19.09801401550848,
+        25.5375480989952,
+        34.09518230756352,
+        44.6358452829696,
+        56.87042202150912,
+        69.60309209160192,
+        80.80835145652225,
+        89.04289044547583,
+        93.99833859907584,
+        95.8638524525568,
+        95.15479861389312,
+        92.09969403508224,
+        87.22778057892864,
+        81.13427836079616,
+        73.970682509952,
+        66.27529628011008
+      ],
+      "timestep_min": 6.0,
+      "length_km": 0.79248,
+      "slope_m_per_m": 0.00091,
+      "celerity_m_per_s": 0.5422392,
+      "top_width_m": 225.03384,
+      "reference_discharge_m3s": 95.8638524525568,
+      "subreaches": 1,
+      "initial_outflow_m3s": 0.0
+    },
+    "expected": {
+      "outflow_m3s": [
+        0.0,
+        0.00453069545472,
+        0.01019406477312,
+        0.01812278181888,
+        0.02860001505792,
+        0.042475269888,
+        0.0594653778432,
+        0.08013667585536,
+        0.10420599545856,
+        0.13223967358464,
+        0.16395454176768,
+        0.19935060000768,
+        0.23814467983872,
+        0.28005361279488,
+        0.32507739887616,
+        0.37321603808256,
+        0.42362002501632,
+        0.47685569660928,
+        0.5323567159296,
+        0.59012308297728,
+        0.6498716292864,
+        0.71160235485696,
+        0.77503209122304,
+        0.84016083838464,
+        0.90670542787584,
+        0.97466585969664,
+        1.04432530231296,
+        1.11483425032704,
+        1.18704220913664,
+        1.260099673344,
+        1.33428981141504,
+        1.40961262334976,
+        1.48606810914816,
+        1.56422260574208,
+        1.64407611313152,
+        1.72647813671424,
+        1.81199501342208,
+        1.9014762486528,
+        1.996337684736,
+        2.0968624901376,
+        2.20390017025536,
+        2.31886656741888,
+        2.44119534469632,
+        2.57173600748544,
+        2.70963905038848,
+        2.8543381364736,
+        3.00498376034304,
+        3.16072641659904,
+        3.32071659984384,
+        3.48467114161152,
+        3.652873210368,
+        3.82617231151104,
+        4.00626745583616,
+        4.1951408226048,
+        4.39534092801024,
+        4.60969945671168,
+        4.84104809336832,
+        5.09306802803712,
+        5.36944045077504,
+        5.67384655163904,
+        6.00996752068608,
+        6.38346672723456,
+        6.80000754060288,
+        7.26695234090496,
+        7.79477836137984,
+        8.41180244861952,
+        9.19051572989952,
+        10.27986481829376,
+        11.9482934194944,
+        14.50162347669504,
+        18.15732837172224,
+        23.08304383640064,
+        29.36683526363136,
+        36.85239366022656,
+        45.04162569463296,
+        53.2838102321664,
+        60.99760241229312,
+        67.71945545630209,
+        73.14694544259072,
+        77.05523660921855,
+        79.36164376413696,
+        80.10807584030208,
+        79.35258237322752,
+        77.2596842416128
+      ]
+    },
+    "printed_precision": {
+      "outflow_m3s": 0.00028316846592
+    },
+    "conventions": [
+      "US units converted exactly with the units table (ft = 0.3048 m, ft3/s = 0.3048^3 m3/s)",
+      "the formula's grid: one step of 2,600 ft, the only number of steps whose weights are non-negative for this reference (X = -0.045)"
+    ],
+    "second_source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "locator": "example 17-5, p. 17-50: HEC-RAS's unsteady flow routing of the same reach, peak 2,902 ft3/s at 13.2 h",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open"
+    },
+    "status": "discrepancy",
+    "discrepancy": "NEH routes two steps of 1,300 ft with WinTR-20's reference per step (the peak of the first step's outflow, 3,072.61 ft3/s, for the second) and a negative weight (C1 = -0.187), which the precondition nonnegative_weights refuses; the formula's one step with one reference (X = -0.045) peaks at 2,867.6 ft3/s at 13.2 h, between NEH's 2,828.99 ft3/s (+1.4 %) and HEC-RAS's unsteady 2,902 ft3/s (-1.2 %), both at 13.2 h: a documented deviation of the grid and the reference (ADR-0008), not a defect"
+  },
+  {
+    "formula": "manning_normal_flow",
+    "case_id": "mc_neh17_example17_4_from_section",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "locator": "example 17-4, pp. 17-36 to 17-43: at 684.18 ft3/s A = 220.9 ft2, T = 44.6 ft and c = m Q / A = 4.297 ft/s with m = 1.3873 (eqs. 17-25, 17-29, 17-30a; Table 17-16)",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "discharge_m3s": 19.37382010131456,
+      "slope_m_per_m": 0.00091,
+      "bottom_width_m": 4.572,
+      "side_slope_m_per_m": 2.0,
+      "manning_n": 0.04
+    },
+    "expected": {
+      "area_m2": 20.522281536,
+      "top_width_m": 13.59408,
+      "celerity_m_per_s": 1.3097256
+    },
+    "printed_precision": {
+      "area_m2": 0.009290304,
+      "top_width_m": 0.03048,
+      "celerity_m_per_s": 0.0003048
+    },
+    "conventions": [
+      "US units converted exactly with the units table (ft = 0.3048 m, ft3/s = 0.3048^3 m3/s), the printed precisions likewise",
+      "NEH reads A and T at 684.18 ft3/s from the HEC-RAS rating of Table 17-16"
+    ],
+    "second_source": {
+      "citation": "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum-Cunge Model",
+      "url": "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-cunge-model",
+      "access": "open",
+      "locator": "eq. 4, the flood wave celerity c = dQ/dA"
+    },
+    "status": "discrepancy",
+    "discrepancy": "NEH's celerity takes the discharge-weighted log-log slope m = 1.3873 of the HEC-RAS rating from zero to 684.18 ft3/s (eqs. 17-29, 17-30a); the formula's local dQ/dA of Manning's equation has m = 1.360: c = 4.210 ft/s, 2.0 % below 4.297, while T = 44.65 ft and A = 221.0 ft2 lie within 0.1 % of the text's, which NEH interpolated in Table 17-16; a documented difference of definition (HEC-HMS eq. 4)"
+  },
+  {
+    "formula": "manning_normal_flow",
+    "case_id": "manning_trapezoid_neh_table17_16_q080",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "locator": "Table 17-16, cross section hydraulic characteristics for examples 17-4 and 17-5 (from HEC-RAS), the row of 80 ft3/s: elevation 92.40 ft over the bed at 90.00 ft, A = 47.43 ft2, T = 24.59 ft",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "discharge_m3s": 2.26534772736,
+      "slope_m_per_m": 0.00091,
+      "bottom_width_m": 4.572,
+      "side_slope_m_per_m": 2.0,
+      "manning_n": 0.04
+    },
+    "expected": {
+      "depth_m": 0.73152,
+      "area_m2": 4.4063911872,
+      "top_width_m": 7.495032
+    },
+    "printed_precision": {
+      "depth_m": 0.003048,
+      "area_m2": 0.0009290304,
+      "top_width_m": 0.003048
+    },
+    "intermediate_rounding": [
+      {
+        "step": "HEC-RAS balances the water surface to its calculation tolerance, 0.01 ft by default (HEC, Water Surface Profile Calculations with HEC-RAS, 'Tolerances and trials'; NEH does not state its settings): the depth within 0.01 ft, the area within T times it and the top width within 2 z times it",
+        "effect": {
+          "depth_m": 0.003048,
+          "area_m2": 0.022844628041578094,
+          "top_width_m": 0.012192
+        }
+      },
+      {
+        "step": "HEC-RAS's Manning constant 1.486 in feet, against the cube root of the feet in a metre, 1.48592: a conveyance 5.5e-5 too large",
+        "effect": {
+          "depth_m": 2.23376191205003e-05,
+          "area_m2": 0.0001674194882356536,
+          "top_width_m": 8.93504764820012e-05
+        }
+      }
+    ],
+    "conventions": [
+      "US units converted exactly with the units table (ft = 0.3048 m, ft3/s = 0.3048^3 m3/s), the printed precisions likewise",
+      "the depth is the printed water surface elevation less the bed's 90.00 ft; the rows within the trapezoid of 15 ft with 2:1 banks, up to 8 ft"
+    ],
+    "second_source": {
+      "citation": "Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339",
+      "locator": "Introduction, eq. 1 (the first page of the text): Manning's formula, which HEC-RAS evaluates with 1.486 in feet",
+      "url": "https://pubs.usgs.gov/wsp/2339/report.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "manning_normal_flow",
+    "case_id": "manning_trapezoid_neh_table17_16_q160",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "locator": "Table 17-16, cross section hydraulic characteristics for examples 17-4 and 17-5 (from HEC-RAS), the row of 160 ft3/s: elevation 93.51 ft over the bed at 90.00 ft, A = 77.16 ft2, T = 29.02 ft",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "discharge_m3s": 4.53069545472,
+      "slope_m_per_m": 0.00091,
+      "bottom_width_m": 4.572,
+      "side_slope_m_per_m": 2.0,
+      "manning_n": 0.04
+    },
+    "expected": {
+      "depth_m": 1.069848,
+      "area_m2": 7.1683985664,
+      "top_width_m": 8.845296
+    },
+    "printed_precision": {
+      "depth_m": 0.003048,
+      "area_m2": 0.0009290304,
+      "top_width_m": 0.003048
+    },
+    "intermediate_rounding": [
+      {
+        "step": "HEC-RAS balances the water surface to its calculation tolerance, 0.01 ft by default (HEC, Water Surface Profile Calculations with HEC-RAS, 'Tolerances and trials'; NEH does not state its settings): the depth within 0.01 ft, the area within T times it and the top width within 2 z times it",
+        "effect": {
+          "depth_m": 0.003048,
+          "area_m2": 0.02696593865900758,
+          "top_width_m": 0.012192
+        }
+      },
+      {
+        "step": "HEC-RAS's Manning constant 1.486 in feet, against the cube root of the feet in a metre, 1.48592: a conveyance 5.5e-5 too large",
+        "effect": {
+          "depth_m": 3.153758922182967e-05,
+          "area_m2": 0.00027901597651208584,
+          "top_width_m": 0.0001261503568873187
+        }
+      }
+    ],
+    "conventions": [
+      "US units converted exactly with the units table (ft = 0.3048 m, ft3/s = 0.3048^3 m3/s), the printed precisions likewise",
+      "the depth is the printed water surface elevation less the bed's 90.00 ft; the rows within the trapezoid of 15 ft with 2:1 banks, up to 8 ft"
+    ],
+    "second_source": {
+      "citation": "Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339",
+      "locator": "Introduction, eq. 1 (the first page of the text): Manning's formula, which HEC-RAS evaluates with 1.486 in feet",
+      "url": "https://pubs.usgs.gov/wsp/2339/report.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "manning_normal_flow",
+    "case_id": "manning_trapezoid_neh_table17_16_q240",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "locator": "Table 17-16, cross section hydraulic characteristics for examples 17-4 and 17-5 (from HEC-RAS), the row of 240 ft3/s: elevation 94.35 ft over the bed at 90.00 ft, A = 103.11 ft2, T = 32.40 ft",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "discharge_m3s": 6.79604318208,
+      "slope_m_per_m": 0.00091,
+      "bottom_width_m": 4.572,
+      "side_slope_m_per_m": 2.0,
+      "manning_n": 0.04
+    },
+    "expected": {
+      "depth_m": 1.32588,
+      "area_m2": 9.5792324544,
+      "top_width_m": 9.87552
+    },
+    "printed_precision": {
+      "depth_m": 0.003048,
+      "area_m2": 0.0009290304,
+      "top_width_m": 0.003048
+    },
+    "intermediate_rounding": [
+      {
+        "step": "HEC-RAS balances the water surface to its calculation tolerance, 0.01 ft by default (HEC, Water Surface Profile Calculations with HEC-RAS, 'Tolerances and trials'; NEH does not state its settings): the depth within 0.01 ft, the area within T times it and the top width within 2 z times it",
+        "effect": {
+          "depth_m": 0.003048,
+          "area_m2": 0.030104189934990994,
+          "top_width_m": 0.012192
+        }
+      },
+      {
+        "step": "HEC-RAS's Manning constant 1.486 in feet, against the cube root of the feet in a metre, 1.48592: a conveyance 5.5e-5 too large",
+        "effect": {
+          "depth_m": 3.8203039384345625e-05,
+          "area_m2": 0.000377320063556523,
+          "top_width_m": 0.0001528121575373825
+        }
+      }
+    ],
+    "conventions": [
+      "US units converted exactly with the units table (ft = 0.3048 m, ft3/s = 0.3048^3 m3/s), the printed precisions likewise",
+      "the depth is the printed water surface elevation less the bed's 90.00 ft; the rows within the trapezoid of 15 ft with 2:1 banks, up to 8 ft"
+    ],
+    "second_source": {
+      "citation": "Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339",
+      "locator": "Introduction, eq. 1 (the first page of the text): Manning's formula, which HEC-RAS evaluates with 1.486 in feet",
+      "url": "https://pubs.usgs.gov/wsp/2339/report.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "manning_normal_flow",
+    "case_id": "manning_trapezoid_neh_table17_16_q320",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "locator": "Table 17-16, cross section hydraulic characteristics for examples 17-4 and 17-5 (from HEC-RAS), the row of 320 ft3/s: elevation 95.05 ft over the bed at 90.00 ft, A = 126.91 ft2, T = 35.22 ft",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "discharge_m3s": 9.06139090944,
+      "slope_m_per_m": 0.00091,
+      "bottom_width_m": 4.572,
+      "side_slope_m_per_m": 2.0,
+      "manning_n": 0.04
+    },
+    "expected": {
+      "depth_m": 1.53924,
+      "area_m2": 11.7903248064,
+      "top_width_m": 10.735056
+    },
+    "printed_precision": {
+      "depth_m": 0.003048,
+      "area_m2": 0.0009290304,
+      "top_width_m": 0.003048
+    },
+    "intermediate_rounding": [
+      {
+        "step": "HEC-RAS balances the water surface to its calculation tolerance, 0.01 ft by default (HEC, Water Surface Profile Calculations with HEC-RAS, 'Tolerances and trials'; NEH does not state its settings): the depth within 0.01 ft, the area within T times it and the top width within 2 z times it",
+        "effect": {
+          "depth_m": 0.003048,
+          "area_m2": 0.03271875846458848,
+          "top_width_m": 0.012192
+        }
+      },
+      {
+        "step": "HEC-RAS's Manning constant 1.486 in feet, against the cube root of the feet in a metre, 1.48592: a conveyance 5.5e-5 too large",
+        "effect": {
+          "depth_m": 4.3582673131448744e-05,
+          "area_m2": 0.00046783823997013826,
+          "top_width_m": 0.00017433069252579498
+        }
+      }
+    ],
+    "conventions": [
+      "US units converted exactly with the units table (ft = 0.3048 m, ft3/s = 0.3048^3 m3/s), the printed precisions likewise",
+      "the depth is the printed water surface elevation less the bed's 90.00 ft; the rows within the trapezoid of 15 ft with 2:1 banks, up to 8 ft"
+    ],
+    "second_source": {
+      "citation": "Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339",
+      "locator": "Introduction, eq. 1 (the first page of the text): Manning's formula, which HEC-RAS evaluates with 1.486 in feet",
+      "url": "https://pubs.usgs.gov/wsp/2339/report.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "manning_normal_flow",
+    "case_id": "manning_trapezoid_neh_table17_16_q400",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "locator": "Table 17-16, cross section hydraulic characteristics for examples 17-4 and 17-5 (from HEC-RAS), the row of 400 ft3/s: elevation 95.67 ft over the bed at 90.00 ft, A = 149.21 ft2, T = 37.67 ft",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "discharge_m3s": 11.3267386368,
+      "slope_m_per_m": 0.00091,
+      "bottom_width_m": 4.572,
+      "side_slope_m_per_m": 2.0,
+      "manning_n": 0.04
+    },
+    "expected": {
+      "depth_m": 1.728216,
+      "area_m2": 13.8620625984,
+      "top_width_m": 11.481816
+    },
+    "printed_precision": {
+      "depth_m": 0.003048,
+      "area_m2": 0.0009290304,
+      "top_width_m": 0.003048
+    },
+    "intermediate_rounding": [
+      {
+        "step": "HEC-RAS balances the water surface to its calculation tolerance, 0.01 ft by default (HEC, Water Surface Profile Calculations with HEC-RAS, 'Tolerances and trials'; NEH does not state its settings): the depth within 0.01 ft, the area within T times it and the top width within 2 z times it",
+        "effect": {
+          "depth_m": 0.003048,
+          "area_m2": 0.03499481401261487,
+          "top_width_m": 0.012192
+        }
+      },
+      {
+        "step": "HEC-RAS's Manning constant 1.486 in feet, against the cube root of the feet in a metre, 1.48592: a conveyance 5.5e-5 too large",
+        "effect": {
+          "depth_m": 4.816112876185461e-05,
+          "area_m2": 0.0005529493909641399,
+          "top_width_m": 0.00019264451504741843
+        }
+      }
+    ],
+    "conventions": [
+      "US units converted exactly with the units table (ft = 0.3048 m, ft3/s = 0.3048^3 m3/s), the printed precisions likewise",
+      "the depth is the printed water surface elevation less the bed's 90.00 ft; the rows within the trapezoid of 15 ft with 2:1 banks, up to 8 ft"
+    ],
+    "second_source": {
+      "citation": "Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339",
+      "locator": "Introduction, eq. 1 (the first page of the text): Manning's formula, which HEC-RAS evaluates with 1.486 in feet",
+      "url": "https://pubs.usgs.gov/wsp/2339/report.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "manning_normal_flow",
+    "case_id": "manning_trapezoid_neh_table17_16_q480",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "locator": "Table 17-16, cross section hydraulic characteristics for examples 17-4 and 17-5 (from HEC-RAS), the row of 480 ft3/s: elevation 96.21 ft over the bed at 90.00 ft, A = 170.42 ft2, T = 39.85 ft",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "discharge_m3s": 13.59208636416,
+      "slope_m_per_m": 0.00091,
+      "bottom_width_m": 4.572,
+      "side_slope_m_per_m": 2.0,
+      "manning_n": 0.04
+    },
+    "expected": {
+      "depth_m": 1.892808,
+      "area_m2": 15.8325360768,
+      "top_width_m": 12.14628
+    },
+    "printed_precision": {
+      "depth_m": 0.003048,
+      "area_m2": 0.0009290304,
+      "top_width_m": 0.003048
+    },
+    "intermediate_rounding": [
+      {
+        "step": "HEC-RAS balances the water surface to its calculation tolerance, 0.01 ft by default (HEC, Water Surface Profile Calculations with HEC-RAS, 'Tolerances and trials'; NEH does not state its settings): the depth within 0.01 ft, the area within T times it and the top width within 2 z times it",
+        "effect": {
+          "depth_m": 0.003048,
+          "area_m2": 0.03702931774732223,
+          "top_width_m": 0.012192
+        }
+      },
+      {
+        "step": "HEC-RAS's Manning constant 1.486 in feet, against the cube root of the feet in a metre, 1.48592: a conveyance 5.5e-5 too large",
+        "effect": {
+          "depth_m": 5.218415128385629e-05,
+          "area_m2": 0.0006339709708872205,
+          "top_width_m": 0.00020873660513542517
+        }
+      }
+    ],
+    "conventions": [
+      "US units converted exactly with the units table (ft = 0.3048 m, ft3/s = 0.3048^3 m3/s), the printed precisions likewise",
+      "the depth is the printed water surface elevation less the bed's 90.00 ft; the rows within the trapezoid of 15 ft with 2:1 banks, up to 8 ft"
+    ],
+    "second_source": {
+      "citation": "Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339",
+      "locator": "Introduction, eq. 1 (the first page of the text): Manning's formula, which HEC-RAS evaluates with 1.486 in feet",
+      "url": "https://pubs.usgs.gov/wsp/2339/report.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "manning_normal_flow",
+    "case_id": "manning_trapezoid_neh_table17_16_q560",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "locator": "Table 17-16, cross section hydraulic characteristics for examples 17-4 and 17-5 (from HEC-RAS), the row of 560 ft3/s: elevation 96.71 ft over the bed at 90.00 ft, A = 190.74 ft2, T = 41.84 ft",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "discharge_m3s": 15.85743409152,
+      "slope_m_per_m": 0.00091,
+      "bottom_width_m": 4.572,
+      "side_slope_m_per_m": 2.0,
+      "manning_n": 0.04
+    },
+    "expected": {
+      "depth_m": 2.045208,
+      "area_m2": 17.7203258496,
+      "top_width_m": 12.752832
+    },
+    "printed_precision": {
+      "depth_m": 0.003048,
+      "area_m2": 0.0009290304,
+      "top_width_m": 0.003048
+    },
+    "intermediate_rounding": [
+      {
+        "step": "HEC-RAS balances the water surface to its calculation tolerance, 0.01 ft by default (HEC, Water Surface Profile Calculations with HEC-RAS, 'Tolerances and trials'; NEH does not state its settings): the depth within 0.01 ft, the area within T times it and the top width within 2 z times it",
+        "effect": {
+          "depth_m": 0.003048,
+          "area_m2": 0.038880578367949545,
+          "top_width_m": 0.012192
+        }
+      },
+      {
+        "step": "HEC-RAS's Manning constant 1.486 in feet, against the cube root of the feet in a metre, 1.48592: a conveyance 5.5e-5 too large",
+        "effect": {
+          "depth_m": 5.579556633628781e-05,
+          "area_m2": 0.0007117335595545163,
+          "top_width_m": 0.00022318226534515125
+        }
+      }
+    ],
+    "conventions": [
+      "US units converted exactly with the units table (ft = 0.3048 m, ft3/s = 0.3048^3 m3/s), the printed precisions likewise",
+      "the depth is the printed water surface elevation less the bed's 90.00 ft; the rows within the trapezoid of 15 ft with 2:1 banks, up to 8 ft"
+    ],
+    "second_source": {
+      "citation": "Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339",
+      "locator": "Introduction, eq. 1 (the first page of the text): Manning's formula, which HEC-RAS evaluates with 1.486 in feet",
+      "url": "https://pubs.usgs.gov/wsp/2339/report.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "manning_normal_flow",
+    "case_id": "manning_trapezoid_neh_table17_16_q640",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "locator": "Table 17-16, cross section hydraulic characteristics for examples 17-4 and 17-5 (from HEC-RAS), the row of 640 ft3/s: elevation 97.17 ft over the bed at 90.00 ft, A = 210.36 ft2, T = 43.68 ft",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "discharge_m3s": 18.12278181888,
+      "slope_m_per_m": 0.00091,
+      "bottom_width_m": 4.572,
+      "side_slope_m_per_m": 2.0,
+      "manning_n": 0.04
+    },
+    "expected": {
+      "depth_m": 2.185416,
+      "area_m2": 19.5430834944,
+      "top_width_m": 13.313664
+    },
+    "printed_precision": {
+      "depth_m": 0.003048,
+      "area_m2": 0.0009290304,
+      "top_width_m": 0.003048
+    },
+    "intermediate_rounding": [
+      {
+        "step": "HEC-RAS balances the water surface to its calculation tolerance, 0.01 ft by default (HEC, Water Surface Profile Calculations with HEC-RAS, 'Tolerances and trials'; NEH does not state its settings): the depth within 0.01 ft, the area within T times it and the top width within 2 z times it",
+        "effect": {
+          "depth_m": 0.003048,
+          "area_m2": 0.04058687401246617,
+          "top_width_m": 0.012192
+        }
+      },
+      {
+        "step": "HEC-RAS's Manning constant 1.486 in feet, against the cube root of the feet in a metre, 1.48592: a conveyance 5.5e-5 too large",
+        "effect": {
+          "depth_m": 5.908763140383003e-05,
+          "area_m2": 0.000786805200617549,
+          "top_width_m": 0.00023635052561532012
+        }
+      }
+    ],
+    "conventions": [
+      "US units converted exactly with the units table (ft = 0.3048 m, ft3/s = 0.3048^3 m3/s), the printed precisions likewise",
+      "the depth is the printed water surface elevation less the bed's 90.00 ft; the rows within the trapezoid of 15 ft with 2:1 banks, up to 8 ft"
+    ],
+    "second_source": {
+      "citation": "Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339",
+      "locator": "Introduction, eq. 1 (the first page of the text): Manning's formula, which HEC-RAS evaluates with 1.486 in feet",
+      "url": "https://pubs.usgs.gov/wsp/2339/report.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "manning_normal_flow",
+    "case_id": "manning_trapezoid_neh_table17_16_q720",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "locator": "Table 17-16, cross section hydraulic characteristics for examples 17-4 and 17-5 (from HEC-RAS), the row of 720 ft3/s: elevation 97.60 ft over the bed at 90.00 ft, A = 229.41 ft2, T = 45.39 ft",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "discharge_m3s": 20.38812954624,
+      "slope_m_per_m": 0.00091,
+      "bottom_width_m": 4.572,
+      "side_slope_m_per_m": 2.0,
+      "manning_n": 0.04
+    },
+    "expected": {
+      "depth_m": 2.31648,
+      "area_m2": 21.3128864064,
+      "top_width_m": 13.834872
+    },
+    "printed_precision": {
+      "depth_m": 0.003048,
+      "area_m2": 0.0009290304,
+      "top_width_m": 0.003048
+    },
+    "intermediate_rounding": [
+      {
+        "step": "HEC-RAS balances the water surface to its calculation tolerance, 0.01 ft by default (HEC, Water Surface Profile Calculations with HEC-RAS, 'Tolerances and trials'; NEH does not state its settings): the depth within 0.01 ft, the area within T times it and the top width within 2 z times it",
+        "effect": {
+          "depth_m": 0.003048,
+          "area_m2": 0.042174916173449616,
+          "top_width_m": 0.012192
+        }
+      },
+      {
+        "step": "HEC-RAS's Manning constant 1.486 in feet, against the cube root of the feet in a metre, 1.48592: a conveyance 5.5e-5 too large",
+        "effect": {
+          "depth_m": 6.212345221982857e-05,
+          "area_m2": 0.0008595969126563559,
+          "top_width_m": 0.0002484938088793143
+        }
+      }
+    ],
+    "conventions": [
+      "US units converted exactly with the units table (ft = 0.3048 m, ft3/s = 0.3048^3 m3/s), the printed precisions likewise",
+      "the depth is the printed water surface elevation less the bed's 90.00 ft; the rows within the trapezoid of 15 ft with 2:1 banks, up to 8 ft"
+    ],
+    "second_source": {
+      "citation": "Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339",
+      "locator": "Introduction, eq. 1 (the first page of the text): Manning's formula, which HEC-RAS evaluates with 1.486 in feet",
+      "url": "https://pubs.usgs.gov/wsp/2339/report.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "manning_normal_flow",
+    "case_id": "manning_trapezoid_neh_table17_16_q800",
+    "source": {
+      "citation": "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)",
+      "locator": "Table 17-16, cross section hydraulic characteristics for examples 17-4 and 17-5 (from HEC-RAS), the row of 800 ft3/s: elevation 98.00 ft over the bed at 90.00 ft, A = 247.87 ft2, T = 46.99 ft",
+      "url": "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "discharge_m3s": 22.6534772736,
+      "slope_m_per_m": 0.00091,
+      "bottom_width_m": 4.572,
+      "side_slope_m_per_m": 2.0,
+      "manning_n": 0.04
+    },
+    "expected": {
+      "depth_m": 2.4384,
+      "area_m2": 23.0278765248,
+      "top_width_m": 14.322552
+    },
+    "printed_precision": {
+      "depth_m": 0.003048,
+      "area_m2": 0.0009290304,
+      "top_width_m": 0.003048
+    },
+    "intermediate_rounding": [
+      {
+        "step": "HEC-RAS balances the water surface to its calculation tolerance, 0.01 ft by default (HEC, Water Surface Profile Calculations with HEC-RAS, 'Tolerances and trials'; NEH does not state its settings): the depth within 0.01 ft, the area within T times it and the top width within 2 z times it",
+        "effect": {
+          "depth_m": 0.003048,
+          "area_m2": 0.043664206750212105,
+          "top_width_m": 0.012192
+        }
+      },
+      {
+        "step": "HEC-RAS's Manning constant 1.486 in feet, against the cube root of the feet in a metre, 1.48592: a conveyance 5.5e-5 too large",
+        "effect": {
+          "depth_m": 6.494830465973039e-05,
+          "area_m2": 0.0009304187016857717,
+          "top_width_m": 0.00025979321863892155
+        }
+      }
+    ],
+    "conventions": [
+      "US units converted exactly with the units table (ft = 0.3048 m, ft3/s = 0.3048^3 m3/s), the printed precisions likewise",
+      "the depth is the printed water surface elevation less the bed's 90.00 ft; the rows within the trapezoid of 15 ft with 2:1 banks, up to 8 ft"
+    ],
+    "second_source": {
+      "citation": "Arcement, G.J. and Schneider, V.R. (1989). Guide for selecting Manning's roughness coefficients for natural channels and flood plains, US Geological Survey Water-Supply Paper 2339",
+      "locator": "Introduction, eq. 1 (the first page of the text): Manning's formula, which HEC-RAS evaluates with 1.486 in feet",
+      "url": "https://pubs.usgs.gov/wsp/2339/report.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  }
+]

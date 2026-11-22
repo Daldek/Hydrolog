@@ -1,0 +1,283 @@
+[
+  {
+    "formula": "exceedance_values",
+    "case_id": "NIST-R6-RESISTIVITY-P90",
+    "source": {
+      "citation": "NIST/SEMATECH (2012). e-Handbook of Statistical Methods, section 7.2.6.2, Percentiles",
+      "locator": "Example and interpretation: twelve resistivities of silicon wafers [ohm.cm]; p (N + 1) = 0.9 (13) = 11.7, k = 11, d = 0.7, Y(90) = 95.1981 (method R6 of Hyndman and Fan)",
+      "url": "https://www.itl.nist.gov/div898/handbook/prc/section2/prc262.htm",
+      "access": "open"
+    },
+    "inputs": {
+      "values": [95.1772, 95.1567, 95.1937, 95.1959, 95.1442, 95.061, 95.1591, 95.1195, 95.1065, 95.0925, 95.199, 95.1682],
+      "exceedance_percent": [10.0]
+    },
+    "expected": {
+      "exceedance_values": [95.1981]
+    },
+    "printed_precision": {
+      "exceedance_values": 0.0001
+    },
+    "conventions": [
+      "NIST's 90th percentile, at most 90 % of the measurements below it, is the value equalled or exceeded by 10 % of them: exceedance_percent 10",
+      "R6: p (N + 1) = k + d, Y[k] + d (Y[k+1] - Y[k]) on the ascending order statistics, the same positions as m / (n + 1) of the values ranked from the highest",
+      "the measurements are the source's data as printed: they are the inputs, not rounded ones"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "exceedance_values",
+    "case_id": "VF94-WEIBULL-INTERP-1-9",
+    "source": {
+      "citation": "Vogel, R.M. and Fennessey, N.M. (1994). Flow-duration curves. I: New interpretation and confidence intervals. Journal of Water Resources Planning and Management 120(4), 485-504 (the authors' copy)",
+      "locator": "pp. 488-489, eqs. (2a) and (3): Q_p,2 = (1 - theta) q(i) + theta q(i+1), i = [(n + 1) p], theta = (n + 1) p - i, applied to the observations 1 to 9 (the case of the research of 2026-11-18, FDC-WEIBULL-INTERP-1-9)",
+      "url": "https://sites.tufts.edu/richardvogel/files/2019/04/flowDuration1.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "values": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+      "exceedance_percent": [10.0, 50.0, 90.0, 15.0]
+    },
+    "expected": {
+      "exceedance_values": [9.0, 5.0, 1.0, 8.5]
+    },
+    "tolerance": {
+      "abs": 1e-12,
+      "reason": "an exact linear interpolation of whole numbers at whole and half positions"
+    },
+    "conventions": [
+      "descending ranks, p = m / (n + 1), linear interpolation (Q_p,2); the positions of 9 values are 10 to 90 %"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "exceedance_values",
+    "case_id": "NIST-R6-ENDS-1-9",
+    "source": {
+      "citation": "NIST/SEMATECH (2012). e-Handbook of Statistical Methods, section 7.2.6.2, Percentiles",
+      "locator": "Estimation of percentiles: for k = 0 the minimum, any p <= 1/(N + 1) set to it; for k >= N the maximum, any p >= N/(N + 1) set to it; applied to the observations 1 to 9 (the end values of the research case FDC-WEIBULL-INTERP-1-9)",
+      "url": "https://www.itl.nist.gov/div898/handbook/prc/section2/prc262.htm",
+      "access": "open"
+    },
+    "inputs": {
+      "values": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+      "exceedance_percent": [5.0, 95.0]
+    },
+    "expected": {
+      "exceedance_values": [9.0, 1.0]
+    },
+    "conventions": [
+      "exceedance 5 % is the 95th percentile, (N + 1) 0.95 = 9.5, k = 9 >= N: the maximum; exceedance 95 % the 5th, k = 0: the minimum",
+      "Vogel and Fennessey (1994) leave Q_p,2 undefined at 5 % (i = 0) and recommend interpolating to q(n+1) = 0 at 95 % (0.5 here); Hydrolog follows R6 and holds the end values"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "threshold_runs",
+    "case_id": "POOLING-GAP-STRICT-2",
+    "source": {
+      "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, WMO-No. 1029, Operational Hydrology Report No. 50 (Gustard, A. and Demuth, S., eds.)",
+      "locator": "sect. 8.2, p. 72: the IT method pools deficits 'if they occur less than a predefined number of days, t_min, apart' (the research case POOLING-GAP-STRICT, t_min 2)",
+      "url": "https://library.wmo.int/idurl/4/32176",
+      "access": "open"
+    },
+    "inputs": {
+      "beyond": [true, true, false, false, true, true, false],
+      "min_duration_days": 1,
+      "max_gap_days": 2
+    },
+    "expected": {
+      "starts": [0, 4],
+      "ends": [1, 5]
+    },
+    "conventions": [
+      "a gap of 2 days is not fewer than max_gap_days 2: the runs stay apart"
+    ],
+    "second_source": {
+      "citation": "Gauster, T., Laaha, G. and Koffler, D. lfstat: Calculation of Low Flow Statistics for Daily Stream Flow Data, R package version 0.9.15 (2026-10-10), CRAN",
+      "locator": "pool_it and pool_ic: 'Two droughts are pooled if their inter-event time is less than tmin'; R/pooling.R, interEventTime < tmin",
+      "url": "https://cran.r-project.org/package=lfstat",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "threshold_runs",
+    "case_id": "POOLING-GAP-STRICT-3",
+    "source": {
+      "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, WMO-No. 1029, Operational Hydrology Report No. 50 (Gustard, A. and Demuth, S., eds.)",
+      "locator": "sect. 8.2, p. 72: the IT method pools deficits 'if they occur less than a predefined number of days, t_min, apart' (the research case POOLING-GAP-STRICT, t_min 3)",
+      "url": "https://library.wmo.int/idurl/4/32176",
+      "access": "open"
+    },
+    "inputs": {
+      "beyond": [true, true, false, false, true, true, false],
+      "min_duration_days": 1,
+      "max_gap_days": 3
+    },
+    "expected": {
+      "starts": [0],
+      "ends": [5]
+    },
+    "conventions": [
+      "a gap of 2 days is fewer than max_gap_days 3: the runs pool, the gap inside the pooled run"
+    ],
+    "second_source": {
+      "citation": "Gauster, T., Laaha, G. and Koffler, D. lfstat: Calculation of Low Flow Statistics for Daily Stream Flow Data, R package version 0.9.15 (2026-10-10), CRAN",
+      "locator": "pool_it and pool_ic: 'Two droughts are pooled if their inter-event time is less than tmin'; R/pooling.R, interEventTime < tmin",
+      "url": "https://cran.r-project.org/package=lfstat",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "threshold_runs",
+    "case_id": "POOLING-NONE-0",
+    "source": {
+      "citation": "WMO (2008). Manual on Low-flow Estimation and Prediction, WMO-No. 1029, Operational Hydrology Report No. 50 (Gustard, A. and Demuth, S., eds.)",
+      "locator": "sect. 8.2, p. 71: a deficit starts when the flow goes below the threshold and ends as soon as it returns above it (the research case POOLING-GAP-STRICT, no pooling)",
+      "url": "https://library.wmo.int/idurl/4/32176",
+      "access": "open"
+    },
+    "inputs": {
+      "beyond": [true, true, false, false, true, true, false],
+      "min_duration_days": 1,
+      "max_gap_days": 0
+    },
+    "expected": {
+      "starts": [0, 4],
+      "ends": [1, 5]
+    },
+    "conventions": [
+      "max_gap_days 0 pools nothing (lfstat's tmin = 0 does no pooling)"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "threshold_runs",
+    "case_id": "NIZOWKA-POOL-3-DAYS",
+    "source": {
+      "citation": "Tokarczyk, T. (2010). Niżówka jako wskaźnik suszy hydrologicznej. Monografie IMGW-PIB, Warszawa",
+      "locator": "p. 34: the program NIŻÓWKA (Jakubowski and Radczuk 2004): when the period with flow above the threshold lasts 3 days, the following low flows are summed; the shortest single low flow is 5 days",
+      "url": "https://bibliotekanauki.pl/books/2080712.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "beyond": [true, true, true, true, true, false, false, false, true, true, true, true, true, true, false, false, false, false, true, true, true, true, true],
+      "min_duration_days": 5,
+      "max_gap_days": 4
+    },
+    "expected": {
+      "starts": [0, 18],
+      "ends": [13, 22]
+    },
+    "conventions": [
+      "max_gap_days 4 pools the runs parted by 3 days and not those parted by 4",
+      "the pooled duration includes the 3 days of the gap (14 days, Fleig et al. 2006 eq. 1); NIŻÓWKA sums the durations of the two low flows (11 days)"
+    ],
+    "second_source": {
+      "citation": "Tomaszewski, E. (2012). Wieloletnia i sezonowa dynamika niżówek w rzekach środkowej Polski. Wydawnictwo Uniwersytetu Łódzkiego",
+      "locator": "pp. 68-69: neighbouring episodes parted by flow above the threshold for no longer than 3 days are one event; fig. 14, the break of at most 3 days",
+      "url": "https://dspace.uni.lodz.pl/xmlui/bitstream/handle/11089/41804/Tomaszewski_Wieloletnia.pdf?sequence=1",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "low_flow_sequences",
+    "case_id": "LFSTAT-POOL-IT-EXCESS-DAY",
+    "source": {
+      "citation": "Gauster, T., Laaha, G. and Koffler, D. lfstat: Calculation of Low Flow Statistics for Daily Stream Flow Data, R package version 0.9.15 (2026-10-10), CRAN",
+      "locator": "tests/testthat/test-pooling.R, 'drought durations and volumes are correct': the flows 1, 1, 1, 10, 1, 1, 1 [m3/d], threshold 2, pool_it with tmin 5: duration 7 ('durations include inter-event time') and dbt 6 days below the threshold",
+      "url": "https://cran.r-project.org/package=lfstat",
+      "access": "open"
+    },
+    "inputs": {
+      "flows": [1.0, 1.0, 1.0, 10.0, 1.0, 1.0, 1.0],
+      "threshold": 2.0,
+      "min_duration_days": 1,
+      "max_gap_days": 5
+    },
+    "expected": {
+      "duration_days": [7],
+      "min_flow": [1.0]
+    },
+    "conventions": [
+      "lfstat pools when the inter-event time is less than tmin, Hydrolog when the gap is fewer than max_gap_days days: tmin 5 is max_gap_days 5",
+      "lfstat's volume, -2, subtracts the excess of the day between the runs; Hydrolog's deficit, 6, is the sum of the deficits of the runs, lfstat's vbt (checked by the exact oracle, not printed by the test)"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "low_flow_sequences",
+    "case_id": "LFSTAT-POOL-IT-ACROSS-NA",
+    "source": {
+      "citation": "Gauster, T., Laaha, G. and Koffler, D. lfstat: Calculation of Low Flow Statistics for Daily Stream Flow Data, R package version 0.9.15 (2026-10-10), CRAN",
+      "locator": "tests/testthat/test-pooling.R, 'pool_it() can merge two events just separated by an NA value', the third series: 1, 1, 1, 1, 4, 1, 1, 1, 10, 10, 10, NA, threshold 2, pool_it with tmin 2: duration 8, dbt 7, volume 5, qmin 1",
+      "url": "https://cran.r-project.org/package=lfstat",
+      "access": "open"
+    },
+    "inputs": {
+      "flows": [1.0, 1.0, 1.0, 1.0, 4.0, 1.0, 1.0, 1.0, 10.0, 10.0, 10.0, null],
+      "threshold": 2.0,
+      "min_duration_days": 1,
+      "max_gap_days": 2
+    },
+    "expected": {
+      "duration_days": [8],
+      "min_flow": [1.0]
+    },
+    "conventions": [
+      "null is a day without a value (NaN)",
+      "lfstat's volume 5 subtracts the excess of the day with 4; Hydrolog's deficit is 7, lfstat's vbt (checked by the exact oracle)"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "runoff_volumes",
+    "case_id": "VOLUME-1M3S-YEAR",
+    "source": {
+      "citation": "BIPM (2019). The International System of Units (SI), 9th edition, version 4.01; IMGW-PIB, Słownik hydrologiczny, entry 54 (rok hydrologiczny)",
+      "locator": "table 8: the day, 1 d = 86 400 s; the hydrological year from 1 November to 31 October (the research case VOLUME-1M3S-YEAR)",
+      "url": "https://www.bipm.org/documents/20126/41483022/SI-Brochure-9-EN.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "discharge": "1.0 m3/s on every day of the hydrological years 2020 (366 days) and 2021 (365 days)"
+    },
+    "expected": {
+      "volume_m3": [31622400.0, 31536000.0],
+      "mean_annual_volume_m3": 31579200.0
+    },
+    "tolerance": {
+      "abs": 0,
+      "reason": "whole numbers below 2**53, exact in float64"
+    },
+    "conventions": [
+      "the hydrological year 1 November - 31 October, named after the year of its end, 366 days when it holds 29 February"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "duration_classes",
+    "case_id": "FDC-CLASSES-DECIMAL-WIDTH-BOUNDARY",
+    "source": {
+      "citation": "Searcy, J.K. (1959). Flow-duration curves. Manual of Hydrology, Part 2, Low-flow techniques. U.S. Geological Survey Water-Supply Paper 1542-A",
+      "locator": "figs. 4-5 (form 9-217c): 'number of days when discharge was equal to or greater than that shown in first two columns and less than that shown on next line' (the research case FDC-CLASSES-DECIMAL-WIDTH-BOUNDARY, fixed by ADR-0048)",
+      "url": "https://pubs.usgs.gov/wsp/1542a/report.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "values": [0.1, 0.2, 0.3, 0.3, 0.7, 0.6],
+      "bin_width": 0.1
+    },
+    "expected": {
+      "classes": [[0.7, 0.8, 1], [0.6, 0.7, 1], [0.5, 0.6, 0], [0.4, 0.5, 0], [0.3, 0.4, 2], [0.2, 0.3, 1], [0.1, 0.2, 1]]
+    },
+    "conventions": [
+      "a class [lower, upper) of decimal bounds: a value written on a bound starts its class",
+      "each class is [lower, upper, days], from the highest down"
+    ],
+    "status": "single_source"
+  }
+]

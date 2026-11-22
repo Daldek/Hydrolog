@@ -7,12 +7,20 @@
 //
 // PMAXTP (ADR-0018): the person gives the point (latitude and longitude, WGS84), the
 // probability and the duration of IMGW-PIB's atlas and its method; the depth is never typed.
-// `precip pmaxtp` fetches it (pmaxtpOptions), and the depth it gave is kept with the inputs
-// as `pmaxtp_fetched` (the options it was fetched for, `depth_mm` and the providers' lines
-// of the answer, `attribution` and `terms_notice`), so a reload shows it without fetching
-// again; it is the `total_mm` of a run while the options are the same (pmaxtpDepth), and
-// its lines go with the run (pmaxtpLines: a depth kept before the lines came, or handed
-// off without them, takes PMAXTP's set of GET api/session).
+// `precip pmaxtp` fetches it (pmaxtpOptions), and what it gave is kept with the inputs as
+// `pmaxtp_fetched` (the options it was fetched for, `depth_mm`, the depths of every duration
+// at that probability, `depth_duration_mm`, and the providers' lines of the answer,
+// `attribution` and `terms_notice`), so a reload shows it without fetching again; the depth
+// is the `total_mm` of a run while the options are the same (pmaxtpDepth), and its lines go
+// with the run (pmaxtpLines: a depth kept before the lines came, or handed off without them,
+// takes PMAXTP's set of GET api/session).
+//
+// Euler II (the Euler type II storm of ATV-DVWK-A 118) is built from the depth-duration
+// curve of one probability, sent as `depth_duration_mm` (rainCurve): under PMAXTP the
+// fetched one (a fetch kept without it, from before it came or handed off without one, is
+// fetched again for Euler II); „Hietogram”, a total typed by hand, has none and offers Euler
+// II only with the curve its document's design rainfall came with (offeredShapes; a network
+// of Sieć saved with PMAXTP's Euler II opens so). Euler II has no `peak_position`.
 //
 // Nothing is required until a model is chosen in step 3; a value that is not a number or
 // leaves the bounds of `watershed` of hydrolog-network-1.schema.json or of the catalog
@@ -37,6 +45,7 @@ import { NO_LINES, hasLines, linesFields, linesOf, providerLines } from "../../a
 import { inputText, parseNumber } from "../../format.js";
 import { commandEntry, fieldModel, parseSeries, validate, withReason } from "../../forms/model.js";
 import { t } from "../../labels/common.js";
+import { errorOptionOf } from "../../labels/errors.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
 import { describeNotice, isRangeNotice, noticeValue } from "../../labels/notices.js";
 
@@ -54,10 +63,11 @@ export const NETWORK_SCHEMA = "hydrolog-network-1.schema.json";
 
 /**
  * Fields of the watershed in step 1, in the order of the panel. The channel's slope
- * (`channel_slope_m_per_m`) is not among them: no calculation reads it (Kirpich,
- * Kerby–Kirpich and Lutz take the longest flow path's), so a value that came with a
- * watershed stays in the inputs and is neither shown nor sent (plan
- * 2026-11-10-network-wizard, erratum of 2026-11-10).
+ * (`channel_slope_m_per_m`) is not among them: no calculation reads it (Kirpich and
+ * Kerby–Kirpich take the slope between the ends of the longest flow path, Lutz the
+ * equal-area slope of its profile), so a value that came with a watershed stays in the
+ * inputs and is neither shown nor sent (plan 2026-11-10-network-wizard, erratum of
+ * 2026-11-10).
  */
 export const WATERSHED_STEP = Object.freeze([
   "area_km2",
@@ -71,6 +81,7 @@ export const WATERSHED_STEP = Object.freeze([
   "channel_length_km",
   "flow_path_length_km",
   "flow_path_slope_m_per_m",
+  "flow_path_equal_area_slope_m_per_m",
 ]);
 
 /** Fields of the watershed only some models and tc methods read, shown in their block of step 3. */
@@ -99,6 +110,7 @@ export const WATERSHED_FIELDS = Object.freeze([
   "channel_slope_m_per_m",
   "flow_path_length_km",
   "flow_path_slope_m_per_m",
+  "flow_path_equal_area_slope_m_per_m",
   "cn",
   ...MODEL_FIELDS,
   "source",
@@ -119,10 +131,12 @@ export const HANDOFF_FIELDS = Object.freeze(["area_km2", "perimeter_km", "length
 
 /**
  * The watershed fields Lutz's estimation of n and K needs (`nash_estimation` of `hydrograph
- * generate`): L and J of the main stream from the divide to the outlet, which are the
- * length and the slope of the longest flow path, then Lc and Manning's n.
+ * generate`): L of the main stream from the divide to the outlet, the length of the
+ * longest flow path, its slope Jg, the equal-area slope of that path's profile (KZGW 2017,
+ * zał. 2, p. 97; not the slope between its ends, which never stands in), then Lc and
+ * Manning's n.
  */
-const LUTZ_FIELDS = Object.freeze(["flow_path_length_km", "Lc_km", "flow_path_slope_m_per_m", "manning_n"]);
+const LUTZ_FIELDS = Object.freeze(["flow_path_length_km", "Lc_km", "flow_path_equal_area_slope_m_per_m", "manning_n"]);
 
 /** The watershed fields of Nash by Lutz shown in its block (Lutz also reads the flow path of step 1). */
 export const LUTZ_BLOCK = Object.freeze(["Lc_km", "manning_n", "forest_pct", "urban_pct"]);
@@ -152,13 +166,33 @@ export const TC_BLOCK = Object.freeze({
 });
 
 /** Slopes in m/m, shown with a % hint (the author's choice: m/m with a % hint). */
-export const SLOPE_FIELDS = new Set(["mean_slope_m_per_m", "flow_path_slope_m_per_m", "overland_slope_m_per_m"]);
+export const SLOPE_FIELDS = new Set([
+  "mean_slope_m_per_m",
+  "flow_path_slope_m_per_m",
+  "flow_path_equal_area_slope_m_per_m",
+  "overland_slope_m_per_m",
+]);
 
-/** Options sent as texts; every other option is a number. */
+/** Options sent as texts; every other option is a number (the curve, an object, as it is). */
 const TEXT_OPTIONS = new Set(["tc_method", "amc", "hietogram_type", "uh_model", "nash_estimation"]);
 
-/** Options of `hydrograph generate` the section gives in another way (or not at all). */
-const HIDDEN_OPTIONS = Object.freeze(["watershed", "watershed_file", "area_km2", "cn", "input_file", "value_column"]);
+/** The option of the depth-duration curve Euler II is built from: depth [mm] by duration [min]. */
+const CURVE = "depth_duration_mm";
+
+/**
+ * Options of `hydrograph generate` the section gives in another way (or not at all): the
+ * curve of Euler II comes with PMAXTP's depth or with a document, never from a file.
+ */
+const HIDDEN_OPTIONS = Object.freeze([
+  "watershed",
+  "watershed_file",
+  "area_km2",
+  "cn",
+  "input_file",
+  "value_column",
+  CURVE,
+  "depth_duration_file",
+]);
 
 /** Units of the fields, as shown. */
 export const UNITS = Object.freeze({
@@ -172,6 +206,7 @@ export const UNITS = Object.freeze({
   channel_length_km: "km",
   flow_path_length_km: "km",
   flow_path_slope_m_per_m: "m/m",
+  flow_path_equal_area_slope_m_per_m: "m/m",
   Lc_km: "km",
   manning_n: "–",
   forest_pct: "%",
@@ -269,7 +304,7 @@ export const PMAXTP_DURATIONS = Object.freeze([
   "4320",
 ]);
 
-/** The methods of PMAXTP: POT (Hydrolog's default, which IMGW-PIB recommends) and AMP. */
+/** The methods of PMAXTP: POT (Hydrolog's default; IMGW-PIB recommends it for p ≥ 50 %) and AMP. */
 export const PMAXTP_METHODS = Object.freeze(["POT", "AMP"]);
 
 /** The field of the panel that holds each option of `precip pmaxtp`. */
@@ -281,8 +316,11 @@ export const PMAXTP_FIELDS = Object.freeze({
   method: "pmaxtp_method",
 });
 
-/** The defaults of `peak_position` by hyetograph type (the catalog's description). */
-export const PEAK_DEFAULTS = Object.freeze({ triangular: 0.5, euler_ii: 0.33 });
+/**
+ * The defaults of `peak_position` by hyetograph type (the catalog's description): the
+ * triangular's alone; Euler II's peak is where ATV-DVWK-A 118 puts it, at 0,3 of D.
+ */
+export const PEAK_DEFAULTS = Object.freeze({ triangular: 0.5 });
 
 /** The fields of step 2 (Hietogram); every other field that is not the watershed's is step 3's. */
 const RAIN_FIELDS = new Set([
@@ -304,8 +342,12 @@ const RAIN_FIELDS = new Set([
 /** The parts of the inputs a warning of a run belongs to: it stands while they are the run's. */
 const SETTING = Object.freeze(["uh_model", "tc_manual", "tc_method", "nash_source", "clark_kind", "rain_source", "hietogram_type"]);
 
-/** Snyder's L and Lc: the options `hydrograph generate` takes them as, by the watershed's field they come from. */
-export const SNYDER_LENGTHS = Object.freeze({ snyder_length_km: "channel_length_km", snyder_centroid_length_km: "Lc_km" });
+/**
+ * Snyder's L and Lc: the options `hydrograph generate` takes them as, by the watershed's field
+ * they come from. L runs to the divide (Snyder 1938; KZGW 2017, p. 90), so it is the longest
+ * flow path, not the channel to its head (ADR-0043, as Lutz's L in ADR-0024).
+ */
+export const SNYDER_LENGTHS = Object.freeze({ snyder_length_km: "flow_path_length_km", snyder_centroid_length_km: "Lc_km" });
 
 /**
  * The inputs of a first visit (and after „Wyczyść”): every field empty and no model
@@ -338,7 +380,8 @@ export function initialState() {
 
 /**
  * The inputs of step 2 (Hietogram) of a first visit, and of a new network in Sieć: PMAXTP
- * with POT and nothing fetched, the Beta shape, every number empty, and the time step.
+ * with POT and nothing fetched, the Beta shape, every number empty, no depth-duration curve
+ * of a document, and the time step.
  *
  * @returns {object} the inputs of the rainfall and the time step
  */
@@ -357,6 +400,7 @@ export function initialRain() {
     alpha: "",
     beta: "",
     peak_position: "",
+    depth_duration_mm: null,
     values: "",
     timestep_min: "",
   };
@@ -373,8 +417,20 @@ function isPlainObject(value) {
 }
 
 /**
+ * Whether a value is a depth-duration curve as `precip pmaxtp` and a document give it: an
+ * object of at least one duration [min] (its keys) with its depth [mm]. Hydrolog checks its
+ * points when it builds the storm.
+ *
+ * @param {unknown} value the value
+ * @returns {boolean} true for a curve
+ */
+function isCurve(value) {
+  return isPlainObject(value) && Object.keys(value).length > 0;
+}
+
+/**
  * Stored inputs completed with the first visit's for keys they lack. Snyder's L and Lc of
- * earlier visits (own fields then) move to the watershed's channel_length_km and Lc_km
+ * earlier visits (own fields then) move to the watershed's flow_path_length_km and Lc_km
  * when those are empty, else are dropped.
  *
  * @param {object|null} stored the stored inputs
@@ -394,6 +450,7 @@ export function normalize(stored) {
   if (!UH_MODELS.includes(inputs.uh_model)) inputs.uh_model = null;
   if (!PMAXTP_METHODS.includes(inputs.pmaxtp_method)) inputs.pmaxtp_method = "POT";
   if (!isPlainObject(inputs.pmaxtp_fetched)) inputs.pmaxtp_fetched = null;
+  if (!isCurve(inputs.depth_duration_mm)) inputs.depth_duration_mm = null;
   return inputs;
 }
 
@@ -451,7 +508,8 @@ export function rainDuration(inputs) {
 
 /**
  * The field of the panel that holds an option of `hydrograph generate`: under PMAXTP the
- * duration is its select and the depth the row of the fetched depth.
+ * duration is its select, and the depth and the depth-duration curve fetched with it the
+ * row of the fetched depth.
  *
  * @param {object} inputs the inputs
  * @param {string} option the option's name
@@ -461,8 +519,25 @@ export function optionField(inputs, option) {
   if (Object.hasOwn(SNYDER_LENGTHS, option)) return SNYDER_LENGTHS[option];
   if (inputs.rain_source !== "pmaxtp") return option;
   if (option === "duration_min") return "pmaxtp_duration_min";
-  if (option === "total_mm") return "pmaxtp_depth";
+  if (option === "total_mm" || option === CURVE) return "pmaxtp_depth";
   return option;
+}
+
+/**
+ * The option an error of a run of `hydrograph generate` belongs to: the one it names (a
+ * refused constraint of a formula the input it asks to change, errorOptionOf), but a
+ * depth-duration curve that does not reach down to the time step (`not_covered` below its
+ * first duration: nothing is extrapolated) is the time step's error, and one that does not
+ * reach the duration the duration's.
+ *
+ * @param {object} details the error's details
+ * @returns {string|null} the option, null when the error names none
+ */
+export function errorOption(details) {
+  const option = errorOptionOf(details);
+  if (option !== CURVE || details.reason !== "not_covered") return option;
+  const first = Array.isArray(details.durations_min) ? details.durations_min[0] : null;
+  return typeof first === "number" && typeof details.duration_min === "number" && details.duration_min < first ? "timestep_min" : "duration_min";
 }
 
 /**
@@ -499,32 +574,81 @@ export function pmaxtpKey(options) {
 }
 
 /**
+ * The PMAXTP fetch the inputs use: the one remembered with them (`pmaxtp_fetched`) while it
+ * was fetched for the same point, probability, duration and method and holds what the
+ * shape needs: the depth, and for Euler II the depth-duration curve too (a fetch kept
+ * without it is to be fetched again).
+ *
+ * @param {object} inputs the inputs
+ * @returns {object|null} the record (pmaxtpRecord), null when it is to be fetched or the
+ *   rainfall is not PMAXTP
+ */
+function pmaxtpFetched(inputs) {
+  const fetched = inputs.pmaxtp_fetched;
+  if (!isPlainObject(fetched) || typeof fetched.depth_mm !== "number" || !Number.isFinite(fetched.depth_mm)) return null;
+  if (inputs.hietogram_type === "euler_ii" && !isCurve(fetched[CURVE])) return null;
+  const key = pmaxtpKey(pmaxtpOptions(inputs));
+  return key !== null && pmaxtpKey(fetched) === key ? fetched : null;
+}
+
+/**
  * The PMAXTP depth of the inputs: the one remembered with them (`pmaxtp_fetched`) while it
- * was fetched for the same point, probability, duration and method.
+ * was fetched for the same point, probability, duration and method, under Euler II with
+ * its depth-duration curve (pmaxtpFetched).
  *
  * @param {object} inputs the inputs
  * @returns {number|null} the depth [mm], null when it is to be fetched or the rainfall is
  *   not PMAXTP
  */
 export function pmaxtpDepth(inputs) {
-  const fetched = inputs.pmaxtp_fetched;
-  if (!isPlainObject(fetched) || typeof fetched.depth_mm !== "number" || !Number.isFinite(fetched.depth_mm)) return null;
-  const key = pmaxtpKey(pmaxtpOptions(inputs));
-  return key !== null && pmaxtpKey(fetched) === key ? fetched.depth_mm : null;
+  const fetched = pmaxtpFetched(inputs);
+  return fetched ? fetched.depth_mm : null;
+}
+
+/**
+ * The depth-duration curve Euler II of the inputs is built from: PMAXTP's fetched one
+ * (pmaxtpFetched), under „Hietogram” the one its document's rainfall came with.
+ *
+ * @param {object} inputs the inputs
+ * @returns {object|null} the depth [mm] by duration [min], as it came; null without one
+ */
+export function rainCurve(inputs) {
+  if (inputs.rain_source === "pmaxtp") {
+    const fetched = pmaxtpFetched(inputs);
+    return fetched && isCurve(fetched[CURVE]) ? fetched[CURVE] : null;
+  }
+  return inputs.rain_source === "design" && isCurve(inputs[CURVE]) ? inputs[CURVE] : null;
+}
+
+/**
+ * The hyetograph types the rainfall of the inputs offers: every one under PMAXTP, whose
+ * fetch gives Euler II its depth-duration curve; „Hietogram” (a total typed by hand) Euler
+ * II only with the curve its document came with (rainCurve).
+ *
+ * @param {object} inputs the inputs
+ * @returns {readonly string[]} the types, in the order of SHAPES
+ */
+export function offeredShapes(inputs) {
+  return inputs.rain_source === "design" && rainCurve(inputs) === null ? SHAPES.filter((shape) => shape !== "euler_ii") : SHAPES;
 }
 
 /**
  * What the inputs keep of a fetched depth (`pmaxtp_fetched`): the options it was fetched
- * for, the depth and the providers' lines of the answer.
+ * for, the depth, the depth-duration curve of that probability (none in an answer from
+ * before it came, or in a rainfall handed off without one) and the providers' lines of the
+ * answer.
  *
  * @param {object} options the options of `precip pmaxtp`
- * @param {number} depth the depth [mm]
+ * @param {{depth_mm: number, depth_duration_mm?: object|null}} answer the depth [mm] and the
+ *   depth [mm] by duration [min] of the answer of `precip pmaxtp`, or of a rainfall handed off
  * @param {{attribution: string[], terms_notice: string[]}} [lines] the `attribution` and
  *   `terms_notice` of the answer (none for a depth handed off)
  * @returns {object} the record
  */
-export function pmaxtpRecord(options, depth, lines = NO_LINES) {
-  return { ...options, depth_mm: depth, ...linesFields(lines) };
+export function pmaxtpRecord(options, answer, lines = NO_LINES) {
+  const record = { ...options, depth_mm: answer.depth_mm };
+  if (isCurve(answer[CURVE])) record[CURVE] = { ...answer[CURVE] };
+  return { ...record, ...linesFields(lines) };
 }
 
 /**
@@ -705,7 +829,7 @@ export function handoffMissing(watershed) {
  * mean elevation, FAA, Kerby and Kerby–Kirpich their overland fields, Kerby–Kirpich also
  * the longest flow path), Clark R or R/tc, Nash n and K or the fields of Lutz (the length
  * and the slope of the longest flow path, Lc and Manning's n), Snyder L and Lc of the
- * watershed (channel_length_km and Lc_km).
+ * watershed (flow_path_length_km and Lc_km).
  *
  * @param {object} inputs the inputs
  * @returns {{model: string|null, required: Object<string, {purpose: string, or?:
@@ -737,7 +861,7 @@ export function requirements(inputs) {
     need("nash_k_min", "nash");
   }
   if (model === "snyder") {
-    need("channel_length_km", "snyder");
+    need("flow_path_length_km", "snyder");
     need("Lc_km", "snyder");
   }
   return { model, required };
@@ -848,7 +972,7 @@ export function inputModels(commandDoc, schema, pmaxtpDoc) {
 export function rangeInfoId(range) {
   if (range.parameter === "timestep_min") return "rain-timestep";
   if (TC_METHODS.includes(range.method)) return `tc-${range.method}`;
-  if (range.method === "scs_cn_amc") return "losses-scs-cn";
+  if (range.method === "scs_cn_amc" || range.method === "scs_cn_runoff") return "losses-scs-cn";
   if (UH_MODELS.includes(range.method)) return `uh-${range.method}`;
   if (range.method === "lutz") return "uh-nash";
   return null;
@@ -860,7 +984,8 @@ export function rangeInfoId(range) {
  * sends `nash_estimation` instead of n and K.
  *
  * @param {object} inputs the inputs
- * @returns {Object<string, string>} the typed values by option name
+ * @returns {Object<string, string|object>} the typed values by option name (Euler II's
+ *   depth-duration curve the object it came as)
  */
 export function usedTexts(inputs) {
   const used = { amc: inputs.amc, ia_coefficient: inputs.ia_coefficient };
@@ -891,11 +1016,14 @@ export function usedTexts(inputs) {
 /**
  * The options of `hydrograph generate` that make the rainfall of the inputs, as typed: a
  * series of depths, or the shape, the depth (PMAXTP's is the fetched one, never typed) and
- * the duration of a design storm with the shape's own parameters; nothing for „Brak” and
- * „Jak w sieci”. The time step is not among them: it is the run's, or the network's.
+ * the duration of a design storm with the shape's own parameters (Euler II's the
+ * depth-duration curve it is built from, rainCurve: none to send, Hydrolog says it needs
+ * one); nothing for „Brak” and „Jak w sieci”. The time step is not among them: it is the
+ * run's, or the network's.
  *
  * @param {object} inputs the inputs
- * @returns {Object<string, string>} the typed values by option name
+ * @returns {Object<string, string|object>} the typed values by option name (the curve the
+ *   object it came as)
  */
 export function rainTexts(inputs) {
   const used = {};
@@ -906,11 +1034,14 @@ export function rainTexts(inputs) {
     // PMAXTP's depth is the fetched one, never typed
     used.total_mm = inputs.rain_source === "pmaxtp" ? inputText(pmaxtpDepth(inputs)) : inputs.total_mm;
     used.duration_min = rainDuration(inputs);
+    const curve = inputs.hietogram_type === "euler_ii" ? rainCurve(inputs) : null;
     if (inputs.hietogram_type === "beta") {
       used.alpha = inputs.alpha;
       used.beta = inputs.beta;
     } else if (Object.hasOwn(PEAK_DEFAULTS, inputs.hietogram_type)) {
       used.peak_position = inputs.peak_position;
+    } else if (curve) {
+      used[CURVE] = curve;
     }
   }
   return used;
@@ -939,14 +1070,13 @@ export function watershedErrors(watershed, models, names = WATERSHED_FIELDS) {
 
 /**
  * The warnings a run's notices give the panel's fields: a value outside its typical range
- * on the field Hydrolog names (`details.field`; a range to be verified says so), λ other
- * than 0,2 on λ and a duration the time step does not divide on the duration.
+ * on the field Hydrolog names (`details.field`; a range to be verified says so) and λ
+ * other than 0,2 on λ.
  *
  * @param {object[]} notices the notices of hydrolog-result/1
- * @param {object} inputs the inputs of the run
  * @returns {Object<string, string>} a message by field name
  */
-function noticeWarnings(notices, inputs) {
+function noticeWarnings(notices) {
   const found = {};
   const add = (name, text, code) => {
     const message = withReason(text, code);
@@ -963,8 +1093,6 @@ function noticeWarnings(notices, inputs) {
       add(details.field, text, notice.code);
     } else if (notice.code === "ia_coefficient_nonstandard") {
       add("ia_coefficient", describeNotice(notice).text, notice.code);
-    } else if (notice.code === "duration_not_covered") {
-      add(optionField(inputs, "duration_min"), describeNotice(notice).text, notice.code);
     }
   }
   return found;
@@ -1013,7 +1141,7 @@ export function checkInputs(inputs, models, last = null) {
   const warnings = {};
   if (last && Array.isArray(last.notices)) {
     const same = SETTING.every((key) => last.inputs[key] === inputs[key]);
-    const words = same ? noticeWarnings(last.notices, last.inputs) : {};
+    const words = same ? noticeWarnings(last.notices) : {};
     for (const [name, message] of Object.entries(words)) {
       if (found[name] || !shown.includes(name)) continue;
       if (String(fieldText(last.inputs, name) ?? "") === String(fieldText(inputs, name) ?? "")) warnings[name] = message;
@@ -1105,9 +1233,10 @@ export function rainOptions(inputs) {
 
 /**
  * Typed options as a run sends them: numbers parsed, a series as its numbers, the texts of
- * choices as they are, and nothing for an empty one.
+ * choices as they are, Euler II's depth-duration curve as the object it came as, and
+ * nothing for an empty one.
  *
- * @param {Object<string, string>} typed the typed values by option name
+ * @param {Object<string, string|object>} typed the typed values by option name
  * @returns {object} the options
  */
 function parsedOptions(typed) {
@@ -1115,6 +1244,7 @@ function parsedOptions(typed) {
   for (const [name, text] of Object.entries(typed)) {
     if (isEmpty(text)) continue;
     if (name === "values") options.values = parseSeries(text).values;
+    else if (name === CURVE) options[CURVE] = { ...text };
     else if (TEXT_OPTIONS.has(name)) options[name] = String(text);
     else options[name] = parseNumber(text);
   }
@@ -1153,7 +1283,7 @@ export function checkedValues(inputs, result = null) {
     if (value !== null) values[name] = value;
   }
   for (const [name, text] of Object.entries(usedTexts(inputs))) {
-    if (TEXT_OPTIONS.has(name) || name === "values") continue;
+    if (TEXT_OPTIONS.has(name) || name === "values" || name === CURVE) continue;
     const value = numberOf(text);
     if (value !== null) values[name] = value;
   }

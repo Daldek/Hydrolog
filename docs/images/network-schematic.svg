@@ -10,12 +10,11 @@
 <polyline points="529.6,258.92 681.6,258.92" fill="none" stroke="#1f5fa8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 <polyline points="681.6,258.92 833.6,258.92" fill="none" stroke="#1f5fa8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 <g><title>A (subcatchment)
-Qp 20.1 m3/s at 85 min
-V 83 896 m3
-total_mm = 45 mm (given)
+Qp 15.8 m3/s at 80 min
+V 67 634 m3
+total_mm = 41.77 mm (given)
 duration_min = 60 min (given)
 hietogram_type = euler_ii (given)
-peak_position = 0.33 (default)
 timestep_min = 5 min (computed)
 area_km2 = 12 km2 (given)
 cn = 75 (given)
@@ -23,13 +22,14 @@ ia_coefficient = 0.2 (default)
 amc = II (default)
 uh_model = scs (default)
 tc_method = kirpich (given)
-tc_min = 71.33 min (computed)
+tc_min = 71.2333 min (computed)
 retention_mm = 84.6667 mm (computed)
 initial_abstraction_mm = 16.9333 mm (computed)
-total_effective_mm = 6.98762 mm (computed)
-runoff_coefficient = 0.15528 (computed)
-[warning] outside_typical_range: kirpich: area_km2=12.0 is outside typical range [0.005, 0.45]. Results may be unreliable.
-[warning] outside_typical_range: kirpich: slope_m_per_m=0.02 is outside typical range [0.03, 0.1]. Results may be unreliable.</title>
+total_effective_mm = 5.63325 mm (computed)
+runoff_coefficient = 0.134864 (computed)
+[warning] outside_applicability: kirpich: area_km2=12.0 is outside its applicability range [0.005, 0.45]. Results may be unreliable.
+[warning] outside_applicability: kirpich: length_km=6.0 is outside its applicability range [0.10668, 1.2192]. Results may be unreliable.
+[warning] outside_applicability: kirpich: slope_m_per_m=0.02 is outside its applicability range [0.025, 0.1]. Results may be unreliable.</title>
 <polygon points="73.6,247.67 84.85,258.92 73.6,270.17 62.35,258.92" fill="#1f5fa8" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
 <circle cx="83.5" cy="249.02" r="7" fill="#d9480f" stroke="#ffffff" stroke-width="1.5"/><text x="83.5" y="252.82" font-size="10" font-weight="bold" text-anchor="middle" fill="#ffffff">!</text>
 </g>
@@ -45,13 +45,14 @@ ia_coefficient = 0.2 (default)
 amc = II (default)
 uh_model = scs (default)
 tc_method = kirpich (given)
-tc_min = 44.7083 min (computed)
+tc_min = 44.6477 min (computed)
 retention_mm = 108.857 mm (computed)
 initial_abstraction_mm = 21.7714 mm (computed)
 total_effective_mm = 2.10549 mm (computed)
 runoff_coefficient = 0.0554076 (computed)
-[warning] outside_typical_range: kirpich: area_km2=5.0 is outside typical range [0.005, 0.45]. Results may be unreliable.
-[warning] outside_typical_range: kirpich: slope_m_per_m=0.0229 is outside typical range [0.03, 0.1]. Results may be unreliable.</title>
+[warning] outside_applicability: kirpich: area_km2=5.0 is outside its applicability range [0.005, 0.45]. Results may be unreliable.
+[warning] outside_applicability: kirpich: length_km=3.5 is outside its applicability range [0.10668, 1.2192]. Results may be unreliable.
+[warning] outside_applicability: kirpich: slope_m_per_m=0.0229 is outside its applicability range [0.025, 0.1]. Results may be unreliable.</title>
 <polygon points="225.6,95.67 236.85,106.92 225.6,118.17 214.35,106.92" fill="#d1495b" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
 <circle cx="235.5" cy="97.02" r="7" fill="#d9480f" stroke="#ffffff" stroke-width="1.5"/><text x="235.5" y="100.82" font-size="10" font-weight="bold" text-anchor="middle" fill="#ffffff">!</text>
 </g>
@@ -68,34 +69,35 @@ ia_coefficient = 0.2 (default)
 amc = II (default)
 uh_model = scs (default)
 tc_method = kirpich (given)
-tc_min = 44.7083 min (computed)
+tc_min = 44.6477 min (computed)
 retention_mm = 108.857 mm (computed)
 initial_abstraction_mm = 21.7714 mm (computed)
 total_effective_mm = 0.578289 mm (computed)
 runoff_coefficient = 0.0192763 (computed)
-[warning] outside_typical_range: kirpich: area_km2=5.0 is outside typical range [0.005, 0.45]. Results may be unreliable.
-[warning] outside_typical_range: kirpich: slope_m_per_m=0.0229 is outside typical range [0.03, 0.1]. Results may be unreliable.</title>
+[warning] outside_applicability: kirpich: area_km2=5.0 is outside its applicability range [0.005, 0.45]. Results may be unreliable.
+[warning] outside_applicability: kirpich: length_km=3.5 is outside its applicability range [0.10668, 1.2192]. Results may be unreliable.
+[warning] outside_applicability: kirpich: slope_m_per_m=0.0229 is outside its applicability range [0.025, 0.1]. Results may be unreliable.</title>
 <polygon points="529.6,399.67 540.85,410.92 529.6,422.17 518.35,410.92" fill="#2e8b57" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
 <circle cx="539.5" cy="401.02" r="7" fill="#d9480f" stroke="#ffffff" stroke-width="1.5"/><text x="539.5" y="404.82" font-size="10" font-weight="bold" text-anchor="middle" fill="#ffffff">!</text>
 </g>
 <g><title>R_A (reach)
-Qp 20.1 m3/s at 110 min
-V 83 893 m3
+Qp 15.8 m3/s at 105 min
+V 67 630 m3
 lag_min = 25 min (given)
 lag_steps = 5 (computed)
 initial_outflow_m3s = 0 m3/s (default)
-extend_min = 10 min (default)
-[info] tail_extended: The time axis was extended by 10 min after the last inflow ordinate, which is held, for the outflow to settle.</title>
+extend_min = 5 min (default)
+[info] tail_extended: The time axis was extended by 5 min after the last inflow ordinate, which is held, for the outflow to settle.</title>
 <circle cx="225.6" cy="258.92" r="7.2" fill="#ffffff" stroke="#1f5fa8" stroke-width="3.5"/>
 </g>
 <g><title>J1 (junction)
-Qp 20.4 m3/s at 110 min
-V 94 411 m3</title>
+Qp 16.2 m3/s at 105 min
+V 78 149 m3</title>
 <circle cx="377.6" cy="258.92" r="10.35" fill="#ffffff" stroke="#222222" stroke-width="3.5"/>
 </g>
 <g><title>R_J1 (reach)
-Qp 18.8 m3/s at 150 min
-V 94 399 m3
+Qp 15.1 m3/s at 140 min
+V 78 138 m3
 k_min = 40 min (given)
 x = 0.2 (given)
 subreaches = 8 (computed)
@@ -111,19 +113,19 @@ extend_min = 35 min (default)
 <circle cx="529.6" cy="258.92" r="7.2" fill="#ffffff" stroke="#1f5fa8" stroke-width="3.5"/>
 </g>
 <g><title>J2 (junction)
-Qp 18.9 m3/s at 150 min
-V 97 288 m3</title>
+Qp 15.2 m3/s at 140 min
+V 81 028 m3</title>
 <circle cx="681.6" cy="258.92" r="10.35" fill="#ffffff" stroke="#222222" stroke-width="3.5"/>
 </g>
 <g><title>OUT (outlet)
-Qp 18.9 m3/s at 150 min
-V 97 288 m3</title>
+Qp 15.2 m3/s at 140 min
+V 81 028 m3</title>
 <circle cx="833.6" cy="258.92" r="12.6" fill="#222222"/><circle cx="833.6" cy="258.92" r="7.65" fill="#ffffff"/><circle cx="833.6" cy="258.92" r="4.05" fill="#222222"/>
 </g>
 <text x="73.6" y="192.61" font-size="13" font-weight="bold" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">A</text>
-<text x="73.6" y="206.53" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Qp 20.1 m³/s</text>
-<text x="73.6" y="219.95" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">tp 85 min</text>
-<text x="73.6" y="233.37" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">V 83 896 m³</text>
+<text x="73.6" y="206.53" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Qp 15.8 m³/s</text>
+<text x="73.6" y="219.95" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">tp 80 min</text>
+<text x="73.6" y="233.37" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">V 67 634 m³</text>
 <text x="225.6" y="40.61" font-size="13" font-weight="bold" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">B</text>
 <text x="225.6" y="54.53" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Qp 4.36 m³/s</text>
 <text x="225.6" y="67.95" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">tp 55 min</text>
@@ -133,25 +135,25 @@ V 97 288 m3</title>
 <text x="529.6" y="473.67" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">tp 80 min</text>
 <text x="529.6" y="487.09" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">V 2 889 m³</text>
 <text x="225.6" y="294.33" font-size="13" font-weight="bold" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">R_A</text>
-<text x="225.6" y="308.25" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Qp 20.1 m³/s</text>
-<text x="225.6" y="321.67" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">tp 110 min</text>
-<text x="225.6" y="335.09" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">V 83 893 m³</text>
+<text x="225.6" y="308.25" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Qp 15.8 m³/s</text>
+<text x="225.6" y="321.67" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">tp 105 min</text>
+<text x="225.6" y="335.09" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">V 67 630 m³</text>
 <text x="377.6" y="294.33" font-size="13" font-weight="bold" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">J1</text>
-<text x="377.6" y="308.25" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Qp 20.4 m³/s</text>
-<text x="377.6" y="321.67" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">tp 110 min</text>
-<text x="377.6" y="335.09" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">V 94 411 m³</text>
+<text x="377.6" y="308.25" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Qp 16.2 m³/s</text>
+<text x="377.6" y="321.67" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">tp 105 min</text>
+<text x="377.6" y="335.09" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">V 78 149 m³</text>
 <text x="529.6" y="192.61" font-size="13" font-weight="bold" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">R_J1</text>
-<text x="529.6" y="206.53" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Qp 18.8 m³/s</text>
-<text x="529.6" y="219.95" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">tp 150 min</text>
-<text x="529.6" y="233.37" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">V 94 399 m³</text>
+<text x="529.6" y="206.53" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Qp 15.1 m³/s</text>
+<text x="529.6" y="219.95" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">tp 140 min</text>
+<text x="529.6" y="233.37" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">V 78 138 m³</text>
 <text x="681.6" y="192.61" font-size="13" font-weight="bold" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">J2</text>
-<text x="681.6" y="206.53" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Qp 18.9 m³/s</text>
-<text x="681.6" y="219.95" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">tp 150 min</text>
-<text x="681.6" y="233.37" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">V 97 288 m³</text>
+<text x="681.6" y="206.53" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Qp 15.2 m³/s</text>
+<text x="681.6" y="219.95" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">tp 140 min</text>
+<text x="681.6" y="233.37" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">V 81 028 m³</text>
 <text x="833.6" y="192.61" font-size="13" font-weight="bold" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">OUT</text>
-<text x="833.6" y="206.53" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Qp 18.9 m³/s</text>
-<text x="833.6" y="219.95" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">tp 150 min</text>
-<text x="833.6" y="233.37" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">V 97 288 m³</text>
+<text x="833.6" y="206.53" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Qp 15.2 m³/s</text>
+<text x="833.6" y="219.95" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">tp 140 min</text>
+<text x="833.6" y="233.37" font-size="11" text-anchor="middle" fill="#222222" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">V 81 028 m³</text>
 <polygon points="40,500.59 51.25,511.84 40,523.09 28.75,511.84" fill="#5c6b73" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
 <text x="64" y="515.84" font-size="11" fill="#222222">subcatchment</text>
 <circle cx="178.5" cy="511.84" r="7.2" fill="#ffffff" stroke="#5c6b73" stroke-width="3.5"/>

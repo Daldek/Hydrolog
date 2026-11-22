@@ -46,13 +46,17 @@ COMMANDS: tuple[Command, ...] = (
             "Klasyfikuje zawartości iłu, piasku i pyłu trójkątem uziarnienia USDA (12 "
             "klas), po czym przypisuje klasie grupę HSG metody SCS-CN. Dla jednej "
             "próbki; dla rastrów użyj `soil hsg`. Zawartości mogą być w dowolnej "
-            "wspólnej jednostce; same zera to błąd."
+            "wspólnej jednostce; same zera to błąd. Grupy: TR-55 zał. A, ale glina "
+            "piaszczysta B (TR-55 A, ostrzej), glina ilasta i pylasto-ilasta C (TR-55 "
+            "D, łagodniej), jak NEH 630 rozdz. 7; pył B."
         ),
         description=(
             "Classify clay, sand and silt contents with the USDA texture triangle (12 "
             "classes), then map the class to the SCS-CN group HSG. Use for one sample; "
             "for rasters use `soil hsg`. Amounts may be in any shared unit; all zeros "
-            "is an error."
+            "is an error. Groups: TR-55 App. A, but sandy loam B (TR-55 A, stricter), "
+            "clay loam and silty clay loam C (TR-55 D, milder), as NEH 630 ch. 7; silt "
+            "B."
         ),
         function="hydrolog.operations.soil_texture",
         options=(

@@ -3,15 +3,17 @@
 Every notice that Hydrolog puts in a ``hydrolog-result/1`` envelope has a code listed
 here with its level, its English template and the keys of its ``details``, so that a
 client can word each notice by its code (the GUI in Polish) and fall back to the
-English ``message``:
+English ``message``, which is :meth:`NoticeSpec.message` of the details:
 
 * an operation builds its notices with :func:`notice`: the message is the template
   filled with the details (:func:`hydrolog._warnings.render`), and the details are
   next to it in the envelope;
 * a warning of the library (a :class:`hydrolog._warnings.HydrologWarning`, class
-  ``OutsideTypicalRange`` for ``outside_typical_range``) caught by
+  ``OutsideApplicability`` for ``outside_applicability``) caught by
   :func:`~hydrolog.catalog.capture_warnings` becomes a notice with the code, message
-  and details of its class; the specs of those codes are made from the classes;
+  and details of its class; the specs of those codes are made from the classes and
+  word the details as the class does (``HydrologWarning.message_of``: the template
+  filled, or a form of the class's own, such as a range with one end);
 * an ``own_text`` code carries the English text of its emitter and no details: the
   notices of the routing models (``tail_extended``...; the routing code is not changed,
   plan D1) and the warnings of other libraries (``user_warning``,
@@ -19,8 +21,7 @@ English ``message``:
 
 ``route network`` starts the message of a node's notice with ``"<node id>: "`` and
 gives it ``details.node_id``. A routing model or a library warning has no other
-details there, and the ``duration_not_covered`` of a node is worded by the routing
-module (the rain of a node, not a hyetograph of ``precip hietogram``).
+details there.
 """
 
 from __future__ import annotations
@@ -34,9 +35,11 @@ from hydrolog._warnings import (
     DistributionLeftOut,
     HydrologWarning,
     IncompleteYears,
+    IuhPeakUndefined,
     KsTestApproximate,
+    NegativeQuantiles,
+    OutsideApplicability,
     OutsideSupport,
-    OutsideTypicalRange,
     OutsideUnverifiedRange,
     PositionsIgnored,
     ShortRecord,
@@ -44,6 +47,7 @@ from hydrolog._warnings import (
     UhModelMismatch,
     UhSubsteps,
     UnknownHietogramType,
+    UnreferencedFormula,
     render,
 )
 from hydrolog.catalog.envelope import Notice, NoticeLevel
@@ -71,6 +75,9 @@ class NoticeSpec:
     own_text : bool, optional
         The notice carries the English text of its emitter and no details, by
         default ``False``.
+    warning : type of HydrologWarning or None, optional
+        The library warning whose notices these are, which words them
+        (:meth:`message`); ``None`` for a code of an operation, by default.
     """
 
     code: str
@@ -78,11 +85,44 @@ class NoticeSpec:
     template: str
     details: tuple[str, ...] = ()
     own_text: bool = False
+    warning: type[HydrologWarning] | None = None
+
+    def message(self, details: Mapping[str, Any]) -> str:
+        """Return the English message of a notice of the code with these details.
+
+        Parameters
+        ----------
+        details : Mapping
+            The values of the detail keys of the code.
+
+        Returns
+        -------
+        str
+            The template filled with the details (:func:`hydrolog._warnings.render`),
+            or for a library warning the wording of its class
+            (``HydrologWarning.message_of``), which words a range with one end of
+            ``outside_applicability`` by that end.
+
+        Examples
+        --------
+        >>> NOTICES["small_sample"].message({"years": 6, "minimum": 10})[:44]
+        'Only 6 year(s) in the sample, fewer than 10:'
+        >>> range_details = dict.fromkeys(NOTICES["outside_applicability"].details)
+        >>> range_details |= {"method": "m", "parameter": "n", "field": "n"}
+        >>> range_details |= {"value": 6, "minimum": 12}
+        >>> NOTICES["outside_applicability"].message(range_details)
+        'm: n=6 is below its applicability range, from 12. Results may be unreliable.'
+        """
+        if self.warning is not None:
+            return self.warning.message_of(details)
+        return render(self.template, details)
 
 
 def _library(warning: type[HydrologWarning]) -> NoticeSpec:
     """Return the spec of a library warning class: its code, level, template, keys."""
-    return NoticeSpec(warning.code(), warning.level, warning.template, warning.keys)
+    return NoticeSpec(
+        warning.code(), warning.level, warning.template, warning.keys, warning=warning
+    )
 
 
 def _own_text(code: str, level: NoticeLevel, meaning: str) -> NoticeSpec:
@@ -160,14 +200,6 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         "watershed length",
     ),
     NoticeSpec(
-        "duration_not_covered",
-        "warning",
-        "duration_min = {duration_min:g} is not a multiple of timestep_min = "
-        "{timestep_min:g}: the hyetograph has {steps} steps and covers "
-        "{covered_min:g} min.",
-        ("duration_min", "timestep_min", "steps", "covered_min"),
-    ),
-    NoticeSpec(
         "stations_without_polygon",
         "warning",
         "Gauges without a polygon area were not used: {stations}.",
@@ -202,6 +234,14 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         ("months",),
     ),
     NoticeSpec(
+        "single_year_month",
+        "warning",
+        "Month(s) {months} hold values of a single year: the confidence interval of "
+        "their mean, built on the means of the month in separate years, is undefined "
+        "(null)",
+        ("months",),
+    ),
+    NoticeSpec(
         "homogeneity_rejected",
         "warning",
         "Homogeneity of the series rejected at alpha = {alpha:g} by: {tests}",
@@ -224,9 +264,10 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
     NoticeSpec(
         "normal_not_computed",
         "warning",
-        "The normal of {first_year}-{last_year} needs annual values in {required} of "
-        "its years and {years} have one (WMO-No. 1203): the normal and the "
-        "percentages of it are null",
+        "A monthly normal of {first_year}-{last_year} needs values in {required} of "
+        "its years and the month with the fewest has {years} (WMO-No. 1203, 4.4.2): "
+        "that normal, the annual, half-year and season normals made of it (4.3.3) "
+        "and the percentages of them are null",
         ("years", "required", "first_year", "last_year"),
     ),
     NoticeSpec(
@@ -259,6 +300,14 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         ("count", "minimum", "years"),
     ),
     NoticeSpec(
+        "years_without_fit",
+        "info",
+        "{count} hydrological year(s) of the period have the days with a value a fit "
+        "needs but no fit of {harmonics} harmonic(s) of their own: their values are "
+        "all equal or leave a gap of {max_gap_days} days or more: {years}",
+        ("count", "harmonics", "max_gap_days", "years"),
+    ),
+    NoticeSpec(
         "undated_extremes",
         "warning",
         "{count} annual extreme(s) have no date in the half-year file and were left "
@@ -273,17 +322,20 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         "`output_dir` to write one table per node",
         ("size_chars", "page_chars"),
     ),
-    _library(OutsideTypicalRange),
+    _library(OutsideApplicability),
     _library(OutsideUnverifiedRange),
     _library(SmallSample),
     _library(ShortRecord),
     _library(KsTestApproximate),
     _library(DistributionLeftOut),
     _library(OutsideSupport),
+    _library(NegativeQuantiles),
     _library(UnknownHietogramType),
     _library(UhModelMismatch),
     _library(UhSubsteps),
+    _library(IuhPeakUndefined),
     _library(PositionsIgnored),
+    _library(UnreferencedFormula),
     NoticeSpec(
         "exposed_without_auth",
         "warning",
@@ -388,9 +440,9 @@ def notice(code: str, /, **details: Any) -> Notice:
     Returns
     -------
     Notice
-        The level of the code, the template filled with the details as the message
-        (:func:`hydrolog._warnings.render`) and the details in the order of the
-        registry (``None`` when the code has none).
+        The level of the code, its message (:meth:`NoticeSpec.message`, the template
+        filled with the details) and the details in the order of the registry
+        (``None`` when the code has none).
 
     Raises
     ------
@@ -419,4 +471,4 @@ def notice(code: str, /, **details: Any) -> Notice:
             f"got {', '.join(details) or '(none)'}"
         )
     ordered = {key: details[key] for key in spec.details}
-    return Notice(spec.level, code, render(spec.template, ordered), ordered or None)
+    return Notice(spec.level, code, spec.message(ordered), ordered or None)

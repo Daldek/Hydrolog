@@ -14,7 +14,7 @@ Use it on numbers or local CSV/JSON/GeoTIFF files, with no keys; only `precip pm
 
 ## Install
 
-Python 3.12 or newer: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git"`. Extras: `raster` (rasterio, pyproj; `soil hsg`, `soil hsg-stats`), `mcp` (the MCP server), `pmaxtp` (`precip pmaxtp`), `viz` (plots in Python, outside the catalog), `all`.
+Python >= 3.12: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"`. Extras: `raster` (rasterio, pyproj; `soil hsg`, `soil hsg-stats`), `mcp` (the MCP server), `pmaxtp` (`precip pmaxtp`), `viz` (plots in Python, outside the catalog), `all`.
 
 ## Interfaces
 
@@ -33,7 +33,7 @@ Rules:
 
 ## Result envelope
 
-A command returns `hydrolog-result/1`: `schema`, `tool` (`hydrolog`), `version`, `command`, `check` (true for a `--check` plan: `result.targets[]` with `option`, `path`, `action`), `status` (`ok`; `partial` or `failed`, with `items`, for a batch with failed calls; a failing command raises an error and leaves nothing half done), `result`, `notices`, `inputs`, `page` (paged lists), `attribution` and `terms_notice` (providers' lines to pass on).
+A command returns `hydrolog-result/1`: `schema`, `tool` (`hydrolog`), `version`, `command`, `check` (true for a `--check` plan: `result.targets[]` with `option`, `path`, `action`), `status` (`ok`; `partial` or `failed`, with `items`, for a batch with failed calls; a failing command raises an error and leaves nothing half done), `result`, `notices`, `inputs`, `page` (paged lists), `attribution` and `terms_notice` (providers' lines to pass on), `formula_versions`.
 
 - `result`: the values of the command with its own `schema`; units follow from field names (`tc_min`); `NaN` and infinities are `null`.
 - `result.files`: files the command wrote, each `{path, size_bytes, sha256, status}` with `status` `written` or `replaced`.

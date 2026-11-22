@@ -260,3 +260,102 @@ class TestMonthlyStatistics:
         assert np.isnan(result.std_values[11])  # December: 2020 only
         assert np.isnan(result.ci_lower[11]) and np.isnan(result.ci_upper[11])
         assert result.mean_values[11] == 100.0
+
+    def test_the_interval_is_built_on_the_yearly_means_of_the_month(self):
+        """Five years, each month constant within a year (fully autocorrelated days):
+        the yearly means 10, 12, 14, 16, 18 give s_y = sqrt(10) and k = 5, so the
+        half-width is t(0.975, 4) * sqrt(10) / sqrt(5) = 2.776445 * sqrt(2). The daily
+        values taken as independent gave t * s / sqrt(~150), about 12 times narrower.
+        """
+        from hydrolog.statistics.characteristic import calculate_monthly_statistics
+
+        dates = np.arange(
+            np.datetime64("2015-01-01"),
+            np.datetime64("2020-01-01"),
+            dtype="datetime64[D]",
+        )
+        years = dates.astype("datetime64[Y]").astype(int) + 1970
+        values = 10.0 + 2.0 * (years - 2015)
+        result = calculate_monthly_statistics(values, dates)
+        half = 2.7764451051977987 * np.sqrt(2.0)
+        # around the mean of all days (February of 2016 has 29 of them)
+        np.testing.assert_allclose(result.ci_upper - result.mean_values, half)
+        np.testing.assert_allclose(result.mean_values - result.ci_lower, half)
+        assert result.mean_values[0] == pytest.approx(14.0)
+
+    def test_a_month_of_one_year_has_no_interval(self):
+        from hydrolog.statistics.characteristic import calculate_monthly_statistics
+
+        dates = np.arange(
+            np.datetime64("2020-01-01"),
+            np.datetime64("2021-01-01"),
+            dtype="datetime64[D]",
+        )
+        result = calculate_monthly_statistics(np.linspace(1.0, 9.0, dates.size), dates)
+        assert np.all(np.isfinite(result.std_values))
+        assert np.all(np.isnan(result.ci_lower)) and np.all(np.isnan(result.ci_upper))
+
+    @staticmethod
+    def _two_years() -> np.ndarray:
+        return np.arange(
+            np.datetime64("2019-01-01"),
+            np.datetime64("2021-01-01"),
+            dtype="datetime64[D]",
+        )
+
+    def test_a_dry_month_has_no_coefficient_of_variation(self):
+        """The coefficient of variation of a mean of zero, 0 / 0, was reported as 0;
+        it is undefined (spec coefficient_of_variation), and the spread is 0."""
+        from hydrolog.statistics.characteristic import calculate_monthly_statistics
+
+        dates = self._two_years()
+        months = dates.astype("datetime64[M]").astype(int) % 12 + 1
+        values = np.where(months == 1, 0.0, 10.0 + np.arange(dates.size) % 3)
+
+        result = calculate_monthly_statistics(values, dates)
+
+        assert np.isnan(result.cv_values[0])
+        assert result.std_values[0] == 0.0
+        assert np.all(np.isfinite(result.cv_values[1:]))
+
+    def test_a_month_of_stages_below_the_gauge_zero_keeps_its_mean_in_its_interval(
+        self,
+    ):
+        """The lower limit was raised to 0 for flows or stages, above the mean -15 cm
+        of a March of stages below the gauge's zero; the coefficient of variation of
+        values below zero was a number that depends on the gauge's datum."""
+        from hydrolog.statistics.characteristic import calculate_monthly_statistics
+
+        dates = self._two_years()
+        months = dates.astype("datetime64[M]").astype(int) % 12 + 1
+        years = dates.astype("datetime64[Y]").astype(int) + 1970
+        days = np.arange(dates.size)
+        values = np.where(
+            months == 3, -20.0 + (years - 2019) * 6.0 + days % 5, 10.0 + days % 3
+        )
+
+        result = calculate_monthly_statistics(values, dates)
+
+        assert result.mean_values[2] == pytest.approx(-15.0, abs=1e-12)
+        assert result.ci_lower[2] < result.mean_values[2] < result.ci_upper[2]
+        half = result.ci_upper[2] - result.mean_values[2]
+        assert result.mean_values[2] - result.ci_lower[2] == pytest.approx(
+            half, rel=1e-12
+        )
+        assert np.isnan(result.cv_values[2])
+
+    def test_the_largest_level_below_one_gives_a_finite_interval(self):
+        """The quantile of 1 - alpha/2 rounded to that of 1, infinite, at the largest
+        float below 1; the tail alpha/2 itself is exact."""
+        from hydrolog.statistics.characteristic import calculate_monthly_statistics
+
+        dates = self._two_years()
+        years = dates.astype("datetime64[Y]").astype(int) + 1970
+        values = 100.0 + (years - 2019) * 2.0 + np.arange(dates.size) % 3
+
+        result = calculate_monthly_statistics(
+            values, dates, confidence_level=np.nextafter(1.0, 0.0)
+        )
+
+        assert np.all(np.isfinite(result.ci_lower))
+        assert np.all(np.isfinite(result.ci_upper))

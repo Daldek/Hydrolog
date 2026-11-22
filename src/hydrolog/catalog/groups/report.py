@@ -149,7 +149,7 @@ COMMANDS: tuple[Command, ...] = (
         example_results=(
             {
                 "watershed_name": "Zlewnia Przykładowa",
-                "peak_discharge_m3s": 47.0273,
+                "peak_discharge_m3s": 47.0856,
                 "time_to_peak_min": 110.0,
                 "total_precipitation_mm": 50.0,
                 "cn_used": 72,

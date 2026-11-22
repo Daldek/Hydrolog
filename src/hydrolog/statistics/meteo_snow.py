@@ -9,7 +9,11 @@ than 11 days, and fewer than 5 in a row, are missing (WMO-No. 1203, 4.3 and 4.4.
 a month with more missing days adds the days observed. A winter is counted when every
 month from October to May has enough days; the largest depth with its day, the first
 and the last day with snow cover and the sum of the depths of fresh snow take
-whatever days the winter has.
+whatever days the winter has. The median first and last day count each date as a
+day of the season on a calendar without 29 February (29 February counts as
+28 February), so that a date is the same day in every winter. These conventions are
+Tier B of Nogat's computation standard (ADR-0059), declared in :data:`TIER_B`
+(``SPECS`` is empty) and shown in ``docs/FORMULAS.md``.
 
 References
 ----------
@@ -21,12 +25,14 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Final
 
 import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.nogat_formulas import Constant, FormulaSpec, Source, TierBSpec
 from hydrolog.statistics._climate import (
     SNOW_SEASON,
     as_days,
@@ -43,10 +49,12 @@ from hydrolog.statistics._climate import (
 __all__ = [
     "SNOW_COVER_CM",
     "SNOW_SEASON_MONTHS",
+    "SPECS",
     "SnowCover",
     "SnowMonth",
     "SnowPeriod",
     "SnowYear",
+    "TIER_B",
     "snow_cover",
 ]
 
@@ -55,8 +63,8 @@ SNOW_COVER_CM = 1.0
 SNOW_SEASON_MONTHS: tuple[int, ...] = (10, 11, 12, 1, 2, 3, 4, 5)
 """The months whose data a winter needs: October to May."""
 _REFERENCE_START = np.datetime64("2001-08-01", "D")
-"""The first day of a snow season without 29 February (2001/02), for the median
-first and last day."""
+"""1 August of the snow season 2001/02, which has no 29 February: the calendar on
+which the days of the season of the median first and last day are counted."""
 
 
 @dataclass
@@ -131,7 +139,10 @@ class SnowPeriod(JsonResultMixin):
     max_date : str or None
         Its day.
     median_first_day, median_last_day : str or None
-        Median first and last day with snow cover, ``MM-DD``.
+        Median first and last day with snow cover, ``MM-DD``: each date is a day of
+        the season counted from 1 August on a calendar without 29 February, which
+        counts as 28 February, so a date is the same day in every winter; of an even
+        number of winters the mean of the two middle days, rounded half to even.
     earliest_first_date, latest_last_date : str or None
         The earliest first and the latest last day with snow cover.
     years_without_cover : int
@@ -184,10 +195,29 @@ class SnowCover(JsonResultMixin):
     period: SnowPeriod
 
 
-def _day_of_season(offset: float) -> str:
-    """``MM-DD`` of the day ``offset`` days after 1 August (2001-08-01)."""
-    day = _REFERENCE_START + np.timedelta64(round(offset), "D")
-    return str(day)[5:]
+def _season_day(date: str) -> int:
+    """Day of the season of an ISO date, 0 on 1 August, on the season 2001/02.
+
+    A month and day is the same day of the season in every year; 29 February counts
+    as 28 February.
+    """
+    month, day = int(date[5:7]), int(date[8:10])
+    if (month, day) == (2, 29):
+        day = 28
+    year = 2001 if month >= 8 else 2002
+    return int(
+        (np.datetime64(f"{year}-{month:02d}-{day:02d}") - _REFERENCE_START).astype(int)
+    )
+
+
+def _date_of_season(day: float) -> str:
+    """``MM-DD`` of day ``day`` of the season 2001/02, rounded half to even."""
+    return str(_REFERENCE_START + np.timedelta64(round(day), "D"))[5:]
+
+
+def _season_order(date: str) -> tuple[int, int]:
+    """Months since August and day of an ISO date: its place in any season."""
+    return (int(date[5:7]) - 8) % 12, int(date[8:10])
 
 
 def snow_cover(
@@ -241,7 +271,6 @@ def snow_cover(
     starts = grid.year_starts()
     top, top_at = block_extreme(depth, starts)
     rows: list[SnowYear] = []
-    offsets: dict[int, tuple[int, int]] = {}
     for row in np.flatnonzero(present).tolist():
         start = int(starts[row])
         stop = int(starts[row + 1]) if row + 1 < starts.size else depth.size
@@ -276,8 +305,6 @@ def snow_cover(
                 fresh_snow_days=fresh_days,
             )
         )
-        if complete and on.size:
-            offsets[grid.first_year + row] = (int(on[0]), int(on[-1]))
     counted = [row for row in rows if row.complete]
 
     def mean(values: Sequence[float | int | None]) -> float | None:
@@ -285,11 +312,15 @@ def snow_cover(
         return float(np.mean(numbers)) if numbers else None
 
     record = max(counted, key=lambda row: row.max_depth_cm or 0.0, default=None)
-    firsts = [first for first, _ in offsets.values()]
-    lasts = [last for _, last in offsets.values()]
-    earliest = min(offsets, key=lambda year: offsets[year][0], default=None)
-    latest = max(offsets, key=lambda year: offsets[year][1], default=None)
-    by_year = {row.year: row for row in rows}
+    covered = [
+        (row.first_date, row.last_date)
+        for row in counted
+        if row.first_date is not None and row.last_date is not None
+    ]
+    firsts = [_season_day(first) for first, _ in covered]
+    lasts = [_season_day(last) for _, last in covered]
+    earliest = min((first for first, _ in covered), key=_season_order, default=None)
+    latest = max((last for _, last in covered), key=_season_order, default=None)
     return SnowCover(
         first_year=grid.first_year,
         last_year=grid.last_year,
@@ -302,12 +333,12 @@ def snow_cover(
             mean_max_depth_cm=mean([row.max_depth_cm for row in counted]),
             max_depth_cm=record.max_depth_cm if record else None,
             max_date=record.max_date if record else None,
-            median_first_day=_day_of_season(float(np.median(firsts)))
+            median_first_day=_date_of_season(float(np.median(firsts)))
             if firsts
             else None,
-            median_last_day=_day_of_season(float(np.median(lasts))) if lasts else None,
-            earliest_first_date=by_year[earliest].first_date if earliest else None,
-            latest_last_date=by_year[latest].last_date if latest else None,
+            median_last_day=_date_of_season(float(np.median(lasts))) if lasts else None,
+            earliest_first_date=earliest,
+            latest_last_date=latest,
             years_without_cover=sum(1 for row in counted if not row.cover_days),
             mean_fresh_snow_cm=mean([row.fresh_snow_cm for row in counted]),
             mean_fresh_snow_days=mean([row.fresh_snow_days for row in counted]),
@@ -317,3 +348,85 @@ def snow_cover(
             ],
         ),
     )
+
+
+SPECS: Final[tuple[FormulaSpec, ...]] = ()
+"""The Tier A formulas of the module: none, its conventions are Tier B."""
+
+_ROCZNIK = Source(
+    citation="IMGW-PIB (2023). Rocznik Meteorologiczny 2022",
+    locator="p. 5: snow cover, a layer of at least 1 cm covering more than half of the "
+    "terrain around the station, measured at 06 UTC",
+    url="https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/Roczniki/"
+    "Rocznik%20meteorologiczny/Rocznik%20Meteorologiczny%202022.pdf",
+)
+_ECAD_SNOW = Source(
+    citation="ECA&D (2021). European Climate Assessment & Dataset, Algorithm "
+    "Theoretical Basis Document (ATBD), version 11. KNMI, De Bilt",
+    locator="section 5.3.9: SD1, snow days (SD >= 1 cm)",
+    url="https://knmi-ecad-assets-prd.s3.amazonaws.com/documents/atbd.pdf",
+)
+_URBAN = Source(
+    citation="Urban, G. (2015). Przegląd Geograficzny 87(3)",
+    locator="pp. 498-499: the snow season from 1 August to 31 July, after Falarz",
+    access="author-provided",
+)
+_WMO_EXTREMES = Source(
+    citation="WMO (2017). WMO Guidelines on the Calculation of Climate Normals. "
+    "WMO-No. 1203, Geneva",
+    locator="section 4.4.1 (b) and (d), pp. 7-8: extremes from whatever days, counts "
+    "of months whose mean could be calculated",
+    url="https://library.wmo.int/idurl/4/55797",
+)
+
+TIER_B: Final = (
+    TierBSpec(
+        name="snow_cover_day",
+        function="hydrolog.statistics.meteo_snow.snow_cover",
+        definition="a day with snow cover has a depth of at least 1 cm; the days of a "
+        "month are scaled to its days when fewer than 11 days, and fewer than 5 in a "
+        "row, are missing; a winter's days are the sum of its months",
+        convention="at least 1 cm, as IMGW-PIB's yearbooks and ECA&D's SD1; IMGW-PIB's "
+        "normals count > 0 cm (SNIEG_0, the same with whole centimetres) and > 1 cm "
+        "(SNIEG_1)",
+        source=_ROCZNIK,
+        constants=(
+            Constant(
+                name="snow_cover_cm",
+                value=SNOW_COVER_CM,
+                unit="cm",
+                symbol="1 cm",
+                source=_ECAD_SNOW,
+            ),
+        ),
+    ),
+    TierBSpec(
+        name="snow_season",
+        function="hydrolog.statistics.meteo_snow.snow_cover",
+        definition="a winter is the snow season 1 August - 31 July named after the "
+        "year it ends; it is complete when every month October to May has enough days",
+        convention="the whole cold season together: snow of late October starts its "
+        "winter (Polish studies also use X-V, XI-III or XII-II)",
+        source=_URBAN,
+    ),
+    TierBSpec(
+        name="snow_season_extremes",
+        function="hydrolog.statistics.meteo_snow.snow_cover",
+        definition="the largest depth with its day, the first and the last day with "
+        "snow cover and the sum of the depths of fresh snow of a winter, from whatever "
+        "days it has",
+        convention="the first of equal largest depths",
+        source=_WMO_EXTREMES,
+    ),
+    TierBSpec(
+        name="snow_season_medians",
+        function="hydrolog.statistics.meteo_snow.snow_cover",
+        definition="the median first and last day with snow cover of the complete "
+        "winters: each date a day of the season on a calendar without 29 February, "
+        "the median of those days turned back into a date",
+        convention="29 February counts as 28 February, so a date is the same day in "
+        "every winter; a median between two days is rounded half to even",
+        source=_URBAN,
+    ),
+)
+"""The Tier B formulas of the module (CMP-2.2)."""

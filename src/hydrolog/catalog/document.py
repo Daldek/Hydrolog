@@ -190,6 +190,8 @@ def _option(command: Command, option: Option, alternatives: set[str]) -> dict[st
         entry["max"] = option.maximum
     if option.exclusive_minimum is not None:
         entry["exclusive_minimum"] = option.exclusive_minimum
+    if option.exclusive_maximum is not None:
+        entry["exclusive_maximum"] = option.exclusive_maximum
     examples = _example_values(command, option)
     if examples:
         entry["examples"] = examples

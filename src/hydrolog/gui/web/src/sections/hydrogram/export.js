@@ -4,8 +4,8 @@
 // JSON, the chart shown as PNG, the Markdown report (`report generate` with the run's
 // options), the print view and the command line of the run; the CSV and the PNG carry the
 // providers' lines of the run's envelope (Nogat DEV-20.5; the readers of `route` drop the
-// two columns). The hand-off is the part „Przekazanie” of the panel Wyniki
-// (handoff/handoff-panel.js).
+// two columns). The files are `hydrolog_hydrograph_<watershed>` (ExportButtons). The
+// hand-off is the part „Przekazanie” of the panel Wyniki (handoff/handoff-panel.js).
 
 import { linesOf } from "../../attribution.js";
 import { COMMAND } from "./state.js";
@@ -64,13 +64,14 @@ function hydrographCsv(result) {
  * The export spec of the section's result.
  *
  * @param {{subject: string, options: object, envelope: object,
- *   chartSvg: {current: SVGSVGElement|null}}} run the subject (the watershed's name), the
- *   options of the run, its envelope and the ref of the main chart
+ *   chartSvg: {current: SVGSVGElement|null}}} run the subject (the watershed's name, "" when
+ *   it has none), the options of the run, its envelope and the ref of the main chart
  * @returns {object} the spec of ExportPanel (CSV, JSON, PNG, the report, print, the call,
  *   the lines)
  */
 export function exportSpec({ subject, options, envelope, chartSvg }) {
   return {
+    content: "hydrograph",
     subject,
     csv: () => hydrographCsv(envelope.result),
     json: () => envelope,

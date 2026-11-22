@@ -1,0 +1,170 @@
+schema = "nogat-formula-card/1"
+name = "compactness_coefficient"
+title = "Gravelius's compactness coefficient of a watershed"
+function = "hydrolog.morphometry.geometric.compactness_coefficient"
+family = "index"
+formula_version = 1
+status = "oracle only"
+equation = "Cz = P / (2 * sqrt(pi * A))"
+latex = "C_z = \\frac{P}{2\\sqrt{\\pi A}}"
+validation = "none: a geometric index, which its sources compare with no observations"
+conventions = ["P the length of the divide as traced: it grows with the resolution of the map or DEM, as a divide is irregular at every scale, so the index does too (Bendjoudi and Hubert 2002, pp. 924-928)", "A and P of the same outline: Hydrograf takes A from the cells and P from the smoothed boundary, so a value near 1 is to be read with care"]
+assumptions = []
+notices = []
+reference_cases = []
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+area_km2 = -1
+perimeter_km = 1
+
+[[properties.scalings]]
+name = "units_of_length"
+
+[properties.scalings.inputs]
+area_km2 = 2.0
+perimeter_km = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "lengths scaled by 2 and areas by 4 are exact in binary, and so is every quotient of them, unless a result underflows"
+abs = 0.0
+
+[[properties.scalings]]
+name = "perimeter"
+
+[properties.scalings.inputs]
+perimeter_km = 1.0
+
+[properties.scalings.outputs]
+compactness_coefficient = 1.0
+
+[properties.scalings.tolerance]
+reason = "lengths scaled by 2 and areas by 4 are exact in binary, and so is every quotient of them, unless a result underflows"
+abs = 0.0
+
+[[properties.limits]]
+name = "decimal"
+text = "Cz equals P / (2 sqrt(pi A)) evaluated in decimal arithmetic at 50 digits"
+
+[[properties.limits]]
+name = "shapes"
+text = "a circle gives 1, a square 2/sqrt(pi), a semicircle (pi + 2) / (pi sqrt(2))"
+
+[[sources]]
+citation = "Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930"
+access = "open"
+locator = "eq. (1), p. 922: K = P / (2 sqrt(pi A)) = 0.28 P / sqrt(A)"
+url = "https://doi.org/10.1080/02626660209493000"
+
+[[sources]]
+citation = "Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material"
+access = "open"
+locator = "section 2: wskaźnik zwartości (Graveliusa) K = Oz / (2 sqrt(pi A))"
+url = "https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf"
+
+[[variables]]
+name = "area_km2"
+symbol = "A"
+unit = "km2"
+kind = "real"
+description = "Planimetric area of the watershed."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 149000000.0
+test_reason = "the land area of the Earth, 148.94 million km2 (CIA, The World Factbook, 2025, field Area: land): no watershed is larger"
+
+[variables.typical]
+low = 0.0003
+low_inclusive = true
+high = 250.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 134.97 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)"
+
+[[variables]]
+name = "perimeter_km"
+symbol = "P"
+unit = "km"
+kind = "real"
+description = "Perimeter of the watershed, the length of its divide."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000000.0
+test_reason = "a million km, 25 times the circumference of the Earth (40,075 km at the equator): no divide traced on a map is longer"
+
+[variables.typical]
+low = 0.17
+low_inclusive = true
+high = 90.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: perimeters of 0.1756 to 84.46 km"
+
+[[constraints]]
+name = "isoperimetric"
+class = "physical"
+text = "P^2 >= 4 pi A: no perimeter is shorter than the circle's of the same area (the isoperimetric inequality); a shorter one means A and P measured on different outlines"
+
+[constraints.source]
+citation = "Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930"
+access = "open"
+locator = "pp. 921-922: the perimeter of any basin exceeds that of the circle of the same area, so K = P / (2 sqrt(pi A)) is at least 1, 1 for a circle"
+url = "https://doi.org/10.1080/02626660209493000"
+
+[[constraints]]
+name = "within_float64"
+class = "precondition"
+text = "P / (2 sqrt(pi A)) lies within float64: no watershed has a divide 10^150 times its width"
+
+[constraints.source]
+citation = "Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de Gravelius : analyse critique d'un indice de forme des bassins versants. Hydrological Sciences Journal 47(6): 921-930"
+access = "open"
+locator = "pp. 921-922: the perimeter of any basin exceeds that of the circle of the same area, so K = P / (2 sqrt(pi A)) is at least 1, 1 for a circle"
+url = "https://doi.org/10.1080/02626660209493000"
+
+[[outputs]]
+name = "compactness_coefficient"
+unit = "-"
+kind = "real"
+symbol = "C_z"
+description = "Compactness coefficient: the perimeter over the circumference of the circle of the same area; 1 for a circle."
+
+[outputs.physical]
+low = 1.0
+low_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "range cases area_km2-physical_low_*: the root of A in the denominator tends to 0 with A; the index stays finite down to the smallest positive float, or a value beyond float64 is refused by the precondition within_float64"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases area_km2-nan and the other inputs': a gap is refused"
+
+[[oracles]]
+kind = "exact"
+description = "P / (2 sqrt(pi A)) of the float inputs in decimal arithmetic at 50 digits, and the exact values of a circle, a square and a semicircle"
+test = "tests/unit/test_formulas_shape.py (limits decimal and shapes)"
+conventions = []

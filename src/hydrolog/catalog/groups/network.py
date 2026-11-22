@@ -14,16 +14,18 @@ COMMANDS: tuple[Command, ...] = (
         summary_pl="Oblicz statystyki rzędów sieci rzecznej (Strahler lub Shreve).",
         summary="Compute the order statistics of a river network (Strahler or Shreve).",
         description_pl=(
-            "Nadaje rzędy odcinkom sieci rzecznej (Strahler lub Shreve) i podsumowuje "
-            "liczby, długości oraz współczynniki bifurkacji i długości Hortona; z "
-            "`area_km2` także gęstość sieci i częstość cieków. Dla listy odcinków; "
-            "geometrii nie czyta. Cykle i nieznane id to błędy."
+            "Nadaje rzędy odcinkom sieci rzecznej (Strahler lub Shreve) i podaje dla "
+            "rzędów liczby i długości cieków, nie odcinków (ciek kończy się u zbiegu z "
+            "ciekiem równego lub wyższego rzędu), oraz współczynniki bifurkacji i "
+            "długości Hortona (tylko Strahler); z `area_km2` także gęstość sieci i "
+            "częstość cieków (cieki Strahlera na km2). Cykle i nieznane id to błędy."
         ),
         description=(
-            "Order the segments of a river network (Strahler or Shreve) and summarize "
-            "counts, lengths, Horton bifurcation and length ratios; with `area_km2` "
-            "also drainage density and stream frequency. Use for a segment list; no "
-            "geometry is read. Cycles and unknown ids are errors."
+            "Order river network segments (Strahler or Shreve) and give per order the "
+            "number and lengths of streams, not segments (a stream ends at a junction "
+            "with an equal or higher order), and Horton's bifurcation and length "
+            "ratios (Strahler only); with `area_km2` also drainage density and stream "
+            "frequency (Strahler streams per km2). Cycles and unknown ids are errors."
         ),
         function="hydrolog.operations.network_stats",
         options=(
@@ -130,9 +132,10 @@ COMMANDS: tuple[Command, ...] = (
             {
                 "method": "shreve",
                 "n_segments": 9,
-                "stream_frequency_per_km2": 0.75,
+                "stream_frequency_per_km2": 0.666667,
                 "statistics": {
                     "max_order": 5,
+                    "segment_counts": {"1": 5, "2": 2, "4": 1, "5": 1},
                     "total_stream_length_km": 12.7,
                     "drainage_density": 1.05833,
                 },

@@ -59,7 +59,7 @@ def noisy_operation(*, length_km: float):
     """Return an OperationOutput with a notice."""
     return OperationOutput(
         result={"tc_min": length_km * 10.0},
-        notices=(Notice("warning", "outside_typical_range", "length is large"),),
+        notices=(Notice("warning", "outside_applicability", "length is large"),),
     )
 
 
@@ -175,6 +175,11 @@ SERIES = _command(
 )
 
 
+def _percent() -> Option:
+    """A list of percentages in the open interval (0, 100)."""
+    return _opt("levels", "number_list", exclusive_minimum=0, exclusive_maximum=100)
+
+
 def _invalid(command, options) -> InvalidParameterError:
     with pytest.raises(InvalidParameterError) as caught:
         validate_command(command, options)
@@ -219,6 +224,13 @@ class TestOptionDeclaration:
             _opt("n", "number", minimum=0, exclusive_minimum=0)
         with pytest.raises(ValueError, match="exceeds maximum"):
             _opt("n", "number", minimum=5, maximum=1)
+        with pytest.raises(ValueError, match="mutually exclusive"):
+            _opt("n", "number", maximum=100, exclusive_maximum=100)
+        for lower in ({"minimum": 100}, {"exclusive_minimum": 100}, {"minimum": 101}):
+            with pytest.raises(ValueError, match="below exclusive_maximum"):
+                _opt("n", "number", exclusive_maximum=100, **lower)
+        with pytest.raises(ValueError, match="numeric"):
+            _opt("s", "string", exclusive_maximum=1)
 
     def test_path_role_is_required_for_paths_and_forbidden_elsewhere(self):
         """A path is an input or an output; no other type has a role."""
@@ -280,6 +292,8 @@ class TestOptionDeclaration:
         for bound in (math.nan, math.inf, True):
             with pytest.raises(ValueError, match="finite number"):
                 _opt("n", "number", minimum=bound)
+            with pytest.raises(ValueError, match="finite number"):
+                _opt("n", "number", exclusive_maximum=bound)
 
     def test_unit_must_not_be_empty(self):
         """A unit is a non-empty string when given."""
@@ -770,6 +784,18 @@ class TestCommandSchema:
         bare = Option("x", "number", "Length", "Długość", unit="km")
         assert bare.json_schema("pl")["description"] == "Długość [km]"
 
+    def test_exclusive_maximum_is_the_items_exclusive_upper_bound(self):
+        schema = _percent().json_schema()
+        assert schema["items"] == {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 100,
+        }
+        entry = command_schema(_command(options=(_percent(),))).to_dict()["commands"][0]
+        (option,) = entry["options"]
+        assert (option["exclusive_minimum"], option["exclusive_maximum"]) == (0, 100)
+        assert "max" not in option
+
     def test_one_of_becomes_one_required_group_per_alternative(self):
         """``one_of`` maps to ``oneOf`` with ``required`` groups."""
         schema = input_schema(SERIES)
@@ -1014,6 +1040,20 @@ class TestValidateCommand:
             "value": 0.0,
         }
         assert validate_command(RICH, {"length_km": 1e-9})["length_km"] == 1e-9
+
+    def test_exclusive_maximum(self):
+        """The exclusive upper bound itself is invalid, also as a list item."""
+        command = _command(options=(_percent(),))
+        error = _invalid(command, {"levels": [50, 100]})
+        assert error.details == {
+            "option": "levels",
+            "reason": "exclusive_maximum",
+            "index": 1,
+            "exclusive_maximum": 100,
+            "value": 100.0,
+        }
+        assert "must be < 100" in str(error)
+        assert validate_command(command, {"levels": [99.9]}) == {"levels": [99.9]}
 
     def test_inclusive_bounds(self):
         """Bounds are inclusive; the details name the violated one."""
@@ -1306,7 +1346,7 @@ class TestEnvelope:
             "notices": [
                 {
                     "level": "warning",
-                    "code": "outside_typical_range",
+                    "code": "outside_applicability",
                     "message": "length is large",
                 }
             ],

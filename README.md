@@ -6,7 +6,7 @@ Hydrolog is a watershed hydrology calculator: SCS-CN effective rainfall, design 
 
 Hydrolog computes the standard quantities of watershed hydrology:
 
-- design direct-runoff hydrograph (peak discharge, time to peak, volume): a block, triangular, Beta or Euler type II design hyetograph (Polish hietogram), SCS-CN effective rainfall and an SCS, Nash, Clark or Snyder unit hydrograph;
+- design direct-runoff hydrograph (peak discharge, time to peak, volume): a block, triangular or Beta design hyetograph (Polish hietogram) of a total, or the Euler type II storm of ATV-DVWK-A 118 built from the depth-duration curve of one probability (the PMAXTP depths of `precip pmaxtp`, KOSTRA-DWD or a local formula), SCS-CN effective rainfall and an SCS, Nash, Clark or Snyder unit hydrograph;
 - lumped flood routing of a discharge hydrograph at a regular time step: lag (`route lag`), Muskingum with sub-reaches (`route muskingum`), Muskingum-Cunge from the slope and the channel section or celerity of the reach (`route muskingum-cunge`), a cascade of linear reservoirs with an exact kernel for any time step (`route cascade`) and a reservoir or a reach with a storage-outflow table, by storage indication (`route level-pool`), and down a river network of subcatchments, reaches, reservoirs and junctions described in a JSON document (`route network`); in Python the network is made of objects, a subcatchment given its hydrograph or making it from a watershed and a rainfall of its own (a design storm or a record, SCS-CN and a unit hydrograph), and `ControlPointNetwork` builds it as an application picks points on the streams, outlet first; the outflow is returned or written to a CSV file that the next `route` command reads, a network writes one file per node;
 - time of concentration (Kirpich, NRCS, Giandotti, FAA, Kerby, Kerby-Kirpich), TR-55 curve numbers (CN) and the area-weighted CN of a watershed;
 - hydrologic soil groups (HSG) from clay, sand and silt rasters such as SoilGrids;
@@ -27,22 +27,22 @@ The same commands run from Python, from a shell or a CI job, from an AI agent ov
 
 ## Install
 
-Python 3.12 or newer. Hydrolog is not on PyPI yet, so the lines below install the release v0.8.0 from its Git tag with [uv](https://docs.astral.sh/uv/); with pip: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"`.
+Python 3.12 or newer. Hydrolog is not on PyPI yet, so the lines below install the release v0.9.0 from its Git tag with [uv](https://docs.astral.sh/uv/); with pip: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"`.
 
 ```sh
-uv tool install "git+https://github.com/Daldek/Hydrolog.git@v0.8.0"                           # CLI: hydrolog
-uv add "hydrolog @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"                         # Python library
-uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0" hydrolog-mcp  # MCP server
-uv tool install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"           # CLI with the web GUI
+uv tool install "git+https://github.com/Daldek/Hydrolog.git@v0.9.0"                           # CLI: hydrolog
+uv add "hydrolog @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"                         # Python library
+uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0" hydrolog-mcp  # MCP server
+uv tool install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"           # CLI with the web GUI
 ```
 
-Optional dependencies are extras; add them in brackets, for example `"hydrolog[raster,mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"`. Without extras, the library, the CLI and every command except the two raster commands, `precip pmaxtp` and `gui serve` run on NumPy, SciPy and platformdirs.
+Optional dependencies are extras; add them in brackets, for example `"hydrolog[raster,mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"`. Without extras, the library, the CLI and every command except the two raster commands, `precip pmaxtp` and `gui serve` run on NumPy, SciPy and platformdirs.
 
 | Extra | Brings | Needed for |
 |---|---|---|
 | `raster` | rasterio, pyproj | `soil hsg` and `soil hsg-stats` (GeoTIFF rasters) |
 | `mcp` | mcp >= 2.3, < 3 | the MCP server |
-| `pmaxtp` | obserwator >= 3.0.0.dev0, < 4 | `precip pmaxtp` (the PMAXTP depth of IMGW-PIB, over the network) |
+| `pmaxtp` | obserwator >= 3.1.0, < 4 | `precip pmaxtp` (the PMAXTP depth of IMGW-PIB, over the network) |
 | `gui` | starlette, uvicorn, obserwator | the web GUI (`hydrolog gui serve`) |
 | `viz` | matplotlib, seaborn | plots in `hydrolog.visualization` (Python only, outside the command catalog) |
 | `all` | all of the above | everything |
@@ -68,23 +68,29 @@ hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023 --json
   "result": {
     "schema": "hydrolog-tc-kirpich/1",
     "method": "kirpich",
-    "tc_min": 85.97330594494066,
-    "tc_h": 1.4328884324156776,
+    "tc_min": 85.85676702638006,
+    "tc_h": 1.4309461171063342,
     "parameters": {"length_km": 8.2, "slope_m_per_m": 0.023}
   },
   "notices": [
     {
       "level": "warning",
-      "code": "outside_typical_range",
-      "message": "kirpich: slope_m_per_m=0.023 is outside typical range [0.03, 0.1]. Results may be unreliable.",
-      "details": {"method": "kirpich", "parameter": "slope_m_per_m", "field": "slope_m_per_m", "value": 0.023, "minimum": 0.03, "maximum": 0.1}
+      "code": "outside_applicability",
+      "message": "kirpich: length_km=8.2 is outside its applicability range [0.10668, 1.2192]. Results may be unreliable.",
+      "details": {"method": "kirpich", "parameter": "length_km", "field": "length_km", "value": 8.2, "minimum": 0.10668, "maximum": 1.2192}
+    },
+    {
+      "level": "warning",
+      "code": "outside_applicability",
+      "message": "kirpich: slope_m_per_m=0.023 is outside its applicability range [0.025, 0.1]. Results may be unreliable.",
+      "details": {"method": "kirpich", "parameter": "slope_m_per_m", "field": "slope_m_per_m", "value": 0.023, "minimum": 0.025, "maximum": 0.1}
     }
   ],
   "inputs": {"length_km": 8.2, "slope_m_per_m": 0.023}
 }
 ```
 
-`result` is the document of the command (its own `schema`; units are in the field names), `notices` holds non-fatal warnings (here: a slope below the 3–10 % of the watersheds Kirpich's formula comes from; `hydrolog tc kirpich --schema` lists the typical ranges a command checks, with their sources) and `inputs` the options after normalization. A second call computes the design hydrograph of a 45.3 km2 watershed (CN 72, time of concentration 86 min, 38.5 mm of Beta-distributed rain in 60 min):
+`result` is the document of the command (its own `schema`; units are in the field names), `notices` holds non-fatal warnings (here: a flow path of 8.2 km and a slope of 2.3 %, outside the 350–4000 ft, 0.107–1.22 km, and 2.5–10 % of the data Kirpich's formula comes from, Mota and Kobiyama 2015, p. 58; `hydrolog tc kirpich --schema` lists the typical ranges a command checks, with their sources) and `inputs` the options after normalization. A second call computes the design hydrograph of a 45.3 km2 watershed (CN 72, time of concentration 86 min, 38.5 mm of Beta-distributed rain in 60 min):
 
 ```bash
 hydrolog hydrograph generate --area-km2 45.3 --cn 72 --tc-min 86 --hietogram-type beta --total-mm 38.5 --duration-min 60 --json
@@ -95,7 +101,7 @@ hydrolog hydrograph generate --area-km2 45.3 --cn 72 --tc-min 86 --hietogram-typ
   "command": "hydrograph generate",
   "result": {
     "schema": "hydrolog-hydrograph-generate/1",
-    "peak_discharge_m3s": 30.326278160165238,
+    "peak_discharge_m3s": 30.31385082875513,
     "time_to_peak_min": 80.0,
     "total_volume_m3": 135467.47576859492,
     "times_min": [0.0, 5.0, 10.0, "..."],
@@ -114,7 +120,7 @@ print(envelope.to_json())
 ```
 
 ```json output
-{"command": "tc kirpich", "status": "ok", "result": {"tc_min": 85.97330594494066}}
+{"command": "tc kirpich", "status": "ok", "result": {"tc_min": 85.85676702638006}}
 ```
 
 `list_commands`, `command_schema`, `validate_command` and `check_command` complete the catalog API. The typed function of each command is in `hydrolog.operations`; the calculation classes (`SCSCN`, `HydrographGenerator`, `NashIUH`, `ConcentrationTime` and others) are described in [docs/USAGE.md](https://github.com/Daldek/Hydrolog/blob/main/docs/USAGE.md).
@@ -141,7 +147,7 @@ anyio.run(call_tool)
 ```
 
 ```json output
-{"command": "tc kirpich", "status": "ok", "result": {"tc_min": 85.97330594494066}}
+{"command": "tc kirpich", "status": "ok", "result": {"tc_min": 85.85676702638006}}
 ```
 
 **Web GUI.** `hydrolog gui serve` (extra `gui`) serves Hydrolog in a browser, in Polish, for people who do not use a command line: **Hydrogram zlewni** (the design hydrograph of one watershed, recomputed after every change, with the PMAXTP depth fetched by `precip pmaxtp`), **Sieć i trasowanie** (a river network built on a canvas, as in HEC-HMS's basin model editor, or opened from a file or a hand-off, and routed), **Statystyka przepływów** (flood frequency of annual maxima or a daily series, and the homogeneity of the series), **Kalkulatory** (time of concentration by six methods and fifteen single calculators) and **Wszystkie polecenia** (a form for every command but `gui serve`, `config show`, `commands guide` and `commands batch`). Every number is a run of a catalog command, and every result shows the command line that gives it; results leave the page as CSV, JSON or PNG, a Markdown report, a print view or a hand-off `nogat-handoff/1` to and from Hydrograf. The results are estimates of simplified methods, not a forecast or a flood hazard map. A guide in Polish opens from „Instrukcja” in the top bar.
@@ -205,7 +211,7 @@ hydrolog gui serve --no-browser --port 8071
 | | Events and days above or below a threshold | `stats threshold-events` | `hydrolog_stats_threshold_events` | `stats_threshold_events` |
 | Hydrometry | Rating curve Q = a(H - H0)^b, also of dated pairs by range of years and period | `hydrometrics rating-curve` | `hydrolog_hydrometrics_rating_curve` | `hydrometrics_rating_curve` |
 | | Water level zones NTW, STW, WTW (Rybczyński) | `hydrometrics water-level-zones` | `hydrolog_hydrometrics_water_level_zones` | `hydrometrics_water_level_zones` |
-| Meteorological statistics | Sielianinov's hydrothermal coefficient of the months April to September and of the warm season | `meteo hydrothermal` | `hydrolog_meteo_hydrothermal` | `meteo_hydrothermal` |
+| Meteorological statistics | Sielianinov's hydrothermal coefficient of the months April to September and of their days above 10 °C | `meteo hydrothermal` | `hydrolog_meteo_hydrothermal` | `meteo_hydrothermal` |
 | | Precipitation statistics: sums and normals, maxima, days, intensity, heavy precipitation, regime | `meteo precipitation` | `hydrolog_meteo_precipitation` | `meteo_precipitation` |
 | | Snow cover of each winter: days, largest depth, first and last day, fresh snow | `meteo snow` | `hydrolog_meteo_snow` | `meteo_snow` |
 | | Dry or wet spells of daily precipitation | `meteo spells` | `hydrolog_meteo_spells` | `meteo_spells` |
@@ -248,7 +254,7 @@ hydrolog commands guide --format llms --output guide.txt --check --json
 Claude Code:
 
 ```sh
-claude mcp add hydrolog -- uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0" hydrolog-mcp --allow-dir /path/to/data
+claude mcp add hydrolog -- uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0" hydrolog-mcp --allow-dir /path/to/data
 ```
 
 Cursor, `.cursor/mcp.json`:
@@ -259,7 +265,7 @@ Cursor, `.cursor/mcp.json`:
     "hydrolog": {
       "command": "uvx",
       "args": [
-        "--from", "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0",
+        "--from", "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0",
         "hydrolog-mcp", "--allow-dir", "/path/to/data"
       ]
     }
@@ -270,7 +276,7 @@ Cursor, `.cursor/mcp.json`:
 Codex:
 
 ```sh
-codex mcp add hydrolog -- uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0" hydrolog-mcp --allow-dir /path/to/data
+codex mcp add hydrolog -- uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0" hydrolog-mcp --allow-dir /path/to/data
 ```
 
 VS Code, `.vscode/mcp.json` (key `servers`):
@@ -282,7 +288,7 @@ VS Code, `.vscode/mcp.json` (key `servers`):
       "type": "stdio",
       "command": "uvx",
       "args": [
-        "--from", "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0",
+        "--from", "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0",
         "hydrolog-mcp", "--allow-dir", "/path/to/data"
       ]
     }
@@ -298,7 +304,7 @@ VS Code, `.vscode/mcp.json` (key `servers`):
 ## Related tools
 
 - [Kartograf](https://github.com/Daldek/Kartograf) downloads Polish and Czech geodata (elevation, land cover, soils); the `files[].path` values in the `--json` result of `kartograf soil download --output-dir DIR` are the clay, sand and silt rasters of `soil hsg`.
-- [Obserwator](https://github.com/Daldek/Obserwator) provides IMGW-PIB and CHMU series: `obserwator series export --output FILE` writes the CSV that `--input-file` of the `stats`, `hydrometrics` and `meteo` commands reads; `precip pmaxtp` (extra `pmaxtp`) fetches the PMAXTP design precipitation of a point through it, the `--total-mm` of a design storm.
+- [Obserwator](https://github.com/Daldek/Obserwator) provides IMGW-PIB and CHMU series: `obserwator series export --output FILE` writes the CSV that `--input-file` of the `stats`, `hydrometrics` and `meteo` commands reads; `precip pmaxtp` (extra `pmaxtp`) fetches the PMAXTP design precipitation of a point through it, the `--total-mm` of a design storm and, with the depths of all durations at the probability, the curve of an Euler II storm.
 - [Hydrograf](https://github.com/Daldek/Hydrograf) is a web app for watershed delineation and design hydrographs built on Hydrolog; watersheds travel as `WatershedParameters` JSON, and watersheds and the networks it delineates at control points as hand-offs `nogat-handoff/1` with the origin of each node ([docs/INTEGRATION.md](https://github.com/Daldek/Hydrolog/blob/main/docs/INTEGRATION.md)).
 - [Retman](https://github.com/Daldek/Retman) is a Polish natural-language command layer over the ecosystem tools; it is designed to drive Hydrolog through the command layer (`hydrolog.operations`).
 - [Hydraulik](https://github.com/Daldek/Hydraulik) screens 2D floods (research stage) and uses the Beta and Euler type II hyetograph classes of Hydrolog; [Nogat](https://github.com/Daldek/Nogat) holds the shared standards and the registry of these tools.
@@ -335,9 +341,9 @@ except hydrolog.HydrologError as error:
 
 ## Data and licensing
 
-Hydrolog downloads nothing and needs no account, except the PMAXTP depth of `precip pmaxtp`: the only network connection it opens, to the PMAXTP service of IMGW-PIB, through Obserwator (extra `pmaxtp`), sending only the point's coordinates and the method. Its only key is one you choose for the web GUI's admin page. Input is numbers or local files: CSV series (an Obserwator export loads unchanged), JSON (watershed, stations, network segments, the network of `route network`) and GeoTIFF rasters (extra `raster`). It ships no dataset except the TR-55 curve number table of USDA NRCS. The data you pass keep the licence of their source (IMGW-PIB terms of reuse, ČHMÚ CC BY 4.0, SoilGrids CC BY 4.0), and every product carries the lines that the terms of IMGW-PIB, ČHMÚ and ISRIC require (Nogat DEV §20, [ADR-0028](https://github.com/Daldek/Hydrolog/blob/main/docs/decisions/0028-the-providers-lines-in-every-product.md)): Hydrolog reads them from its inputs (the CSV columns `attribution` and `terms_notice`, an Obserwator export's `attribution_source` and `attribution_processed`, the fields `attribution` and `terms_notice` of a JSON document, a Kartograf raster of SoilGrids, known by its sidecar `<raster>.meta.json` or its directory `global_soilgrids_…`, the option `attribution`), completes them with the processed line of each provider, carries a line it does not know verbatim after them, and writes them into the envelope's `attribution` and `terms_notice`, the columns of the same names in the CSV tables it writes, `ATTRIBUTION.txt` beside the tables of `route network`, the footer of its schematic and the sources of a report. A GeoTIFF carries no lines, so name SoilGrids yourself when you publish an HSG raster (the envelope of `soil hsg` has the line). A PMAXTP depth carries the lines IMGW-PIB prescribes for PMAXTP (`attribution`, `terms_notice` and the notice `pmaxtp_attribution`).
+Hydrolog downloads nothing and needs no account, except the PMAXTP depth of `precip pmaxtp`: the only network connection it opens, to the PMAXTP service of IMGW-PIB, through Obserwator (extra `pmaxtp`), sending only the point's coordinates and the method. Its only key is one you choose for the web GUI's admin page. Input is numbers or local files: CSV series (an Obserwator export loads unchanged), JSON (watershed, stations, network segments, the network of `route network`) and GeoTIFF rasters (extra `raster`). It ships no dataset except the TR-55 curve number table of USDA NRCS. The data you pass keep the licence of their source (IMGW-PIB terms of reuse, ČHMÚ CC BY 4.0, SoilGrids CC BY 4.0), and every product carries the lines that the terms of IMGW-PIB, ČHMÚ and ISRIC require (Nogat DEV §20, [ADR-0028](https://github.com/Daldek/Hydrolog/blob/main/docs/decisions/0028-the-providers-lines-in-every-product.md)): Hydrolog reads them from its inputs (the CSV columns `attribution` and `terms_notice`, the `attribution_source` and `attribution_processed` of an export of Obserwator 3.0.x or older, the fields `attribution` and `terms_notice` of a JSON document, a Kartograf raster of SoilGrids, known by its sidecar `<raster>.meta.json` or its directory `global_soilgrids_…`, the option `attribution`), completes them with the processed line of each provider, carries a line it does not know verbatim after them, and writes them into the envelope's `attribution` and `terms_notice`, the columns of the same names in the CSV tables it writes, `ATTRIBUTION.txt` beside the tables of `route network`, the footer of its schematic and the sources of a report. A GeoTIFF carries no lines, so name SoilGrids yourself when you publish an HSG raster (the envelope of `soil hsg` has the line). A PMAXTP depth carries the lines IMGW-PIB prescribes for PMAXTP (`attribution`, `terms_notice` and the notice `pmaxtp_attribution`).
 
-A command writes only to the file named by `--output` (exactly one plain file, written atomically; `commands guide --inject PATH` edits the AGENTS.md you name) or, for `route network`, into the directory named by `--output-dir` (one table per node, each moved into place from a `.hydrolog-incoming/` staging directory that is removed afterwards, and `ATTRIBUTION.txt` when the input carries providers' lines, merged with an existing one) and to the SVG file named by `--schematic`, and replaces an existing file only with `--force`. There is no store or cache; only the web GUI writes files of its own, the reports of „Zgłoś uwagę” in `<data_dir>/hydrolog/feedback.sqlite3`, public, its daily totals in `<data_dir>/hydrolog/stats.jsonl`, and the logs of `gui serve` in `<state_dir>/hydrolog/logs/`.
+A command writes only to the file named by `--output` (exactly one plain file, written atomically; `commands guide --inject PATH` edits the AGENTS.md you name) or, for `route network`, into the directory named by `--output-dir` (one table per node, `hydrolog_node-hydrograph_<node id>.csv`, each moved into place from a `.hydrolog-incoming/` staging directory that is removed afterwards, and `ATTRIBUTION.txt` when the input carries providers' lines, merged with an existing one) and to the SVG file named by `--schematic`, and replaces an existing file only with `--force`. There is no store or cache; only the web GUI writes files of its own, the reports of „Zgłoś uwagę” in `<data_dir>/hydrolog/feedback.sqlite3`, public, its daily totals in `<data_dir>/hydrolog/stats.jsonl`, and the logs of `gui serve` in `<state_dir>/hydrolog/logs/`.
 
 Settings (`lang`, `log_level`, `data_dir`, `state_dir`, `request_limit`, `request_window`) come from, in order: the command-line option, `HYDROLOG_<KEY>`, `NOGAT_<KEY>`, `nogat.toml` (section `[hydrolog]`, then `[nogat]`) in the user config directory or at `NOGAT_CONFIG`, then the default; an invalid environment or file value is ignored. [.env.example](https://github.com/Daldek/Hydrolog/blob/main/.env.example) lists every variable: `HYDROLOG_LANG`, `NOGAT_LANG` (`pl` or `en`, default `pl`), `HYDROLOG_LOG_LEVEL`, `NOGAT_LOG_LEVEL` (`debug`, `info`, `warning` or `error`, default `warning`), `HYDROLOG_DATA_DIR`, `NOGAT_DATA_DIR` (the data directory, default the user data directory of `nogat`), `HYDROLOG_STATE_DIR`, `NOGAT_STATE_DIR` (the state directory, where `gui serve` keeps its logs, default the user state directory of `nogat`), `HYDROLOG_REQUEST_LIMIT`, `NOGAT_REQUEST_LIMIT` (the requests a public web GUI answers per client address in a window, default 300), `HYDROLOG_REQUEST_WINDOW`, `NOGAT_REQUEST_WINDOW` (that window in seconds, default 60), `NOGAT_CONFIG`, and the credential, which is read from the environment only, never from `nogat.toml`: `HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE` (the key of the web GUI's admin page, or a file that holds it). `hydrolog config show` prints the effective values, where each comes from and whether each credential variable is set, never its value:
 
@@ -382,4 +388,4 @@ hydrolog config show --json
 
 ## Status, licence, author
 
-Alpha: the release 0.8.0, a member of the first joint release of the Nogat ecosystem (frozen on 2026-11-16; the previous release is 0.7.0). Semantic versioning applies: in 0.y a minor release may break the public interface, from 1.0.0 only a major one. Licence: MIT. Author: Piotr de Bever ([Daldek](https://github.com/Daldek)). Hydrolog is part of the [Nogat](https://github.com/Daldek/Nogat) ecosystem and follows its standard 1.0.
+Alpha: the release 0.9.0, a member of the Nogat ecosystem's release of its standard 1.1 (the previous release is 0.8.1). Semantic versioning applies: in 0.y a minor release may break the public interface, from 1.0.0 only a major one. Licence: MIT. Author: Piotr de Bever ([Daldek](https://github.com/Daldek)). Hydrolog is part of the [Nogat](https://github.com/Daldek/Nogat) ecosystem and follows its standard 1.1.

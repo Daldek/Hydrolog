@@ -89,7 +89,7 @@ export const siec = {
     inPanel: "Dane zlewni z opadu (zlewnia, hietogram i hydrogram) są w jej panelu obok, w trzech krokach jak w Hydrogramie zlewni.",
     openPanel: "Dane zlewni →",
     openPanelTitle: "Pokaż panel zlewni {id}: jej dane w trzech krokach",
-    tableRules: "Od stanu pustego, kolumny niemalejące; tabela nie jest ekstrapolowana (table_exceeded). stage_m: rzędna albo głębokość, podawana w szczycie.",
+    tableRules: "Od stanu najniższego, kolumny niemalejące; tabela nie jest ekstrapolowana (table_exceeded). stage_m: rzędna albo głębokość, podawana w szczycie.",
     junction: "Złącze sumuje hydrogramy dopływów w każdym kroku; nie ma innych parametrów.",
     outlet: "Jedyny wylot sieci: jego hydrogram jest wynikiem route network; schemat prowadzi od niego linię główną.",
     id: "Id węzła",

@@ -4,3 +4,6 @@
 # Byte-exact files keep their bytes: fixtures that tests read or compare byte
 # for byte (rasters and CSV exports in their original form).
 tests/fixtures/** -text
+# Frozen oracles copied byte for byte from the research that ran them (Nogat CMP-6.4;
+# datasets.csv is named by its SHA-256 in r_oracle_meta.txt).
+tests/oracles/trend_regime/** -text

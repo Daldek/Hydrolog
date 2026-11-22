@@ -28,29 +28,30 @@ COMMANDS: tuple[Command, ...] = (
         summary_pl=("Dopasuj krzywą przepływu Q = a·(H − H₀)^b do par stan–przepływ"),
         summary=("Fit a rating curve Q = a·(H − H₀)^b to stage–discharge pairs"),
         description_pl=(
-            "Potęgowa krzywa przepływu nieliniową metodą najmniejszych kwadratów ze"
-            " stanów H (cm albo m) i przepływów Q [m³/s], z opcjonalnym usuwaniem "
+            "Potęgowa krzywa przepływu metodą najmniejszych kwadratów na Q ze stanów "
+            "H (cm albo m) i przepływów Q [m³/s], z opcjonalnym usuwaniem "
             "odstających; pary z datami (szereg dobowy) także dla wybranych lat i "
-            "krzywe kolejnych okresów. Strefy stanów: `hydrometrics "
-            "water-level-zones`. Wymaga co najmniej 3 par; pary z NaN są pomijane."
+            "kolejnych okresów. Strefy stanów: `hydrometrics water-level-zones`. "
+            "Co najmniej 3 pary (pary z NaN pomijane); poniżej 12 par uwaga "
+            "(WMO-No. 1044); pary bez minimum sumy kwadratów są odrzucane."
         ),
         description=(
-            "Power-law rating curve by non-linear least squares from water level H "
-            "(cm or m) and discharge Q [m³/s], with optional outlier removal; dated "
-            "pairs (a daily series) also for chosen years and as the curves of "
-            "successive periods. For level zones use `hydrometrics "
-            "water-level-zones`. Needs 3 or more pairs; NaN pairs are skipped."
+            "Power-law rating curve by least squares on Q from levels H (cm or m) "
+            "and discharges Q [m³/s], optional outlier removal; dated pairs also for "
+            "chosen years and periods. Zones: `hydrometrics water-level-zones`. "
+            "Needs 3+ pairs (NaN pairs skipped); under 12 give a notice (WMO-No. "
+            "1044); pairs without a least-squares minimum are refused."
         ),
         result_schema="hydrolog-hydrometrics-rating-curve/1",
         rules=(
-            "Pass levels and discharges as equal-length lists, or a file's columns.",
+            "Pass levels and discharges as equal-length lists or a file's columns.",
             "Check `r_squared`, `n_outliers_removed` and `notices` before use.",
-            "`h0` is in the unit of the levels; discharge is in m³/s.",
+            "`h0` is in the unit of H, `a` in m³/s per (unit of H)^b; Q in m³/s.",
         ),
         rules_pl=(
             "Podaj stany i przepływy jako listy równej długości albo kolumny pliku.",
             "Sprawdź `r_squared`, `n_outliers_removed` i `notices` przed użyciem.",
-            "`h0` jest w jednostce stanów; przepływ w m³/s.",
+            "`h0` jest w jednostce H, `a` w m³/s na (jednostkę H)^b; Q w m³/s.",
         ),
         errors=(
             "validation_error",
@@ -296,13 +297,15 @@ COMMANDS: tuple[Command, ...] = (
             "Granice stref z histogramu i krzywej czasu trwania stanów wody (klasy "
             "o szerokości `bin_width`): NTW niskie, STW średnie, WTW wysokie tło "
             "wodne. Do stref stanów wodowskazu; zależność stan–przepływ: "
-            "`hydrometrics rating-curve`. Granice mają jednostkę stanów."
+            "`hydrometrics rating-curve`. Granice mają jednostkę stanów. Źródła "
+            "Rybczyńskiego nie otwarto: każdy wynik ma uwagę unreferenced_formula."
         ),
         description=(
             "Zone limits from the histogram and the duration curve of water levels "
             "(classes of `bin_width`): NTW low, STW medium, WTW high background "
             "water. Use for level zones of a gauge; for a stage–discharge relation "
-            "use `hydrometrics rating-curve`. Limits are in the unit of the levels."
+            "use `hydrometrics rating-curve`. Limits are in the unit of the levels. "
+            "Rybczyński's source is not opened: notice unreferenced_formula."
         ),
         result_schema="hydrolog-hydrometrics-water-level-zones/1",
         cardinality="bounded",

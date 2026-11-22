@@ -24,15 +24,20 @@ from hydrolog.statistics import fit_fisher_tippett_minima
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 DAILY = "station_daily.csv"
 HALF_YEARS = "station_half_years.csv"
+# A synthetic station of 15 complete years (2009-2023): five are too few for the
+# maximum likelihood of the low-flow fit (no maximum on station_half_years.csv).
+HALF_YEARS_15Y = "station_half_years_15y.csv"
 # The winter and summer maxima and minima of Q in station_half_years.csv, 2019-2023.
 Q_MAXIMA = [72.18, 132.13, 102.57, 41.19, 76.55]
-Q_MINIMA = [0.54, 1.54, 1.48, 0.52, 0.99]
+# The smaller of the winter and summer minima of Q in station_half_years_15y.csv.
+Q_MINIMA_15Y = [0.94, 0.77, 1.03, 1.35, 1.36, 0.67, 1.12, 2.01, 1.29, 1.22, 1.02]
+Q_MINIMA_15Y += [1.11, 1.6, 1.26, 1.65]
 
 
 @pytest.fixture
 def station(tmp_path: Path) -> Path:
     """A directory with the station's files, as Obserwator would write them."""
-    for name in (DAILY, HALF_YEARS):
+    for name in (DAILY, HALF_YEARS, HALF_YEARS_15Y):
         shutil.copy(FIXTURES / name, tmp_path / name)
     return tmp_path
 
@@ -72,7 +77,7 @@ class TestBatch:
                 date_column="date",
                 parameter="H",
             ),
-            call("hydrolog_stats_low_flow", half_year_file=HALF_YEARS),
+            call("hydrolog_stats_low_flow", half_year_file=HALF_YEARS_15Y),
             call("stats flood-frequency", values=[1.0, 2.0]),  # calculation_error
             call(
                 "stats threshold-events",
@@ -205,21 +210,23 @@ class TestBatch:
     def test_relative_paths_are_taken_from_the_directory_of_the_calls(
         self, station, tmp_path_factory, monkeypatch
     ):
-        path = write_calls(station, call("stats low-flow", half_year_file=HALF_YEARS))
+        path = write_calls(
+            station, call("stats low-flow", half_year_file=HALF_YEARS_15Y)
+        )
         monkeypatch.chdir(tmp_path_factory.mktemp("elsewhere"))
         envelope, documents = batch(path)
 
         assert envelope["status"] == "ok"
-        assert documents[0]["inputs"]["half_year_file"] == str(station / HALF_YEARS)
+        assert documents[0]["inputs"]["half_year_file"] == str(station / HALF_YEARS_15Y)
 
     def test_the_path_policy_of_the_batch_covers_every_call(
         self, station, tmp_path_factory
     ):
-        outside = tmp_path_factory.mktemp("outside") / HALF_YEARS
-        shutil.copy(station / HALF_YEARS, outside)
+        outside = tmp_path_factory.mktemp("outside") / HALF_YEARS_15Y
+        shutil.copy(station / HALF_YEARS_15Y, outside)
         path = write_calls(
             station,
-            call("stats low-flow", half_year_file=HALF_YEARS),
+            call("stats low-flow", half_year_file=HALF_YEARS_15Y),
             call("stats low-flow", half_year_file=str(outside)),
         )
         envelope = run_command(
@@ -279,39 +286,43 @@ class TestHalfYearsInTheFrequencyCommands:
         assert half["distributions"] == given["distributions"]
 
     def test_a_year_with_one_half_year_is_left_out_and_named(self, station):
-        path = station / HALF_YEARS
+        path = station / HALF_YEARS_15Y
         rows = path.read_text(encoding="utf-8").splitlines()
         header = rows[0].split(",")
         column = header.index("Q_max [m3/s]")
-        cells = rows[5].split(",")  # 2020, summer
-        assert cells[1:3] == ["2020", "summer"]
+        at = rows.index(next(row for row in rows if row.startswith("2012,summer,")))
+        cells = rows[at].split(",")
         cells[column] = ""
-        rows[5] = ",".join(cells)
+        rows[at] = ",".join(cells)
         path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
         result = run("stats flood-frequency", half_year_file=str(path)).to_dict()
-        assert result["result"]["hydrological_years"] == [2019, 2021, 2022, 2023]
-        assert result["result"]["incomplete_years"] == [2020]
-        # the minima of 2020 are both there
+        assert result["result"]["hydrological_years"] == [
+            year for year in range(2009, 2024) if year != 2012
+        ]
+        assert result["result"]["incomplete_years"] == [2012]
+        # the minima of 2012 are both there
         low = run("stats low-flow", half_year_file=str(path)).to_dict()
-        assert low["result"]["n_years"] == 5
+        assert low["result"]["n_years"] == 15
 
     def test_low_flow_fits_the_smaller_half_year_minima(self, station):
         envelope = run(
             "stats low-flow",
-            half_year_file=str(station / HALF_YEARS),
+            half_year_file=str(station / HALF_YEARS_15Y),
             return_periods=[2, 10],
         ).to_dict()
         result = envelope["result"]
-        with pytest.warns(UserWarning, match="fewer than 10"):
-            fitted = fit_fisher_tippett_minima(np.array(Q_MINIMA), np.array([2.0, 10]))
+        fitted = fit_fisher_tippett_minima(np.array(Q_MINIMA_15Y), np.array([2.0, 10]))
 
-        assert (result["source"], result["annual_minima"]) == ("half_years", Q_MINIMA)
+        assert (result["source"], result["annual_minima"]) == (
+            "half_years",
+            Q_MINIMA_15Y,
+        )
         assert result["fisher_tippett"]["quantiles"] == pytest.approx(
             fitted.quantiles.tolist(), rel=1e-12
         )
-        assert result["empirical"]["values_ascending"] == sorted(Q_MINIMA)
-        assert [n["code"] for n in envelope["notices"]] == ["small_sample"]
+        assert result["empirical"]["values_ascending"] == sorted(Q_MINIMA_15Y)
+        assert envelope["notices"] == []
 
     def test_homogeneity_takes_the_years_of_the_file(self, station):
         result = run(

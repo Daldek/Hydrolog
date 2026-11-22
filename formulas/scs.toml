@@ -1,0 +1,331 @@
+schema = "nogat-formula-card/1"
+name = "scs"
+title = "SCS (NRCS) dimensionless unit hydrograph of a unit duration"
+function = "hydrolog.runoff.unit_hydrograph.scs_unit_hydrograph"
+family = "scheme"
+formula_version = 1
+status = "referenced"
+equation = "tlag = 0.6 * tc; Tp = D / 2 + tlag; qp = C * A / Tp [m3/s per cm of runoff, A in km2, Tp in h], C = 2.08, per mm qp / 10; q(t) = qp * f(t / Tp), f table 16-1 of NEH 630 ch. 16 interpolated linearly, 0 beyond t / Tp = 5, so Tb = 5 Tp; the ordinates are q(k D). For D > 0.25 Tp the ordinate at k D is the mean of the ordinates q_d(j d) of the sub-step d = D / n over the n sub-steps ending at k D, d the longest with d <= 0.25 Tp(d)"
+latex = "t_{lag} = 0.6\\,t_c,\\quad T_p = \\frac{D}{2} + t_{lag},\\quad q_p = \\frac{C\\,A}{T_p},\\quad q_k = q_p\\,f\\!\\left(\\frac{k\\,D}{T_p}\\right),\\quad T_b = 5\\,T_p"
+validation = "Mockus (1957) derived the dimensionless unit hydrograph from many natural unit hydrographs of watersheds varying widely in size and geographical location (NEH 630-16, p. 16-2; HEC-HMS 2000, p. 55: small agricultural watersheds); the sources give no error statistic of its shape or peak"
+conventions = ["SI units: A in km2, times in min, ordinates in m3/s per mm of runoff; C = 2.08 is per cm (HEC-HMS 2000 eq. 36), per mm by the exact 10 mm/cm", "C = 2.08 is NEH's peak rate factor 483.2 in foot-pound units, not 484: NEH 630 (p. 16A-2) gives table 16-1 the factor 483.4 from the rounding of its ratios; with 2.08 the continuous table holds 1.00036 mm", "times from the beginning of the unit excess; D is the time step", "table 16-1 interpolated linearly between its rows, as NEH 630 table 16-2 does (t/Tp 2.1 gives 0.2435), and 0 from t/Tp = 5 on", "the ordinates are the curve sampled at the step times (NEH 630 example 16-1, step 2)", "a step longer than 0.25 Tp is divided into sub-steps and the rain of the step spread evenly over them (notice uh_substeps): the volume stays 1 mm, while qp, Tp and Tb stay the formula's values for D, so qp then exceeds the largest ordinate (by 21 % for tc 90.7 min at a step of 60 min)"]
+assumptions = ["excess rainfall uniform over the watershed and in time over D; subareas of at most 20 square miles, the largest at most 10 times the smallest (NEH 630 p. 16-4), larger watersheds divided and their hydrographs routed", "tlag = 0.6 tc, the average relation of NEH 630 ch. 15", "D = 0.2 Tp (D = 0.133 tc), at most 0.25 Tp (NEH 630 p. 16A-3); hydrograph generate warns outside_applicability of scs.timestep_min beyond it"]
+notices = ["outside_applicability", "uh_substeps"]
+reference_cases = ["tests/fixtures/formulas/unit-hydrographs-cases.json"]
+
+[properties]
+units = "homogeneous"
+symmetries = []
+
+[properties.monotonic]
+area_km2 = 1
+tc_min = -1
+timestep_min = -1
+
+[[properties.scalings]]
+name = "area"
+
+[properties.scalings.inputs]
+area_km2 = 1.0
+
+[properties.scalings.outputs]
+peak_discharge_m3s = 1.0
+ordinates_m3s = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling the area doubles every ordinate exactly in binary, but for values below 1e-300 that float64's subnormal numbers round on a fixed absolute step"
+abs = 1e-300
+rel = 1e-14
+
+[[properties.scalings]]
+name = "time"
+
+[properties.scalings.inputs]
+tc_min = 1.0
+timestep_min = 1.0
+
+[properties.scalings.outputs]
+peak_discharge_m3s = -1.0
+time_to_peak_min = 1.0
+lag_time_min = 1.0
+time_base_min = 1.0
+times_min = 1.0
+ordinates_m3s = -1.0
+
+[properties.scalings.tolerance]
+reason = "doubling every time keeps t / Tp and the sub-steps and halves qp exactly in binary, but for subnormal values"
+abs = 1e-300
+rel = 1e-14
+
+[[properties.limits]]
+name = "exact_table"
+text = "the ordinates equal the equation in exact rational arithmetic, with and without sub-steps"
+
+[[properties.limits]]
+name = "recommended_duration"
+text = "D = 2 tc / 15 gives D = 0.2 Tp and the peak ordinate qp at Tp (NEH 630 eqs. 16A-10 to 16A-13)"
+
+[properties.limits.source]
+citation = "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)"
+access = "open"
+locator = "eqs. 16A-10 to 16A-13, p. 16A-3"
+url = "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf"
+
+[[properties.conservation]]
+name = "unit_volume"
+text = "the ordinates hold 1 mm over the watershed, sum(q_k) D = A * 1 mm, within the sampling of the table"
+
+[properties.conservation.tolerance]
+reason = "the continuous table holds 1.00036 mm at C = 2.08 (area 1.33595 Tp qp); sampled at D or d of at most 0.25 Tp it holds 0.99772 to 1.00138 mm over 20,001 ratios D / Tp of (0, 0.25]"
+abs = 0.003
+
+[[sources]]
+citation = "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)"
+access = "open"
+locator = "table 16-1, p. 16-4; appendix 16A, eqs. 16A-6 to 16A-9 and 16A-13, pp. 16A-2 to 16A-3; example 16-1, pp. 16-7 to 16-13"
+url = "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf"
+
+[[sources]]
+citation = "USACE-HEC (2000). Hydrologic Modeling System HEC-HMS, Technical Reference Manual (CPD-74B, March 2000)"
+access = "open"
+locator = "SCS unit hydrograph model, eqs. 36-38, pp. 55-56"
+url = "https://www.hec.usace.army.mil/software/hec-hms/documentation/HEC-HMS_Technical%20Reference%20Manual_%28CPD-74B%29.pdf"
+
+[[sources]]
+citation = "Rajagopalan, B. CVEN 5333 lecture notes, Unit Hydrographs, after Chow, V.T., Maidment, D.R. and Mays, L.W. (1988), Applied Hydrology, chapter 7, University of Colorado Boulder"
+access = "open"
+locator = "Snyder's synthetic UHG, pp. 76-78 (eqs. 7.7.2-7.7.4, C1 0.75, C2 2.75, C3 5.56, Cw 2.14 and 1.22 in SI, 770 and 440 in English units, areas of 30 to 30,000 km2); SCS dimensionless hydrograph, p. 79 (C = 2.08, 483.4 in English units)"
+url = "https://civil.colorado.edu/~balajir/CVEN5333/Lectures/Unit-Hydrographs-Chow-Chap7.pdf"
+
+[[variables]]
+name = "area_km2"
+symbol = "A"
+unit = "km2"
+kind = "real"
+description = "Area of the watershed."
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000000.0
+test_reason = "a million km2, five times the basin of the Vistula (194,000 km2) and four thousand times the largest watershed Hydrograf hands over"
+
+[variables.applicability]
+low = 0.0
+low_inclusive = true
+high = 51.8
+high_inclusive = true
+
+[variables.applicability.source]
+citation = "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)"
+access = "open"
+locator = "p. 16-4: no subarea to exceed 20 square miles (51.8 km2), the largest no more than 10 times the smallest"
+url = "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf"
+
+[variables.typical]
+low = 0.0003
+low_inclusive = true
+high = 250.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: areas of 0.00035 to 135 km2; Hydrograf computes hydrographs of watersheds up to 250 km2 (backend/api/endpoints/hydrograph.py)"
+
+[[variables]]
+name = "tc_min"
+symbol = "t_c"
+unit = "min"
+kind = "real"
+description = "Time of concentration of the watershed."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 4500.0
+test_reason = "ten times the longest time of concentration of the hand-offs (450 min)"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 450.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: Kirpich's tc of the flow paths of the 27 watersheds, the default method of hydrograph generate, 1.04 to 450 min"
+
+[[variables]]
+name = "timestep_min"
+symbol = "D"
+unit = "min"
+kind = "real"
+description = "Time step of the hydrograph and duration of its unit of excess rainfall."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1440.0
+test_reason = "a day, the step of a daily rainfall series (E5b-07: tc 90.7 min at a step of 1440 min)"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 60.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrograf's watersheds handed to Hydrolog (Hydrograf 0.5.0.dev0, November 2026): the hand-offs recorded in Hydrolog's tests, Kamiennik to Świerzawa (134.97 km2), a network of 8 subcatchments and the Nysa Szalona network of 18, and the guide's Kamiennik to Świerzawa (37.22 km2); and KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "tests/fixtures/handoff_hydrograf*.json and tests/fixtures/kamiennik.json: 5 min; KZGW 2017, annex 2, ex. 6.1 and 6.2 (1 h) and 6.4 (0.5 h), pp. 92-110"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[constraints]]
+name = "steps_representable"
+class = "precondition"
+text = "float64 holds tlag, Tp, the sub-step and the peaks as normal numbers, at most 2**53 sub-steps, and the grid of the step and of the sub-step have at most a million ordinates each"
+
+[constraints.source]
+citation = "Hydrolog's bound of a hydrograph's length (hydrolog.routing.reach.MAX_ORDINATES)"
+access = "open"
+locator = "a million ordinates: the routing of a hydrograph refuses a longer one"
+
+[[constants]]
+name = "lag_ratio"
+value = 0.6
+unit = "-"
+symbol = "0.6"
+
+[constants.source]
+citation = "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)"
+access = "open"
+locator = "eq. 16A-9, p. 16A-2: L = 0.6 Tc (after NEH 630 ch. 15); HEC-HMS 2000, eq. 38, p. 56"
+url = "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf"
+
+[[constants]]
+name = "peak_factor"
+value = 2.08
+unit = "m3 s^-1 km^-2 cm^-1 h"
+symbol = "C"
+
+[constants.source]
+citation = "USACE-HEC (2000). Hydrologic Modeling System HEC-HMS, Technical Reference Manual (CPD-74B, March 2000)"
+access = "open"
+locator = "eq. 36, p. 55: C = 2.08 in SI and 484 in foot-pound units; Chow et al. 1988, after Rajagopalan's notes, p. 79: C = 2.08 (483.4 in English units)"
+url = "https://www.hec.usace.army.mil/software/hec-hms/documentation/HEC-HMS_Technical%20Reference%20Manual_%28CPD-74B%29.pdf"
+
+[[constants]]
+name = "step_share"
+value = 0.25
+unit = "-"
+symbol = "0.25"
+
+[constants.source]
+citation = "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)"
+access = "open"
+locator = "p. 16A-3: the unit duration D is 0.2 Tp and no greater than 0.25 Tp; HEC-HMS 2000, p. 55: less than 29 % of tlag"
+url = "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf"
+
+[[outputs]]
+name = "peak_discharge_m3s"
+unit = "m3/s per mm"
+kind = "real"
+symbol = "q_p"
+description = "Peak discharge of the formula for the duration D."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "time_to_peak_min"
+unit = "min"
+kind = "real"
+symbol = "T_p"
+description = "Time to peak from the beginning of the unit excess."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "lag_time_min"
+unit = "min"
+kind = "real"
+symbol = "t_{lag}"
+description = "Watershed lag, from the centre of the unit excess to Tp."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "time_base_min"
+unit = "min"
+kind = "real"
+symbol = "T_b"
+description = "Time base: the end of table 16-1."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "times_min"
+unit = "min"
+kind = "real_array"
+symbol = "k D"
+description = "Times of the ordinates, from the beginning of the excess."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[outputs]]
+name = "ordinates_m3s"
+unit = "m3/s per mm"
+kind = "real_array"
+symbol = "q_k"
+description = "Ordinates of the unit hydrograph of the duration D."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "stability_bound"
+description = "The stability bound of a numerical scheme (a Courant number, Muskingum's 2KX <= dt <= 2K(1-X))."
+test = "test_scs_steps_at_and_beyond_the_neh_bound: the step 0.25 Tp itself is sampled as it is, the next one is computed on sub-steps and keeps its volume"
+
+[[traps]]
+name = "unbounded_iteration"
+description = "An iteration without a bounded count (root finding, fit)."
+test = "the count of sub-steps is a closed form corrected at most twice for rounding; range case tc_min-physical_low_inside: a sub-step float64 cannot hold is refused by the precondition steps_representable"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_scs_a_day_step_keeps_its_volume: E5b-07, 93 sub-steps of a step of 1440 min summed by cumulative sums"
+
+[[oracles]]
+kind = "exact"
+description = "the ordinates in exact rational arithmetic (fractions): Tp, qp, the linear interpolation of table 16-1 and the means over the sub-steps"
+test = "tests/unit/test_formulas_unit_hydrographs.py (limit exact_table)"
+conventions = []
+
+[[tables]]
+path = "src/hydrolog/_data/tables/neh630_duh.csv"
+sha256 = "b465694f902953d282e964c34c7a535adc4cb8c833948ffca7c2a5080d871709"
+comparison = "tests/oracles/neh630_duh_text_layer.csv (transcribed from the PDF's text layer by tests/oracles/transcribe_neh630_duh.py) against tests/oracles/neh630_duh_hydrolog_0_8_1.csv (typed for Hydrolog 0.8.1), compared by tests/unit/test_formulas_unit_hydrographs.py; USDA-SCS (1972). National Engineering Handbook, Section 4 Hydrology, Chapter 16: Hydrographs (NEH Notice 4-102, August 1972; amendment 6, March 1985), table 16.1, prints the same ratios"
+
+[tables.source]
+citation = "USDA-NRCS (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 16: Hydrographs (210-VI-NEH, March 2007)"
+access = "open"
+locator = "table 16-1, p. 16-4: time ratios t/Tp and discharge ratios q/qp (the same ratios in NEH-4 (1972), table 16.1)"
+url = "https://irrigationtoolbox.com/NEH/Part630_Hydrology/H_210_630_16.pdf"

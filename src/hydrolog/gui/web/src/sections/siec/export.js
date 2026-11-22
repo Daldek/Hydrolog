@@ -5,13 +5,15 @@
 // own schematic, the SVG `route network` wrote with `schematic` (a session file, fetched
 // with the session's header, api.downloadFile); and the print view. The
 // CSVs carry the run's providers' lines in their two trailing columns, the document and
-// the PNG the network's (Nogat DEV-20.5).
+// the PNG the network's (Nogat DEV-20.5). The files are named by Nogat DEV-19.21:
+// `hydrolog_<content>_<network>[_<node id>]` (namePart, ui/export-panel.js fileName).
 
 import { csvWithLines, footerLines, linesFields, linesOf } from "../../attribution.js";
 import { t } from "../../labels/common.js";
 import { exportLabels } from "../../labels/exports.js";
 import { siec as texts } from "../../labels/siec.js";
-import { fileStem } from "./state.js";
+import { fileName } from "../../ui/export-panel.js";
+import { namePart } from "./state.js";
 
 /**
  * A node's hydrograph as CSV: comma separated, decimal dot, UTF-8.
@@ -69,7 +71,7 @@ function networkCsv(result) {
  *   the exports (`file`: a session file, "out/<name>")
  */
 export function exportItems({ state, document, valid, run, selected, schematicSvg, lines = null }) {
-  const stem = fileStem(state);
+  const part = namePart(state);
   const result = run && run.envelope.status === "ok" ? run.envelope.result : null;
   const node = result && selected ? (result.nodes || []).find((item) => item.id === selected) : null;
   const svgFile = result && Array.isArray(result.files) ? result.files.find((file) => /\.svg$/i.test(String(file.path))) : null;
@@ -84,7 +86,7 @@ export function exportItems({ state, document, valid, run, selected, schematicSv
       disabled: node && Array.isArray(node.times_min) ? null : noRun,
       text: () => csvWithLines(nodeCsv(node), ran),
       type: "text/csv;charset=utf-8",
-      name: `${stem}-${selected}.csv`,
+      name: fileName("node-hydrograph", [part, selected], "csv"),
     },
     {
       id: "csv-all",
@@ -94,7 +96,7 @@ export function exportItems({ state, document, valid, run, selected, schematicSv
       disabled: result ? null : noRun,
       text: () => csvWithLines(networkCsv(result), ran),
       type: "text/csv;charset=utf-8",
-      name: `${stem}-wezly.csv`,
+      name: fileName("network-nodes", [part], "csv"),
     },
     {
       id: "json-network",
@@ -104,7 +106,7 @@ export function exportItems({ state, document, valid, run, selected, schematicSv
       disabled: document && valid ? null : texts.exports.invalid,
       text: () => `${JSON.stringify({ ...document, ...linesFields(lines) }, null, 2)}\n`,
       type: "application/json",
-      name: `${stem}.json`,
+      name: fileName("network", [part], "json"),
     },
     {
       id: "json-result",
@@ -114,7 +116,7 @@ export function exportItems({ state, document, valid, run, selected, schematicSv
       disabled: run ? null : noRun,
       text: () => `${JSON.stringify(run.envelope, null, 2)}\n`,
       type: "application/json",
-      name: `${stem}.result.json`,
+      name: fileName("network-result", [part], "json"),
     },
     {
       id: "png",
@@ -124,7 +126,7 @@ export function exportItems({ state, document, valid, run, selected, schematicSv
       disabled: schematicSvg.current ? null : texts.exports.noSchematic,
       svg: () => schematicSvg.current,
       footer: footerLines(lines),
-      name: `${stem}.png`,
+      name: fileName("network-schematic", [part], "png"),
     },
     {
       id: "svg",
@@ -133,7 +135,7 @@ export function exportItems({ state, document, valid, run, selected, schematicSv
       title: texts.exports.svgTitle,
       disabled: svgFile ? null : noRun,
       file: svgFile ? svgFile.path : null,
-      name: `${stem}.svg`,
+      name: fileName("network-schematic", [part], "svg"),
     },
     {
       id: "print",

@@ -15,7 +15,7 @@ Attribution lines, in the order of DEV-20.4:
 * :data:`PMAXTP_SOURCE` (PS), :data:`PMAXTP_PROCESSED` (PP) and the monograph
   :data:`PMAXTP_MONOGRAPH` (M): data of the PMAXTP project, whose own terms replace S
   and P (ust. 1 and 2);
-* :data:`CHMI_SOURCE` (C) and :data:`CHMI_PROCESSED` (CP): ČHMÚ open data under CC BY
+* :data:`CHMU_SOURCE` (C) and :data:`CHMU_PROCESSED` (CP): ČHMÚ open data under CC BY
   4.0, whose §3(a)(1) asks for the creator, the address, the licence with its link and
   the fact of a modification, stated once and never how (ECO-071);
 * :data:`SOILGRIDS_SOURCE` (SG): ISRIC SoilGrids under CC BY 4.0 (DEV-20.10); a line of
@@ -41,13 +41,13 @@ own) is the CP of today (ECO-071, DEV-20.4), so it is written once.
 
 A command collects the lines of its run: :func:`~hydrolog.catalog.run_command` opens
 :func:`collecting`, the readers of input files :func:`cite` the lines a file carries
-(the CSV columns ``attribution`` and ``terms_notice``, Obserwator's
-``attribution_source`` and ``attribution_processed``, the fields ``attribution`` and
-``terms_notice`` of a JSON document, a Kartograf raster's sidecar ``<file>.meta.json``
-or its SoilGrids name, :func:`lines_of_kartograf`), an operation cites its option
-``attribution`` and the lines of its own source, a writing operation puts
-:func:`current` into its files, and the envelope gets the fields ``attribution`` and
-``terms_notice``.
+(the CSV columns ``attribution`` and ``terms_notice``, the ``attribution_source`` and
+``attribution_processed`` of a file of Obserwator 3.0.x or older, the fields
+``attribution`` and ``terms_notice`` of a JSON document, a Kartograf raster's sidecar
+``<file>.meta.json`` or its SoilGrids name, :func:`lines_of_kartograf`), an operation
+cites its option ``attribution`` and the lines of its own source, a writing operation
+puts :func:`current` into its files, and the envelope gets the fields ``attribution``
+and ``terms_notice``.
 
 The module is a leaf (standard library only), so the catalog, the readers and the
 operations import it without cycles.
@@ -68,8 +68,8 @@ from typing import Final, Literal, get_args
 __all__ = [
     "ATTRIBUTION_FILE",
     "ATTRIBUTION_COLUMN",
-    "CHMI_PROCESSED",
-    "CHMI_SOURCE",
+    "CHMU_PROCESSED",
+    "CHMU_SOURCE",
     "CSV_COLUMNS",
     "IMGW_PROCESSED",
     "IMGW_SOURCE",
@@ -99,7 +99,7 @@ __all__ = [
     "retired_lines",
 ]
 
-Provider = Literal["imgw", "imgw_hydro", "pmaxtp", "chmi", "soilgrids"]
+Provider = Literal["imgw", "imgw_hydro", "pmaxtp", "chmu", "soilgrids"]
 """A provider whose terms Hydrolog knows: IMGW-PIB's public data
 (danepubliczne.imgw.pl), its hydrological service (hydro.imgw.pl), the PMAXTP project,
 ČHMÚ's open data, ISRIC's SoilGrids."""
@@ -129,12 +129,12 @@ PMAXTP_MONOGRAPH: Final = (
     f"{_IMGW}, Warszawa 2022"
 )
 """M: the monograph of the PMAXTP project, which its terms require (ust. 1)."""
-CHMI_SOURCE: Final = (
+CHMU_SOURCE: Final = (
     "Źródło danych: Český hydrometeorologický ústav (ČHMÚ), https://opendata.chmi.cz, "
     "licencja CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)"
 )
 """C: the creator, the address of the material and the licence with its link."""
-CHMI_PROCESSED: Final = "Dane ČHMÚ zostały przetworzone"
+CHMU_PROCESSED: Final = "Dane ČHMÚ zostały przetworzone"
 """CP: ČHMÚ's data were modified (CC BY 4.0, §3(a)(1)(B)), never how (ECO-071)."""
 SOILGRIDS_SOURCE: Final = (
     "Źródło: ISRIC – World Soil Information, SoilGrids, licencja CC BY 4.0 "
@@ -160,7 +160,9 @@ ATTRIBUTION_COLUMN: Final = "attribution"
 TERMS_COLUMN: Final = "terms_notice"
 """The CSV column of the terms notice (DEV-20.5)."""
 _SOURCE_COLUMNS: Final = ("attribution_source", "attribution_processed")
-"""Obserwator's columns of its two lines, read like ``attribution`` (DEV-20.6)."""
+"""The columns of the two lines of Obserwator 3.0.x and older, read like
+``attribution`` (DEV-20.6): Obserwator 3.1.0 no longer writes them (Nogat ECO-082), but
+its earlier exports exist."""
 CSV_COLUMNS: Final = (ATTRIBUTION_COLUMN, TERMS_COLUMN, *_SOURCE_COLUMNS)
 """Every column that holds lines, not data."""
 SIDECAR_SUFFIX: Final = ".meta.json"
@@ -171,9 +173,9 @@ _SOILGRIDS_SEGMENT: Final = "global_soilgrids_"
 """How Kartograf's directory of a SoilGrids file begins, in its store and in a plain
 ``--output-dir`` (``soil/global_soilgrids_<property>_<depth>_<stat>/``)."""
 
-_CHMI_CREDIT: Final = "Źródło danych: Český hydrometeorologický ústav (ČHMÚ)"
+_CHMU_CREDIT: Final = "Źródło danych: Český hydrometeorologický ústav (ČHMÚ)"
 """How every ČHMÚ credit begins, whatever its producer wrote after it."""
-_OLD_CHMI_PROCESSED: Final = re.compile(r"Dane ČHMÚ zostały przetworzone \(.*\)")
+_OLD_CHMU_PROCESSED: Final = re.compile(r"Dane ČHMÚ zostały przetworzone \(.*\)")
 """CP before ECO-071, which said in parentheses how the data were processed."""
 _GUGIK_CREDIT: Final = "Źródło: Główny Urząd Geodezji i Kartografii – GUGiK"
 """How every GUGiK credit (G) begins; Hydrolog carries it, before SG (DEV-20.4)."""
@@ -205,14 +207,14 @@ _LINES: Final[Mapping[str, tuple[str, ...]]] = {
     "imgw": (IMGW_SOURCE, IMGW_PROCESSED),
     "imgw_hydro": (IMGW_SOURCE, IMGW_PROCESSED),
     "pmaxtp": (PMAXTP_SOURCE, PMAXTP_PROCESSED, PMAXTP_MONOGRAPH),
-    "chmi": (CHMI_SOURCE, CHMI_PROCESSED),
+    "chmu": (CHMU_SOURCE, CHMU_PROCESSED),
     "soilgrids": (SOILGRIDS_SOURCE,),
 }
 _TERMS: Final[Mapping[str, tuple[str, ...]]] = {
     "imgw": (TERMS_DANEPUBLICZNE,),
     "imgw_hydro": (TERMS_HYDRO,),
     "pmaxtp": (TERMS_PMAXTP,),
-    "chmi": (),
+    "chmu": (),
     "soilgrids": (),
 }
 _ORDER: Final = (
@@ -221,8 +223,8 @@ _ORDER: Final = (
     PMAXTP_SOURCE,
     PMAXTP_PROCESSED,
     PMAXTP_MONOGRAPH,
-    CHMI_SOURCE,
-    CHMI_PROCESSED,
+    CHMU_SOURCE,
+    CHMU_PROCESSED,
 )
 """The known attribution lines before GUGiK's (DEV-20.4)."""
 _TERMS_ORDER: Final = (TERMS_DANEPUBLICZNE, TERMS_HYDRO, TERMS_PMAXTP)
@@ -233,8 +235,8 @@ _PROVIDER_OF: Final[Mapping[str, str]] = {
     PMAXTP_SOURCE: "pmaxtp",
     PMAXTP_PROCESSED: "pmaxtp",
     PMAXTP_MONOGRAPH: "pmaxtp",
-    CHMI_SOURCE: "chmi",
-    CHMI_PROCESSED: "chmi",
+    CHMU_SOURCE: "chmu",
+    CHMU_PROCESSED: "chmu",
     SOILGRIDS_SOURCE: "soilgrids",
 }
 
@@ -303,7 +305,7 @@ class Attribution:
 
         Parameters
         ----------
-        *providers : {"imgw", "imgw_hydro", "pmaxtp", "chmi", "soilgrids"}
+        *providers : {"imgw", "imgw_hydro", "pmaxtp", "chmu", "soilgrids"}
             The providers of the data.
 
         Returns
@@ -328,9 +330,9 @@ class Attribution:
         """Recognise the lines of an input.
 
         A known line names its provider, whose complete lines the result then has (a
-        ČHMÚ credit is known by its beginning and replaced by :data:`CHMI_SOURCE`, which
+        ČHMÚ credit is known by its beginning and replaced by :data:`CHMU_SOURCE`, which
         has every element the licence asks for; a CP that said in parentheses how the
-        data were processed is :data:`CHMI_PROCESSED`, ECO-071). A known terms line is
+        data were processed is :data:`CHMU_PROCESSED`, ECO-071). A known terms line is
         a terms line wherever it is given; any other line is kept verbatim, as a terms
         line when it is given in ``terms`` or has the form „Regulamin <whose terms>:
         <address>”. A line retired by ECO-065 is read as what it stood for (see the
@@ -363,8 +365,8 @@ class Attribution:
                 known_terms.add(_KNOWN_TERMS[key])
             elif key == _key(_RETIRED_NOTICE) or line.startswith(_RETIRED_TERMS_PREFIX):
                 continue  # N, or the bare address of a terms Hydrolog does not know
-            elif line.startswith(_CHMI_CREDIT) or _OLD_CHMI_PROCESSED.fullmatch(key):
-                providers.add("chmi")
+            elif line.startswith(_CHMU_CREDIT) or _OLD_CHMU_PROCESSED.fullmatch(key):
+                providers.add("chmu")
             elif is_terms or _TERMS_LINE.match(line):
                 other_terms.append(line)
             else:
@@ -551,8 +553,8 @@ def lines_of_columns(columns: Mapping[str, Sequence[object]]) -> Attribution:
     Returns
     -------
     Attribution
-        The lines of ``attribution``, ``attribution_source``, ``attribution_processed``
-        and ``terms_notice``.
+        The lines of ``attribution``, ``terms_notice`` and, in a file of Obserwator
+        3.0.x or older, ``attribution_source`` and ``attribution_processed``.
     """
     lines = [
         cell

@@ -1,0 +1,196 @@
+schema = "nogat-formula-card/1"
+name = "rating_curve_plausibility"
+title = "Plausibility of a rating curve as the curve of one stage-discharge relation (Hydrolog's rule of ADR-0041)"
+function = "hydrolog.hydrometrics.rating_curve.rating_curve_plausibility"
+family = "classification"
+formula_version = 1
+status = "unreferenced"
+equation = "b_out_of_range unless 1 <= b <= 4; h0_too_low if min(H) - H0 > max(H) - min(H)"
+latex = "b \\notin [1, 4] \\Rightarrow \\text{b\\_out\\_of\\_range},\\quad \\min H - H_0 > \\max H - \\min H \\Rightarrow \\text{h0\\_too\\_low}"
+validation = "none: a heuristic of Hydrolog (ADR-0041), checked against no observations; WMO-No. 1044 shows a real section control whose rating has a slope of about 4.3 below 1.4 m (fig. II.1.5, p. II.1-9), which the rule flags b_out_of_range"
+conventions = ["b from 1 to 4, bounds included: section controls 1.5 to 2.5 and 2 or more in natural channels, channel controls usually below 2 (WMO-No. 1044, pp. II.1-2 and II.1-8), compound sections and overbank flow left in; a real section control of slope 4.3 (fig. II.1.5) is flagged", "H0 at most the range of the levels below the lowest level, bound included: Hydrolog's own bound; the levels are those of the pairs given to the fit, before outliers are removed", "a verdict, not a refusal: the curve is still given (ADR-0041)"]
+assumptions = ["a curve fitted to the pairs of two relations (a gauge zero moved, a channel changed within the period) has a steep b and an H0 far below every level"]
+notices = ["unreferenced_formula"]
+reference_cases = []
+constraints = []
+oracles = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "levels"
+
+[properties.scalings.inputs]
+water_levels = 1.0
+h0 = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "the verdicts compare differences of levels, which a power of two scales exactly (the generic check compares no choice; limit levels_in_metres does)"
+abs = 0.0
+
+[[properties.limits]]
+name = "class_limits"
+text = "b = 1 and b = 4 are plausible, the next floats beyond are not; H0 exactly the range below the lowest level is plausible, a little deeper is not"
+
+[properties.limits.source]
+citation = "Hydrolog ADR-0041 (2026). Implausible rating curves: flagged, not refused, docs/decisions/0041-implausible-rating-curves-flagged-not-refused.md"
+access = "open"
+locator = "decision 1: b from 1 to 4, H0 below the lowest stage by at most the range of the stages; Hydrolog's own rule, published by no source"
+
+[[properties.limits]]
+name = "two_relations"
+text = "the curve of two relations at IMGW-PIB 150170070, 1981-1990 (b = 6.5, H0 = -88 cm under stages of 45 to 161 cm), fails both"
+
+[properties.limits.source]
+citation = "Hydrolog ADR-0041 (2026). Implausible rating curves: flagged, not refused, docs/decisions/0041-implausible-rating-curves-flagged-not-refused.md"
+access = "open"
+locator = "decision 1: b from 1 to 4, H0 below the lowest stage by at most the range of the stages; Hydrolog's own rule, published by no source"
+
+[[properties.limits]]
+name = "levels_in_metres"
+text = "the verdicts of levels in cm and in m are the same"
+
+[[sources]]
+citation = "Hydrolog ADR-0041 (2026). Implausible rating curves: flagged, not refused, docs/decisions/0041-implausible-rating-curves-flagged-not-refused.md"
+access = "open"
+locator = "decision 1: b from 1 to 4, H0 below the lowest stage by at most the range of the stages; Hydrolog's own rule, published by no source"
+
+[[sources]]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.3, eq. 1.1, p. II.1-2: beta = 1.5 for a rectangular and 2.5 for a V-shaped section control; sect. 1.5.6, p. II.1-8: logarithmic ratings of section controls in natural channels almost always have a slope of 2 or greater, those of channel controls usually less than 2"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[sources]]
+citation = "WMO (2010). Manual on Stream Gauging, Volume II: Computation of Discharge, WMO-No. 1044, Geneva"
+access = "open"
+locator = "sect. 1.5.6, fig. II.1.5, p. II.1-9: the rating of a real stream with section control throughout, e = 0.6 m, has a slope of about 4.3 below 1.4 m and 2.8 above 1.5 m"
+url = "https://library.wmo.int/idurl/4/32726"
+
+[[variables]]
+name = "water_levels"
+symbol = "H"
+unit = "cm"
+kind = "real_array"
+description = "The levels of the pairs the curve was fitted to."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -10000.0
+test_high = 10000.0
+test_reason = "100 m above or below a gauge's zero in cm: the stages of the largest rivers in flood range over a few tens of metres, so every stage of a gauge lies within"
+
+[variables.typical]
+low = -10.0
+low_inclusive = true
+high = 330.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041"
+access = "open"
+locator = "stages of -10 cm (below the gauge zero, the catalog's example) to 329 cm (station_daily.csv); 6 to 161 cm at 150170070"
+
+[[variables]]
+name = "b"
+symbol = "b"
+unit = "-"
+kind = "real"
+description = "The exponent of the curve."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 20.0
+test_reason = "five times the largest exponent of a plausible curve (4, ADR-0041), three times the exponent of the curve of two relations at IMGW-PIB 150170070 (6.6)"
+
+[variables.typical]
+low = 1.2
+low_inclusive = true
+high = 3.1
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041"
+access = "open"
+locator = "the curves fitted to them with levels in cm: a 0.0049 to 0.035, b 1.28 to 3.02 (all the pairs of 150170070), H0 -25.2 to 52.6 cm"
+
+[[variables]]
+name = "h0"
+symbol = "H_0"
+unit = "cm"
+kind = "real"
+description = "The gauge height of zero flow of the curve."
+applicability = "unstated"
+
+[variables.physical]
+test_low = -10000.0
+test_high = 10000.0
+test_reason = "100 m above or below a gauge's zero in cm: the stages of the largest rivers in flood range over a few tens of metres, so every stage of a gauge lies within"
+
+[variables.typical]
+low = -30.0
+low_inclusive = true
+high = 55.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's stage-discharge data: tests/fixtures/rating_curve_pairs.csv, tests/fixtures/station_daily.csv, the catalog's examples of hydrometrics rating-curve and IMGW-PIB 150170070 in ADR-0041"
+access = "open"
+locator = "the curves fitted to them with levels in cm: a 0.0049 to 0.035, b 1.28 to 3.02 (all the pairs of 150170070), H0 -25.2 to 52.6 cm"
+
+[[constants]]
+name = "lowest_exponent"
+value = 1.0
+unit = "-"
+
+[constants.source]
+citation = "Hydrolog ADR-0041 (2026). Implausible rating curves: flagged, not refused, docs/decisions/0041-implausible-rating-curves-flagged-not-refused.md"
+access = "open"
+locator = "decision 1: b from 1 to 4, H0 below the lowest stage by at most the range of the stages; Hydrolog's own rule, published by no source"
+
+[[constants]]
+name = "highest_exponent"
+value = 4.0
+unit = "-"
+
+[constants.source]
+citation = "Hydrolog ADR-0041 (2026). Implausible rating curves: flagged, not refused, docs/decisions/0041-implausible-rating-curves-flagged-not-refused.md"
+access = "open"
+locator = "decision 1: b from 1 to 4, H0 below the lowest stage by at most the range of the stages; Hydrolog's own rule, published by no source"
+
+[[outputs]]
+name = "exponent"
+unit = "-"
+kind = "choice"
+description = "Whether b lies from 1 to 4."
+choices = ["plausible", "b_out_of_range"]
+
+[[outputs]]
+name = "zero_flow_stage"
+unit = "-"
+kind = "choice"
+description = "Whether H0 lies below the lowest level by at most the range of the levels."
+choices = ["plausible", "h0_too_low"]
+
+[[traps]]
+name = "class_limit"
+description = "A value exactly at a limit of a published class or table."
+test = "limit class_limits: b = 1, b = 4 and H0 at the range below the lowest level, and the next values beyond them"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case water_levels-nan_element: a gap is refused"

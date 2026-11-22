@@ -6,7 +6,7 @@ hydrologic soil groups). Profile `tool` (DEV-1.1). It has no data store and down
 nothing, except `precip pmaxtp`, the one command that uses the network: it fetches the
 PMAXTP depth of IMGW-PIB through Obserwator (extra `pmaxtp`, ADR-0018). Otherwise
 Kartograf and Obserwator supply the input files. User documentation:
-[README.md](README.md). Nogat standard 1.0:
+[README.md](README.md). Nogat standard 1.1:
 [DEVELOPMENT_STANDARDS](https://github.com/Daldek/Nogat/blob/main/standards/DEVELOPMENT_STANDARDS.md),
 [AGENT_INTERFACE](https://github.com/Daldek/Nogat/blob/main/standards/AGENT_INTERFACE.md),
 [DOCUMENTATION_STANDARDS](https://github.com/Daldek/Nogat/blob/main/standards/DOCUMENTATION_STANDARDS.md).
@@ -22,6 +22,11 @@ Kartograf and Obserwator supply the input files. User documentation:
 - Generated files (`AGENTS.md`, `llms.txt`) are never edited by hand: regenerate them
   with `hydrolog commands guide` (see Commands); a contract test compares them with the
   generator (DEV-10.4).
+- The frames of the handbook `docs/podrecznik/` (Polish) are generated from the formula
+  specs by `uv run scripts/generate_handbook.py`, with the Polish texts of
+  `docs/podrecznik/_specs_pl.toml`; a changed text of a spec the handbook shows stops it
+  until its Polish entry is reviewed (the error gives the new `en_sha256`), and
+  `--template NAME` prints the entry of a new formula.
 - The catalog (`src/hydrolog/catalog/groups/`) is the single source of truth for the
   library API, CLI, MCP tools and guides (AGI-1.1). Add a command there, not in the CLI.
 - Code, comments, docstrings, commit messages and docs are English (DEV-2.1); human
@@ -90,7 +95,7 @@ src/hydrolog/
 │                 # _admin.py (the admin panel's status and checks), _public.py (a public GUI: request
 │                 # limit, daily totals), _terms.py (the regulamin), _extra.py (the extra's check);
 │                 # web/ (the page: Preact modules without a build; instrukcja/: the user guide;
-│                 # admin/: Nogat's admin panel, the kit shell alone; nogat/: Nogat's tokens,
+│                 # admin/: Nogat's admin panel, the kit shell and admin.js; nogat/: Nogat's tokens,
 │                 # marks and GUI kit, copied byte for byte, ADR-0027)
 ├── agent_guide.py, _data/agents/   # generator and templates of AGENTS.md, llms.txt, block
 ├── exceptions.py, _errors.py       # HydrologError classes; registry generated from schemas/nogat

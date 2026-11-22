@@ -60,7 +60,8 @@ LOWER = WatershedParameters(
     flow_path_length_km=3.5,
     flow_path_slope_m_per_m=0.0229,
 )
-STORM = DesignStorm(45.0, 60.0, EulerIIHietogram())
+CURVE = {5.0: 15.0, 10.0: 22.0, 20.0: 30.0, 30.0: 35.0, 60.0: 45.0}
+STORM = DesignStorm(45.0, 60.0, EulerIIHietogram(CURVE))
 BLOCK = DesignStorm(30.0, 60.0, BlockHietogram())
 MODEL = CurveNumberRunoff(tc_min=90.0)
 FLOOD = Hydrograph.from_step([0.0, 10.0, 40.0, 90.0, 60.0, 30.0, 10.0, 0.0], 10.0)
@@ -382,30 +383,26 @@ class TestTheTimeStep:
 
 
 class TestWhatTheRunObserves:
-    def test_a_duration_that_is_not_a_whole_number_of_steps_is_a_notice_of_the_node(
+    def test_a_storm_that_is_not_a_whole_number_of_steps_is_refused_with_its_node(
         self,
     ):
+        """62 min in steps of 5 min used to be 30 mm in 60 min and a notice."""
         short = DesignStorm(30.0, 62.0, BlockHietogram())
-        whole = DesignStorm(30.0, 60.0, BlockHietogram())
-        network = RoutingNetwork(
-            Outlet(
-                "OUT",
-                inflow=Junction(
-                    "J", inflows=[made("A", rainfall=short), made("B", rainfall=whole)]
-                ),
-            )
-        )
+        network = RoutingNetwork(Outlet("OUT", inflow=made("A", rainfall=short)))
 
-        result = network.route()
+        with pytest.raises(InvalidParameterError) as caught:
+            network.route()
 
-        (notice,) = result.nodes["A"].notices
-        assert (notice.code, notice.level) == ("duration_not_covered", "warning")
-        assert "62 min" in notice.message and "60 min" in notice.message
-        assert result.nodes["B"].notices == []
+        assert caught.value.details == {
+            "option": "duration_min",
+            "reason": "not_multiple",
+            "timestep_min": DEFAULT_TIMESTEP_MIN,
+            "node_id": "A",
+        }
 
     def test_a_warning_of_the_library_is_a_notice_of_the_node_that_caused_it(self):
-        """Kirpich on 12 km2 with 10 m over 12 km: the area and the slope are outside
-        his data."""
+        """Kirpich on 12 km2 with 10 m over 12 km: the area, the length and the slope
+        are outside his data."""
         flat = WatershedParameters(
             area_km2=12.0,
             perimeter_km=18.0,
@@ -435,11 +432,13 @@ class TestWhatTheRunObserves:
 
         notices = result.nodes["A"].notices
         assert [(n.code, n.level) for n in notices] == [
-            ("outside_typical_range", "warning"),
-            ("outside_typical_range", "warning"),
-        ]
-        assert [n.message.split(" is outside typical range")[0] for n in notices] == [
+            ("outside_applicability", "warning")
+        ] * 3
+        assert [
+            n.message.split(" is outside its applicability")[0] for n in notices
+        ] == [
             "kirpich: area_km2=12.0",
+            "kirpich: length_km=12.0",
             f"kirpich: slope_m_per_m={10.0 / 12000.0}",
         ]
         assert result.nodes["B"].notices == []
@@ -574,6 +573,13 @@ class TestTheDocument:
         "hietogram_type": "euler_ii",
         "total_mm": 45.0,
         "duration_min": 60.0,
+        "depth_duration_mm": {
+            "5": 15.0,
+            "10": 22.0,
+            "20": 30.0,
+            "30": 35.0,
+            "60": 45.0,
+        },
     }
 
     def test_a_document_makes_the_network_that_the_objects_make(self):
@@ -622,9 +628,15 @@ class TestTheDocument:
         assert network.route().rainfall["A"].timestep_min == 10.0
 
     def test_the_rainfall_of_a_node_beats_the_one_of_the_document(self):
+        own = {
+            "kind": "design",
+            "hietogram_type": "block",
+            "total_mm": 20.0,
+            "duration_min": 60.0,
+        }
         network = RoutingNetwork.from_document(
             document(
-                made_node("A", rainfall={**self.RAIN, "total_mm": 20}),
+                made_node("A", rainfall=own),
                 {"id": "OUT", "type": "outlet", "from": ["A"]},
                 rainfall=self.RAIN,
             )

@@ -1,0 +1,598 @@
+schema = "nogat-formula-card/1"
+name = "muskingum_cunge"
+title = "Muskingum-Cunge routing with constant coefficients on N equal distance steps (Cunge's K and X)"
+function = "hydrolog.routing.formulas.cunge.muskingum_cunge_route"
+family = "scheme"
+formula_version = 1
+status = "referenced"
+equation = "D = Q / (T S0 c), dx = L / N, K = dx / c, X = (1 - D / dx) / 2; in each of N distance steps in series O[t] = c0 I[t] + c1 I[t-1] + c2 O[t-1] with the Muskingum weights of K, X and dt; Cg = c dt / dx, Dg = D / dx = 1 - 2X and NEH's accuracy limit exp(2.3 Cg)"
+latex = "D = \\frac{Q}{T S_0 c},\\ \\Delta x = \\frac{L}{N},\\ K = \\frac{\\Delta x}{c},\\ X = \\frac{1}{2}\\left(1 - \\frac{D}{\\Delta x}\\right);\\quad O_t = c_0 I_t + c_1 I_{t-1} + c_2 O_{t-1};\\quad C_g = \\frac{c \\Delta t}{\\Delta x},\\ D_g = \\frac{D}{\\Delta x} = 1 - 2X"
+validation = "none: the sources compare the scheme with unsteady flow models, not with observations (NEH 630 examples 17-4 and 17-5 against HEC-RAS: peaks within 0.2 and 2.5 %); NRCS fitted its accuracy limit to 140 test routings (NEH 630 appendix 17B)"
+conventions = ["SI units: discharge in m3/s, time in min, the reach in km, the distance step and the diffusion length in m, the celerity in m/s, storage in m3", "the weights are named by what they multiply: c_current I[t], c_previous I[t-1], c_outflow O[t-1]; NEH 630 and HEC-HMS call them C2, C1 and C3", "one reference discharge, celerity and top width for every distance and time step, so the coefficients are constant: NRCS's WinTR-20 takes the peak at the upstream end of each distance step (NEH 630 example 17-5) and HEC-HMS recomputes the coefficients at every time and distance step (a variable-coefficient method, Ponce 1986): case mc_neh17_example17_5_reach", "X may be negative (NEH 630 example 17-4, X = -0.254); a grid with a negative weight, which NEH accepts (example 17-5, C1 = -0.187), is refused by the precondition nonnegative_weights (Hydrolog ADR-0008)", "within the window's slack a weight that rounding puts below zero is set to zero and the others are divided by their sum (hydrolog.routing._kernels.nonnegative_coefficients)", "Dg is computed as D / dx (NEH eq. 17-34), equal to 1 - 2X (eq. 17-35) to rounding; the accuracy limit exp(2.3 Cg) is capped at exp(700), above every Dg <= 1 + Cg of the window", "no lateral inflow: the term C4 q dx of HEC-HMS eq. 7 is zero", "only the given grid is routed: MuskingumCungeReach takes the inflow peak as the reference unless one is given, chooses N and the sub-steps of a step by NEH 630's rules inside the window, interpolates the inflow linearly between them and falls back to linear reservoirs where no grid exists (Tier B, ADR-0008, ADR-0026)"]
+assumptions = ["the diffusion wave: the inertia terms of the momentum equation are neglected, and the convective diffusion equation is linearised at the reference discharge with c and mu = Q / (2 T S0) constant (HEC-HMS eqs. 1 to 5)", "a prismatic reach of one slope; no backwater"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/muskingum-cunge-cases.json"]
+tables = []
+
+[properties]
+units = "homogeneous"
+symmetries = []
+
+[properties.monotonic]
+inflow_m3s = 1
+initial_outflow_m3s = 1
+
+[[properties.scalings]]
+name = "discharge"
+
+[properties.scalings.inputs]
+inflow_m3s = 1.0
+initial_outflow_m3s = 1.0
+
+[properties.scalings.outputs]
+outflow_m3s = 1.0
+storage_start_m3 = 1.0
+storage_end_m3 = 1.0
+storage_steady_m3 = 1.0
+
+[properties.scalings.tolerance]
+reason = "a power of two scales every product and quotient of D, dx, K, X, the weights and the recurrence exactly in binary, but for subnormal discharges, which round to fewer digits"
+abs = 1e-300
+rel = 0.0
+
+[[properties.scalings]]
+name = "time"
+
+[properties.scalings.inputs]
+inflow_m3s = -1.0
+timestep_min = 1.0
+celerity_m_per_s = -1.0
+reference_discharge_m3s = -1.0
+initial_outflow_m3s = -1.0
+
+[properties.scalings.outputs]
+outflow_m3s = -1.0
+k_min = 1.0
+
+[properties.scalings.tolerance]
+reason = "a power of two scales every product and quotient of D, dx, K, X, the weights and the recurrence exactly in binary, but for subnormal discharges, which round to fewer digits"
+abs = 1e-300
+rel = 0.0
+
+[[properties.scalings]]
+name = "length"
+
+[properties.scalings.inputs]
+inflow_m3s = 3.0
+length_km = 1.0
+celerity_m_per_s = 1.0
+top_width_m = 1.0
+reference_discharge_m3s = 3.0
+initial_outflow_m3s = 3.0
+
+[properties.scalings.outputs]
+outflow_m3s = 3.0
+dx_m = 1.0
+storage_start_m3 = 3.0
+storage_end_m3 = 3.0
+storage_steady_m3 = 3.0
+
+[properties.scalings.tolerance]
+reason = "a power of two scales every product and quotient of D, dx, K, X, the weights and the recurrence exactly in binary, but for subnormal discharges, which round to fewer digits"
+abs = 1e-300
+rel = 0.0
+
+[[properties.scalings]]
+name = "discharge_per_width"
+
+[properties.scalings.inputs]
+top_width_m = 1.0
+reference_discharge_m3s = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "a power of two scales every product and quotient of D, dx, K, X, the weights and the recurrence exactly in binary, but for subnormal discharges, which round to fewer digits"
+abs = 1e-300
+rel = 0.0
+
+[[properties.limits]]
+name = "steady_state"
+text = "an inflow equal to the initial outflow passes unchanged: the weights sum to 1"
+
+[[properties.limits]]
+name = "exact_recurrence"
+text = "the grid and every outflow equal Ponce's form of the weights, (C + D - 1, 1 + C - D, 1 - C + D) / (1 + C + D), and the recurrence in exact rational arithmetic"
+
+[[properties.limits]]
+name = "moments"
+text = "the impulse response has the moments of the diffusion wave, the mean L / c and the variance 2 mu L / c^3 = D L / c^2, whatever dt and N"
+
+[[properties.limits]]
+name = "bounded_by_its_inputs"
+text = "every outflow lies between the least and the largest of the inflow and the initial outflow"
+
+[[properties.limits]]
+name = "inside_the_accuracy_limit"
+text = "on every grid the window accepts Dg <= exp(2.3 Cg), to the window's slack: |Cg - Dg| <= 1 gives Dg <= 1 + Cg <= exp(2.3 Cg)"
+
+[[properties.conservation]]
+name = "volume"
+text = "the trapezoid continuity holds in every distance step: inflow volume - outflow volume = storage at the end - storage at the start"
+
+[properties.conservation.tolerance]
+reason = "relative to the largest volume or storage, or to the smallest normal float below which volumes round absolutely: the recurrence rounds at 1e-16 per step; a weight that rounding put below zero on a border of the window is set to zero, which moves the others by at most the window's slack of 1e-9"
+abs = 1e-09
+
+[[sources]]
+citation = "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)"
+access = "open"
+locator = "eqs. 17-20 to 17-22 (X, the distance step, K) and 17-31 to 17-36 (Cg, Dg and the accuracy limit, eq. 17-36 on p. 17-33); examples 17-4 and 17-5, pp. 17-36 to 17-51"
+url = "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf"
+
+[[sources]]
+citation = "US Army Corps of Engineers, Hydrologic Engineering Center. HEC-HMS Technical Reference Manual, Channel Flow: Muskingum-Cunge Model"
+access = "open"
+locator = "eqs. 3 to 5 (the convective diffusion equation, c = dQ/dA, mu = Q / (2 B S0)), 6 to 10 (the weights) and 12 and 13 (K = dx / c, X = (1 - Q / (B S0 c dx)) / 2)"
+url = "https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-cunge-model"
+
+[[sources]]
+citation = "US Army Corps of Engineers (1994). Engineering and Design: Flood-Runoff Analysis, EM 1110-2-1417"
+access = "open"
+locator = "chapter 9, eq. 9-22 and the reference flow, p. 9-21"
+url = "https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-1417.pdf"
+
+[[sources]]
+citation = "Cunge, J.A. (1969). On the subject of a flood propagation computation method (Muskingum method), Journal of Hydraulic Research 7(2), 205-230"
+access = "author-provided"
+
+[[variables]]
+name = "inflow_m3s"
+symbol = "I_t"
+unit = "m3/s"
+kind = "real_array"
+description = "Inflow at t = 0, dt, 2 dt, ...: the hydrograph that enters the reach, linear between its ordinates."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 2
+max_length = 1000000
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s"
+
+[[variables]]
+name = "timestep_min"
+symbol = "\\Delta t"
+unit = "min"
+kind = "real"
+description = "Time step of the inflow and of the outflow."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1440.0
+test_reason = "a day, the step of a series of daily discharges (IMGW-PIB)"
+
+[variables.typical]
+low = 5.0
+low_inclusive = true
+high = 720.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "steps of 5 min (Hydrograf's networks, tests/fixtures/handoff_hydrograf_network*.json) to 12 h (the Iowa example and NEH 630 ch. 17 example 17-2, 0.5 d)"
+
+[[variables]]
+name = "length_km"
+symbol = "L"
+unit = "km"
+kind = "real"
+description = "Length of the reach."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 234.0
+test_reason = "ten times the longest reach of the project's data, 23.36 km on Hydrograf's Nysa Szalona network"
+
+[variables.typical]
+low = 0.1
+low_inclusive = true
+high = 23.4
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "0.1 to 20 km in the tests of the reach (tests/unit/test_routing_cunge.py), 1.3 to 23.4 km on Hydrograf's Nysa Szalona network besides a 7 m connector (tests/fixtures/handoff_hydrograf_network_nysa_szalona.json); NEH 630 examples 17-4 and 17-5, 2,600 ft (0.79 km)"
+
+[[variables]]
+name = "slope_m_per_m"
+symbol = "S_0"
+unit = "m/m"
+kind = "real"
+description = "Bed slope of the reach."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 0.2
+test_reason = "ten times the steepest reach of the project's data, 0.02 in Hydrograf's network tests/fixtures/handoff_hydrograf_network.json"
+
+[variables.typical]
+low = 0.0002
+low_inclusive = true
+high = 0.02
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "0.0002 to 0.002778 in the tests of the reach (tests/unit/test_routing_cunge.py), 0.00208 to 0.009859 on the reaches of Hydrograf's Nysa Szalona network from the DEM (tests/fixtures/handoff_hydrograf_network_nysa_szalona.json), 0.02 in tests/fixtures/handoff_hydrograf_network.json; 0.00091 in NEH 630 examples 17-4 and 17-5"
+
+[[variables]]
+name = "celerity_m_per_s"
+symbol = "c"
+unit = "m/s"
+kind = "real"
+description = "Celerity of the flood wave at the reference discharge."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 50.0
+test_reason = "ten times the fastest wave of the tests, 5 m/s"
+
+[variables.typical]
+low = 0.2
+low_inclusive = true
+high = 5.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "0.2 to 5 m/s in the tests of the reach (tests/unit/test_routing_cunge.py); NEH 630 examples 17-4 and 17-5, 4.297 and 1.779 ft/s (1.31 and 0.54 m/s)"
+
+[[variables]]
+name = "top_width_m"
+symbol = "T"
+unit = "m"
+kind = "real"
+description = "Width of the water surface at the reference discharge."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 2250.0
+test_reason = "ten times the widest water surface of the tests and examples, 738.3 ft (225 m) in NEH 630 example 17-5"
+
+[variables.typical]
+low = 10.0
+low_inclusive = true
+high = 225.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "10 to 200 m in the tests of the reach and of the networks (tests/unit/test_routing_cunge.py, tests/unit/test_operations_route_network.py); NEH 630 examples 17-4 and 17-5, 44.6 and 738.3 ft (13.6 and 225 m)"
+
+[[variables]]
+name = "reference_discharge_m3s"
+symbol = "Q"
+unit = "m3/s"
+kind = "real"
+description = "Reference discharge, at which the celerity and the top width are taken, for the whole run."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 300.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "reference discharges of 0.95 to 300.05 m3/s in the tests of the reach (tests/unit/test_routing_cunge.py), 12 m3/s in tests/fixtures/network_flood.json; NEH 630 examples 17-4 and 17-5, 684.18 and 3,385.4 ft3/s (19.4 and 95.9 m3/s)"
+
+[[variables]]
+name = "subreaches"
+symbol = "N"
+unit = "-"
+kind = "integer"
+description = "Number of equal distance steps dx = L / N."
+applicability = "unstated"
+
+[variables.physical]
+low = 1.0
+low_inclusive = true
+test_high = 1000.0
+test_reason = "the test bound of the length, 234 km, in steps of 234 m, half of what the wave of NEH 630 example 17-4 (4.297 ft/s) travels in its step of 0.1 h"
+
+[variables.typical]
+low = 1.0
+low_inclusive = true
+high = 4.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "1 to 4 distance steps in the tests of the reach (tests/unit/test_routing_cunge.py); 1 and 2 in NEH 630 examples 17-4 and 17-5"
+
+[[variables]]
+name = "initial_outflow_m3s"
+symbol = "O_0"
+unit = "m3/s"
+kind = "real"
+description = "Outflow at the first ordinate; the reach starts at rest with it."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's routing tests and examples (tests/unit/test_routing_*.py, tests/unit/_routing_reference.py, docs/USAGE.md section route)"
+access = "open"
+locator = "floods of 0 to 95.9 m3/s: NEH 630 ch. 17 example 17-5, 3,385.4 cfs; the guide's Kamiennik, 54.2 m3/s"
+
+[[constraints]]
+name = "nonnegative_weights"
+class = "precondition"
+text = "|c dt - D| <= L / N <= c dt + D with D = Q / (T S0 c), each end to 1e-9 of itself: every weight is non-negative, so a non-negative inflow gives a non-negative outflow"
+
+[constraints.source]
+citation = "the signs of the numerators of the weights (Hydrolog ADR-0008); Ponce's form |C - D| <= 1 <= C + D"
+access = "open"
+locator = "c_current >= 0 iff dx <= c dt + D, c_previous >= 0 iff dx >= D - c dt, c_outflow >= 0 iff dx >= c dt - D"
+
+[[constraints]]
+name = "finite_grid"
+class = "precondition"
+text = "L / c, c dt / dx, D / dx and N K (1 + 2|X|) max(I, O0) are finite: float64 holds the grid and the water it can hold; a wave so slow, a step so short or a flood so large that one overflows has none"
+
+[constraints.source]
+citation = "IEEE 754-2019, binary64: finite numbers of magnitude about 4.9e-324 to 1.8e308"
+access = "open"
+locator = "the grid's scalars and the water it holds must be among them; exp(700), about 1.0e304, is one"
+
+[[constants]]
+name = "accuracy_factor"
+value = 2.3
+unit = "-"
+symbol = "2.3"
+
+[constants.source]
+citation = "USDA-NRCS (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (210-VI-NEH, Amendment 69, April 2014)"
+access = "open"
+locator = "eqs. 17-20 to 17-22 (X, the distance step, K) and 17-31 to 17-36 (Cg, Dg and the accuracy limit, eq. 17-36 on p. 17-33); examples 17-4 and 17-5, pp. 17-36 to 17-51"
+url = "https://directives.nrcs.usda.gov/sites/default/files2/1712930634/Part%20630%20-%20Hydrology.pdf"
+
+[[constants]]
+name = "limit_exponent_cap"
+value = 700.0
+unit = "-"
+
+[constants.source]
+citation = "IEEE 754-2019, binary64: finite numbers of magnitude about 4.9e-324 to 1.8e308"
+access = "open"
+locator = "the grid's scalars and the water it holds must be among them; exp(700), about 1.0e304, is one"
+
+[[outputs]]
+name = "outflow_m3s"
+unit = "m3/s"
+kind = "real_array"
+symbol = "O_t"
+description = "Outflow at the ordinates of the inflow."
+gaps_allowed = false
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "a million m3/s exceeds the discharge of every river, the Amazon's included; the routing formulas are linear in the discharge (their scaling), so any bound tests their arithmetic"
+
+[[outputs]]
+name = "k_min"
+unit = "min"
+kind = "real"
+symbol = "K"
+description = "Travel time L / c of the whole reach."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "x"
+unit = "-"
+kind = "real"
+symbol = "X"
+description = "Weighting factor of every distance step, (1 - Dg) / 2."
+
+[outputs.physical]
+high = 0.5
+high_inclusive = true
+
+[[outputs]]
+name = "c_current"
+unit = "-"
+kind = "real"
+symbol = "c_0"
+description = "Weight of I[t] in one distance step."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "c_previous"
+unit = "-"
+kind = "real"
+symbol = "c_1"
+description = "Weight of I[t-1] in one distance step."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "c_outflow"
+unit = "-"
+kind = "real"
+symbol = "c_2"
+description = "Weight of O[t-1] in one distance step."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "dx_m"
+unit = "m"
+kind = "real"
+symbol = "\\Delta x"
+description = "Distance step L / N."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "courant_number"
+unit = "-"
+kind = "real"
+symbol = "C_g"
+description = "Courant number of the grid, c dt / dx."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "grid_reynolds_number"
+unit = "-"
+kind = "real"
+symbol = "D_g"
+description = "Grid Reynolds number D / dx = 1 - 2X."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+
+[[outputs]]
+name = "grid_reynolds_limit"
+unit = "-"
+kind = "real"
+symbol = "e^{2.3 C_g}"
+description = "NEH's accuracy limit of the grid Reynolds number, exp(2.3 Cg), capped at exp(700)."
+
+[outputs.physical]
+low = 1.0
+low_inclusive = true
+
+[[outputs]]
+name = "storage_start_m3"
+unit = "m3"
+kind = "real"
+symbol = "S"
+description = "Water the scheme holds at the first ordinate, sum of K/N [X I + (1 - X) O] over the steps; below zero where X < 0 and the inflow exceeds the initial outflow enough."
+
+[outputs.physical]
+
+[[outputs]]
+name = "storage_end_m3"
+unit = "m3"
+kind = "real"
+symbol = "S"
+description = "Water the scheme holds at the last ordinate."
+
+[outputs.physical]
+
+[[outputs]]
+name = "storage_steady_m3"
+unit = "m3"
+kind = "real"
+symbol = "S"
+description = "Water it would hold at rest under the last inflow, K I[-1]."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "the window's top L / |c dt - D| divides by a difference: when the wave travels exactly its diffusion length in a step it has no top (test_a_wave_as_long_as_its_diffusion_length_has_no_top); the weights' 1 + Cg + Dg never vanishes"
+
+[[traps]]
+name = "stability_bound"
+description = "The stability bound of a numerical scheme (a Courant number, Muskingum's 2KX <= dt <= 2K(1-X))."
+test = "the window |c dt - D| <= dx <= c dt + D: constraint nonnegative_weights with its satisfied, boundary and violated points, and test_a_border_of_the_window_rounds_to_zero_weights"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases inflow_m3s-nan_element and inflow_m3s-inf_element: a gap is refused, the recurrence would carry it to every later ordinate"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_a_long_steady_inflow_stays_steady: 200,000 ordinates of a constant inflow stay constant to 1e-14"
+
+[[oracles]]
+kind = "exact"
+description = "Ponce's form of the weights, (C + D - 1, 1 + C - D, 1 - C + D) / (1 + C + D), and the recurrence of the distance steps in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_muskingum_cunge.py (limit exact_recurrence)"
+conventions = []
+
+[[oracles]]
+kind = "exact"
+description = "the moments of the impulse response against those of the diffusion wave of HEC-HMS eq. 3, mean L / c and variance 2 mu L / c^3 with mu = Q / (2 T S0), which Cunge's K and X reproduce exactly"
+test = "tests/unit/test_formulas_muskingum_cunge.py (limit moments)"
+conventions = []

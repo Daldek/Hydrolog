@@ -38,3 +38,8 @@ take any „Dane ČHMÚ zostały przetworzone (…)” as CP and deduplicate it.
 - Old files are not rewritten: they are read as today's lines, as ADR-0036 did for the lines Nogat retired.
 - Rejected: keeping a producer's parenthetical CP beside the canonical one (ECO-071 wants one line), and a fixed list of
   old CP lines in `retired_lines` (any words in parentheses are CP, so the page matches the form, as the kit does).
+
+## Erratum (2026-11-21, Nogat ECO-082)
+
+`hydrolog._attribution.CHMI_PROCESSED` of point 1 is `CHMU_PROCESSED` (and C is `CHMU_SOURCE`) since Nogat ECO-082
+(identifiers by the national acronym without diacritics); the line is unchanged.

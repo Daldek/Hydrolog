@@ -31,6 +31,7 @@ from hydrolog.hydrometrics import (
     RatingCurveResult,
     WaterLevelFrequency,
     WaterLevelZones,
+    rating_curve_plausibility,
 )
 from hydrolog.operations._analysis import check_years, load_valid_series, require_count
 from hydrolog.statistics._hydrological_year import hydrological_year
@@ -47,7 +48,6 @@ _MIN_PAIRS = 3  # the rating curve has three parameters
 _MIN_PERIOD_PAIRS = 30  # a period of a dated series is fitted from this many pairs
 _MAX_BINS = 100_000  # guards the histogram of the water level zones against a tiny bin
 _NUMERIC_WARNINGS: tuple[type[Warning], ...] = (UserWarning, RuntimeWarning)
-_PLAUSIBLE_EXPONENT = (1.0, 4.0)  # b of one stage-discharge relation (ADR-0041)
 _ALL_PAIRS = "all pairs"  # the curve of all the pairs in implausible_rating_curve
 
 
@@ -62,8 +62,9 @@ class RatingPeriod(JsonResultMixin):
     n_pairs : int
         Pairs of the period.
     a, b, h0, r_squared, std_residuals : float or None
-        The curve Q = a·(H − H₀)^b and its fit (as ``RatingCurveResult``); ``None``
-        when the period has no curve (see ``reason``).
+        The curve Q = a·(H − H₀)^b and its fit (as ``RatingCurveResult``: ``a`` in
+        m³/s per (unit of H)^b, ``h0`` the stage of zero flow in the unit of H);
+        ``None`` when the period has no curve (see ``reason``).
     n_points, n_outliers_removed : int or None
         Pairs of the final fit and pairs removed as outliers.
     discharge_at_reference_m3s : float or None
@@ -74,8 +75,11 @@ class RatingPeriod(JsonResultMixin):
         when the curve gives no finite level there (a flat curve, ``b`` near 0, below
         that discharge), with the notice ``reference_level_not_computed``.
     reason : str or None
-        Why the period has no curve: ``too_few_pairs`` (fewer than 30) or
-        ``fit_failed``; ``None`` when it has one.
+        Why the period has no curve: ``too_few_pairs`` (fewer than 30),
+        ``no_least_squares_minimum`` (the least squares of its pairs have no minimum
+        within the search's bounds: the discharge rises like an exponential of the
+        stage, as the pairs of two ratings in one period do) or ``fit_failed`` (another
+        refusal of the fit, such as levels all equal); ``None`` when it has one.
     plausible : bool or None
         Whether the period's curve is plausible for one stage-discharge relation
         (ADR-0041); ``None`` when the period has no curve.
@@ -314,18 +318,13 @@ def _level_at(curve: RatingCurveResult, discharge: float) -> float | None:
 def _implausibility(curve: RatingCurveResult, levels: NDArray[np.float64]) -> list[str]:
     """Why a curve is not plausible for one stage-discharge relation (ADR-0041).
 
-    A curve of one control has ``b`` from 1 to 4 and its H₀ at most the range of the
-    levels below the lowest level. A curve fitted to the pairs of two relations (a
-    gauge zero moved, a channel changed within a period) usually fails both: the
-    least squares bend it with a large ``b`` and an H₀ far below every level.
+    Spec ``rating_curve_plausibility``: a curve of one control has ``b`` from 1 to 4
+    and its H₀ at most the range of the levels below the lowest level. A curve fitted
+    to the pairs of two relations (a gauge zero moved, a channel changed within a
+    period) usually fails both: the least squares bend it with a large ``b`` and an H₀
+    far below every level.
     """
-    reasons: list[str] = []
-    lowest, highest = float(levels.min()), float(levels.max())
-    if not _PLAUSIBLE_EXPONENT[0] <= curve.b <= _PLAUSIBLE_EXPONENT[1]:
-        reasons.append("b_out_of_range")
-    if lowest - curve.h0 > highest - lowest:
-        reasons.append("h0_too_low")
-    return reasons
+    return list(rating_curve_plausibility(levels, curve.b, curve.h0).reasons)
 
 
 def _rating_periods(
@@ -358,7 +357,13 @@ def _rating_periods(
         else:
             try:
                 curve = fit(levels[rows], flows[rows])
-            except (CalculationError, InvalidParameterError, ArithmeticError):
+            except InvalidParameterError as exc:
+                period.reason = (
+                    "no_least_squares_minimum"
+                    if exc.details.get("constraint") == "least_squares_minimum"
+                    else "fit_failed"
+                )
+            except (CalculationError, ArithmeticError):
                 period.reason = "fit_failed"
             else:
                 for name in (
@@ -400,23 +405,32 @@ def hydrometrics_rating_curve(
     """Power-law rating curve Q = a (H - H0)^b (``hydrometrics rating-curve``).
 
     Fits the rating curve to pairs of water level ``H`` and discharge ``Q`` by
-    non-linear least squares (:class:`hydrolog.hydrometrics.RatingCurve`; ``a >= 0``,
-    ``b >= 0``, ``H0`` below every observed level; starting point ``a = 1``,
-    ``b = 1.5``, ``H0 = h0_initial``, by default chosen from the levels so that it
-    works for stages at or below zero). With ``remove_outliers`` the pairs whose
+    non-linear least squares on ``Q`` (spec ``rating_curve_fit`` through
+    :class:`hydrolog.hydrometrics.RatingCurve`; ``a >= 0``, ``b`` from 0 to 100, ``H0``
+    below every observed level; the least squares profiled over trial values of
+    ``H0``, ``h0_initial`` one of them, by default chosen from the levels so that it
+    works for stages at or below zero, then a trust region search from their end).
+    Least squares without a minimum within those bounds, of pairs whose discharge rises
+    like an exponential of the stage (the pairs of two ratings, a moved gauge zero),
+    are refused (``least_squares_minimum``). With ``remove_outliers`` the pairs whose
     residual exceeds ``outlier_std`` standard deviations are dropped after the first
-    fit and the curve is fitted again (when at least 3 pairs remain).
+    fit and the curve is fitted again (when at least 3 pairs remain). Fewer than 12
+    pairs, the least of WMO-No. 1044 (sect. 1.5.1), give the notice
+    ``outside_applicability`` of ``gaugings``.
 
     Dated pairs (a daily series of H and Q) may be limited to the hydrological years
     ``first_year`` to ``last_year``; with ``years_per_period`` the curve of each block
-    of that many years is fitted too (a block with fewer than 30 pairs has no curve)
-    and read at the median level and the median discharge of all the pairs, so that
-    the shift of the curve between periods is a number.
+    of that many years is fitted too (a block with fewer than 30 pairs has no curve,
+    nor one whose least squares have no minimum: ``reason``) and read at the median
+    level and the median discharge of all the pairs, so that the shift of the curve
+    between periods is a number.
 
-    Each curve is checked as the curve of one stage-discharge relation (ADR-0041):
-    ``b`` from 1 to 4 and H0 at most the range of its levels below its lowest level.
-    A curve that fails it is still given, with ``plausible`` false, its
-    ``implausibility_reasons`` and the notice ``implausible_rating_curve``.
+    Each curve is checked as the curve of one stage-discharge relation (ADR-0041,
+    spec ``rating_curve_plausibility``, Hydrolog's own rule, hence the notice
+    ``unreferenced_formula``): ``b`` from 1 to 4 and H0 at most the range of its
+    levels below its lowest level. A curve that fails it is still given, with
+    ``plausible`` false, its ``implausibility_reasons`` and the notice
+    ``implausible_rating_curve``.
 
     Parameters
     ----------
@@ -457,24 +471,30 @@ def hydrometrics_rating_curve(
     -------
     OperationOutput
         ``result`` is a :class:`RatingCurveAnalysis`; the notices report pairs
-        removed for a missing value (``missing_pairs_removed``), periods whose curve
-        gives no finite level at the reference discharge
+        removed for a missing value (``missing_pairs_removed``), fewer than 12
+        gaugings (``outside_applicability``, ``parameter`` ``gaugings``), periods
+        whose curve gives no finite level at the reference discharge
         (``reference_level_not_computed``), implausible curves
-        (``implausible_rating_curve``) and the warnings of NumPy and SciPy
+        (``implausible_rating_curve``), the unreferenced rule of plausibility
+        (``unreferenced_formula``, info) and the warnings of NumPy and SciPy
         (``runtime_warning``, ``user_warning``).
 
     Raises
     ------
     InvalidParameterError
         If the pairs are given inconsistently or differ in length, ``outlier_std`` is
-        not positive, a given ``h0_initial`` is not below the lowest water level, the
-        years or periods are asked for without dates, ``first_year`` is after
-        ``last_year`` or ``years_per_period`` is below 1.
+        not positive, the years or periods are asked for without dates,
+        ``first_year`` is after ``last_year`` or ``years_per_period`` is below 1;
+        and the refusals of spec ``rating_curve_fit`` (``details.reason``
+        ``precondition_failed``): a given ``h0_initial`` not below the lowest water
+        level (``details.constraint`` ``start_below_levels``, ``details.option``
+        ``h0_initial``), levels or discharges all equal, or least squares without a
+        minimum within the search's bounds (``least_squares_minimum``), also of all
+        the pairs when ``years_per_period`` is given.
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError
-        If fewer than 3 pairs are left, the years have no pair, or the fit does not
-        converge.
+        If fewer than 3 pairs are left or the years have no pair.
     """
     cite(attribution)
     if not math.isfinite(outlier_std) or outlier_std <= 0:
@@ -555,6 +575,7 @@ def hydrometrics_rating_curve(
 
     with capture_warnings(_NUMERIC_WARNINGS) as numeric:
         curve = fit(levels, flows)
+        reasons = _implausibility(curve, levels)
         periods: list[RatingPeriod] | None = None
         reference: tuple[float, float] | None = None
         if years_per_period is not None and years is not None:
@@ -575,7 +596,6 @@ def hydrometrics_rating_curve(
                         reference_discharge_m3s=reference[1],
                     )
                 )
-    reasons = _implausibility(curve, levels)
     implausible = [(_ALL_PAIRS, curve.b, curve.h0)] if reasons else []
     implausible += [
         (f"{period.first_year}-{period.last_year}", period.b, period.h0)
@@ -621,9 +641,11 @@ def hydrometrics_water_level_zones(
     Builds the histogram of the water levels (classes of ``bin_width`` starting at the
     lowest level rounded down), its duration curve, and delimits the zones of low (NTW),
     medium (STW) and high (WTW) background water
-    (:class:`hydrolog.hydrometrics.WaterLevelFrequency`): NTW ends at the centre of the
-    most frequent class, STW at the centre of the first class where the duration curve
-    falls below 50 %.
+    (:class:`hydrolog.hydrometrics.WaterLevelFrequency`, spec ``rybczynski_zones``):
+    NTW ends at the centre of the most frequent class, STW at the centre of the first
+    class at whose lower edge the duration curve falls below 50 %. Rybczyński's source
+    has not been opened, so the rule is Hydrolog's reading of it and every result
+    carries the notice ``unreferenced_formula`` (Nogat CMP-5.1).
 
     Parameters
     ----------
@@ -644,7 +666,8 @@ def hydrometrics_water_level_zones(
     -------
     OperationOutput
         ``result`` is a :class:`WaterLevelAnalysis`; the notices report removed
-        missing values.
+        missing values and the unreferenced rule of the zones
+        (``unreferenced_formula``, info).
 
     Raises
     ------
@@ -683,12 +706,13 @@ def hydrometrics_water_level_zones(
             hint="Use a larger bin_width.",
         )
     analysis = WaterLevelFrequency(series.values, bin_width=bin_width)
-    frequency = analysis.frequency_distribution()
-    zones = analysis.rybczynski_zones()
+    with capture_warnings() as warned:
+        frequency = analysis.frequency_distribution()
+        zones = analysis.rybczynski_zones()
     result = WaterLevelAnalysis(
         n_observations=len(series),
         bin_width=float(bin_width),
         zones=zones,
         frequency=frequency,
     )
-    return OperationOutput(result, notices)
+    return OperationOutput(result, [*notices, *warned])

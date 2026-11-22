@@ -30,11 +30,7 @@ from hydrolog.operations._common import (
     require_option,
     select_group,
 )
-from hydrolog.operations.precip import (
-    HietogramType,
-    build_hietogram,
-    hietogram_notices,
-)
+from hydrolog.operations.precip import HietogramType, build_hietogram
 from hydrolog.operations.scs import (
     Amc,
     ia_coefficient_notices,
@@ -68,25 +64,27 @@ NASH_ESTIMATIONS: tuple[str, ...] = get_args(NashEstimation)
 
 _TC_MODELS = ("scs", "clark")
 
-# The arguments of the unit hydrographs and the options of the command they come
+# The inputs of the unit hydrographs' specs and the options of the command they come
 # from: errors and typical-range notices name the option
 _MODEL_OPTIONS: dict[str, dict[str, str]] = {
     "nash": {"n": "nash_n", "k_min": "nash_k_min"},
     "snyder": {
-        "L_km": "snyder_length_km",
-        "Lc_km": "snyder_centroid_length_km",
+        "length_km": "snyder_length_km",
+        "centroid_length_km": "snyder_centroid_length_km",
         "ct": "snyder_ct",
         "cp": "snyder_cp",
+        "duration_min": "timestep_min",
+        "peak_discharge_m3s": "snyder_cp",
     },
 }
 
 
 def _model_options(model: str, clark_r_tc_ratio: float | None) -> dict[str, str]:
-    """Argument of the unit hydrograph of ``model`` to the option it comes from."""
+    """Input of the unit hydrograph of ``model`` to the option it comes from."""
     if model == "clark":
-        # R/tc is checked from R: the option that gave R
+        # R and R/tc are named by the option that gave R; D is the time step
         given = "clark_r_min" if clark_r_tc_ratio is None else "clark_r_tc_ratio"
-        return {"r_tc_ratio": given}
+        return {"r_tc_ratio": given, "r_min": given, "duration_min": "timestep_min"}
     return _MODEL_OPTIONS.get(model, {})
 
 
@@ -215,8 +213,10 @@ class HydrographGenerateResult(JsonResultMixin):
         Time to peak of the unit hydrograph [min]. For the ``snyder`` model it is
         tpR of the unit hydrograph for the duration of the time step.
     uh_peak_discharge_m3s_per_mm : float
-        Peak ordinate of the unit hydrograph [m3/s per mm]. For the ``snyder``
-        model the unit hydrograph is the one for the duration of the time step.
+        Peak of the unit hydrograph [m3/s per mm]: its largest ordinate for
+        ``nash``, ``clark`` and ``snyder`` (for ``snyder`` the unit hydrograph is the
+        one for the duration of the time step), and for ``scs`` the formula's qp of
+        the duration of the time step (spec ``scs``).
     timestep_min : float
         Time step [min].
     duration_min : float
@@ -236,9 +236,12 @@ class HydrographGenerateResult(JsonResultMixin):
     uh_discharge_m3s_per_mm : numpy.ndarray
         Ordinates of that unit hydrograph [m3/s per mm]: ``discharge_m3s`` is the
         discrete convolution of ``effective_precipitation_mm`` with them. Their
-        largest value is ``uh_peak_discharge_m3s_per_mm`` at
-        ``uh_time_to_peak_min`` for ``nash`` and ``clark``; the ``scs`` and
-        ``snyder`` peak is the analytic one, which may fall between two ordinates.
+        largest value is ``uh_peak_discharge_m3s_per_mm`` for ``nash``, ``clark``
+        and ``snyder``, at ``uh_time_to_peak_min`` for ``nash`` and ``clark``; the
+        ``snyder`` time to peak tpR and the ``scs`` time to peak and peak are the
+        formulas' values, which may fall between two ordinates (the ``scs`` qp then
+        exceeds the largest ordinate by up to 1.7 %, and by much more when the
+        step was computed on sub-steps, notice ``uh_substeps``).
     """
 
     peak_discharge_m3s: float
@@ -397,6 +400,8 @@ def compute_hydrograph(
     alpha: float | None = None,
     beta: float | None = None,
     peak_position: float | None = None,
+    depth_duration_mm: dict[str, Any] | None = None,
+    depth_duration_file: str | None = None,
     values: list[float] | None = None,
     input_file: str | None = None,
     value_column: str | None = None,
@@ -431,7 +436,8 @@ def compute_hydrograph(
         If the combination of options is wrong or a value is invalid, see
         :func:`hydrograph_generate`.
     NotFoundError
-        If ``watershed_file`` or ``input_file`` does not exist.
+        If ``watershed_file``, ``input_file`` or ``depth_duration_file`` does not
+        exist.
     InputDataError
         If a file is malformed.
     """
@@ -536,19 +542,24 @@ def compute_hydrograph(
             "alpha": alpha,
             "beta": beta,
             "peak_position": peak_position,
+            "depth_duration_mm": depth_duration_mm,
+            "depth_duration_file": depth_duration_file,
             "values": values,
             "input_file": input_file,
             "value_column": value_column,
         },
         {
-            "design": ("hietogram_type", "total_mm", "duration_min"),
+            "design": ("hietogram_type", "duration_min"),
             "values": ("values",),
             "file": ("input_file",),
         },
         extra={
+            "total_mm": "design",
             "alpha": "design",
             "beta": "design",
             "peak_position": "design",
+            "depth_duration_mm": "design",
+            "depth_duration_file": "design",
             "value_column": "file",
         },
     )
@@ -585,11 +596,7 @@ def compute_hydrograph(
             snyder_cp=snyder_cp,
         )
         if chosen == "design":
-            assert (
-                hietogram_type is not None
-                and total_mm is not None
-                and duration_min is not None
-            )
+            assert hietogram_type is not None and duration_min is not None
             hietogram, _ = build_hietogram(
                 hietogram_type,
                 total_mm,
@@ -598,8 +605,9 @@ def compute_hydrograph(
                 alpha=alpha,
                 beta=beta,
                 peak_position=peak_position,
+                depth_duration_mm=depth_duration_mm,
+                depth_duration_file=depth_duration_file,
             )
-            notices.extend(hietogram_notices(hietogram))
             generated: str | None = hietogram_type
         else:
             depths = load_precipitation_depths(
@@ -661,6 +669,8 @@ def hydrograph_generate(
     alpha: float | None = None,
     beta: float | None = None,
     peak_position: float | None = None,
+    depth_duration_mm: dict[str, Any] | None = None,
+    depth_duration_file: str | None = None,
     values: list[float] | None = None,
     input_file: str | None = None,
     value_column: str | None = None,
@@ -681,8 +691,9 @@ def hydrograph_generate(
 
     Exactly one catchment source is required: ``watershed``, ``watershed_file`` or
     ``area_km2`` with ``cn``; and exactly one precipitation source: a design
-    hyetograph (``hietogram_type``, ``total_mm``, ``duration_min``) or a series
-    (``values`` or ``input_file``).
+    hyetograph (``hietogram_type``, ``duration_min`` with ``total_mm``, or for
+    ``euler_ii`` its depth-duration curve) or a series (``values`` or
+    ``input_file``).
 
     Parameters
     ----------
@@ -713,13 +724,21 @@ def hydrograph_generate(
     hietogram_type : {"block", "triangular", "beta", "euler_ii"}, optional
         Design hyetograph type (see :func:`~hydrolog.operations.precip_hietogram`).
     total_mm : float, optional
-        Total precipitation [mm], > 0.
+        Total precipitation [mm], > 0; required by every type but ``euler_ii``, whose
+        total is the depth of its curve at ``duration_min``.
     duration_min : float, optional
         Precipitation duration [min], > 0.
     alpha, beta : float, optional
         Parameters of the ``beta`` hyetograph.
     peak_position : float, optional
-        Peak position of the ``triangular`` and ``euler_ii`` hyetographs.
+        Peak position of the ``triangular`` hyetograph.
+    depth_duration_mm : dict, optional
+        The depth-duration curve of the ``euler_ii`` storm: duration [min] (an
+        object key) -> depth [mm] of one probability, e.g. the
+        ``depth_duration_mm`` of ``precip pmaxtp``.
+    depth_duration_file : str, optional
+        A file with that curve instead (CSV ``duration_min,depth_mm`` or JSON, also
+        what ``precip pmaxtp --json`` prints).
     values : list of float, optional
         Precipitation depths per step [mm], each >= 0.
     input_file : str, optional
@@ -737,9 +756,10 @@ def hydrograph_generate(
         ``lutz`` is the Lutz method (Lutz 1984, after KZGW 2017,
         :meth:`~hydrolog.runoff.NashIUH.from_lutz`) with the fields
         :meth:`~hydrolog.morphometry.WatershedParameters.nash_parameters` takes:
-        L and J of the longest flow path (``flow_path_length_km``,
-        ``flow_path_slope_m_per_m``), ``Lc_km``, ``manning_n``, ``urban_pct`` and
-        ``forest_pct`` (0 when not set). The estimate is not checked against the
+        the length L of the longest flow path (``flow_path_length_km``), the
+        equal-area slope Jg of its profile (``flow_path_equal_area_slope_m_per_m``),
+        ``Lc_km``, ``manning_n``, ``urban_pct`` and ``forest_pct`` (0 when not
+        set). The estimate is not checked against the
         typical ranges of given n and K; the area is checked against Lutz's.
     clark_r_min : float, optional
         Clark storage constant R [min]; exactly one of ``clark_r_min`` and
@@ -761,7 +781,7 @@ def hydrograph_generate(
     -------
     OperationOutput
         :class:`HydrographGenerateResult` with the notices: library warnings about
-        parameters outside the typical range (``outside_typical_range``, with
+        parameters outside their applicability range (``outside_applicability``, with
         ``details.field`` the input the value came from: the field of the
         watershed for a tc formula or Lutz's area, else the option, e.g.
         ``snyder_ct``), a non-standard ``ia_coefficient``, a duration that is not
@@ -786,7 +806,8 @@ def hydrograph_generate(
         (``details.option`` the option or the field of the watershed; Lutz's
         ``Lc_km`` longer than ``flow_path_length_km`` is ``"maximum"``).
     NotFoundError
-        If ``watershed_file`` or ``input_file`` does not exist.
+        If ``watershed_file``, ``input_file`` or ``depth_duration_file`` does not
+        exist.
     InputDataError
         If a file is malformed or a precipitation value is missing or negative.
     """
@@ -805,6 +826,8 @@ def hydrograph_generate(
         alpha=alpha,
         beta=beta,
         peak_position=peak_position,
+        depth_duration_mm=depth_duration_mm,
+        depth_duration_file=depth_duration_file,
         values=values,
         input_file=input_file,
         value_column=value_column,

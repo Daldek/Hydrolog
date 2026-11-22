@@ -1,0 +1,478 @@
+[
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-interior-sand",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 122: sand: silt + 1.5 clay = 12.5 < 15"
+    },
+    "inputs": {
+      "clay": 5,
+      "sand": 90,
+      "silt": 5
+    },
+    "expected": {
+      "texture_class": "sand"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-interior-loamy-sand",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 122: loamy sand: silt + 1.5 clay = 20.5 >= 15; silt + 2 clay = 23 < 30"
+    },
+    "inputs": {
+      "clay": 5,
+      "sand": 82,
+      "silt": 13
+    },
+    "expected": {
+      "texture_class": "loamy_sand"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-interior-sandy-loam",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 123: sandy loam: 7 <= clay < 20, sand > 52, silt + 2 clay = 50 >= 30"
+    },
+    "inputs": {
+      "clay": 10,
+      "sand": 60,
+      "silt": 30
+    },
+    "expected": {
+      "texture_class": "sandy_loam"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-interior-loam",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 124: loam: 7 <= clay < 27, 28 <= silt < 50, sand <= 52"
+    },
+    "inputs": {
+      "clay": 20,
+      "sand": 40,
+      "silt": 40
+    },
+    "expected": {
+      "texture_class": "loam"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-interior-silt-loam",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 124: silt loam: silt >= 50, 12 <= clay < 27"
+    },
+    "inputs": {
+      "clay": 15,
+      "sand": 20,
+      "silt": 65
+    },
+    "expected": {
+      "texture_class": "silt_loam"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-interior-silt",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 124: silt: silt >= 80, clay < 12"
+    },
+    "inputs": {
+      "clay": 5,
+      "sand": 10,
+      "silt": 85
+    },
+    "expected": {
+      "texture_class": "silt"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-interior-scl",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 124: sandy clay loam: 20 <= clay < 35, silt < 28, sand > 45"
+    },
+    "inputs": {
+      "clay": 25,
+      "sand": 55,
+      "silt": 20
+    },
+    "expected": {
+      "texture_class": "sandy_clay_loam"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-interior-cl",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 124: clay loam: 27 <= clay < 40, 20 < sand <= 45"
+    },
+    "inputs": {
+      "clay": 30,
+      "sand": 30,
+      "silt": 40
+    },
+    "expected": {
+      "texture_class": "clay_loam"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-interior-sicl",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 124: silty clay loam: 27 <= clay < 40, sand <= 20"
+    },
+    "inputs": {
+      "clay": 35,
+      "sand": 10,
+      "silt": 55
+    },
+    "expected": {
+      "texture_class": "silty_clay_loam"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-interior-sc",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 124: sandy clay: clay >= 35, sand > 45"
+    },
+    "inputs": {
+      "clay": 40,
+      "sand": 50,
+      "silt": 10
+    },
+    "expected": {
+      "texture_class": "sandy_clay"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-interior-sic",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 124: silty clay: clay >= 40, silt >= 40"
+    },
+    "inputs": {
+      "clay": 45,
+      "sand": 5,
+      "silt": 50
+    },
+    "expected": {
+      "texture_class": "silty_clay"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-interior-clay",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 124: clay: clay >= 40, sand <= 45, silt < 40"
+    },
+    "inputs": {
+      "clay": 60,
+      "sand": 20,
+      "silt": 20
+    },
+    "expected": {
+      "texture_class": "clay"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-boundary-clay20",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 124: sandy clay loam: SSM 2017: sandy loams have '7 to less than 20 percent clay'; clay = 20, silt = 20 < 28, sand = 60 > 45 -> sandy clay loam ('20 to less than 35 percent clay')"
+    },
+    "inputs": {
+      "clay": 20,
+      "sand": 60,
+      "silt": 20
+    },
+    "expected": {
+      "texture_class": "sandy_clay_loam"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-boundary-clay27",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 124: clay loam: SSM 2017: loam has '7 to less than 27 percent clay'; clay = 27, sand = 38 in (20, 45] -> clay loam ('27 to less than 40 percent clay')"
+    },
+    "inputs": {
+      "clay": 27,
+      "sand": 38,
+      "silt": 35
+    },
+    "expected": {
+      "texture_class": "clay_loam"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-boundary-silt2clay30",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 123: sandy loam: silt + 2 clay = 30 is '30 or more' -> not loamy sand; clay < 7, silt < 50 -> sandy loam"
+    },
+    "inputs": {
+      "clay": 0,
+      "sand": 70,
+      "silt": 30
+    },
+    "expected": {
+      "texture_class": "sandy_loam"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-boundary-silt15clay15",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 122: loamy sand: silt + 1.5 clay = 15 is '15 or more' -> not sand; silt + 2 clay = 15 < 30 -> loamy sand"
+    },
+    "inputs": {
+      "clay": 0,
+      "sand": 85,
+      "silt": 15
+    },
+    "expected": {
+      "texture_class": "loamy_sand"
+    },
+    "conventions": [
+      "amounts compared with their total in any shared unit; 'X to less than Y' is [X, Y)"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "usda_texture",
+    "case_id": "ssm2017-units-gkg",
+    "source": {
+      "citation": "Soil Science Division Staff (2017). Soil Survey Manual. USDA Agriculture Handbook No. 18 (minor amendments February 2018). USDA-NRCS, Washington, DC",
+      "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo113168/pdf/GOVPUB-A-PURL-gpo113168.pdf",
+      "access": "open",
+      "locator": "ch. 3, p. 124: clay: 450/200/350 g/kg = 45/20/35 %: clay >= 40, sand <= 45, silt < 40"
+    },
+    "inputs": {
+      "clay": 450,
+      "sand": 200,
+      "silt": 350
+    },
+    "expected": {
+      "texture_class": "clay"
+    },
+    "conventions": [
+      "integer g/kg of SoilGrids: 450/200/350 g/kg are 45/20/35 percent of the total"
+    ],
+    "second_source": {
+      "citation": "Beaudette, D., Roudier, P., Brown, A. and Roecker, S. aqp: Algorithms for Quantitative Pedology, R package 2.3.3, function ssc_to_texcl ('logic from the particle size estimator calculation from NASIS'; rules read, not executed)",
+      "locator": "R/texture.R, lines 306-319: the same limits on integer percent, e.g. loam clay < 26.99, sandy clay loam clay >= 19.99, sand silt + 1.5 clay < 15, loamy sand silt + 2 clay < 29.99",
+      "url": "https://github.com/ncss-tech/aqp/blob/master/R/texture.R",
+      "access": "open"
+    },
+    "status": "second_source"
+  }
+]

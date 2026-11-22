@@ -78,7 +78,6 @@ Two tributaries joining above a reach:
 from __future__ import annotations
 
 import copy
-import math
 import numbers
 import re
 import unicodedata
@@ -95,6 +94,7 @@ from hydrolog._serialization import JsonResultMixin
 from hydrolog._warnings import HydrologWarning
 from hydrolog.exceptions import CalculationError, InvalidParameterError
 from hydrolog.morphometry.watershed_params import WatershedParameters
+from hydrolog.nogat_formulas import FormulaSpec, Source, TierBSpec
 from hydrolog.precipitation.hietogram import HietogramResult
 from hydrolog.routing._checks import in_range, positive, shown
 from hydrolog.routing._order import ordered
@@ -121,6 +121,8 @@ if TYPE_CHECKING:
 
 __all__ = [
     "DEFAULT_TIMESTEP_MIN",
+    "SPECS",
+    "TIER_B",
     "MAX_DESCRIPTION_CHARS",
     "MAX_ID_CHARS",
     "MAX_POSITION",
@@ -139,6 +141,7 @@ __all__ = [
     "Reservoir",
     "RoutingNetwork",
     "Subcatchment",
+    "node_table_name",
 ]
 
 DEFAULT_TIMESTEP_MIN: Final = 5.0
@@ -146,7 +149,33 @@ DEFAULT_TIMESTEP_MIN: Final = 5.0
 of the command ``hydrograph generate``."""
 
 MAX_ID_CHARS: Final = 64
-"""Longest node id; an id names the file of its node (``<id>.csv``)."""
+"""Longest node id; an id names the file of its node (:func:`node_table_name`)."""
+
+
+def node_table_name(node_id: str) -> str:
+    """Return the name of the file of the hydrograph of a node.
+
+    ``route network --output-dir`` writes the hydrograph that leaves each node in the
+    table ``hydrolog_node-hydrograph_<id>.csv``, the id exactly as it is: a file a tool
+    names is ``<tool>_<content>_<qualifiers>.<extension>`` (Nogat DEV-19.21).
+
+    Parameters
+    ----------
+    node_id : str
+        Id of the node.
+
+    Returns
+    -------
+    str
+        The file name, e.g. ``hydrolog_node-hydrograph_W3.csv`` for the node ``W3``.
+
+    Examples
+    --------
+    >>> node_table_name("W3")
+    'hydrolog_node-hydrograph_W3.csv'
+    """
+    return f"hydrolog_node-hydrograph_{node_id}.csv"
+
 
 MAX_DESCRIPTION_CHARS: Final = 500
 """Longest description of a node or of a network [characters] (ADR-0023)."""
@@ -516,8 +545,8 @@ def _observed() -> Iterator[list[RoutingNotice]]:
     """Collect the warnings that the library issues inside the block as notices.
 
     A ``UserWarning`` (a value outside the usual range of a formula) becomes a notice
-    whose code is its class's name in snake_case (``outside_typical_range`` for
-    :class:`~hydrolog._warnings.OutsideTypicalRange`, ``user_warning`` for a plain
+    whose code is its class's name in snake_case (``outside_applicability`` for
+    :class:`~hydrolog._warnings.OutsideApplicability`, ``user_warning`` for a plain
     ``UserWarning``), once for the same text, of the level of a
     :class:`~hydrolog._warnings.HydrologWarning` (``uh_substeps`` is ``"info"``), else
     ``"warning"``; a warning of another category is issued again when the block ends.
@@ -1200,8 +1229,9 @@ class Subcatchment(Node):
         """Return the hydrograph of the node: the given one, or the one it makes.
 
         The rain is cut at the time step of the network and handed to the model with
-        the watershed. The warnings that the library issues on the way, and a storm that
-        ends before its duration, are notices of the output.
+        the watershed. The warnings that the library issues on the way are notices of
+        the output; a design storm whose duration is not a whole number of steps is
+        refused (``details.reason`` ``not_multiple``).
         """
         if self._hydrograph is not None:
             return NodeOutput(self._hydrograph)
@@ -1212,17 +1242,6 @@ class Subcatchment(Node):
         with _observed() as notices:
             hyetograph = source.hyetograph(step)
             hydrograph = self._runoff.hydrograph(hyetograph, self._watershed, step)
-        covered = hyetograph.n_steps * hyetograph.timestep_min
-        if not math.isclose(covered, hyetograph.duration_min, rel_tol=1e-9):
-            notices.append(
-                RoutingNotice(
-                    "duration_not_covered",
-                    f"The rainfall of {hyetograph.duration_min:g} min is not a "
-                    f"multiple of the time step of {hyetograph.timestep_min:g} min: "
-                    f"it has {hyetograph.n_steps} steps and covers {covered:g} min.",
-                    "warning",
-                )
-            )
         return NodeOutput(
             hydrograph,
             rainfall=hyetograph,
@@ -2366,3 +2385,25 @@ class RoutingNetwork:
             rainfall=rainfall,
             nodes=summaries,
         )
+
+
+SPECS: Final[tuple[FormulaSpec, ...]] = ()
+"""The routing formulas are declared in :mod:`hydrolog.routing.formulas`."""
+
+TIER_B: Final = (
+    TierBSpec(
+        name="junction_sum",
+        function="hydrolog.routing.network._sum",
+        definition="the hydrograph of a junction: the sum of its inflows ordinate by "
+        "ordinate on the longest of their axes, a shorter one held at its last value",
+        convention="one time step and one start for every source of a network, no "
+        "resampling; holding a truncated outflow (tail_truncated) at a value above "
+        "zero adds volume downstream, which the upstream warning names",
+        source=Source(
+            citation="Hydrolog's computation paths, section 3.9.7, and ADR-0008",
+            locator="docs/COMPUTATION_PATHS.md, Time axes: a junction holds a shorter "
+            "hydrograph at its last value; one step, nothing resampled",
+        ),
+    ),
+)
+"""The convention of a junction of the routing network (CMP-2.2)."""

@@ -1,0 +1,12 @@
+texture_class,hsg,page
+sand,A,A-1
+loamy_sand,A,A-1
+sandy_loam,A,A-1
+silt_loam,B,A-1
+loam,B,A-1
+sandy_clay_loam,C,A-1
+clay_loam,D,A-1
+silty_clay_loam,D,A-1
+sandy_clay,D,A-1
+silty_clay,D,A-1
+clay,D,A-1

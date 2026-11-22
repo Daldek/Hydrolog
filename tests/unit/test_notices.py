@@ -9,6 +9,7 @@ the category it was captured as, never its own class name.
 from __future__ import annotations
 
 import copy
+import math
 import pickle
 import string
 import warnings
@@ -16,14 +17,17 @@ import warnings
 import numpy as np
 import pytest
 
+from hydrolog._formulas import checked_inputs, constraint_range, constraint_ranges
 from hydrolog._warnings import (
     LIBRARY_WARNINGS,
     DistributionLeftOut,
     HydrologWarning,
     IncompleteYears,
+    IuhPeakUndefined,
     KsTestApproximate,
+    NegativeQuantiles,
+    OutsideApplicability,
     OutsideSupport,
-    OutsideTypicalRange,
     OutsideUnverifiedRange,
     PositionsIgnored,
     ShortRecord,
@@ -31,10 +35,23 @@ from hydrolog._warnings import (
     UhModelMismatch,
     UhSubsteps,
     UnknownHietogramType,
+    UnreferencedFormula,
     render,
+    warn_outside_applicability,
 )
 from hydrolog.catalog.envelope import NOTICE_LEVELS, Notice, capture_warnings
 from hydrolog.catalog.notices import NOTICES, notice
+from hydrolog.nogat_formulas import (
+    Constraint,
+    FormulaSpec,
+    Output,
+    Properties,
+    Range,
+    Scaling,
+    Source,
+    Tolerance,
+    Variable,
+)
 from hydrolog.operations import route_lag, route_network
 from hydrolog.routing import RUNOFF_MODELS
 from hydrolog.routing.network import _observed
@@ -43,13 +60,16 @@ from ._network_documents import document, outlet
 from ._routing_extensions import Share
 
 SAMPLES = {
-    OutsideTypicalRange: {
+    OutsideApplicability: {
         "method": "kirpich",
         "parameter": "length_km",
         "field": "channel_length_km",
         "value": 120.0,
         "minimum": 0.001,
         "maximum": 80.0,
+        "constraint": None,
+        "condition": None,
+        "source": None,
     },
     OutsideUnverifiedRange: {
         "method": "nash",
@@ -58,6 +78,9 @@ SAMPLES = {
         "value": 12.0,
         "minimum": 1.0,
         "maximum": 10.0,
+        "constraint": None,
+        "condition": None,
+        "source": None,
     },
     SmallSample: {"years": 6, "minimum": 10},
     ShortRecord: {"years": 20, "minimum": 30},
@@ -73,6 +96,7 @@ SAMPLES = {
         "fit_method": "l_moments",
         "values": [81.6, 87.2],
     },
+    NegativeQuantiles: {"return_periods": [500.0, 1000.0], "zero_return_period": 312.5},
     IncompleteYears: {
         "skipped": 2,
         "total": 31,
@@ -91,7 +115,13 @@ SAMPLES = {
         "substeps": 93,
         "substep_min": 15.4839,
     },
+    IuhPeakUndefined: {"n": 0.5, "k_min": 30.0},
     PositionsIgnored: {"reason": "partial", "node_id": "R3"},
+    UnreferencedFormula: {
+        "formula": "rybczynski_zones",
+        "title": "Rybczyński's zones",
+        "formula_version": 1,
+    },
 }
 
 
@@ -126,18 +156,21 @@ class TestRender:
 class TestLibraryWarnings:
     def test_the_codes_of_the_classes(self):
         assert [kind.code() for kind in LIBRARY_WARNINGS] == [
-            "outside_typical_range",
+            "outside_applicability",
             "outside_unverified_range",
             "small_sample",
             "short_record",
             "ks_test_approximate",
             "distribution_left_out",
             "outside_support",
+            "negative_quantiles",
             "incomplete_years",
             "unknown_hietogram_type",
             "uh_model_mismatch",
             "uh_substeps",
+            "iuh_peak_undefined",
             "positions_ignored",
+            "unreferenced_formula",
         ]
 
     def test_every_subclass_is_listed(self):
@@ -151,10 +184,10 @@ class TestLibraryWarnings:
 
     def test_an_unverified_range_is_caught_as_a_typical_range(self):
         warning = OutsideUnverifiedRange(**SAMPLES[OutsideUnverifiedRange])
-        with pytest.warns(OutsideTypicalRange) as caught:
+        with pytest.warns(OutsideApplicability) as caught:
             warnings.warn(warning, stacklevel=2)
         assert caught[0].message is warning
-        assert OutsideUnverifiedRange.keys == OutsideTypicalRange.keys
+        assert OutsideUnverifiedRange.keys == OutsideApplicability.keys
 
     @pytest.mark.parametrize("kind", LIBRARY_WARNINGS, ids=lambda k: k.__name__)
     def test_the_registry_has_the_level_template_and_keys_of_the_class(self, kind):
@@ -165,6 +198,14 @@ class TestLibraryWarnings:
             kind.keys,
         )
         assert not spec.own_text
+        assert spec.warning is kind
+
+    @pytest.mark.parametrize("kind", LIBRARY_WARNINGS, ids=lambda k: k.__name__)
+    def test_the_registry_words_a_notice_as_its_class(self, kind):
+        """Plan D16: the message of a notice is its code's registry entry applied to
+        its details, the same text a caught warning carries."""
+        warning = kind(**SAMPLES[kind])
+        assert NOTICES[kind.code()].message(SAMPLES[kind]) == str(warning)
 
     @pytest.mark.parametrize("kind", LIBRARY_WARNINGS, ids=lambda k: k.__name__)
     def test_a_warning_is_a_user_warning_with_its_details_and_message(self, kind):
@@ -403,7 +444,7 @@ class TestRouting:
             "runoff": {"model": _Noisy.model, "share": 0.5},
             "rainfall": {
                 "kind": "design",
-                "hietogram_type": "euler_ii",
+                "hietogram_type": "block",
                 "total_mm": 45,
                 "duration_min": 60,
             },
@@ -418,4 +459,174 @@ class TestRouting:
                 f"A: {SmallSample(years=3, minimum=10)}",
                 {"node_id": "A"},
             ),
+        ]
+
+
+_TOY_SOURCE = Source(citation="A source of the tests", locator="p. 1")
+
+
+def _toy(
+    name: str,
+    applicability: Range | str = "unstated",
+    constraints: tuple[Constraint, ...] = (),
+    status: str = "oracle only",
+) -> FormulaSpec:
+    """A spec of y = x with the applicability and constraints of a test."""
+    return FormulaSpec(
+        name=name,
+        title="A formula of the tests",
+        function="tests.toy.formula",
+        family="index",
+        equation="y = x",
+        latex="y = x",
+        variables=(
+            Variable(
+                name="x",
+                symbol="x",
+                unit="-",
+                physical=Range(test_low=-100.0, test_high=100.0, test_reason="a test"),
+                applicability=applicability,  # type: ignore[arg-type]
+                typical=Range(low=0.0, high=10.0, source=_TOY_SOURCE),
+            ),
+        ),
+        outputs=(Output(name="y", unit="-", physical=Range()),),
+        sources=(_TOY_SOURCE,),
+        properties=Properties(
+            units="homogeneous",
+            scalings=(
+                Scaling(
+                    name="x",
+                    inputs={"x": 1},
+                    outputs={"y": 1},
+                    tolerance=Tolerance(abs=0.0, reason="a test"),
+                ),
+            ),
+        ),
+        validation="none",
+        formula_version=3,
+        status=status,  # type: ignore[arg-type]
+        constraints=constraints,
+        no_traps_reason="a test",
+    )
+
+
+_AT_LEAST_TWO = Constraint(
+    name="x_at_least_two",
+    cls="applicability",
+    check=lambda values: values.real("x") >= 2.0,
+    text="x >= 2",
+    source=_TOY_SOURCE,
+    satisfied={"x": 5.0},
+    violated={"x": 1.0},
+)
+
+
+class TestFormulaNotices:
+    """``hydrolog._formulas`` issues the standard's notices as library warnings."""
+
+    def test_a_range_with_one_end_words_that_end(self):
+        with pytest.warns(OutsideApplicability) as caught:
+            warn_outside_applicability("m", "n", 6, 12, None, stacklevel=1)
+            warn_outside_applicability("m", "n", 9.5, None, 8.0, stacklevel=1)
+        assert [str(w.message) for w in caught] == [
+            "m: n=6 is below its applicability range, from 12. Results may be "
+            "unreliable.",
+            "m: n=9.5 is above its applicability range, up to 8.0. Results may be "
+            "unreliable.",
+        ]
+        spec = NOTICES["outside_applicability"]
+        assert [spec.message(w.message.details) for w in caught] == [
+            str(w.message) for w in caught
+        ]
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            warn_outside_applicability("m", "n", 12, 12, None, stacklevel=1)
+
+    def test_an_input_outside_a_half_open_range_has_a_null_end(self):
+        spec = _toy(
+            "toy_half_open",
+            Range(low=2.0, high=math.inf, source=_TOY_SOURCE),
+        )
+        with pytest.warns(OutsideApplicability) as caught:
+            checked_inputs(spec, x=1.0)
+        assert caught[0].message.details == {
+            "method": "toy_half_open",
+            "parameter": "x",
+            "field": "x",
+            "value": 1.0,
+            "minimum": 2.0,
+            "maximum": None,
+            "constraint": None,
+            "condition": None,
+            "source": None,
+        }
+
+    def test_an_open_end_has_no_warning(self):
+        spec = _toy(
+            "toy_open_end",
+            Range(low=2.0, high=8.0, low_inclusive=False, source=_TOY_SOURCE),
+        )
+        with pytest.raises(TypeError, match="open"):
+            checked_inputs(spec, x=1.0)
+
+    def test_a_violated_constraint_warns_with_its_quantity(self):
+        spec = _toy("toy_constraint", constraints=(_AT_LEAST_TWO,))
+        declared = constraint_range(
+            spec,
+            "x_at_least_two",
+            parameter="twice_x",
+            value=lambda values: 2.0 * values.real("x"),
+            minimum=4.0,
+        )
+        with pytest.warns(OutsideApplicability) as caught:
+            checked_inputs(spec, x=1.5)
+        assert constraint_ranges()[("toy_constraint", "x_at_least_two")] is declared
+        assert caught[0].message.details == {
+            "method": "toy_constraint",
+            "parameter": "twice_x",
+            "field": "twice_x",
+            "value": 3.0,
+            "minimum": 4.0,
+            "maximum": None,
+            "constraint": "x_at_least_two",
+            "condition": "x >= 2",
+            "source": "A source of the tests, p. 1",
+        }
+        assert str(caught[0].message) == (
+            "toy_constraint: twice_x=3.0 is below its applicability range, from 4.0: x "
+            ">= 2 (A source of the tests, p. 1). Results may be unreliable."
+        )
+
+    def test_an_undeclared_constraint_has_no_warning(self):
+        spec = _toy("toy_undeclared", constraints=(_AT_LEAST_TWO,))
+        with pytest.raises(TypeError, match="no warning of the library"):
+            checked_inputs(spec, x=1.0)
+
+    def test_a_constraint_range_is_declared_once_for_an_applicability_constraint(self):
+        spec = _toy("toy_declared", constraints=(_AT_LEAST_TWO,))
+        with pytest.raises(ValueError, match="no applicability constraint"):
+            constraint_range(spec, "x", parameter="x", value=float, minimum=2.0)
+        with pytest.raises(ValueError, match="minimum, maximum or both"):
+            constraint_range(spec, "x_at_least_two", parameter="x", value=float)
+        constraint_range(spec, "x_at_least_two", parameter="x", value=float, minimum=2)
+        with pytest.raises(ValueError, match="declared already"):
+            constraint_range(
+                spec, "x_at_least_two", parameter="x", value=float, maximum=9
+            )
+
+    def test_an_unreferenced_formula_warns_on_every_result(self):
+        spec = _toy("toy_unreferenced", status="unreferenced")
+        with capture_warnings() as notices:
+            checked_inputs(spec, x=5.0)
+            checked_inputs(spec, x=6.0)
+        assert [(n.level, n.code, n.details) for n in notices] == [
+            (
+                "info",
+                "unreferenced_formula",
+                {
+                    "formula": "toy_unreferenced",
+                    "title": "A formula of the tests",
+                    "formula_version": 3,
+                },
+            )
         ]

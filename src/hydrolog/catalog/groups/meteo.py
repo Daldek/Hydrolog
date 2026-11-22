@@ -42,13 +42,17 @@ _INPUT_FILE = replace(
         "Plik CSV albo JSON z szeregiem dobowym stacji, np. eksport Obserwatora "
         "(`obserwator series export`): kolumny `date`, `P [mm]`, `P_flag`, "
         "`Tmax [degC]`, `Tmin [degC]`, `Tmean [degC]`, `snow_cover [cm]`, "
-        "`fresh_snow [cm]`, znajdowane przez opcje `*_column`."
+        "`fresh_snow [cm]`, znajdowane przez opcje `*_column`. Szereg dobowy "
+        "`hydrolog-series/1` (sam albo w przekazaniu `nogat-handoff/1`) ma kolumny "
+        "`date` i swojej zmiennej (np. `P`)."
     ),
     description=(
         "CSV or JSON file with the station's daily series, e.g. Obserwator's export "
         "(`obserwator series export`): the columns `date`, `P [mm]`, `P_flag`, "
         "`Tmax [degC]`, `Tmin [degC]`, `Tmean [degC]`, `snow_cover [cm]`, "
-        "`fresh_snow [cm]`, found by the `*_column` options."
+        "`fresh_snow [cm]`, found by the `*_column` options. A daily "
+        "`hydrolog-series/1` (alone or in a hand-off `nogat-handoff/1`) has the "
+        "columns `date` and its variable (e.g. `P`)."
     ),
 )
 _DATE_COLUMN = Option(
@@ -320,7 +324,7 @@ COMMANDS: tuple[Command, ...] = (
                 "index": "sums",
                 "first_year": 2019,
                 "last_year": 2023,
-                "period": {"normal_mm": 683.35, "normal_years": 4},
+                "period": {"normal_mm": 703.285, "normal_years": 4},
             },
             {
                 "index": "maxima",
@@ -366,7 +370,8 @@ COMMANDS: tuple[Command, ...] = (
                     "sums": "Sumy miesięcy, półroczy, pór roku, lat; normalne, %.",
                     "maxima": "Największe sumy dobowe i n-dniowe lat i miesięcy.",
                     "days": "Dni z P co najmniej każdego z `thresholds_mm`.",
-                    "intensity": "Średnia suma roczna i opad dnia mokrego (SDII).",
+                    "intensity": "Średnia suma roczna i wskaźnik intensywności opadu "
+                    "(SDII).",
                     "heavy": "Sumy powyżej percentyli dni mokrych (R95pTOT).",
                     "seasonality": "Reżim normalnych, PCI i SI.",
                 },
@@ -436,7 +441,7 @@ COMMANDS: tuple[Command, ...] = (
                     "99 (R95pTOT, R99pTOT)."
                 ),
                 exclusive_minimum=0,
-                maximum=100,
+                exclusive_maximum=100,
                 unit="%",
             ),
             ATTRIBUTION,
@@ -498,12 +503,13 @@ COMMANDS: tuple[Command, ...] = (
         result_schema="hydrolog-meteo-spells/1",
         cardinality="bounded",
         rules=(
-            "A spell counts in the year in which it starts.",
+            "A spell over a year's start counts whole in the year it ends (as ETCCDI).",
             "Yearly counts need every day of the year.",
             "`spells` lists those of at least `min_duration_days`; summaries take all.",
         ),
         rules_pl=(
-            "Ciąg liczy się w roku, w którym się zaczyna.",
+            "Ciąg przez początek roku liczy się w całości w roku, w którym się kończy "
+            "(jak w ETCCDI).",
             "Liczebności roku wymagają danych z każdego dnia.",
             "`spells` wymienia ciągi co najmniej `min_duration_days`; podsumowania "
             "biorą wszystkie.",
@@ -607,7 +613,7 @@ COMMANDS: tuple[Command, ...] = (
         ),
         errors=_ERRORS,
         example_results=(
-            {"scales_months": [1, 3, 6, 12], "period": {"normal_mm": 683.35}},
+            {"scales_months": [1, 3, 6, 12], "period": {"normal_mm": 703.285}},
             {"scales_months": [1, 3], "year_type": "hydrological"},
             {
                 "reference_last_year": 2021,
@@ -672,17 +678,18 @@ COMMANDS: tuple[Command, ...] = (
         description_pl=(
             "Jeden wskaźnik `index` na wywołanie: `means` (średnie miesięczne i roczne "
             "Tśr, Tmax, Tmin, normalna okresu odniesienia i anomalia, ekstrema), "
-            "`days` (dni z przymrozkiem, mroźne, gorące, upalne, noce tropikalne; "
-            "ETCCDI), `degree_days` (stopniodni wzrostu > 5 °C, grzania 18 − Tśr gdy "
-            "Tśr ≤ 15 °C, Eurostat), `range` (średnia amplituda dobowa). Braki wg "
-            "WMO-No. 1203."
+            "`days` (dni z przymrozkiem FD, przymrozkowe Tmin < 0 < Tmax wg IMGW-PIB, "
+            "mroźne, gorące, upalne, noce tropikalne), `degree_days` (stopniodni "
+            "wzrostu > 5 °C, grzania 18 − Tśr gdy Tśr ≤ 15 °C, Eurostat; cały rok), "
+            "`range` (średnia amplituda dobowa). Braki wg WMO-No. 1203."
         ),
         description=(
             "One `index` per call: `means` (monthly and annual Tmean, Tmax, Tmin, the "
-            "normal of a reference period and anomaly, extremes), `days` (frost, ice, "
-            "summer, hot days, tropical nights; ETCCDI), `degree_days` (growing above "
-            "5 °C; heating 18 − Tmean when Tmean ≤ 15 °C, Eurostat), `range` (mean "
-            "daily range). Missing days by WMO-No. 1203."
+            "normal of a reference period and anomaly, extremes), `days` (frost days "
+            "FD, freeze-thaw Tmin < 0 < Tmax, ice, summer, hot days, tropical nights), "
+            "`degree_days` (growing above 5 °C; heating 18 − Tmean when Tmean ≤ 15 °C, "
+            "Eurostat; whole year), `range` (mean daily range). Missing days by "
+            "WMO-No. 1203."
         ),
         result_schema="hydrolog-meteo-temperature/1",
         cardinality="bounded",
@@ -717,13 +724,15 @@ COMMANDS: tuple[Command, ...] = (
                 choices=("means", "days", "degree_days", "range"),
                 meanings={
                     "means": "Monthly and annual means, normal, anomaly, extremes.",
-                    "days": "Frost, ice, summer and hot days, tropical nights.",
+                    "days": "Frost, freeze-thaw, ice, summer, hot days, tropical "
+                    "nights.",
                     "degree_days": "Growing and heating degree days.",
                     "range": "Mean daily range Tmax - Tmin.",
                 },
                 meanings_pl={
                     "means": "Średnie, normalna, anomalia, ekstrema.",
-                    "days": "Dni z przymrozkiem, mroźne, gorące, upalne, noce tropik.",
+                    "days": "Z przymrozkiem, przymrozkowe, mroźne, gorące, upalne, "
+                    "noce.",
                     "degree_days": "Stopniodni wzrostu i grzania.",
                     "range": "Średnia amplituda dobowa Tmax - Tmin.",
                 },
@@ -742,17 +751,17 @@ COMMANDS: tuple[Command, ...] = (
             *_reference_years("means", "means", "the normals", "normalnych"),
             _celsius(
                 "frost_tmin_c",
-                "Only for `index` days: a frost day has Tmin below this [°C]; "
-                "default 0 (FD).",
-                "Tylko dla `index` days: dzień z przymrozkiem ma Tmin poniżej [°C]; "
-                "domyślnie 0.",
+                "Only for `index` days: a frost day (and a freeze-thaw day) has Tmin "
+                "below this [°C]; default 0 (FD).",
+                "Tylko dla `index` days: dzień z przymrozkiem (i przymrozkowy) ma Tmin "
+                "poniżej [°C]; domyślnie 0 (FD).",
             ),
             _celsius(
                 "ice_tmax_c",
-                "Only for `index` days: an ice day has Tmax below this [°C]; default "
-                "0 (ID).",
-                "Tylko dla `index` days: dzień mroźny ma Tmax poniżej [°C]; "
-                "domyślnie 0.",
+                "Only for `index` days: an ice day has Tmax below this, a freeze-thaw "
+                "day above it [°C]; default 0 (ID).",
+                "Tylko dla `index` days: dzień mroźny ma Tmax poniżej, przymrozkowy "
+                "powyżej [°C]; domyślnie 0.",
             ),
             _celsius(
                 "summer_tmax_c",
@@ -784,17 +793,18 @@ COMMANDS: tuple[Command, ...] = (
             ),
             _celsius(
                 "heating_base_c",
-                "Only for `index` degree_days: base of the heating degree days [°C]; "
-                "default 18.",
-                "Tylko dla `index` degree_days: baza stopniodni grzania [°C]; "
-                "domyślnie 18.",
+                "Only for `index` degree_days: reference temperature of the heating "
+                "degree days, HDD = Σ (this − Tmean) [°C]; default 18.",
+                "Tylko dla `index` degree_days: temperatura bazowa stopniodni grzania, "
+                "HDD = Σ (ta − Tśr) [°C]; domyślnie 18.",
             ),
             _celsius(
                 "heating_limit_c",
-                "Only for `index` degree_days: a day heats when Tmean is at most this "
-                "[°C]; default 15.",
-                "Tylko dla `index` degree_days: dzień grzewczy ma Tśr co najwyżej "
-                "[°C]; domyślnie 15.",
+                "Only for `index` degree_days: heating threshold (Eurostat's base "
+                "temperature), a day heats when Tmean is at most this [°C]; "
+                "default 15.",
+                "Tylko dla `index` degree_days: temperatura graniczna, dzień grzewczy "
+                "ma Tśr co najwyżej [°C]; domyślnie 15.",
             ),
             ATTRIBUTION,
         ),
@@ -906,29 +916,30 @@ COMMANDS: tuple[Command, ...] = (
         name="meteo hydrothermal",
         operation_id="hydrolog_meteo_hydrothermal",
         summary_pl=(
-            "Oblicz współczynnik hydrotermiczny Sielianinowa miesięcy IV–IX i okresu "
-            "Tśr > 10 °C"
+            "Oblicz współczynnik hydrotermiczny Sielianinowa miesięcy IV–IX i dni "
+            "IV–IX z Tśr > 10 °C"
         ),
         summary=(
             "Compute Sielianinov's hydrothermal coefficient of the months IV–IX and "
-            "of the warm season"
+            "of their days above 10 °C"
         ),
         description_pl=(
             "k = P/(0,1 Σt) każdego miesiąca IV–IX (Σt to średnia miesięczna "
-            "temperatura razy liczba dni; Skowera i Puła, 2004) i dni z Tśr > 10 °C "
-            "każdego roku kalendarzowego (Sielianinow, 1928), z 9 klasami Skowery i "
-            "Puły. Wymaga dobowego opadu [mm] i Tśr [°C]."
+            "temperatura razy liczba dni; Skowera i Puła, 2004) i sezonu: dni "
+            "kwietnia–września z Tśr > 10 °C każdego roku (Miś, 2026, wzór 4), z 9 "
+            "klasami Skowery i Puły. Wymaga dobowego opadu [mm] i Tśr [°C]."
         ),
         description=(
             "k = P/(0.1 Σt) of each month April–September (Σt the monthly mean "
-            "temperature times its days; Skowera and Puła, 2004) and of the days with "
-            "Tmean > 10 °C of each calendar year (Selyaninov, 1928), with the nine "
-            "classes of Skowera and Puła. Needs daily P [mm] and Tmean [°C]."
+            "temperature times its days; Skowera and Puła, 2004) and of the season: "
+            "the days of April–September with Tmean > 10 °C of each year (Miś, 2026, "
+            "eq. 4), with the nine classes of Skowera and Puła. Needs daily P [mm] "
+            "and Tmean [°C]."
         ),
         result_schema="hydrolog-meteo-hydrothermal/1",
         cardinality="bounded",
-        rules=("The season needs both values on every day of the year.",),
-        rules_pl=("Okres wymaga obu wartości w każdym dniu roku.",),
+        rules=("The season needs both values on every day of April–September.",),
+        rules_pl=("Sezon wymaga obu wartości w każdym dniu kwietnia–września.",),
         errors=_ERRORS,
         example_results=(
             {"first_year": 2019, "period": {"mean_season_class": "optimal"}},

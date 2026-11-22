@@ -1,0 +1,20 @@
+# tool: Kartograf 0.8.2 (git tag v0.8.2, commit 66197871f468869b437e8256e04bd00a0ea7c6aa), kartograf.hydrology.hsg
+# packages: kartograf 0.8.2, numpy 2.5.4, python 3.15.0
+# platform: Linux-6.12.94+deb13-amd64-x86_64-with-glibc2.41
+# date: 2026-11-19
+# script: tests/oracles/kartograf_texture_oracle.py
+# classes: 1=sand 2=loamy_sand 3=sandy_loam 4=loam 5=silt_loam 6=silt 7=sandy_clay_loam 8=clay_loam 9=silty_clay_loam 10=sandy_clay 11=silty_clay 12=clay
+# contents: TEXTURE_TO_HSG and RAWLS_1982_KSAT_CM_H (cm/h, Rawls et al. 1982; empty where Kartograf has none) of kartograf.hydrology.hsg
+texture_class,hsg,rawls_1982_ksat_cm_h
+sand,A,21.0
+loamy_sand,A,6.11
+sandy_loam,B,2.59
+loam,B,1.32
+silt_loam,B,0.68
+silt,B,0.68
+sandy_clay_loam,C,0.43
+clay_loam,C,0.23
+silty_clay_loam,C,0.15
+sandy_clay,D,0.12
+silty_clay,D,0.09
+clay,D,0.06

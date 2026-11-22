@@ -1,0 +1,310 @@
+[
+  {
+    "formula": "relief_ratio",
+    "case_id": "bascik2006-raclawka",
+    "source": {
+      "citation": "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34",
+      "url": "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content",
+      "access": "open",
+      "locator": "p. 33, example 1 of eq. (1.2.15): the Racławka, 16.3 km long, from its sources at 390 m to its mouth at 242 m a.s.l.: (390 - 242) / 16.3 = 9.1 per mille"
+    },
+    "inputs": {
+      "elevation_min_m": 242.0,
+      "elevation_max_m": 390.0,
+      "length_km": 16.3
+    },
+    "expected": {
+      "relief_ratio": 0.0091
+    },
+    "printed_precision": {
+      "elevation_min_m": 1.0,
+      "elevation_max_m": 1.0,
+      "length_km": 0.1,
+      "relief_ratio": 0.0001
+    },
+    "conventions": [
+      "the drop of a river over its length, Baścik's slope of a river (eq. 1.2.15): the quotient the spec computes; TerrainAnalysis.channel_slope takes it over the channel length",
+      "the published 9.1 per mille is 0.0091 m/m (1 per mille = 0.001, exact)"
+    ],
+    "second_source": {
+      "citation": "Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material",
+      "locator": "section 2.3: wskaźnik rzeźby zlewni Strahlera Jd = dH / L [m/km]",
+      "url": "https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "relief_ratio",
+    "case_id": "bascik2006-raba",
+    "source": {
+      "citation": "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34",
+      "url": "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content",
+      "access": "open",
+      "locator": "p. 34, example 2: the water surface of the Raba between the gauges Mszana Dolna (km 102.1, 397.17 m a.s.l.) and Stróża (km 80.6, 298.33 m a.s.l.) on 1 November 1980: 98.84 / 21.5 = 4.6 per mille"
+    },
+    "inputs": {
+      "elevation_min_m": 298.33,
+      "elevation_max_m": 397.17,
+      "length_km": 21.5
+    },
+    "expected": {
+      "relief_ratio": 0.0046
+    },
+    "printed_precision": {
+      "elevation_min_m": 0.01,
+      "elevation_max_m": 0.01,
+      "relief_ratio": 0.0001
+    },
+    "intermediate_rounding": [
+      {
+        "step": "the distance 21.5 km is the difference of two chainages printed to 0.1 km (102.1 - 80.6), so it may be off by 0.1 km: 98.84 / 21.4 - 98.84 / 21.5 = 0.0215 per mille",
+        "effect": {
+          "relief_ratio": 2.2e-05
+        }
+      }
+    ],
+    "conventions": [
+      "the drop of a water surface over the distance between two gauges, the quotient the spec computes",
+      "the published 4.6 per mille is 0.0046 m/m"
+    ],
+    "second_source": {
+      "citation": "Wartalska, K. Hydrologia i ochrona wód, ćwiczenia, cz. 2: Podstawowe wskaźniki charakteryzujące zlewnię. Politechnika Wrocławska, course material",
+      "locator": "section 2.3: wskaźnik rzeźby zlewni Strahlera Jd = dH / L [m/km]",
+      "url": "https://wis.pwr.edu.pl/download/IjJmY2BjNFWCQpYzskenQnH0gkIw4dLS8zLjlyTXULMRckZjYEKH0FdSl6CBQoKGAveTAPHAAqEWwVBThNdwtoXm5kPQ4,dGJn01DTQ1HGYZeTIYPzM9NWQ0IggOPCpufFZwKnZ7LB0lZjoJNX4YdRRgeAsnbyB0Iml_XkA/hydrologia_i_ochrona_wod_-_cz_2_10.pdf",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "strahler_order",
+    "case_id": "strahler-source",
+    "source": {
+      "citation": "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34",
+      "url": "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content",
+      "access": "open",
+      "locator": "p. 28: a source stream is of order 1, two streams of order u form one of order u + 1, and where streams of different orders join, the stream below keeps the higher order (a source stream)"
+    },
+    "inputs": {
+      "upstream_orders": []
+    },
+    "expected": {
+      "order": 1
+    },
+    "conventions": [
+      "Strahler's orders of the streams meeting at a junction, in any order"
+    ],
+    "second_source": {
+      "citation": "Rai, P.K., Mohan, K., Mishra, S., Ahmad, A. & Mishra, V.N. (2014). A GIS-based approach in drainage morphometric analysis of Kanhar River Basin, India. Applied Water Science 7: 217-232",
+      "locator": "Introduction and 'Extraction of drainage network': a segment with no tributaries is a first-order stream; where two first-order stream segments join, they form a second-order stream segment and so on (after Strahler)",
+      "url": "https://doi.org/10.1007/s13201-014-0238-y",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "strahler_order",
+    "case_id": "strahler-two-first",
+    "source": {
+      "citation": "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34",
+      "url": "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content",
+      "access": "open",
+      "locator": "p. 28: a source stream is of order 1, two streams of order u form one of order u + 1, and where streams of different orders join, the stream below keeps the higher order (two streams of order 1 form one of order 2)"
+    },
+    "inputs": {
+      "upstream_orders": [
+        1.0,
+        1.0
+      ]
+    },
+    "expected": {
+      "order": 2
+    },
+    "conventions": [
+      "Strahler's orders of the streams meeting at a junction, in any order"
+    ],
+    "second_source": {
+      "citation": "Rai, P.K., Mohan, K., Mishra, S., Ahmad, A. & Mishra, V.N. (2014). A GIS-based approach in drainage morphometric analysis of Kanhar River Basin, India. Applied Water Science 7: 217-232",
+      "locator": "Introduction and 'Extraction of drainage network': a segment with no tributaries is a first-order stream; where two first-order stream segments join, they form a second-order stream segment and so on (after Strahler)",
+      "url": "https://doi.org/10.1007/s13201-014-0238-y",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "strahler_order",
+    "case_id": "strahler-two-second",
+    "source": {
+      "citation": "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34",
+      "url": "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content",
+      "access": "open",
+      "locator": "p. 28: a source stream is of order 1, two streams of order u form one of order u + 1, and where streams of different orders join, the stream below keeps the higher order (two streams of order 2 form one of order 3)"
+    },
+    "inputs": {
+      "upstream_orders": [
+        2.0,
+        2.0
+      ]
+    },
+    "expected": {
+      "order": 3
+    },
+    "conventions": [
+      "Strahler's orders of the streams meeting at a junction, in any order"
+    ],
+    "second_source": {
+      "citation": "Rai, P.K., Mohan, K., Mishra, S., Ahmad, A. & Mishra, V.N. (2014). A GIS-based approach in drainage morphometric analysis of Kanhar River Basin, India. Applied Water Science 7: 217-232",
+      "locator": "Introduction and 'Extraction of drainage network': a segment with no tributaries is a first-order stream; where two first-order stream segments join, they form a second-order stream segment and so on (after Strahler)",
+      "url": "https://doi.org/10.1007/s13201-014-0238-y",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "strahler_order",
+    "case_id": "strahler-lower-tributary",
+    "source": {
+      "citation": "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34",
+      "url": "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content",
+      "access": "open",
+      "locator": "p. 28: a source stream is of order 1, two streams of order u form one of order u + 1, and where streams of different orders join, the stream below keeps the higher order (a tributary of a lower order keeps the higher order)"
+    },
+    "inputs": {
+      "upstream_orders": [
+        2.0,
+        1.0
+      ]
+    },
+    "expected": {
+      "order": 2
+    },
+    "conventions": [
+      "Strahler's orders of the streams meeting at a junction, in any order"
+    ],
+    "second_source": {
+      "citation": "Rai, P.K., Mohan, K., Mishra, S., Ahmad, A. & Mishra, V.N. (2014). A GIS-based approach in drainage morphometric analysis of Kanhar River Basin, India. Applied Water Science 7: 217-232",
+      "locator": "Introduction and 'Extraction of drainage network': a segment with no tributaries is a first-order stream; where two first-order stream segments join, they form a second-order stream segment and so on (after Strahler)",
+      "url": "https://doi.org/10.1007/s13201-014-0238-y",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "strahler_order",
+    "case_id": "strahler-third-and-second",
+    "source": {
+      "citation": "Baścik, M. (2006). Parametry fizjograficzne. In: Pociask-Karteczka, J. (ed.), Zlewnia. Właściwości i procesy. Wydawnictwo Uniwersytetu Jagiellońskiego, Kraków, pp. 21-34",
+      "url": "https://ruj.uj.edu.pl/server/api/core/bitstreams/c5c7e7e9-5f46-4b35-8758-05c7c8201f48/content",
+      "access": "open",
+      "locator": "p. 28: a source stream is of order 1, two streams of order u form one of order u + 1, and where streams of different orders join, the stream below keeps the higher order (streams of orders 3 and 2 join: the higher, 3)"
+    },
+    "inputs": {
+      "upstream_orders": [
+        3.0,
+        2.0
+      ]
+    },
+    "expected": {
+      "order": 3
+    },
+    "conventions": [
+      "Strahler's orders of the streams meeting at a junction, in any order"
+    ],
+    "second_source": {
+      "citation": "Rai, P.K., Mohan, K., Mishra, S., Ahmad, A. & Mishra, V.N. (2014). A GIS-based approach in drainage morphometric analysis of Kanhar River Basin, India. Applied Water Science 7: 217-232",
+      "locator": "Introduction and 'Extraction of drainage network': a segment with no tributaries is a first-order stream; where two first-order stream segments join, they form a second-order stream segment and so on (after Strahler)",
+      "url": "https://doi.org/10.1007/s13201-014-0238-y",
+      "access": "open"
+    },
+    "status": "second_source"
+  },
+  {
+    "formula": "shreve_magnitude",
+    "case_id": "shreve-source",
+    "source": {
+      "citation": "Esri. How Stream Order works. ArcGIS Pro 3.8 documentation, Spatial Analyst",
+      "url": "https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/how-stream-order-works.htm",
+      "access": "open",
+      "locator": "'Shreve method': all exterior links are assigned an order of 1 (a link without upstream links)"
+    },
+    "inputs": {
+      "upstream_magnitudes": []
+    },
+    "expected": {
+      "magnitude": 1
+    },
+    "conventions": [
+      "Shreve's magnitudes of the links meeting at a junction, in any order"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "shreve_magnitude",
+    "case_id": "shreve-two-first",
+    "source": {
+      "citation": "Esri. How Stream Order works. ArcGIS Pro 3.8 documentation, Spatial Analyst",
+      "url": "https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/how-stream-order-works.htm",
+      "access": "open",
+      "locator": "'Shreve method': the intersection of two first-order links creates a second-order link"
+    },
+    "inputs": {
+      "upstream_magnitudes": [
+        1.0,
+        1.0
+      ]
+    },
+    "expected": {
+      "magnitude": 2
+    },
+    "conventions": [
+      "Shreve's magnitudes of the links meeting at a junction, in any order"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "shreve_magnitude",
+    "case_id": "shreve-first-and-second",
+    "source": {
+      "citation": "Esri. How Stream Order works. ArcGIS Pro 3.8 documentation, Spatial Analyst",
+      "url": "https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/how-stream-order-works.htm",
+      "access": "open",
+      "locator": "'Shreve method': the intersection of a first-order and second-order link creates a third-order link"
+    },
+    "inputs": {
+      "upstream_magnitudes": [
+        1.0,
+        2.0
+      ]
+    },
+    "expected": {
+      "magnitude": 3
+    },
+    "conventions": [
+      "Shreve's magnitudes of the links meeting at a junction, in any order"
+    ],
+    "status": "single_source"
+  },
+  {
+    "formula": "shreve_magnitude",
+    "case_id": "shreve-second-and-third",
+    "source": {
+      "citation": "Esri. How Stream Order works. ArcGIS Pro 3.8 documentation, Spatial Analyst",
+      "url": "https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/how-stream-order-works.htm",
+      "access": "open",
+      "locator": "'Shreve method': the intersection of a second-order and third-order link creates a fifth-order link"
+    },
+    "inputs": {
+      "upstream_magnitudes": [
+        2.0,
+        3.0
+      ]
+    },
+    "expected": {
+      "magnitude": 5
+    },
+    "conventions": [
+      "Shreve's magnitudes of the links meeting at a junction, in any order"
+    ],
+    "status": "single_source"
+  }
+]

@@ -212,6 +212,15 @@ def _check_bounds(option: Option, number: float, index: int | None) -> None:
             exclusive_minimum=option.exclusive_minimum,
             value=number,
         )
+    if option.exclusive_maximum is not None and number >= option.exclusive_maximum:
+        _fail(
+            option,
+            index,
+            "exclusive_maximum",
+            f"must be < {option.exclusive_maximum:g}, got {number:g}",
+            exclusive_maximum=option.exclusive_maximum,
+            value=number,
+        )
 
 
 def _number(option: Option, value: object, index: int | None = None) -> float:
@@ -437,8 +446,9 @@ class Option:
         Allowed values; required for ``choice`` and forbidden for other types.
     minimum, maximum : float, optional
         Inclusive bounds of ``number``/``integer``/``number_list`` (per item).
-    exclusive_minimum : float, optional
-        Exclusive lower bound; not combinable with ``minimum``.
+    exclusive_minimum, exclusive_maximum : float, optional
+        Exclusive bounds (per item of ``number_list``); ``exclusive_minimum`` is not
+        combinable with ``minimum``, ``exclusive_maximum`` not with ``maximum``.
     unit : str, optional
         Unit of the value (``"km"``, ``"m/m"``, ``"mm"``, ``"min"``, ``"km2"``,
         ``"m3/s"``...).
@@ -465,6 +475,7 @@ class Option:
     minimum: float | None = None
     maximum: float | None = None
     exclusive_minimum: float | None = None
+    exclusive_maximum: float | None = None
     unit: str | None = None
     path_role: PathRole | None = None
     meanings: Mapping[str, str] = field(default_factory=dict)
@@ -527,6 +538,7 @@ class Option:
             "minimum": self.minimum,
             "maximum": self.maximum,
             "exclusive_minimum": self.exclusive_minimum,
+            "exclusive_maximum": self.exclusive_maximum,
         }
         given = {key: value for key, value in bounds.items() if value is not None}
         if given and self.type not in _NUMERIC_TYPES:
@@ -540,9 +552,14 @@ class Option:
                 raise bad(f"{key} must be a finite number")
         if self.minimum is not None and self.exclusive_minimum is not None:
             raise bad("minimum and exclusive_minimum are mutually exclusive")
+        if self.maximum is not None and self.exclusive_maximum is not None:
+            raise bad("maximum and exclusive_maximum are mutually exclusive")
         lower = self.minimum if self.minimum is not None else self.exclusive_minimum
         if lower is not None and self.maximum is not None and lower > self.maximum:
             raise bad("the lower bound exceeds maximum")
+        upper = self.exclusive_maximum
+        if lower is not None and upper is not None and lower >= upper:
+            raise bad("the lower bound must be below exclusive_maximum")
         if self.type == "path":
             if self.path_role not in get_args(PathRole):
                 raise bad("a path option needs path_role 'input' or 'output'")
@@ -604,8 +621,8 @@ class Option:
             If the value has the wrong type or violates a bound, the choices or an
             emptiness rule. ``details`` hold ``option``, ``reason`` (``type``,
             ``not_finite``, ``minimum``, ``maximum``, ``exclusive_minimum``,
-            ``choice``, ``empty``, ``invalid_path``), the offending ``value`` and,
-            for list items, the ``index``.
+            ``exclusive_maximum``, ``choice``, ``empty``, ``invalid_path``), the
+            offending ``value`` and, for list items, the ``index``.
         """
         return _NORMALIZERS[self.type](self, value)
 
@@ -621,9 +638,10 @@ class Option:
         -------
         dict
             Property schema: ``type`` and constraints (``minimum``, ``maximum``,
-            ``exclusiveMinimum``, ``enum``, ``minItems``...), ``description`` (with
-            the unit in brackets when the text does not name it), ``default`` and
-            for paths ``x-hydrolog-type`` (and ``x-hydrolog-writes``).
+            ``exclusiveMinimum``, ``exclusiveMaximum``, ``enum``, ``minItems``...),
+            ``description`` (with the unit in brackets when the text does not name
+            it), ``default`` and for paths ``x-hydrolog-type`` (and
+            ``x-hydrolog-writes``).
         """
         schema: dict[str, Any] = {}
         bounds: dict[str, Any] = {}
@@ -633,6 +651,8 @@ class Option:
             bounds["maximum"] = self.maximum
         if self.exclusive_minimum is not None:
             bounds["exclusiveMinimum"] = self.exclusive_minimum
+        if self.exclusive_maximum is not None:
+            bounds["exclusiveMaximum"] = self.exclusive_maximum
         if self.type in ("number", "integer"):
             schema = {"type": self.type, **bounds}
         elif self.type == "string":

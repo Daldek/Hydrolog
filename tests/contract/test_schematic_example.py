@@ -53,7 +53,8 @@ def usage_network() -> RoutingNetwork:
         flow_path_slope_m_per_m=0.0229,
     )
     model = CurveNumberRunoff(tc_method="kirpich")
-    storm = DesignStorm(45.0, 60.0, EulerIIHietogram())
+    curve = {5: 13.11, 10: 20.48, 15: 24.99, 30: 33.1, 45: 38.09, 60: 41.77}
+    storm = DesignStorm(41.77, 60.0, EulerIIHietogram(curve))
     record = RainfallSeries([0.0, 2.0, 5.0, 10.0, 12.0, 6.0, 3.0], timestep_min=5.0)
     a = Subcatchment("A", watershed=upper, runoff=model, rainfall=storm)
     b = Subcatchment("B", watershed=lower, runoff=model, rainfall=record)

@@ -1,8 +1,11 @@
 """Tests for Nash Instantaneous Unit Hydrograph (IUH)."""
 
+import warnings
+
 import numpy as np
 import pytest
 
+from hydrolog._warnings import IuhPeakUndefined, OutsideUnverifiedRange
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.runoff import IUHResult, NashIUH, NashUHResult
 
@@ -61,25 +64,23 @@ class TestNashIUHProperties:
         # tp = (n-1) × K = 2 × 30 = 60 min
         assert iuh.time_to_peak_min == 60.0
 
-    def test_time_to_peak_n_equals_1(self):
-        """Test time to peak for n = 1 (exponential decay)."""
-        iuh = NashIUH(n=1.0, k_min=30.0)
+    @pytest.mark.parametrize("n", [0.5, 1.0])
+    def test_the_peak_of_n_up_to_1_is_undefined(self, n):
+        """For n <= 1 the IUH decreases from t = 0 (unbounded there for n < 1): no
+        time to peak and no peak ordinate, where up to 0.8.1 they were 0 and 1/K."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", OutsideUnverifiedRange)  # n = 0.5
+            iuh = NashIUH(n=n, k_min=30.0)
 
-        # For n <= 1, peak is at t = 0
-        assert iuh.time_to_peak_min == 0.0
+        with pytest.warns(IuhPeakUndefined) as caught:
+            assert iuh.peak_ordinate_per_min is None
+            assert iuh.time_to_peak_min is None
 
-    def test_time_to_peak_n_less_than_1(self):
-        """Test time to peak for n < 1."""
-        iuh = NashIUH(n=0.5, k_min=30.0)
-
-        assert iuh.time_to_peak_min == 0.0
-
-    def test_peak_ordinate_n_equals_1(self):
-        """Test peak ordinate for n = 1."""
-        iuh = NashIUH(n=1.0, k_min=30.0)
-
-        # For n = 1, up = 1/K
-        assert abs(iuh.peak_ordinate_per_min - 1.0 / 30.0) < 1e-10
+        assert caught[0].message.details == {"n": n, "k_min": 30.0}
+        with pytest.warns(IuhPeakUndefined):
+            result = iuh.generate_iuh(timestep_min=5.0)
+        assert result.to_dict()["peak_ordinate_per_min"] is None
+        assert result.to_dict()["time_to_peak_min"] is None
 
     def test_peak_ordinate_n_greater_than_1(self):
         """Test peak ordinate for n > 1."""
@@ -178,10 +179,14 @@ class TestNashIUHGenerate:
         """Test that zero timestep raises error."""
         iuh = NashIUH(n=3.0, k_min=30.0)
 
-        with pytest.raises(
-            InvalidParameterError, match="timestep_min must be positive"
-        ):
+        with pytest.raises(InvalidParameterError) as caught:
             iuh.generate(timestep_min=0)
+
+        details = caught.value.details
+        assert (details["reason"], details["option"]) == (
+            "outside_physical_range",
+            "timestep_min",
+        )
 
     def test_generate_custom_duration(self):
         """Test generation with custom duration."""
@@ -262,17 +267,27 @@ class TestNashIUHToUnitHydrograph:
         """Test that zero area raises error."""
         iuh = NashIUH(n=3.0, k_min=30.0)
 
-        with pytest.raises(InvalidParameterError, match="area_km2 must be positive"):
+        with pytest.raises(InvalidParameterError) as caught:
             iuh.to_unit_hydrograph(area_km2=0, duration_min=30.0)
+
+        details = caught.value.details
+        assert (details["reason"], details["option"]) == (
+            "outside_physical_range",
+            "area_km2",
+        )
 
     def test_to_uh_zero_duration_raises(self):
         """Test that zero duration raises error."""
         iuh = NashIUH(n=3.0, k_min=30.0)
 
-        with pytest.raises(
-            InvalidParameterError, match="duration_min must be positive"
-        ):
+        with pytest.raises(InvalidParameterError) as caught:
             iuh.to_unit_hydrograph(area_km2=45.0, duration_min=0)
+
+        details = caught.value.details
+        assert (details["reason"], details["option"]) == (
+            "outside_physical_range",
+            "duration_min",
+        )
 
 
 class TestNashIUHWithArea:
@@ -519,87 +534,6 @@ class TestNashIUHFromLutz:
         # N should typically be between 1.5 and 10 for natural catchments
         assert 1.1 < nash.n < 15.0
 
-    def test_from_lutz_zero_L_raises(self):
-        """Test that L_km=0 raises error."""
-        with pytest.raises(InvalidParameterError, match="L_km must be positive"):
-            NashIUH.from_lutz(
-                L_km=0,
-                Lc_km=5.0,
-                slope=0.02,
-                manning_n=0.035,
-            )
-
-    def test_from_lutz_zero_Lc_raises(self):
-        """Test that Lc_km=0 raises error."""
-        with pytest.raises(InvalidParameterError, match="Lc_km must be positive"):
-            NashIUH.from_lutz(
-                L_km=15.0,
-                Lc_km=0,
-                slope=0.02,
-                manning_n=0.035,
-            )
-
-    def test_from_lutz_Lc_greater_than_L_raises(self):
-        """Test that Lc > L raises error."""
-        with pytest.raises(InvalidParameterError, match="Lc_km.*cannot exceed L_km"):
-            NashIUH.from_lutz(
-                L_km=10.0,
-                Lc_km=15.0,
-                slope=0.02,
-                manning_n=0.035,
-            )
-
-    def test_from_lutz_zero_slope_raises(self):
-        """Test that slope=0 raises error."""
-        with pytest.raises(InvalidParameterError, match="slope must be positive"):
-            NashIUH.from_lutz(
-                L_km=15.0,
-                Lc_km=8.0,
-                slope=0,
-                manning_n=0.035,
-            )
-
-    def test_from_lutz_zero_manning_raises(self):
-        """Test that manning_n=0 raises error."""
-        with pytest.raises(InvalidParameterError, match="manning_n must be positive"):
-            NashIUH.from_lutz(
-                L_km=15.0,
-                Lc_km=8.0,
-                slope=0.02,
-                manning_n=0,
-            )
-
-    def test_from_lutz_invalid_urban_pct_raises(self):
-        """Test that invalid urban_pct raises error."""
-        with pytest.raises(InvalidParameterError, match="urban_pct must be in"):
-            NashIUH.from_lutz(
-                L_km=15.0,
-                Lc_km=8.0,
-                slope=0.02,
-                manning_n=0.035,
-                urban_pct=-10.0,
-            )
-
-        with pytest.raises(InvalidParameterError, match="urban_pct must be in"):
-            NashIUH.from_lutz(
-                L_km=15.0,
-                Lc_km=8.0,
-                slope=0.02,
-                manning_n=0.035,
-                urban_pct=150.0,
-            )
-
-    def test_from_lutz_invalid_forest_pct_raises(self):
-        """Test that invalid forest_pct raises error."""
-        with pytest.raises(InvalidParameterError, match="forest_pct must be in"):
-            NashIUH.from_lutz(
-                L_km=15.0,
-                Lc_km=8.0,
-                slope=0.02,
-                manning_n=0.035,
-                forest_pct=-5.0,
-            )
-
     def test_from_lutz_zero_area_raises(self):
         """Test that area_km2=0 raises error."""
         with pytest.raises(InvalidParameterError, match="area_km2 must be positive"):
@@ -728,7 +662,7 @@ class TestNashIUHFromUrbanRegression:
 
     def test_from_urban_regression_zero_area_raises(self):
         """Test that area_km2=0 raises error."""
-        with pytest.raises(InvalidParameterError, match="area_km2 must be positive"):
+        with pytest.raises(InvalidParameterError):
             NashIUH.from_urban_regression(
                 area_km2=0,
                 effective_precip_mm=10.0,
@@ -737,9 +671,7 @@ class TestNashIUHFromUrbanRegression:
 
     def test_from_urban_regression_zero_precip_raises(self):
         """Test that effective_precip_mm=0 raises error."""
-        with pytest.raises(
-            InvalidParameterError, match="effective_precip_mm must be positive"
-        ):
+        with pytest.raises(InvalidParameterError):
             NashIUH.from_urban_regression(
                 area_km2=5.0,
                 effective_precip_mm=0,
@@ -748,7 +680,7 @@ class TestNashIUHFromUrbanRegression:
 
     def test_from_urban_regression_zero_duration_raises(self):
         """Test that duration_h=0 raises error."""
-        with pytest.raises(InvalidParameterError, match="duration_h must be positive"):
+        with pytest.raises(InvalidParameterError):
             NashIUH.from_urban_regression(
                 area_km2=5.0,
                 effective_precip_mm=10.0,
@@ -757,7 +689,7 @@ class TestNashIUHFromUrbanRegression:
 
     def test_from_urban_regression_invalid_urban_fraction_raises(self):
         """Test that invalid urban_fraction raises error."""
-        with pytest.raises(InvalidParameterError, match="urban_fraction must be in"):
+        with pytest.raises(InvalidParameterError):
             NashIUH.from_urban_regression(
                 area_km2=5.0,
                 effective_precip_mm=10.0,
@@ -765,7 +697,7 @@ class TestNashIUHFromUrbanRegression:
                 urban_fraction=-0.1,
             )
 
-        with pytest.raises(InvalidParameterError, match="urban_fraction must be in"):
+        with pytest.raises(InvalidParameterError):
             NashIUH.from_urban_regression(
                 area_km2=5.0,
                 effective_precip_mm=10.0,

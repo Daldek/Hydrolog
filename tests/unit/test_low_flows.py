@@ -29,14 +29,17 @@ class TestLowFlowAnalysis:
         assert len(minima) == 3
         assert min(minima) == 1.0
 
-    def test_fit_fisher_tippett(self, daily_flow_data):
+    def test_three_years_are_too_few_for_three_parameters(self, daily_flow_data):
+        """Maximum likelihood needs more annual minima than its three parameters."""
+        from hydrolog.exceptions import InvalidParameterError
         from hydrolog.statistics.low_flows import LowFlowAnalysis
 
         dates, values = daily_flow_data
         lfa = LowFlowAnalysis(values, dates)
-        result = lfa.fit_fisher_tippett()
-        assert result.distribution_name == "fisher_tippett"
-        assert len(result.quantiles) > 0
+        with pytest.raises(InvalidParameterError) as caught:
+            lfa.fit_fisher_tippett()
+        assert caught.value.details["reason"] == "precondition_failed"
+        assert caught.value.details["constraint"] == "enough_values"
 
     def test_empirical_frequency(self, daily_flow_data):
         from hydrolog.statistics.low_flows import LowFlowAnalysis
@@ -223,10 +226,11 @@ class TestFisherTippettForMinima:
     def test_recovers_the_quantiles_of_a_gumbel_minimum_distribution(self):
         from scipy.stats import gumbel_l
 
-        truth = gumbel_l(loc=50.0, scale=8.0)
+        # loc 80: the smallest of the 1000 minima, 80 - 61 m3/s, is no negative flow
+        truth = gumbel_l(loc=80.0, scale=8.0)
         result = self._fit(truth)
         assert result.parameters["shape"] == pytest.approx(0.0, abs=0.02)
-        assert result.parameters["loc"] == pytest.approx(50.0, abs=0.5)
+        assert result.parameters["loc"] == pytest.approx(80.0, abs=0.5)
         assert result.parameters["scale"] == pytest.approx(8.0, abs=0.2)
         np.testing.assert_allclose(
             result.quantiles, truth.ppf(1.0 / self.RETURN_PERIODS), rtol=0.02

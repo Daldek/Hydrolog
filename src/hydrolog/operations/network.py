@@ -54,15 +54,17 @@ class NetworkAnalysis(JsonResultMixin):
     method : str
         Ordering method: ``"strahler"`` or ``"shreve"``.
     n_segments : int
-        Number of segments in the network.
+        Number of segments given (links between junctions).
     stream_frequency_per_km2 : float or None
-        Stream frequency Fs = number of segments / area [1/km2]; ``None`` without
-        ``area_km2``.
+        Stream frequency Fs = number of Strahler streams of all orders / area
+        [1/km2] (Horton 1945; Strahler 1957; Baścik 2006, eq. 1.2.22), for either
+        method; ``None`` without ``area_km2``.
     statistics : NetworkStatistics
-        Maximum order, segment counts, total and mean lengths per order,
-        bifurcation and length ratios, total stream length [km] and drainage density
-        [km/km2] (``None`` without ``area_km2``). Dictionaries are keyed by the order
-        (a string in JSON).
+        Maximum order, number of streams per order (``segment_counts``), total and
+        mean stream lengths per order, Horton's bifurcation and length ratios
+        (Strahler only, empty for Shreve), total stream length [km] and drainage
+        density [km/km2] (``None`` without ``area_km2``). Dictionaries are keyed by
+        the order (a string in JSON).
     """
 
     method: str
@@ -280,12 +282,15 @@ def network_stats(
     """Stream ordering and network statistics (``network stats``).
 
     Orders the segments of a river network with the Strahler or Shreve method and
-    summarizes the network: segments and lengths per order, bifurcation ratios
-    ``Rb = N_i / N_(i+1)``, length ratios ``Rl = mean length_(i+1) / mean length_i``,
-    total stream length and, with ``area_km2``, drainage density and stream frequency
-    (:class:`hydrolog.network.StreamNetwork`). The ratios have their Horton meaning
-    for the Strahler orders; for Shreve magnitudes they are formal ratios between
-    consecutive magnitudes.
+    summarizes the network per order: the number of streams (a segment continues the
+    stream of the segment upstream of it with the same order, so a stream runs from
+    where its order begins to its junction with an equal or higher order, Strahler
+    1957; for Shreve, the links between confluences), their total and mean lengths,
+    and for Strahler orders only Horton's bifurcation ratios ``Rb = N_u / N_(u+1)``
+    and length ratios ``Rl = mean length_(u+1) / mean length_u``; then the total
+    stream length and, with ``area_km2``, drainage density and stream frequency (the
+    number of Strahler streams per km2 for either method)
+    (:class:`hydrolog.network.StreamNetwork`).
 
     Parameters
     ----------
@@ -345,7 +350,7 @@ def network_stats(
     frequency = (
         None
         if area_km2 is None
-        else stream_frequency(n_streams=network.n_segments, area_km2=area_km2)
+        else stream_frequency(n_streams=network.n_streams, area_km2=area_km2)
     )
     return NetworkAnalysis(
         method=method,

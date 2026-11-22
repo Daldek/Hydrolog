@@ -22,13 +22,17 @@ import { lines as kitLines } from "../nogat/nogat-sources.js";
 /** No lines: a product without provider data. */
 export const NO_LINES = Object.freeze({ attribution: Object.freeze([]), terms_notice: Object.freeze([]) });
 
-/** The CSV columns that hold lines, not data (DEV-20.5, Obserwator's two of its export). */
+/** The CSV columns that hold lines, not data (DEV-20.5, and the two more of an export of Obserwator 3.0.x or older). */
 export const LINE_COLUMNS = Object.freeze(["attribution", "terms_notice", "attribution_source", "attribution_processed"]);
 
-/** How the series of a hand-off without lines names its provider, by provider. */
+/**
+ * How the series of a hand-off without lines names its provider, by provider: by the names
+ * of Nogat ECO-082 (`IMGW`, `pl.imgw.…`; `CHMU`, `cz.chmu.…`) and, in a hand-off written
+ * before them, by the old ones (`IMGW-PIB`; `CHMI`, `cz.chmi.…`), since such files exist.
+ */
 const PROVIDER_NAMES = Object.freeze([
   { provider: "imgw", pattern: /^(imgw([-_ ]?pib)?|pl\.imgw(\..+)?)$/ },
-  { provider: "chmi", pattern: /^(chmi|chmu|cz\.chmi(\..+)?)$/ },
+  { provider: "chmu", pattern: /^(chm[ui]|cz\.chm[ui](\..+)?)$/ },
 ]);
 
 /** An address in a line (`https://…`), without the comma or bracket after it. */
@@ -157,7 +161,7 @@ export function linesFields(lines) {
  * The lines of a provider's data as GET api/session gives them.
  *
  * @param {object|null} session hydrolog-gui-session/1, null while it has not arrived
- * @param {string} provider "imgw", "imgw_hydro", "pmaxtp" or "chmi"
+ * @param {string} provider "imgw", "imgw_hydro", "pmaxtp" or "chmu"
  * @returns {{attribution: string[], terms_notice: string[]}|null} the lines, null while
  *   the session is not known
  */
@@ -169,11 +173,12 @@ export function providerLines(session, provider) {
 
 /**
  * The provider a series names in its provenance (`series.provider`, `source` or `dataset`):
- * IMGW-PIB, „imgw-pib” or „pl.imgw.…” is IMGW-PIB's public data, CHMI, ČHMÚ or „cz.chmi.…”
- * ČHMÚ's.
+ * IMGW, „pl.imgw.…” or an older hand-off's IMGW-PIB is IMGW-PIB's public data, CHMU, ČHMÚ,
+ * „cz.chmu.…” or an older one's CHMI, „cz.chmi.…” ČHMÚ's (the name folded: lower case, no
+ * diacritics).
  *
  * @param {unknown} provenance the provenance of a hand-off
- * @returns {"imgw"|"chmi"|null} the provider, null when none is named
+ * @returns {"imgw"|"chmu"|null} the provider, null when none is named
  */
 function providerOf(provenance) {
   const series = isObject(provenance) && isObject(provenance.series) ? provenance.series : null;
