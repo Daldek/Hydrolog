@@ -9,10 +9,10 @@ resolution-markers = [
     "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
     "python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'win32'",
-    "python_full_version < '3.13' and sys_platform == 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
-    "python_full_version < '3.13' and sys_platform == 'emscripten'",
     "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.13' and sys_platform == 'win32'",
+    "python_full_version < '3.13' and sys_platform == 'emscripten'",
     "python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
@@ -758,9 +758,9 @@ requires-dist = [
     { name = "mcp", marker = "extra == 'all'", specifier = ">=2.3,<3" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=2.3,<3" },
     { name = "numpy", specifier = ">=1.24" },
-    { name = "obserwator", marker = "extra == 'all'", git = "https://github.com/Daldek/Obserwator.git?tag=v3.0.1" },
-    { name = "obserwator", marker = "extra == 'gui'", git = "https://github.com/Daldek/Obserwator.git?tag=v3.0.1" },
-    { name = "obserwator", marker = "extra == 'pmaxtp'", git = "https://github.com/Daldek/Obserwator.git?tag=v3.0.1" },
+    { name = "obserwator", marker = "extra == 'all'", git = "https://github.com/Daldek/Obserwator.git?rev=de06926d38e6040f31ef7a82767a6fe20aa26b2e" },
+    { name = "obserwator", marker = "extra == 'gui'", git = "https://github.com/Daldek/Obserwator.git?rev=de06926d38e6040f31ef7a82767a6fe20aa26b2e" },
+    { name = "obserwator", marker = "extra == 'pmaxtp'", git = "https://github.com/Daldek/Obserwator.git?rev=de06926d38e6040f31ef7a82767a6fe20aa26b2e" },
     { name = "platformdirs", specifier = ">=4.0" },
     { name = "pyproj", marker = "extra == 'all'", specifier = ">=3.6" },
     { name = "pyproj", marker = "extra == 'raster'", specifier = ">=3.6" },
@@ -1481,8 +1481,8 @@ wheels = [
 
 [[package]]
 name = "obserwator"
-version = "3.0.1"
-source = { git = "https://github.com/Daldek/Obserwator.git?tag=v3.0.1#533c42ab8ce1facacb1b4590f62d2d05c23990d8" }
+version = "3.1.0.dev0"
+source = { git = "https://github.com/Daldek/Obserwator.git?rev=de06926d38e6040f31ef7a82767a6fe20aa26b2e#de06926d38e6040f31ef7a82767a6fe20aa26b2e" }
 dependencies = [
     { name = "httpx" },
     { name = "platformdirs" },
