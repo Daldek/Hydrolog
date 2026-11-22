@@ -6,7 +6,7 @@ hydrologic soil groups). Profile `tool` (DEV-1.1). It has no data store and down
 nothing, except `precip pmaxtp`, the one command that uses the network: it fetches the
 PMAXTP depth of IMGW-PIB through Obserwator (extra `pmaxtp`, ADR-0018). Otherwise
 Kartograf and Obserwator supply the input files. User documentation:
-[README.md](README.md). Nogat standard 1.0:
+[README.md](README.md). Nogat standard 1.1:
 [DEVELOPMENT_STANDARDS](https://github.com/Daldek/Nogat/blob/main/standards/DEVELOPMENT_STANDARDS.md),
 [AGENT_INTERFACE](https://github.com/Daldek/Nogat/blob/main/standards/AGENT_INTERFACE.md),
 [DOCUMENTATION_STANDARDS](https://github.com/Daldek/Nogat/blob/main/standards/DOCUMENTATION_STANDARDS.md).

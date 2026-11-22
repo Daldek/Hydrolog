@@ -1,7 +1,7 @@
 # Hydrograf ↔ Hydrolog integration
 
 **Created:** 2026-01-20
-**Last updated:** 2026-11-16 (the release 0.8.0 frozen: consumers pin the tag `v0.8.0`; Hydrograf's and Retman's ranges of 0.8.0.dev0; audited against the code on 2026-11-14: Hydrograf's side implemented, the providers' lines, the GUI kit 1.0.0)
+**Last updated:** 2026-11-22 (the release 0.9.0: consumers pin the tag `v0.9.0`, Hydrograf's range `>=0.9.0,<0.10`; Nogat's GUI kit 1.1.0, file names of Nogat DEV-19.21, Archiwista's hand-off `archiwista_handoff_<subject>.json`; earlier: audited against the code on 2026-11-14, Hydrograf's side implemented, the providers' lines)
 **Status:** Implemented (Hydrolog - ready; Hydrograf - morphometry and the hand-off implemented)
 
 ---
@@ -167,7 +167,7 @@ relief = params.relief_m   # max - min
 **Status:** ✅ Implemented, in Hydrograf's own way (its repository; its account of the integration is `docs/integrations/HYDROLOG.md`)
 
 - `POST /api/delineate-watershed` returns `watershed.morphometry`, the Pydantic model `MorphometricParameters` (`backend/models/schemas.py`) built by `build_morph_dict_from_graph()` (`backend/core/watershed_service.py`): the keys of `WatershedParameters` and Hydrograf's own (e.g. `hydraulic_length_km`, the value of `flow_path_length_km`), which `WatershedParameters.from_dict()` ignores.
-- Hydrograf depends on `hydrolog>=0.8.0.dev0,<0.9` (`backend/pyproject.toml`, since its `1b3387f` of 2026-11-14, Nogat REL-5.6; pinned to a Hydrolog commit in `[tool.uv.sources]`) and computes its design hydrograph with it.
+- Hydrograf depends on `hydrolog>=0.9.0,<0.10` (`backend/pyproject.toml`, Nogat REL-5.6; its release pins Hydrolog's tag `v0.9.0` in `[tool.uv.sources]`) and computes its design hydrograph with it.
 - It hands a watershed or a delineated network to Hydrolog's GUI as `nogat-handoff/1` (`backend/core/handoff.py`; see "Web GUI: the hand-off with Hydrograf" below).
 
 ---
@@ -321,7 +321,7 @@ Retman calls Hydrolog through the command layer, not through the library classes
 - **Catalog and envelope:** `hydrolog.catalog.run_command("<group> <command>", {options})` (also `hydrolog.run_command`) validates the options, runs the operation and returns a `hydrolog-result/1` envelope (`schema`, `tool`, `version`, `command`, `check`, `status`, `result`, `notices`, `inputs`, `attribution` and `terms_notice`, the providers' lines of Nogat DEV §20, when the run has them, and `formula_versions`, the `formula_version` of each formula with a spec behind the result, which a store keeps with `version` to find the results of a formula that changes, Nogat CMP-2.8; the files written are in `result.files[]` with SHA-256; `to_dict()`, `to_json()`). Option schema (JSON Schema): `command_schema()`, `hydrolog commands schema`. Errors are `HydrologError` exceptions with `code`, `hint` and `details` (registry `ERROR_CODES`; document `hydrolog-error/1`).
 - **`catchment_characteristics`:** the proposed format is `WatershedParameters` JSON (`WatershedParameters.to_json()`; only `area_km2` is required, a command that needs a missing field names it in `details.option` with `details.reason` `missing_field`). The file is passed to commands as `watershed_file`, and `WatershedParameters.from_dict()` ignores the extra `schema` key (e.g. `"hydrolog-catchment/1"`) added by the catalog tools.
 - **File inputs and outputs:** series (`input_file` + `value_column`/`date_column`), rainfall stations (`stations_file`), network segments (`segments_file`) and the watershed (`watershed_file`) as CSV/JSON; results that write files (`soil hsg` - GeoTIFF, `report generate` - Markdown, the `route` commands - hydrograph tables, `commands batch` and `commands guide`; one file given by `--output`, or `route network --output-dir` and `--schematic`; an existing file needs `--force`) list them in `result.files[]`. Retman does not need to paste series into arguments.
-- **Versions:** Hydrolog's release 0.8.0 is frozen (2026-11-16) for the first joint release of the Nogat ecosystem; `develop` carries `0.8.0.dev0` until the release commit. In 0.y a minor release may change options, command names and envelope shapes incompatibly, from 1.0.0 only a major one (Nogat REL-1.1), so a consumer that pins a Hydrolog commit declares `>=0.8.0.dev0,<0.9` (REL-5.6) and, with the tag, pins `git+https://github.com/Daldek/Hydrolog.git@v0.8.0` (REL-5.1) and narrows the range to `>=0.8.0,<0.9`. Retman's tool manifest says `supported_versions=">=0.8.0.dev0,<0.9"` since its `4329dba` (2026-11-14).
+- **Versions:** Hydrolog's release is 0.9.0. In 0.y a minor release may change options, command names and envelope shapes incompatibly, from 1.0.0 only a major one (Nogat REL-1.1), so a consumer declares `>=0.9.0,<0.10` (REL-5.6) and pins `git+https://github.com/Daldek/Hydrolog.git@v0.9.0` (REL-5.1). 0.9.0 breaks 0.8.x callers in several places, among them the notice `outside_applicability` (was `outside_typical_range`) and the table names of `route network --output-dir`; [CHANGELOG.md](CHANGELOG.md) gives each with its migration. Retman's tool manifest still says `supported_versions=">=0.8.0.dev0,<0.9"` (its `4329dba`, 2026-11-14), which does not cover 0.9.0.
 
 ```python
 from hydrolog.catalog import run_command
@@ -345,7 +345,7 @@ envelope = result.to_dict()  # hydrolog-result/1 envelope as a dict (result.to_j
 The MCP server exposes every catalog command but `gui serve` as a tool (name = `operation_id`, e.g. `hydrolog_tc_kirpich`). It requires the `hydrolog[mcp]` extra (`mcp>=2.3,<3`) and runs over stdio.
 
 ```bash
-pip install "hydrolog[mcp,raster] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"
+pip install "hydrolog[mcp,raster] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"
 
 # Claude Code
 claude mcp add hydrolog -- hydrolog mcp --allow-dir ~/hydrolog-data
@@ -372,7 +372,7 @@ The web GUI (`hydrolog gui serve`, extra `gui`; [USAGE.md](USAGE.md#8-the-web-gu
 - **The routes are private.** `GET` and `DELETE api/session` (the session; `DELETE` deletes it and its files), `GET api/terms` (the regulamin and the operator's address for the guide's contents), `POST api/stats/{event}` (one more of a public GUI's daily totals), `GET api/commands`, `GET api/commands/{group}/{verb}`, `GET api/schemas/{file}`, `POST api/run/{group}/{verb}?channel=...`, `POST api/format/{group}/{verb}`, `PUT api/files/in/{name}`, `GET` and `DELETE api/files/{in|out}/{name}` and `POST api/feedback` (a report of „Zgłoś uwagę”) serve this page only: not a REST interface of Hydrolog, with no version and no stability promise (agents use the CLI, MCP and Python). A run answers `hydrolog-result/1` or `hydrolog-error/1` with the registry's HTTP status; paths in answers are relative to the session (`in/x.csv`). The admin routes, `GET api/admin/feedback`, `PATCH` and `DELETE api/admin/feedback/{id}`, `GET api/admin/stats` and `GET api/admin/status`, are Nogat's core admin API (DEV-15.13), with the key of `HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE` in `X-Admin-Key` ([USAGE.md](USAGE.md#reports-of-users-zgłoś-uwagę)).
 - **Embedded.** `?nogat=1` in the page's address hides Hydrolog's top bar and rail before the first paint, and with them „Zgłoś uwagę”, „Instrukcja”, the welcome dialog and a public GUI's links to its regulamin: the host's own chrome takes their place. The theme is the `localStorage` key `nogat-theme` (`auto`, `light`, `dark`), shared by the pages of one origin. The handshake with the host (`postMessage`), the host's theme and a hand-off through the host wait for the platform's kit, which replaces `web/src/host.js`.
 - **Its guide and admin panel.** The user guide is `instrukcja/` relative to the page (static HTML in Polish); a host may link it. The admin panel, Nogat's kit shell with the reports, the daily totals and the server's status, is `admin/` (`admin` answers `308` to it).
-- **The app menu.** „Aplikacje” in the top bar, left of the theme switch, is Nogat's `<nogat-app-menu>` (DEV-15.4, [ADR-0027](decisions/0027-nogats-gui-kit-the-app-menu-and-the-handoff.md)): the GUIs of the deployment's table `gui` of `[nogat]` in `nogat.toml` (`NOGAT_CONFIG` or the user configuration directory), e.g. `gui = { hydrolog = "https://hydrolog.example/", hydrograf = "http://127.0.0.1:8080/", archiwista = "/archiwista/" }`, one key per registry name in lower case, an address absolute or a path on the page's origin. `GET api/session` gives the table as `gui` (`null` without it), read at every request, and the page hands it to the element. An entry opens its GUI in the tab `nogat-<name>`; without another GUI in the table, or inside a host (`?nogat=1` hides the top bar), the menu is not drawn. Nogat's GUI kit 1.0.0 lives in `web/nogat/` beside the tokens and marks, copied byte for byte (DEV-15.6): `nogat-admin.js` and `.css`, `nogat-app-menu.js` and `.css`, `nogat-handoff.js`, `nogat-sources.js` and `.css`, `nogat-terms.md`, `.html` and `.css`, and their manifest `nogat-kit.json`.
+- **The app menu.** „Aplikacje” in the top bar, left of the theme switch, is Nogat's `<nogat-app-menu>` (DEV-15.4, [ADR-0027](decisions/0027-nogats-gui-kit-the-app-menu-and-the-handoff.md)): the GUIs of the deployment's table `gui` of `[nogat]` in `nogat.toml` (`NOGAT_CONFIG` or the user configuration directory), e.g. `gui = { hydrolog = "https://hydrolog.example/", hydrograf = "http://127.0.0.1:8080/", archiwista = "/archiwista/" }`, one key per registry name in lower case, an address absolute or a path on the page's origin. `GET api/session` gives the table as `gui` (`null` without it), read at every request, and the page hands it to the element. An entry opens its GUI in the tab `nogat-<name>`; without another GUI in the table, or inside a host (`?nogat=1` hides the top bar), the menu is not drawn. Nogat's GUI kit 1.1.0 lives in `web/nogat/` beside the tokens and marks, copied byte for byte (DEV-15.6): `nogat-admin.js` and `.css`, `nogat-app-menu.js` and `.css`, `nogat-handoff.js`, `nogat-sources.js` and `.css`, `nogat-terms.md`, `.html` and `.css`, and their manifest `nogat-kit.json`.
 
 ```python
 import contextlib
@@ -412,17 +412,17 @@ Field names are Hydrolog's (`channel_length_km`, `flow_path_length_km`; slopes i
 
 ### Web GUI: a station's series from Archiwista (`hydrolog-series/1`)
 
-Archiwista hands a station's series to „Statystyka przepływów” in the same envelope ([ADR-0020](decisions/0020-a-stations-series-through-the-handoff.md)): „Kopiuj do Hydrologa” and „Plik przekazania” beside the chart of its station card, or `archiwista stations handoff CODE --variable Q [--resolution annual] > raba.handoff.json`. The payload is `hydrolog-series/1` (`hydrolog/schemas/hydrolog-series-1.schema.json`): the daily values of the variable (`step` `day`, `dates`, every day of the range with `null` where it has no value), or the annual maxima Archiwista finds in IMGW-PIB's half-year characteristics (`step` `year`, `statistic` `max`, `year_type` `hydrological`, `years`), only of complete years; `provenance.series` names the station, dataset and series version and, for annual maxima, the years left out.
+Archiwista hands a station's series to „Statystyka przepływów” in the same envelope ([ADR-0020](decisions/0020-a-stations-series-through-the-handoff.md)): „Kopiuj do Hydrologa” and „Plik przekazania” beside the chart of its station card, or `archiwista stations handoff CODE --variable Q [--resolution annual] > archiwista_handoff_raba.json` (Archiwista names its hand-off `archiwista_handoff_<subject>.json`, Nogat DEV-19.21). The payload is `hydrolog-series/1` (`hydrolog/schemas/hydrolog-series-1.schema.json`): the daily values of the variable (`step` `day`, `dates`, every day of the range with `null` where it has no value), or the annual maxima Archiwista finds in IMGW-PIB's half-year characteristics (`step` `year`, `statistic` `max`, `year_type` `hydrological`, `years`), only of complete years; `provenance.series` names the station, dataset and series version and, for annual maxima, the years left out.
 
 „Wczytaj z Archiwisty” in the first step of Statystyka przepływów reads it from a file or the clipboard, checking the envelope against Nogat's schema and the payload against Hydrolog's. The series becomes the session's file `<subject>.csv`, chosen as a file of the person's: annual maxima the columns `year` and the variable (the years without a value left out), so the run shows the range of the years, the ranked maxima their years and „Jednorodność ciągu” sends them as `year_column` (ADR-0020, erratum of 2026-11-21); daily values the columns `date` and the variable, and `stats flood-frequency` takes the annual maxima of complete hydrological years from them. The file adds the columns `attribution` and `terms_notice` with the hand-off's lines (of an older hand-off without them, the lines of the provider its `provenance.series` names), which Hydrolog reads as lines, not data. Annual minima are refused with the reason: low flows are `stats low-flow` in „Polecenia”. The section names where the series came from until it is changed.
 
 The commands read the same file as an `input_file` ([ADR-0068](decisions/0068-a-stations-series-as-an-input-file.md)): a `hydrolog-series/1`, alone or as the payload of the hand-off, is the columns `date` (daily values) or `year` (annual values) and its variable (`Q`). Without `date_column` and `year_column` a series takes the document's own, so daily values keep their dates and annual maxima their years; `value_column` is the variable where a command leaves it optional (`scs effective`), and the commands that require it take `--value-column Q` (with `--date-column date` where they require that too). The hand-off's `attribution` and `terms_notice` are cited in the result. A hand-off of another payload is refused (`data_error`, `details.reason` `handoff_payload`), and annual values where a command needs dates (`annual_series`):
 
 ```bash
-archiwista stations handoff 149190310 --variable Q > raba.handoff.json
-hydrolog stats flood-frequency --input-file raba.handoff.json --value-column Q --distribution all
-archiwista stations handoff 149190310 --variable Q --resolution annual > raba-max.handoff.json
-hydrolog stats homogeneity --input-file raba-max.handoff.json --value-column Q --split-year 1990
+archiwista stations handoff 149190310 --variable Q > archiwista_handoff_raba.json
+hydrolog stats flood-frequency --input-file archiwista_handoff_raba.json --value-column Q --distribution all
+archiwista stations handoff 149190310 --variable Q --resolution annual > archiwista_handoff_raba-maksima.json
+hydrolog stats homogeneity --input-file archiwista_handoff_raba-maksima.json --value-column Q --split-year 1990
 ```
 
 ### Obserwator: series export → `stats` commands
@@ -441,7 +441,7 @@ Annual maxima and minima (`stats flood-frequency`, `stats low-flow`) are taken f
 
 ### Obserwator: the PMAXTP depth → `precip pmaxtp`
 
-The one thing Hydrolog fetches is the PMAXTP depth of IMGW-PIB ([ADR-0018](decisions/0018-pmaxtp-through-obserwator.md)), and it fetches it through Obserwator's Python API, not by itself: with the extra `pmaxtp` (`obserwator>=3.0.0.dev0,<4`, until Obserwator is tagged the commit of Nogat's release set candidate-4), `precip pmaxtp` calls `obserwator.fetch_pmaxtp(latitude, longitude, method=..., timeout=20)`, which asks the PMAXTP API of IMGW-PIB over HTTPS for the table of the point, and reads the cell of the duration and the probability and the depths of all 16 durations at that probability (`depth_duration_mm`). Only the coordinates and the method go out; nothing is cached or written. The depth is the `total_mm` of a design storm, and the depths are the curve of an Euler II storm ([ADR-0042](decisions/0042-the-euler-type-ii-storm-from-a-depth-duration-curve.md)):
+The one thing Hydrolog fetches is the PMAXTP depth of IMGW-PIB ([ADR-0018](decisions/0018-pmaxtp-through-obserwator.md)), and it fetches it through Obserwator's Python API, not by itself: with the extra `pmaxtp` (`obserwator>=3.1.0,<4`, Obserwator's tag `v3.1.0`), `precip pmaxtp` calls `obserwator.fetch_pmaxtp(latitude, longitude, method=..., timeout=20)`, which asks the PMAXTP API of IMGW-PIB over HTTPS for the table of the point, and reads the cell of the duration and the probability and the depths of all 16 durations at that probability (`depth_duration_mm`). Only the coordinates and the method go out; nothing is cached or written. The depth is the `total_mm` of a design storm, and the depths are the curve of an Euler II storm ([ADR-0042](decisions/0042-the-euler-type-ii-storm-from-a-depth-duration-curve.md)):
 
 ```bash
 hydrolog precip pmaxtp --latitude 51.01544 --longitude 15.88984 --duration-min 720 \
@@ -520,7 +520,7 @@ cn = calculate_weighted_cn(parts)
 - The equivalent Kartograf CLI call is `kartograf soil download ... --output-dir DIR` (plain files); `--root` would select a versioned store instead, which Hydrolog does not read directly.
 - The same path in the CLI: `hydrolog soil hsg --clay-path ... --sand-path ... --silt-path ... --output hsg.tif`, `hydrolog soil hsg-stats --hsg-path hsg.tif`, `hydrolog cn weighted --parts '[{"cn": 30, "area": 75.0}, ...]'`.
 - HSG is only one of the two CN factors: with several land covers the parts are (HSG × cover) pairs, and the intersection of the HSG and land-cover rasters is done by Hydrograf (Hydrolog does not do it).
-- Removing HSG from Kartograf and rewiring Hydrograf (`get_hsg_from_soilgrids`, `bootstrap.py`) are separate changes in those repositories; until they are done, Hydrograf (which requires Hydrolog `>=0.8.0.dev0,<0.9`) keeps Kartograf's path.
+- Removing HSG from Kartograf and rewiring Hydrograf (`get_hsg_from_soilgrids`, `bootstrap.py`) are separate changes in those repositories; until they are done, Hydrograf (which requires Hydrolog `>=0.9.0,<0.10`) keeps Kartograf's path.
 
 ---
 
@@ -544,7 +544,7 @@ cn = calculate_weighted_cn(parts)
 | `backend/core/watershed_service.py` | `build_morph_dict_from_graph()` | ✅ |
 | `backend/models/schemas.py` | + `MorphometricParameters` | ✅ |
 | `backend/api/endpoints/watershed.py` | Return `morphometry` | ✅ |
-| `backend/pyproject.toml` | + `hydrolog>=0.8.0.dev0,<0.9` | ✅ |
+| `backend/pyproject.toml` | + `hydrolog>=0.9.0,<0.10` | ✅ |
 | `backend/core/handoff.py` | Hand-off `nogat-handoff/1` of a watershed or a network | ✅ |
 
 ---
@@ -575,7 +575,7 @@ cn = calculate_weighted_cn(parts)
 | MorphometricParameters schema | ✅ | Pydantic model |
 | build_morph_dict_from_graph() | ✅ | Calculation function |
 | `watershed.morphometry` of `POST /api/delineate-watershed` | ✅ | API extension |
-| Hydrolog integration | ✅ | `hydrolog>=0.8.0.dev0,<0.9`; HSG still through Kartograf: section "Hydrograf: migrating HSG from Kartograf to Hydrolog" |
+| Hydrolog integration | ✅ | `hydrolog>=0.9.0,<0.10`; HSG still through Kartograf: section "Hydrograf: migrating HSG from Kartograf to Hydrolog" |
 | Hand-off to Hydrolog's GUI | ✅ | `nogat-handoff/1`: a watershed or a network |
 
 ### Tested scenarios

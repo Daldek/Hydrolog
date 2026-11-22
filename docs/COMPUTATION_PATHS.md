@@ -1,8 +1,8 @@
 # Computation Paths for Unit Hydrograph Models (plus HSG and the Fisher–Tippett Distribution)
 
-**Document version:** 1.13
-**Date:** 2026-11-18
-**Applies to:** Hydrolog >= 0.8.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v0.8.0, the sub-steps of the SCS unit hydrograph (3.1.3) and the plausibility of a rating curve (3.8) from 0.8.1, maximum likelihood (3.6, 3.10) and the Euler type II storm (3.15) from the fixes of 2026-11-18, not yet released; the rest: >= 0.6.0)
+**Document version:** 1.15
+**Date:** 2026-11-22
+**Applies to:** Hydrolog >= 0.8.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v0.8.0, the sub-steps of the SCS unit hydrograph (3.1.3) and the plausibility of a rating curve (3.8) from 0.8.1, maximum likelihood (3.6, 3.10), the Euler type II storm (3.15), the constants of Kirpich and NRCS (3.7), the specs and their `formula_version` (`docs/FORMULAS.md`) and the rating curve fit by trial values of H₀ (3.8) from 0.9.0; the rest: >= 0.6.0)
 
 ---
 
@@ -1756,5 +1756,5 @@ print(round(float(beta.intensities_mm[0]), 4))   # 0.6372 = I_(1/12)(0.5, 5)
 
 ---
 
-**Document version:** 1.14
-**Last updated:** 2026-11-18
+**Document version:** 1.15
+**Last updated:** 2026-11-22

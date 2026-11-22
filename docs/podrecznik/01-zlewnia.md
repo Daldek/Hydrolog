@@ -360,7 +360,7 @@ zlewnię z jedną pętlą lemniskaty (krzywej o kształcie płatka). Wskaźnik $
 ratio*) to stosunek powierzchni koła o średnicy $L$ do powierzchni zlewni: rośnie, gdy zlewnia
 się wydłuża. W części literatury przeglądowej spotyka się wariant bez $\pi$, który daje wartości
 $\pi$ razy mniejsze; nie jest to wskaźnik Chorleya. Hydrolog do wersji 0.8.1 włącznie liczył
-właśnie ten wariant; wersja rozwojowa 0.9.0 liczy wskaźnik Chorleya, tak jak Hydrograf.
+właśnie ten wariant; wersja 0.9.0 liczy wskaźnik Chorleya, tak jak Hydrograf.
 
 <!-- spec:lemniscate_ratio -->
 
@@ -1255,8 +1255,8 @@ się więc tylko przy tej samej metodzie; przykład niżej pokazuje, jak duża j
 
 **Typowe błędy.** Liczenie odcinków zamiast cieków: program GIS dzieli sieć w każdym węźle, a
 liczba odcinków rzędu 2 i wyższych jest większa od liczby cieków, co zaniża wskaźnik bifurkacji i
-średnie długości. Hydrolog do wersji 0.8.1 włącznie liczył właśnie odcinki; wersja rozwojowa
-0.9.0 liczy cieki Strahlera i odrzuca liczby cieków, których żadna sieć nie może mieć (warunek
+średnie długości. Hydrolog do wersji 0.8.1 włącznie liczył właśnie odcinki; wersja 0.9.0 liczy
+cieki Strahlera i odrzuca liczby cieków, których żadna sieć nie może mieć (warunek
 w ramce wskaźnika bifurkacji). Inne błędy: wskaźniki Hortona dla magnitud Shreve'a; porównywanie
 gęstości sieci z map w różnych skalach albo z NMT przy różnych progach.
 

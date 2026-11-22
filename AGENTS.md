@@ -14,7 +14,7 @@ Use it on numbers or local CSV/JSON/GeoTIFF files, with no keys; only `precip pm
 
 ## Install
 
-Python 3.12 or newer: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git"`. Extras: `raster` (rasterio, pyproj; `soil hsg`, `soil hsg-stats`), `mcp` (the MCP server), `pmaxtp` (`precip pmaxtp`), `viz` (plots in Python, outside the catalog), `all`.
+Python >= 3.12: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"`. Extras: `raster` (rasterio, pyproj; `soil hsg`, `soil hsg-stats`), `mcp` (the MCP server), `pmaxtp` (`precip pmaxtp`), `viz` (plots in Python, outside the catalog), `all`.
 
 ## Interfaces
 
