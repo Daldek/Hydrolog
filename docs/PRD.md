@@ -2,9 +2,9 @@
 
 ## Hydrolog - Hydrological Toolkit Library
 
-**Version:** 0.8.0 (frozen on 2026-11-16)
+**Version:** 0.9.0
 **Date:** 2026-10-19
-**Status:** v0.8.0 frozen on 2026-11-16 for the first joint release of the Nogat ecosystem
+**Status:** v0.9.0, the release of the Nogat ecosystem's standard 1.1 (v0.8.0 was the first joint release of the ecosystem, v0.8.1 its patch release)
 
 ---
 
@@ -533,7 +533,7 @@ print(f"tc = {tc:.1f} min")
 - rasterio >= 1.3, pyproj >= 3.6 (optional, extra `[raster]`: HSG from rasters)
 - mcp >= 2.3, < 3 (optional, extra `[mcp]`: MCP server)
 - starlette >= 1.10, < 2, uvicorn >= 0.54, < 1 (optional, extra `[gui]`: web GUI)
-- obserwator >= 3.0.0.dev0, < 4 (optional, extras `[pmaxtp]` and `[gui]`: the PMAXTP depth of `precip pmaxtp`)
+- obserwator >= 3.1.0, < 4 (optional, extras `[pmaxtp]` and `[gui]`: the PMAXTP depth of `precip pmaxtp`)
 - No dependency on GeoPandas/Shapely in the core
 
 ---
@@ -638,7 +638,7 @@ print(f"tc = {tc:.1f} min")
 - [x] `visualization.statistics` - 10 visualization functions
 - [x] Tests and documentation
 
-### v0.8.0 - Command catalog, MCP, HSG *(frozen on 2026-11-16)*
+### v0.8.0 - Command catalog, MCP, HSG *(released 2026-11-16)*
 - [x] `catalog`, `operations` - a catalog of 62 commands in 17 groups and the operations layer
 - [x] `cli` - CLI generated from the catalog (breaking change: the former syntax was removed)
 - [x] `mcp` - MCP server (`hydrolog mcp`, extra `[mcp]`)
@@ -648,14 +648,21 @@ print(f"tc = {tc:.1f} min")
 - [x] Calculation fixes: Fisher-Tippett for minima, Clark UH for D that is not a multiple of the step, calculation report, StreamNetwork, RatingCurve (details: CHANGELOG)
 - [x] Station analyses for Obserwator's series: the groups `stats`, `hydrometrics` and `meteo` (ADR-0029 to ADR-0033)
 - [x] `gui` - the web GUI (`hydrolog gui serve`, extra `[gui]`, ADR-0014; section 2.16)
-- [ ] Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - after v0.8.0
-- [ ] Complete API documentation (MkDocs/Sphinx) - after v0.8.0
-- [ ] Publication on PyPI - after v0.8.0, with the rename to `nogat-hydrolog`; v0.8.0 installs from its Git tag
+- [ ] Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - after v0.9.0
+- [ ] Complete API documentation (MkDocs/Sphinx) - after v0.9.0
+- [ ] Publication on PyPI - after v0.9.0, with the rename to `nogat-hydrolog`; v0.9.0 installs from its Git tag
 
-### v0.8.0 - Flood routing *(merged into `develop`, ADR-0007)*
+### v0.8.0 - Flood routing *(released 2026-11-16, ADR-0007)*
 - [x] `routing` and the command group `route`: `Hydrograph`, `Reach`, lag (`route lag`), Muskingum (`route muskingum`), Muskingum-Cunge (`route muskingum-cunge`), cascade of linear reservoirs (`route cascade`), level-pool reservoir (`route level-pool`), river network (`route network`) (plan: `docs/plans/2026-10-24-flood-routing.md`)
+
+### v0.9.0 - Formulas declared by specs (Nogat's computation standard)
+- [x] `nogat_formulas` - Nogat's reference module; every Tier A formula declared by its `FormulaSpec` with ranges, sources, reference cases and a `formula_version`, carried by results in `formula_versions` (ADR-0050); `docs/FORMULAS.md` and the handbook `docs/podrecznik/` generated from the specs
+- [x] Gross formula defects fixed (Nogat CMP-9.1): the Euler type II storm from a depth-duration curve (ADR-0042), Kirpich's and the NRCS lag constants, maximum likelihood and least squares of the frequency analyses, the rating curve fit (ADR-0071)
+- [x] The notice `outside_applicability` (CMP-3.3, ADR-0070, was `outside_typical_range`)
+- [x] File names `hydrolog_<content>_<qualifiers>.<ext>` (Nogat DEV-19.21), ČHMÚ as `chmu`, Nogat's GUI kit 1.1.0 and standard 1.1
+- [x] A station's series `hydrolog-series/1` as an `input_file` (ADR-0068)
 
 ---
 
-**Document version:** 0.8.0 (frozen on 2026-11-16)
-**Last updated:** 2026-11-16
+**Document version:** 0.9.0
+**Last updated:** 2026-11-22

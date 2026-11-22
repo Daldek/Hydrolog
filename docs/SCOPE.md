@@ -2,9 +2,9 @@
 
 ## Hydrological Toolkit Library
 
-**Version:** 1.9
-**Date:** 2026-11-14
-**Status:** v0.8.0 frozen on 2026-11-16 for the first joint release of the Nogat ecosystem
+**Version:** 1.10
+**Date:** 2026-11-22
+**Status:** v0.9.0, the release of the Nogat ecosystem's standard 1.1 (the previous releases: 0.8.0, the first joint release of the ecosystem, and the patch release 0.8.1)
 
 ---
 
@@ -251,7 +251,7 @@ Other groups: `precip`, `hydrograph`, `route`, `morphometry`, `network`, `stats`
 
 #### 2.1.8 Module `visualization` - Plots (v0.5.0)
 
-The module requires the extra `viz`: `pip install "hydrolog[viz] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"`
+The module requires the extra `viz`: `pip install "hydrolog[viz] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"`
 
 **Hyetographs:**
 - `plot_hietogram()` - rainfall intensity plot with an optional cumulative line
@@ -388,7 +388,7 @@ group `nogat.gui`.
   `<data_dir>/hydrolog/stats.jsonl`)
 - „Zgłoś uwagę”: a text and the context the page adds, no contact field, kept in SQLite
   `<data_dir>/hydrolog/feedback.sqlite3`; the operator's admin panel `admin/` is Nogat's kit
-  panel `<nogat-admin>` (kit 1.0.0) with „Zgłoszenia”, „Statystyki” and „Stan”, signed in with
+  panel `<nogat-admin>` (kit 1.1.0) with „Zgłoszenia”, „Statystyki” and „Stan”, signed in with
   the key of `HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE` (ADR-0038)
 - `gui serve` keeps Nogat's logs (`nogat-log/1`: access, application and lifecycle, no IP
   address) in `<state_dir>/hydrolog/logs/` and deletes each file 14 days after its date
@@ -438,8 +438,8 @@ group `nogat.gui`.
 
 ### 2.3 ⏳ FUTURE SCOPE - Planned for the Future
 
-**After v0.8.0:**
-- Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - project owner decision of 2026-10-19: in scope, but after the next release (then 1.0.0, now 0.8.0: the author's decision of 2026-11-14)
+**After v0.9.0:**
+- Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - project owner decision of 2026-10-19: in scope, but after the release then planned (then 1.0.0, released as 0.8.0: the author's decision of 2026-11-14); not in 0.9.0
 - Rational method (Q = CIA) for small catchments
 - Parameter calibration
 - Uncertainty analysis (Monte Carlo)
@@ -576,11 +576,11 @@ hydrolog/
 - SciPy >= 1.10 (statistical distributions, gamma function, optimization - required since v0.7.0)
 - platformdirs >= 4.0 (the user config, data and state directories)
 
-**Optional (extras, `"hydrolog[...] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"`):**
+**Optional (extras, `"hydrolog[...] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"`):**
 - `raster`: rasterio >= 1.3 + pyproj >= 3.6 (commands `soil hsg` and `soil hsg-stats`, `hydrolog.soil.raster`)
 - `mcp`: mcp >= 2.3, < 3 (MCP server `hydrolog mcp`)
-- `gui`: starlette >= 1.10, < 2 + uvicorn >= 0.54, < 1 + obserwator >= 3.0.0.dev0, < 4 (web GUI `hydrolog gui serve`, ADR-0014)
-- `pmaxtp`: obserwator >= 3.0.0.dev0, < 4 (the PMAXTP depth of `precip pmaxtp`, ADR-0018)
+- `gui`: starlette >= 1.10, < 2 + uvicorn >= 0.54, < 1 + obserwator >= 3.1.0, < 4 (web GUI `hydrolog gui serve`, ADR-0014)
+- `pmaxtp`: obserwator >= 3.1.0, < 4 (the PMAXTP depth of `precip pmaxtp`, ADR-0018)
 - `viz`: matplotlib >= 3.7 + seaborn >= 0.12 (module `visualization`)
 - `all`: all of the above
 
@@ -638,9 +638,11 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | **v0.6.3** | FAA + Kerby + Kerby-Kirpich tc, API audit, WatershedParameters extension | `time.concentration`, `morphometry.watershed_params`, `reports` | ✅ Released |
 | **v0.6.4** | WatershedParams extension + UH ordinates + docs audit | `morphometry.watershed_params`, `runoff.generator`, `reports`, `docs` | ✅ Released |
 | **v0.7.0** | Hydrological statistics + Hydrometry | `statistics`, `hydrometrics`, `visualization.statistics` | ✅ Released |
-| **v0.8.0** | Command catalog, catalog-based CLI, MCP server, HSG, result serialization, calculation fixes, station analyses | `catalog`, `operations`, `mcp`, `soil`, `cli`, `agent_guide`, `statistics`, `hydrometrics` | 🔄 In preparation |
-| **v0.8.0** | Flood routing | `routing` | ✅ Merged into `develop` (ADR-0007) |
-| **v0.8.0** | Web GUI, standalone and as a Nogat module | `gui`, `catalog` | ✅ Merged into `develop` (ADR-0014, ADR-0015) |
+| **v0.8.0** | Command catalog, catalog-based CLI, MCP server, HSG, result serialization, calculation fixes, station analyses | `catalog`, `operations`, `mcp`, `soil`, `cli`, `agent_guide`, `statistics`, `hydrometrics` | ✅ Released |
+| **v0.8.0** | Flood routing | `routing` | ✅ Released (ADR-0007) |
+| **v0.8.0** | Web GUI, standalone and as a Nogat module | `gui`, `catalog` | ✅ Released (ADR-0014, ADR-0015) |
+| **v0.8.1** | Defect fixes: rating curves, low-flow thresholds, the SCS unit hydrograph of a long step, warnings, GUI time axis | `hydrometrics`, `statistics`, `runoff`, `gui` | ✅ Released |
+| **v0.9.0** | Formulas declared by specs with `formula_versions` (Nogat's computation standard), gross formula defects fixed, notice `outside_applicability`, file names of Nogat DEV-19.21, ČHMÚ as `chmu`, Nogat standard 1.1 | `nogat_formulas`, every computing module, `catalog`, `gui` | ✅ Released |
 
 ---
 
@@ -706,6 +708,6 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 
 ---
 
-**Document version:** 1.9
-**Last updated:** 2026-11-16
-**Status:** v0.8.0 frozen on 2026-11-16 for the first joint release of the Nogat ecosystem
+**Document version:** 1.10
+**Last updated:** 2026-11-22
+**Status:** v0.9.0, the release of the Nogat ecosystem's standard 1.1 (the previous releases: 0.8.0, the first joint release of the ecosystem, and the patch release 0.8.1)

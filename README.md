@@ -27,22 +27,22 @@ The same commands run from Python, from a shell or a CI job, from an AI agent ov
 
 ## Install
 
-Python 3.12 or newer. Hydrolog is not on PyPI yet, so the lines below install the release v0.8.0 from its Git tag with [uv](https://docs.astral.sh/uv/); with pip: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"`.
+Python 3.12 or newer. Hydrolog is not on PyPI yet, so the lines below install the release v0.9.0 from its Git tag with [uv](https://docs.astral.sh/uv/); with pip: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"`.
 
 ```sh
-uv tool install "git+https://github.com/Daldek/Hydrolog.git@v0.8.0"                           # CLI: hydrolog
-uv add "hydrolog @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"                         # Python library
-uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0" hydrolog-mcp  # MCP server
-uv tool install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"           # CLI with the web GUI
+uv tool install "git+https://github.com/Daldek/Hydrolog.git@v0.9.0"                           # CLI: hydrolog
+uv add "hydrolog @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"                         # Python library
+uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0" hydrolog-mcp  # MCP server
+uv tool install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"           # CLI with the web GUI
 ```
 
-Optional dependencies are extras; add them in brackets, for example `"hydrolog[raster,mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"`. Without extras, the library, the CLI and every command except the two raster commands, `precip pmaxtp` and `gui serve` run on NumPy, SciPy and platformdirs.
+Optional dependencies are extras; add them in brackets, for example `"hydrolog[raster,mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"`. Without extras, the library, the CLI and every command except the two raster commands, `precip pmaxtp` and `gui serve` run on NumPy, SciPy and platformdirs.
 
 | Extra | Brings | Needed for |
 |---|---|---|
 | `raster` | rasterio, pyproj | `soil hsg` and `soil hsg-stats` (GeoTIFF rasters) |
 | `mcp` | mcp >= 2.3, < 3 | the MCP server |
-| `pmaxtp` | obserwator >= 3.0.0.dev0, < 4 | `precip pmaxtp` (the PMAXTP depth of IMGW-PIB, over the network) |
+| `pmaxtp` | obserwator >= 3.1.0, < 4 | `precip pmaxtp` (the PMAXTP depth of IMGW-PIB, over the network) |
 | `gui` | starlette, uvicorn, obserwator | the web GUI (`hydrolog gui serve`) |
 | `viz` | matplotlib, seaborn | plots in `hydrolog.visualization` (Python only, outside the command catalog) |
 | `all` | all of the above | everything |
@@ -254,7 +254,7 @@ hydrolog commands guide --format llms --output guide.txt --check --json
 Claude Code:
 
 ```sh
-claude mcp add hydrolog -- uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0" hydrolog-mcp --allow-dir /path/to/data
+claude mcp add hydrolog -- uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0" hydrolog-mcp --allow-dir /path/to/data
 ```
 
 Cursor, `.cursor/mcp.json`:
@@ -265,7 +265,7 @@ Cursor, `.cursor/mcp.json`:
     "hydrolog": {
       "command": "uvx",
       "args": [
-        "--from", "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0",
+        "--from", "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0",
         "hydrolog-mcp", "--allow-dir", "/path/to/data"
       ]
     }
@@ -276,7 +276,7 @@ Cursor, `.cursor/mcp.json`:
 Codex:
 
 ```sh
-codex mcp add hydrolog -- uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0" hydrolog-mcp --allow-dir /path/to/data
+codex mcp add hydrolog -- uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0" hydrolog-mcp --allow-dir /path/to/data
 ```
 
 VS Code, `.vscode/mcp.json` (key `servers`):
@@ -288,7 +288,7 @@ VS Code, `.vscode/mcp.json` (key `servers`):
       "type": "stdio",
       "command": "uvx",
       "args": [
-        "--from", "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0",
+        "--from", "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0",
         "hydrolog-mcp", "--allow-dir", "/path/to/data"
       ]
     }
@@ -343,7 +343,7 @@ except hydrolog.HydrologError as error:
 
 Hydrolog downloads nothing and needs no account, except the PMAXTP depth of `precip pmaxtp`: the only network connection it opens, to the PMAXTP service of IMGW-PIB, through Obserwator (extra `pmaxtp`), sending only the point's coordinates and the method. Its only key is one you choose for the web GUI's admin page. Input is numbers or local files: CSV series (an Obserwator export loads unchanged), JSON (watershed, stations, network segments, the network of `route network`) and GeoTIFF rasters (extra `raster`). It ships no dataset except the TR-55 curve number table of USDA NRCS. The data you pass keep the licence of their source (IMGW-PIB terms of reuse, ČHMÚ CC BY 4.0, SoilGrids CC BY 4.0), and every product carries the lines that the terms of IMGW-PIB, ČHMÚ and ISRIC require (Nogat DEV §20, [ADR-0028](https://github.com/Daldek/Hydrolog/blob/main/docs/decisions/0028-the-providers-lines-in-every-product.md)): Hydrolog reads them from its inputs (the CSV columns `attribution` and `terms_notice`, the `attribution_source` and `attribution_processed` of an export of Obserwator 3.0.x or older, the fields `attribution` and `terms_notice` of a JSON document, a Kartograf raster of SoilGrids, known by its sidecar `<raster>.meta.json` or its directory `global_soilgrids_…`, the option `attribution`), completes them with the processed line of each provider, carries a line it does not know verbatim after them, and writes them into the envelope's `attribution` and `terms_notice`, the columns of the same names in the CSV tables it writes, `ATTRIBUTION.txt` beside the tables of `route network`, the footer of its schematic and the sources of a report. A GeoTIFF carries no lines, so name SoilGrids yourself when you publish an HSG raster (the envelope of `soil hsg` has the line). A PMAXTP depth carries the lines IMGW-PIB prescribes for PMAXTP (`attribution`, `terms_notice` and the notice `pmaxtp_attribution`).
 
-A command writes only to the file named by `--output` (exactly one plain file, written atomically; `commands guide --inject PATH` edits the AGENTS.md you name) or, for `route network`, into the directory named by `--output-dir` (one table per node, each moved into place from a `.hydrolog-incoming/` staging directory that is removed afterwards, and `ATTRIBUTION.txt` when the input carries providers' lines, merged with an existing one) and to the SVG file named by `--schematic`, and replaces an existing file only with `--force`. There is no store or cache; only the web GUI writes files of its own, the reports of „Zgłoś uwagę” in `<data_dir>/hydrolog/feedback.sqlite3`, public, its daily totals in `<data_dir>/hydrolog/stats.jsonl`, and the logs of `gui serve` in `<state_dir>/hydrolog/logs/`.
+A command writes only to the file named by `--output` (exactly one plain file, written atomically; `commands guide --inject PATH` edits the AGENTS.md you name) or, for `route network`, into the directory named by `--output-dir` (one table per node, `hydrolog_node-hydrograph_<node id>.csv`, each moved into place from a `.hydrolog-incoming/` staging directory that is removed afterwards, and `ATTRIBUTION.txt` when the input carries providers' lines, merged with an existing one) and to the SVG file named by `--schematic`, and replaces an existing file only with `--force`. There is no store or cache; only the web GUI writes files of its own, the reports of „Zgłoś uwagę” in `<data_dir>/hydrolog/feedback.sqlite3`, public, its daily totals in `<data_dir>/hydrolog/stats.jsonl`, and the logs of `gui serve` in `<state_dir>/hydrolog/logs/`.
 
 Settings (`lang`, `log_level`, `data_dir`, `state_dir`, `request_limit`, `request_window`) come from, in order: the command-line option, `HYDROLOG_<KEY>`, `NOGAT_<KEY>`, `nogat.toml` (section `[hydrolog]`, then `[nogat]`) in the user config directory or at `NOGAT_CONFIG`, then the default; an invalid environment or file value is ignored. [.env.example](https://github.com/Daldek/Hydrolog/blob/main/.env.example) lists every variable: `HYDROLOG_LANG`, `NOGAT_LANG` (`pl` or `en`, default `pl`), `HYDROLOG_LOG_LEVEL`, `NOGAT_LOG_LEVEL` (`debug`, `info`, `warning` or `error`, default `warning`), `HYDROLOG_DATA_DIR`, `NOGAT_DATA_DIR` (the data directory, default the user data directory of `nogat`), `HYDROLOG_STATE_DIR`, `NOGAT_STATE_DIR` (the state directory, where `gui serve` keeps its logs, default the user state directory of `nogat`), `HYDROLOG_REQUEST_LIMIT`, `NOGAT_REQUEST_LIMIT` (the requests a public web GUI answers per client address in a window, default 300), `HYDROLOG_REQUEST_WINDOW`, `NOGAT_REQUEST_WINDOW` (that window in seconds, default 60), `NOGAT_CONFIG`, and the credential, which is read from the environment only, never from `nogat.toml`: `HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE` (the key of the web GUI's admin page, or a file that holds it). `hydrolog config show` prints the effective values, where each comes from and whether each credential variable is set, never its value:
 
@@ -388,4 +388,4 @@ hydrolog config show --json
 
 ## Status, licence, author
 
-Alpha: the release 0.8.0, a member of the first joint release of the Nogat ecosystem (frozen on 2026-11-16; the previous release is 0.7.0). Semantic versioning applies: in 0.y a minor release may break the public interface, from 1.0.0 only a major one. Licence: MIT. Author: Piotr de Bever ([Daldek](https://github.com/Daldek)). Hydrolog is part of the [Nogat](https://github.com/Daldek/Nogat) ecosystem and follows its standard 1.0.
+Alpha: the release 0.9.0, a member of the Nogat ecosystem's release of its standard 1.1 (the previous release is 0.8.1). Semantic versioning applies: in 0.y a minor release may break the public interface, from 1.0.0 only a major one. Licence: MIT. Author: Piotr de Bever ([Daldek](https://github.com/Daldek)). Hydrolog is part of the [Nogat](https://github.com/Daldek/Nogat) ecosystem and follows its standard 1.1.

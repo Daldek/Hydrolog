@@ -422,7 +422,7 @@ Kilka zasad tablicy Hydrologu:
 
 - **Uprawy rzędowe i zboża** (`row_crops`, `small_grain`) mają w TR-55 tylko stan zły i dobry, w
   rzędach prostych. Hydrolog do wersji 0.8.1 miał dla nich także stan średni, bez źródła (średnia
-  z dwóch wierszy), i przyjmował go, gdy stanu nie podano; wersja rozwojowa 0.9.0 wymaga podania
+  z dwóch wierszy), i przyjmował go, gdy stanu nie podano; wersja 0.9.0 wymaga podania
   stanu dla tych pokryć i odrzuca stan średni (ADR-0051).
 - Dla pozostałych pokryć zależnych od stanu Hydrolog bez podanego stanu przyjmuje stan średni i
   informuje o tym uwagą `condition_defaulted`. Podawaj stan zawsze.
@@ -852,7 +852,7 @@ trójkąta USDA trzeba je przeliczyć (tabele zgodności podaje aneks PTG 2008).
 w których granica pyłu i piasku leży w różnych miejscach (według USDA i według ISO/FAO), więc
 klasy blisko tej granicy są niepewne (ISRIC). Hydrolog i Kartograf do wersji 0.8.1 włącznie
 zaliczały składy leżące dokładnie na dwóch liniach trójkąta do klasy sąsiedniej; Kartograf 0.8.2 i
-wersja rozwojowa 0.9.0 Hydrologu liczą je tak, jak definiuje podręcznik USDA (przykład niżej).
+Hydrolog 0.9.0 liczą je tak, jak definiuje podręcznik USDA (przykład niżej).
 
 **Przykład.** Polecenie `soil texture` klasyfikuje jedną próbkę i od razu przypisuje grupę
 (podrozdział 3.10). Składy z przykładów definicji podręcznika USDA:

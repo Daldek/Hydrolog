@@ -7,7 +7,7 @@ and Python callers share (Nogat ``result-1``, AGI-4.2)::
     {
       "schema": "hydrolog-result/1",
       "tool": "hydrolog",
-      "version": "0.8.0",
+      "version": "0.9.0",
       "command": "tc kirpich",
       "check": false,
       "status": "ok",
@@ -60,7 +60,7 @@ English ``message`` holds values, those values in ``details`` (the key appears o
 when there are any). An operation builds its notices with
 :func:`hydrolog.catalog.notices.notice`. The library reports its observations as
 warnings of :class:`hydrolog._warnings.HydrologWarning` (a ``UserWarning`` whose
-class names the code: a short sample, a value outside the typical range...);
+class names the code: a short sample, a value outside the applicability range...);
 :func:`capture_warnings` turns them into notices inside an operation::
 
     with capture_warnings() as notices:
@@ -289,7 +289,7 @@ def capture_warnings(
     """Turn Python warnings raised inside the block into notices.
 
     The library signals non-fatal observations (a short sample, a value outside the
-    typical range...) with ``warnings.warn`` of a
+    applicability range...) with ``warnings.warn`` of a
     :class:`~hydrolog._warnings.HydrologWarning`. Inside this block every warning of
     the given ``categories`` is recorded instead of printed and, when the block ends,
     appended to the yielded list as a :class:`Notice`, identical ones once:

@@ -60,9 +60,10 @@ when the run used such data; ADR-0028), `notices`, `inputs` and, for paged lists
 domain result has its own `schema`
 (`hydrolog-<group>-<command>/1`); units follow from field names (`tc_min`, `area_ha`); `NaN` and
 infinities are `null`. `inputs` echoes the options after normalisation (defaults filled in, paths
-made absolute). `notices` carries non-fatal warnings (a short series, a value outside the typical
-range of a formula, here a flow path of 8.2 km and a slope of 2.3 %, outside the 0.107–1.22 km and
-2.5–10 % of Kirpich's data, Mota and Kobiyama 2015, p. 58): read it next to the result.
+made absolute). `notices` carries non-fatal warnings (a short series, a value outside the
+applicability range of a formula, `outside_applicability`: here a flow path of 8.2 km and a slope
+of 2.3 %, outside the 0.107–1.22 km and 2.5–10 % of Kirpich's data, Mota and Kobiyama 2015,
+p. 58): read it next to the result.
 `--schema` of a command lists the typical ranges it checks, each with its source, in
 `typical_ranges`.
 
@@ -1372,7 +1373,7 @@ functions include `plot_hietogram`, `plot_hydrograph`, `plot_rainfall_runoff`,
 `plot_uh_comparison` and `plot_hypsometric_curve`.
 
 ```sh
-pip install "hydrolog[viz] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"
+pip install "hydrolog[viz] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"
 ```
 
 ```python
@@ -1403,7 +1404,7 @@ server.
 hydrolog mcp --allow-dir ~/hydrolog-data
 hydrolog mcp --allow-dir ~/hydrolog-data --allow-writes
 hydrolog mcp --tools tc,cn,core
-uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0" hydrolog-mcp --allow-dir ~/hydrolog-data
+uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0" hydrolog-mcp --allow-dir ~/hydrolog-data
 ```
 
 - **`--allow-dir DIR`** (repeatable) is the only place tools may read files from and, with
@@ -1554,7 +1555,7 @@ short welcome that links it (`instrukcja/` under the GUI's address).
 
 | Section | What it does | Commands |
 |---|---|---|
-| Hydrogram zlewni | the design hydrograph of one watershed in three steps (watershed, hyetograph, model): empty on a first visit, checked for what the chosen model needs (an empty required field is an error, a value outside its typical range a warning on its field), then recomputed after every change; under PMAXTP the depth is fetched from IMGW-PIB for the point, probability, duration and method given, not typed; Nash by Lutz estimates n and K in the same run; the guide's worked example is Kamiennik at Świerzawa | `hydrograph generate` (with `nash_estimation` for Nash by Lutz), `precip pmaxtp` for the PMAXTP depth |
+| Hydrogram zlewni | the design hydrograph of one watershed in three steps (watershed, hyetograph, model): empty on a first visit, checked for what the chosen model needs (an empty required field is an error, a value outside its applicability range a warning on its field), then recomputed after every change; under PMAXTP the depth is fetched from IMGW-PIB for the point, probability, duration and method given, not typed; Nash by Lutz estimates n and K in the same run; the guide's worked example is Kamiennik at Świerzawa | `hydrograph generate` (with `nash_estimation` for Nash by Lutz), `precip pmaxtp` for the PMAXTP depth |
 | Sieć i trasowanie | a network of subcatchments, reaches, reservoirs, junctions and an outlet, built on a canvas as in HEC-HMS's basin model editor or opened from a file or a hand-off: the network's rainfall first, then the elements, then each subcatchment in Hydrogram zlewni's three steps; checked as it is edited and routed by „Oblicz sieć” ([below](#building-a-network-in-sieć)); the guide's worked example is `hydrolog.testing.example_network_document()` | `route schematic` (the layout of the structure and Hydrolog's check), `route network`, `precip pmaxtp` for a PMAXTP depth |
 | Statystyka przepływów | flood frequency of annual maxima or of a daily series (the example: 26 annual maxima, 1998 to 2023) and the homogeneity of the series | `stats flood-frequency`, `stats homogeneity` |
 | Kalkulatory | the time of concentration by six methods for the watershed of Hydrogram zlewni, and fifteen single calculators | `tc watershed` and fifteen others |
@@ -1674,7 +1675,7 @@ computes every value.
 ### Starting it
 
 ```sh
-pip install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"
+pip install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git@v0.9.0"
 hydrolog gui serve                              # http://127.0.0.1:8070/, opened in the browser
 hydrolog gui serve --no-browser --port 8071     # another port, no browser (a service)
 ```
@@ -1777,7 +1778,7 @@ read and delete once its reports are handled.
 
 **The admin panel** (Nogat DEV-15.13, ECO-067). `admin/` under the GUI's address
 (`http://127.0.0.1:8070/admin/`; `admin` without the slash answers `308` to it) is Nogat's kit
-panel `<nogat-admin>` (kit 1.0.0) with Hydrolog's `admin.js` only: no footer, regulamin link or
+panel `<nogat-admin>` (kit 1.1.0) with Hydrolog's `admin.js` only: no footer, regulamin link or
 menu „Aplikacje”, and `noindex`. It asks for the key and keeps it in the browser tab only
 (`sessionStorage`, `hydrolog/admin-key/1`, until „Wyloguj”), then shows three sections:
 
@@ -1872,7 +1873,7 @@ server runs. Hosting the GUI inside another application (Nogat's GUI platform) i
 A deployment that runs the GUI from a checkout of this repository (its own `.venv`, `uv sync
 --locked --no-editable`) must reinstall Hydrolog after pulling a new commit: uv decides by the
 version whether the installed project is current, and commits between releases share one
-version (`0.9.0.devN`), so a plain `uv sync --locked --no-editable` keeps the old code without a
+version (`X.Y.Z.devN`), so a plain `uv sync --locked --no-editable` keeps the old code without a
 word. Update with
 
 ```bash
@@ -1950,7 +1951,7 @@ request_window = 60
 ```
 
 - **The regulamin.** The server fills the regulamin of Nogat's GUI kit (`web/nogat/nogat-terms.html`,
-  kit 1.0.0, regulamin 1.0) with these values and the blocks of Hydrolog's sources (PMAXTP,
+  kit 1.1.0, regulamin 1.0) with these values and the blocks of Hydrolog's sources (PMAXTP,
   IMGW-PIB, ČHMÚ), serves it at `regulamin.html` beside the page and links it without a footer
   ([ADR-0039](decisions/0039-the-regulamin-in-the-rail-and-the-welcome-no-footer.md)): the small
   link „Regulamin” at the bottom of the rail of the sections (not in a phone's bottom bar), the
