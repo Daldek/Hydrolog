@@ -6,9 +6,10 @@ standard is numbered 1.0 since Nogat `55a191a` (the drafts called 2.0 and 2.1 be
 is not tagged yet, so replace the copies by the tag when it is. Nogat's `scripts/ecosystem.py
 drift` reports each copy as current, behind or modified.
 
-- `error_registry.json` (Nogat `standards/error_registry.json`): error codes, exit
-  codes and HTTP statuses. `src/hydrolog/_errors.py` is generated from it with
-  `uv run scripts/generate_errors.py`.
+- `error_registry.json` (Nogat `standards/error_registry.json`, copied again from Nogat
+  `975136e` of 2026-11-18, the standard 1.1, whose registry changes only its
+  `standard_version`): error codes, exit codes and HTTP statuses. `src/hydrolog/_errors.py`
+  is generated from it with `uv run scripts/generate_errors.py`.
 - `result-1.schema.json`, `error-1.schema.json`, `commands-1.schema.json` (Nogat
   `schemas/agent/`): the schemas of the result envelope, the error document and the
   command catalog. `tests/contract/` validates Hydrolog's documents against them.
