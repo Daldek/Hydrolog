@@ -758,9 +758,9 @@ requires-dist = [
     { name = "mcp", marker = "extra == 'all'", specifier = ">=2.3,<3" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=2.3,<3" },
     { name = "numpy", specifier = ">=1.24" },
-    { name = "obserwator", marker = "extra == 'all'", git = "https://github.com/Daldek/Obserwator.git?rev=de06926d38e6040f31ef7a82767a6fe20aa26b2e" },
-    { name = "obserwator", marker = "extra == 'gui'", git = "https://github.com/Daldek/Obserwator.git?rev=de06926d38e6040f31ef7a82767a6fe20aa26b2e" },
-    { name = "obserwator", marker = "extra == 'pmaxtp'", git = "https://github.com/Daldek/Obserwator.git?rev=de06926d38e6040f31ef7a82767a6fe20aa26b2e" },
+    { name = "obserwator", marker = "extra == 'all'", git = "https://github.com/Daldek/Obserwator.git?rev=4bf0ce33f19aa4a57cf8e7bfd0971fcc0cefe3e3" },
+    { name = "obserwator", marker = "extra == 'gui'", git = "https://github.com/Daldek/Obserwator.git?rev=4bf0ce33f19aa4a57cf8e7bfd0971fcc0cefe3e3" },
+    { name = "obserwator", marker = "extra == 'pmaxtp'", git = "https://github.com/Daldek/Obserwator.git?rev=4bf0ce33f19aa4a57cf8e7bfd0971fcc0cefe3e3" },
     { name = "platformdirs", specifier = ">=4.0" },
     { name = "pyproj", marker = "extra == 'all'", specifier = ">=3.6" },
     { name = "pyproj", marker = "extra == 'raster'", specifier = ">=3.6" },
@@ -1482,7 +1482,7 @@ wheels = [
 [[package]]
 name = "obserwator"
 version = "3.1.0.dev0"
-source = { git = "https://github.com/Daldek/Obserwator.git?rev=de06926d38e6040f31ef7a82767a6fe20aa26b2e#de06926d38e6040f31ef7a82767a6fe20aa26b2e" }
+source = { git = "https://github.com/Daldek/Obserwator.git?rev=4bf0ce33f19aa4a57cf8e7bfd0971fcc0cefe3e3#4bf0ce33f19aa4a57cf8e7bfd0971fcc0cefe3e3" }
 dependencies = [
     { name = "httpx" },
     { name = "platformdirs" },
