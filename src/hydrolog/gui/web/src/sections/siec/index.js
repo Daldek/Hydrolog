@@ -60,6 +60,7 @@ import { usePersistentState } from "../../persist.js";
 import { navigate } from "../../router.js";
 import { useStore } from "../../store.js";
 import { ConfirmDialog } from "../../ui/confirm.js";
+import { fileName } from "../../ui/export-panel.js";
 import { registerInfo } from "../../ui/info.js";
 import { Seg } from "../../ui/seg.js";
 import { isPhone, openPanel } from "../../ui/sheet.js";
@@ -98,6 +99,7 @@ import {
   newState,
   NO_RAINFALL_KEY,
   nodeComputed,
+  namePart,
   placementNotes,
   placeSkeleton,
   SECTION,
@@ -1072,7 +1074,7 @@ export default function Siec({ active, path = [] }) {
   const problemCount = structure.length + (built ? built.problems.length : 0);
   const save = () => {
     if (!built || !state.skeleton.length) return;
-    const file = `${stem}.json`;
+    const file = fileName("network", [namePart(state)], "json");
     downloadBlob(new Blob([`${JSON.stringify({ ...built.document, ...linesFields(lines) }, null, 2)}\n`], { type: "application/json" }), file);
     update({ ...latest.current, savedKey: inputsKey(latest.current) });
     toast(valid ? t(texts.file.saved, { name: file }) : t(texts.file.draftSaved, { name: file, count: problemCount }));

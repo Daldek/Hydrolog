@@ -1,6 +1,7 @@
 // The export spec of „Wszystkie polecenia” (plan D14): the table shown as CSV, the envelope
 // as JSON, the chart as PNG, the command line of the run and the files it wrote; the CSV and
-// the PNG carry the providers' lines of the envelope (Nogat DEV-20.5).
+// the PNG carry the providers' lines of the envelope (Nogat DEV-20.5); the command is the
+// content of their names, `hydrolog_uh-nash.csv` (ExportButtons).
 
 import { linesOf } from "../../attribution.js";
 import { resultCsv } from "../../forms/result-view.js";
@@ -15,7 +16,7 @@ import { resultCsv } from "../../forms/result-view.js";
  */
 export function exportSpec({ command, options, envelope, analysis, chartSvg }) {
   return {
-    subject: command.trim().replace(/\s+/g, "-"),
+    content: command.trim().replace(/\s+/g, "-"),
     csv: () => resultCsv(analysis),
     json: () => envelope,
     chart: analysis.series.length ? () => chartSvg.current : undefined,

@@ -198,11 +198,13 @@ class TestTheTables:
 
         expected = reference().hydrograph
         table = Hydrograph(expected.times_min, expected.discharge_m3s).to_table()
-        assert (directory / "A.csv").read_text(encoding="utf-8") == table
+        assert (directory / "hydrolog_node-hydrograph_A.csv").read_text(
+            encoding="utf-8"
+        ) == table
         assert sorted(path.name for path in output.files) == [
-            "A.csv",
-            "OUT.csv",
-            "R.csv",
+            "hydrolog_node-hydrograph_A.csv",
+            "hydrolog_node-hydrograph_OUT.csv",
+            "hydrolog_node-hydrograph_R.csv",
         ]
 
 

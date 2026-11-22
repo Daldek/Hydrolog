@@ -1,6 +1,7 @@
 // The exports of „Kalkulatory” (plan D14): the tc comparison as CSV and as the shell loop of
 // its six calls, and a calculator's result as CSV, JSON, PNG and its call, the CSV and the
-// PNG with the providers' lines of its envelope (Nogat DEV-20.5).
+// PNG with the providers' lines of its envelope (Nogat DEV-20.5); the command is the content
+// of their names, `hydrolog_tc-kirpich.csv` (ExportButtons).
 
 import { linesOf } from "../../attribution.js";
 import { csvCell, resultCsv } from "../../forms/result-view.js";
@@ -57,7 +58,7 @@ export function loopLine(line, methods) {
  */
 export function exportSpec({ command, options, envelope, analysis, chartSvg }) {
   return {
-    subject: command.trim().replace(/\s+/g, "-"),
+    content: command.trim().replace(/\s+/g, "-"),
     csv: () => resultCsv(analysis),
     json: () => envelope,
     chart: analysis.series.length ? () => chartSvg.current : undefined,

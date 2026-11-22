@@ -59,7 +59,7 @@
         "pattern": "^([Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|([Cc][Oo][Mm]|[Ll][Pp][Tt])[1-9¹²³])(\\..*)?$"
       },
       "maxLength": 64,
-      "description": "Names the node and its file `<id>.csv`: letters, digits, `_`, `.` and `-`, not starting with `.` or `-` and not ending with `.`, not a device name of Windows (`con`, `prn`, `aux`, `nul`, `com1` to `com9`, `lpt1` to `lpt9`, any case, any extension); unique without regard to case."
+      "description": "Names the node and its file `hydrolog_node-hydrograph_<id>.csv`: letters, digits, `_`, `.` and `-`, not starting with `.` or `-` and not ending with `.`, not a device name of Windows (`con`, `prn`, `aux`, `nul`, `com1` to `com9`, `lpt1` to `lpt9`, any case, any extension); unique without regard to case."
     },
     "description": {
       "type": "string",

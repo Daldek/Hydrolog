@@ -91,3 +91,12 @@ is `chmu` (`Attribution.of("chmu")`, the key of GET api/session's `attribution`,
 `attribution_processed` from Obserwator's CSV (3.1.0): its exports end with `attribution` and `terms_notice`.
 Hydrolog still reads the two columns as lines, not data (point 3), since exports of Obserwator 3.0.x and older that
 have them exist.
+
+## Erratum (2026-11-21, Nogat ECO-082 extended to IMGW-PIB)
+
+Nogat ECO-082 names IMGW-PIB `IMGW` in every identifier too (Obserwator's provider id, Archiwista's `imgw` in a
+hand-off's provenance); Hydrolog's providers `imgw` and `imgw_hydro` never had the suffix. ECO-082 reads stored files
+under the new names, so the GUI (point 7) names the provider of a hand-off without lines by `IMGW` or `pl.imgw.…` and
+by `CHMU`, „ČHMÚ” or `cz.chmu.…`, and, in a hand-off written before ECO-082, still by `IMGW-PIB`, `CHMI` or
+`cz.chmi.…`: the previous erratum's „no longer by `CHMI` or `cz.chmi.…`” does not hold. Hydrolog has no option that
+takes a provider's name, so no old name is accepted as an input.

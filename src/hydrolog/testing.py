@@ -36,8 +36,9 @@ in memory.
 Files
 -----
 :func:`hydrograph_table` is the text of a hydrograph table (``time_min,discharge_m3s``),
-:func:`network_tables` the tables ``<id>.csv`` that ``route network --output-dir``
-writes for an inline network and :func:`write_network_tables` writes them into a
+:func:`network_tables` the tables ``hydrolog_node-hydrograph_<id>.csv`` that
+``route network --output-dir`` writes for an inline network and
+:func:`write_network_tables` writes them into a
 directory. :func:`build_network_fixture` writes a small complete case (the network
 document, its inflows and the tables the command makes of them) for a test that calls
 ``hydrolog route network`` itself or reads its tables.
@@ -73,6 +74,7 @@ from hydrolog.routing.document import SCHEMA as NETWORK_SCHEMA
 from hydrolog.routing.network import (
     check_description,
     check_position,
+    node_table_name,
     position_to_document,
 )
 from hydrolog.routing.rainfall import rainfall_from_document
@@ -137,7 +139,7 @@ def subcatchment(
     Parameters
     ----------
     node_id : str
-        Id of the node (it names the table ``<id>.csv``).
+        Id of the node (it names the table ``hydrolog_node-hydrograph_<id>.csv``).
     times_min, discharge_m3s : sequence of float, optional
         The hydrograph inline, both together.
     value_column : str, optional
@@ -649,8 +651,9 @@ def network_tables(network: Mapping[str, Any]) -> dict[str, str]:
     Returns
     -------
     dict of str to str
-        File name ``<id>.csv`` to the text of the table of the hydrograph that leaves
-        the node, for every node, in the order of the computation (headwaters first).
+        File name ``hydrolog_node-hydrograph_<id>.csv`` to the text of the table of the
+        hydrograph that leaves the node, for every node, in the order of the
+        computation (headwaters first).
 
     Raises
     ------
@@ -662,7 +665,9 @@ def network_tables(network: Mapping[str, Any]) -> dict[str, str]:
 
 def _tables(graph: RoutingNetwork) -> dict[str, str]:
     run = graph.route()
-    return {f"{node}.csv": run.hydrographs[node].to_table() for node in graph.order}
+    return {
+        node_table_name(node): run.hydrographs[node].to_table() for node in graph.order
+    }
 
 
 def _write_tables(directory: Path, tables: Mapping[str, str]) -> tuple[Path, ...]:
@@ -706,8 +711,8 @@ class NetworkFixture:
         The directory with the tables that ``route network --output-dir`` writes for
         the two files above.
     nodes : tuple of str
-        The ids of the nodes, headwaters first; ``output_dir`` holds ``<id>.csv`` of
-        each.
+        The ids of the nodes, headwaters first; ``output_dir`` holds
+        ``hydrolog_node-hydrograph_<id>.csv`` of each.
     """
 
     network_file: Path
@@ -726,7 +731,7 @@ def build_network_fixture(directory: str | os.PathLike[str]) -> NetworkFixture:
 
         <directory>/network.json
         <directory>/inflows.csv
-        <directory>/out/<id>.csv      A, B, R1, J1, OUT
+        <directory>/out/hydrolog_node-hydrograph_<id>.csv   A, B, R1, J1, OUT
 
     Parameters
     ----------

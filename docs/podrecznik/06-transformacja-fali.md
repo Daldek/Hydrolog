@@ -111,7 +111,8 @@ Przykłady tego rozdziału przeprowadzają przez odcinek koryta i zbiornik hydro
 Kamiennika w Świerzawie z rozdz. 5 (model SCS, czas koncentracji Kerby’ego–Kirpicha, maksymalny
 opad o czasie trwania 12 h i prawdopodobieństwie przewyższenia 1 % z PMAXTP, 101,82 mm, hietogram
 Beta, krok 10 min). Polecenie `route network` z siecią złożoną z jednej zlewni zapisuje ten
-hydrogram w pliku `kamiennik/KAMIENNIK.csv`, który czytają wszystkie polecenia `route`:
+hydrogram w pliku `kamiennik/hydrolog_node-hydrograph_KAMIENNIK.csv`, który czytają wszystkie
+polecenia `route`:
 
 ```sh
 hydrolog route network --network '{"schema":"hydrolog-network/1","name":"Kamiennik — Świerzawa, p = 1 %","timestep_min":10,"rainfall":{"kind":"design","hietogram_type":"beta","total_mm":101.82,"duration_min":720},"nodes":[{"id":"KAMIENNIK","type":"subcatchment","watershed":{"name":"Kamiennik — Świerzawa","area_km2":37.22,"cn":65,"flow_path_length_km":15.88,"flow_path_slope_m_per_m":0.0114,"overland_length_km":0.3,"overland_slope_m_per_m":0.082,"retardance":0.4},"runoff":{"model":"curve-number","tc_method":"kerby_kirpich","uh_model":"scs"}},{"id":"OUT","type":"outlet","from":["KAMIENNIK"]}]}' --nodes KAMIENNIK --output-dir kamiennik
@@ -206,7 +207,7 @@ samą transformację, przepuszczamy przez ten odcinek wyłącznie falę Kamienni
 $L/c$ = 11 659 m / 3,351 m/s ≈ 58 min (prędkość fali z przykładu 6.5):
 
 ```sh
-hydrolog route lag --lag-min 58 --input-file kamiennik/KAMIENNIK.csv
+hydrolog route lag --lag-min 58 --input-file kamiennik/hydrolog_node-hydrograph_KAMIENNIK.csv
 ```
 
 Kulminacja 52,345 m³/s przychodzi po 470 min, o 60 min później. Jest o 0,02 % niższa od kulminacji
@@ -338,7 +339,7 @@ $K$ = 58 min ($L/c$), $X$ = 0,2 — wartość często przyjmowana dla rzek natu
 kalibracji (Baláž i in. 2010):
 
 ```sh
-hydrolog route muskingum --k-min 58 --x 0.2 --input-file kamiennik/KAMIENNIK.csv
+hydrolog route muskingum --k-min 58 --x 0.2 --input-file kamiennik/hydrolog_node-hydrograph_KAMIENNIK.csv
 ```
 
 Hydrolog przyjmuje $N$ = 6 pododcinków (dopuszczalne 3–9), wagi pododcinka 0,2408 (dopływ bieżący),
@@ -631,7 +632,7 @@ dziś uwagi o tym kryterium — to otwarte pytanie autora (ADR-0062).
 ### Przykład 6.5. Muskingum–Cunge na odcinku R8
 
 ```sh
-hydrolog route muskingum-cunge --length-km 11.6591 --slope-m-per-m 0.004258 --manning-n 0.035 --bottom-width-m 10 --side-slope-m-per-m 1.5 --input-file kamiennik/KAMIENNIK.csv
+hydrolog route muskingum-cunge --length-km 11.6591 --slope-m-per-m 0.004258 --manning-n 0.035 --bottom-width-m 10 --side-slope-m-per-m 1.5 --input-file kamiennik/hydrolog_node-hydrograph_KAMIENNIK.csv
 ```
 
 | Wielkość | Wartość |
@@ -778,7 +779,7 @@ Długość dyfuzji odcinka R8 wynosi około 239 m (przykład 6.5), więc wedłu
 11 659 / 239 ≈ 48,8, a czas przepływu $nK$ = $L/c$:
 
 ```sh
-hydrolog route cascade --n 48.8 --length-km 11.6591 --celerity-m-per-s 3.351 --input-file kamiennik/KAMIENNIK.csv
+hydrolog route cascade --n 48.8 --length-km 11.6591 --celerity-m-per-s 3.351 --input-file kamiennik/hydrolog_node-hydrograph_KAMIENNIK.csv
 ```
 
 Hydrolog liczy $K$ = 1,188 min, a kulminację odpływu 52,23 m³/s po 470 min (−0,24 %) — prawie tyle
@@ -922,7 +923,7 @@ rzeczywistego obiektu):
 | Odpływ [m³/s] | 0 | 2,47 | 3,50 | 4,95 | 6,06 | 7,00 | 7,83 | 8,57 | 17,94 | 34,76 | 56,43 | 82,02 | 143,00 |
 
 ```sh
-hydrolog route level-pool --storage-m3 0,15000,35000,90000,165000,260000,375000,510000,585000,665000,750000,840000,1035000 --outflow-m3s 0,2.47,3.5,4.95,6.06,7,7.83,8.57,17.94,34.76,56.43,82.02,143 --stage-m 0,0.5,1,2,3,4,5,6,6.5,7,7.5,8,9 --input-file kamiennik/KAMIENNIK.csv
+hydrolog route level-pool --storage-m3 0,15000,35000,90000,165000,260000,375000,510000,585000,665000,750000,840000,1035000 --outflow-m3s 0,2.47,3.5,4.95,6.06,7,7.83,8.57,17.94,34.76,56.43,82.02,143 --stage-m 0,0.5,1,2,3,4,5,6,6.5,7,7.5,8,9 --input-file kamiennik/hydrolog_node-hydrograph_KAMIENNIK.csv
 ```
 
 Kulminacja odpływu wynosi 24,67 m³/s po 590 min — o 52,9 % mniej niż dopływu i o 3 h później. Woda
@@ -1029,7 +1030,7 @@ narastania fali.
 Ten sam odcinek co w przykładzie 6.3, ale z jednym pododcinkiem podanym przez użytkownika:
 
 ```sh
-hydrolog route muskingum --k-min 58 --x 0.2 --subreaches 1 --input-file kamiennik/KAMIENNIK.csv
+hydrolog route muskingum --k-min 58 --x 0.2 --subreaches 1 --input-file kamiennik/hydrolog_node-hydrograph_KAMIENNIK.csv
 ```
 
 Hydrolog odmawia (`validation_error`, `details.reason` = `unstable_timestep`): przy kroku 10 min wagi
@@ -1044,7 +1045,7 @@ wag. Odcinek nizinny przyjęty do przykładu — 1 km, spadek 0,3 ‰, dno 40�
 $n$ = 0,035:
 
 ```sh
-hydrolog route muskingum-cunge --length-km 1 --slope-m-per-m 0.0003 --manning-n 0.035 --bottom-width-m 40 --side-slope-m-per-m 1.5 --input-file kamiennik/KAMIENNIK.csv
+hydrolog route muskingum-cunge --length-km 1 --slope-m-per-m 0.0003 --manning-n 0.035 --bottom-width-m 40 --side-slope-m-per-m 1.5 --input-file kamiennik/hydrolog_node-hydrograph_KAMIENNIK.csv
 ```
 
 Prędkość fali wynosi 1,09 m/s, a długość dyfuzji 3541 m, więcej niż długość odcinka ($X$ wyniosłoby

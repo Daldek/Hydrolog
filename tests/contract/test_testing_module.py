@@ -77,7 +77,9 @@ def test_the_fixture_tables_are_the_files_that_route_network_writes_from_its_fil
     )
 
     assert tables(case.output_dir) == tables(tmp_path / "real")
-    assert sorted(tables(case.output_dir)) == sorted(f"{n}.csv" for n in case.nodes)
+    assert sorted(tables(case.output_dir)) == sorted(
+        f"hydrolog_node-hydrograph_{n}.csv" for n in case.nodes
+    )
 
 
 def test_the_tables_of_an_inline_network_are_the_files_that_route_network_writes(
