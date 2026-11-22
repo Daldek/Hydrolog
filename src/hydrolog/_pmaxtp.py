@@ -201,7 +201,7 @@ def _missing_obserwator(exc: ImportError) -> MissingDependencyError:
     """Build the ``missing_dependency`` error that names the extra ``pmaxtp``."""
     return MissingDependencyError(
         "precip pmaxtp fetches the depth through Obserwator, the optional extra "
-        f"'{EXTRA}' (obserwator>=3.0.0,<4): cannot import 'obserwator' ({exc})",
+        f"'{EXTRA}' (obserwator>=3.1.0,<4): cannot import 'obserwator' ({exc})",
         hint=INSTALL_HINT,
         details={"extra": EXTRA, "module": "obserwator"},
     )
