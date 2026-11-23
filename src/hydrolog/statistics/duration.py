@@ -462,7 +462,10 @@ EXCEEDANCE_VALUES: Final = FormulaSpec(
         "test_gaps_are_left_out: a day without a value is left out, never a NaN of the "
         "curve",
     },
-    reference_cases=("tests/fixtures/formulas/daily-cases.json",),
+    reference_cases=(
+        "tests/fixtures/formulas/daily-cases.json",
+        "tests/fixtures/formulas/camels-pl-cases.json",
+    ),
     oracles=(
         Oracle(
             kind="exact",

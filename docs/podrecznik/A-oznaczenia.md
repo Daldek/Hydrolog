@@ -36,6 +36,7 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | a | `a` | rok |
 | cm | `cm` | centymetr |
 | d | `d` | doba |
+| d/rok | `d/yr` | doba na rok (liczba dni w roku) |
 | d | `day` | doba |
 | °C | `degC` | stopień Celsjusza |
 | $\mathrm{ft^{0{,}8}\,in^{0{,}7}\,h^{-1}\,\%^{0{,}5}}$ | `ft^0.8 in^0.7 h^-1 %^0.5` | jednostka stałej wzoru w stopach, calach, godzinach i procentach |
@@ -167,6 +168,7 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $D$ | Czas trwania jednostkowego opadu efektywnego | min | [`snyder`](05-hydrogram-jednostkowy.md#spec-snyder), [`nash_iuh`](05-hydrogram-jednostkowy.md#spec-nash_iuh), [`clark`](05-hydrogram-jednostkowy.md#spec-clark) |
 | $D$ | Czas trwania opadu efektywnego | h | [`nash_urban_regression`](05-hydrogram-jednostkowy.md#spec-nash_urban_regression) |
 | $d$ | Dzień roku hydrologicznego każdej wartości, 1 = 1 listopada | d | [`harmonic_fit`](09-rezim-i-zmiennosc.md#spec-harmonic_fit) |
+| $d$ | Dzień roku, licząc od 1, w którym przepływ zsumowany od pierwszego dnia po raz pierwszy przekracza połowę sumy roku | d | [`half_flow_date`](08-przeplywy-charakterystyczne-nizowki.md#spec-half_flow_date) |
 | $D$ | Krok czasowy hydrogramu i czas trwania jego jednostkowego opadu efektywnego | min | [`scs`](05-hydrogram-jednostkowy.md#spec-scs) |
 | $D$ | Liczba dni powyżej progu | d | [`heavy_precipitation_share`](11-wskazniki-meteorologiczne.md#spec-heavy_precipitation_share) |
 | $D$ | Największa odległość między dystrybuantami prób | – | [`ks_exact`](10-jednorodnosc-i-trend.md#spec-ks_exact) |
@@ -179,9 +181,11 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $\Delta t$ | Krok czasowy: długość każdego bloku deszczu | min | [`block_hyetograph`](02-opad.md#spec-block_hyetograph), [`triangular_hyetograph`](02-opad.md#spec-triangular_hyetograph), [`beta_hyetograph`](02-opad.md#spec-beta_hyetograph), [`euler_ii_hyetograph`](02-opad.md#spec-euler_ii_hyetograph) |
 | $\Delta x$ | Krok przestrzenny L / N | m | [`muskingum_cunge`](06-transformacja-fali.md#spec-muskingum_cunge) |
 | $D_g$ | Siatkowa liczba Reynoldsa D / dx = 1 - 2X | – | [`muskingum_cunge`](06-transformacja-fali.md#spec-muskingum_cunge) |
+| $D_h$ | Średnia długość ciągów takich dni, 0 bez żadnego | d | [`high_flow_days`](08-przeplywy-charakterystyczne-nizowki.md#spec-high_flow_days) |
 | $D_i$ | Czasy trwania punktów krzywej wysokość–czas trwania, rosnące | min | [`euler_ii_hyetograph`](02-opad.md#spec-euler_ii_hyetograph) |
 | $d_{II}$ | Liczba dni lutego w roku średnim | d | [`spring_share`](09-rezim-i-zmiennosc.md#spec-spring_share) |
 | $d_k$ | Dzień roku hydrologicznego pierwszego maksimum każdej harmoniki | d | [`harmonic_fit`](09-rezim-i-zmiennosc.md#spec-harmonic_fit) |
+| $D_l$ | Średnia długość ciągów takich dni, 0 bez żadnego | d | [`low_flow_days`](08-przeplywy-charakterystyczne-nizowki.md#spec-low_flow_days) |
 | $e$ | Granice klas stanów, rosnące | cm | [`rybczynski_zones`](09-rezim-i-zmiennosc.md#spec-rybczynski_zones) |
 | $e^{2{,}3 C_g}$ | Granica dokładności siatkowej liczby Reynoldsa według NEH, exp(2,3 Cg), ograniczona do exp(700) | – | [`muskingum_cunge`](06-transformacja-fali.md#spec-muskingum_cunge) |
 | $\ell$ | Długość spływu: najdłuższa droga, którą woda spływa od działu wodnego do przekroju | km | [`nrcs`](04-czas-koncentracji.md#spec-nrcs) |
@@ -192,7 +196,10 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $f$ | Kierunek średniego wektora jako ułamek roku | – | [`circular_mean`](09-rezim-i-zmiennosc.md#spec-circular_mean) |
 | $F$ | Rozkład: logarytmiczno-normalny o parametrze położenia 0, GEV, Pearsona typu III lub trójparametrowy rozkład Weibulla z scipy.stats | – | [`fit_l_moments`](07-przeplywy-maksymalne.md#spec-fit_l_moments), [`fit_moments`](07-przeplywy-maksymalne.md#spec-fit_moments), [`fit_maximum_likelihood`](07-przeplywy-maksymalne.md#spec-fit_maximum_likelihood), [`fit_least_squares`](07-przeplywy-maksymalne.md#spec-fit_least_squares), [`anderson_darling`](07-przeplywy-maksymalne.md#spec-anderson_darling), [`akaike_information_criterion`](07-przeplywy-maksymalne.md#spec-akaike_information_criterion) |
 | $f$ | Waga wcześniejszej rzędnej: część kroku, o którą przesunięcie odbiega od całkowitej liczby kroków | – | [`lag`](06-transformacja-fali.md#spec-lag) |
+| $f_0$ | Udział dni bez przepływu wśród dni z wartością | – | [`zero_flow_fraction`](08-przeplywy-charakterystyczne-nizowki.md#spec-zero_flow_fraction) |
+| $F_h$ | Liczba dni poza progiem na rok dni z wartością | d/rok | [`high_flow_days`](08-przeplywy-charakterystyczne-nizowki.md#spec-high_flow_days) |
 | $F_i$ | Prawdopodobieństwo nieprzewyższenia każdej wartości | – | [`non_exceedance_positions`](08-przeplywy-charakterystyczne-nizowki.md#spec-non_exceedance_positions) |
+| $F_l$ | Liczba dni poza progiem na rok dni z wartością | d/rok | [`low_flow_days`](08-przeplywy-charakterystyczne-nizowki.md#spec-low_flow_days) |
 | $F_s$ | Wskaźnik częstości cieków | 1/km² | [`stream_frequency`](01-zlewnia.md#spec-stream_frequency) |
 | $G$ | Skorygowany współczynnik skośności Fishera–Pearsona | – | [`sample_moments`](07-przeplywy-maksymalne.md#spec-sample_moments) |
 | $\gamma$ | Skośność rozkładu | – | [`pearson3_quantiles`](07-przeplywy-maksymalne.md#spec-pearson3_quantiles) |
@@ -314,6 +321,8 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $P/N$ | Opad w % normy | % | [`kaczorowska_class`](11-wskazniki-meteorologiczne.md#spec-kaczorowska_class), [`month_precipitation_class`](11-wskazniki-meteorologiczne.md#spec-month_precipitation_class) |
 | $P_0$ | Najmniejszy opad dnia z opadem | mm | [`spell_lengths`](11-wskazniki-meteorologiczne.md#spec-spell_lengths) |
 | $P1$ | Parametr szorstkościowy Lutza w zależności na tp | $\mathrm{h\,km^{-0{,}52}}$ | [`lutz`](05-hydrogram-jednostkowy.md#spec-lutz) |
+| $p_1$ | Procent przewyższenia pierwszego, wyższego punktu krzywej | % | [`fdc_slope`](08-przeplywy-charakterystyczne-nizowki.md#spec-fdc_slope) |
+| $p_2$ | Procent przewyższenia drugiego, niższego punktu krzywej | % | [`fdc_slope`](08-przeplywy-charakterystyczne-nizowki.md#spec-fdc_slope) |
 | $P_{e,m}$ | Opad efektywny w każdym kroku | mm | [`uh_convolution`](05-hydrogram-jednostkowy.md#spec-uh_convolution) |
 | $p_i$ | Dwanaście sum miesięcznych roku albo dwanaście norm miesięcznych, w dowolnej kolejności | mm | [`precipitation_concentration_index`](11-wskazniki-meteorologiczne.md#spec-precipitation_concentration_index) |
 | $P_i$ | Opad dobowy dni okresu; NaN w dniu z brakiem danych, który jest pomijany | mm | [`sdii`](11-wskazniki-meteorologiczne.md#spec-sdii), [`wet_day_percentile`](11-wskazniki-meteorologiczne.md#spec-wet_day_percentile), [`heavy_precipitation_share`](11-wskazniki-meteorologiczne.md#spec-heavy_precipitation_share) |
@@ -347,10 +356,14 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $q_{pR}$ | Kulminacja dla czasu trwania D | m³/s na mm | [`snyder`](05-hydrogram-jednostkowy.md#spec-snyder) |
 | $q_{pR}$ | Kulminacja hydrogramu jednostkowego (specyfikacja `snyder`) | m³/s na mm | [`snyder_shape`](05-hydrogram-jednostkowy.md#spec-snyder_shape) |
 | $Q_T$ | Minima o danych okresach powtarzalności; luka tam, gdzie przepływ byłby ujemny | m³/s | [`fisher_tippett_minima`](08-przeplywy-charakterystyczne-nizowki.md#spec-fisher_tippett_minima) |
+| $Q_t$ | Przepływ dobowy jednego roku od jego pierwszego dnia; NaN w dniu bez wartości | m³/s | [`half_flow_date`](08-przeplywy-charakterystyczne-nizowki.md#spec-half_flow_date) |
 | $Q_t$ | Przepływ dobowy w kolejnych dniach; luka (NaN) oznacza dzień bez wartości | m³/s | [`recession_constant`](08-przeplywy-charakterystyczne-nizowki.md#spec-recession_constant) |
+| $Q_t$ | Przepływ dobowy w porządku czasowym; NaN w dniu bez wartości | m³/s | [`high_flow_days`](08-przeplywy-charakterystyczne-nizowki.md#spec-high_flow_days), [`low_flow_days`](08-przeplywy-charakterystyczne-nizowki.md#spec-low_flow_days) |
 | $Q_t$ | Przepływ dobowy, znany dla każdego dnia, w porządku czasowym | m³/s | [`lyne_hollick`](08-przeplywy-charakterystyczne-nizowki.md#spec-lyne_hollick) |
+| $Q_t$ | Przepływ dobowy; NaN w dniu bez wartości | m³/s | [`zero_flow_fraction`](08-przeplywy-charakterystyczne-nizowki.md#spec-zero_flow_fraction) |
 | $Q_t$ | Przepływ dobowy; luka (NaN) oznacza dzień bez wartości | m³/s | [`baseflow_index`](08-przeplywy-charakterystyczne-nizowki.md#spec-baseflow_index) |
 | $Q_T$ | Przepływy o danych okresach powtarzalności | m³/s | [`gev_quantiles`](07-przeplywy-maksymalne.md#spec-gev_quantiles), [`log_normal_quantiles`](07-przeplywy-maksymalne.md#spec-log_normal_quantiles), [`pearson3_quantiles`](07-przeplywy-maksymalne.md#spec-pearson3_quantiles), [`weibull_quantiles`](07-przeplywy-maksymalne.md#spec-weibull_quantiles) |
+| $Q_t$ | Wartości dobowe szeregu, w dowolnej kolejności; NaN w dniu bez wartości, który jest pomijany | m³/s | [`fdc_slope`](08-przeplywy-charakterystyczne-nizowki.md#spec-fdc_slope) |
 | $r$ | Długość średniego wektora: 1 dla jednego terminu, bliska 0, gdy terminy rozkładają się na cały rok | – | [`circular_mean`](09-rezim-i-zmiennosc.md#spec-circular_mean) |
 | $r$ | Najmniejszy stosunek współczynnika miesiąca letniego do wiosennego uznawany za „prawie równy” | – | [`dynowska_regime_type`](09-rezim-i-zmiennosc.md#spec-dynowska_regime_type) |
 | $R$ | Opad dni powyżej progu (R95p) | mm | [`heavy_precipitation_share`](11-wskazniki-meteorologiczne.md#spec-heavy_precipitation_share) |
@@ -381,6 +394,7 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $S$ | Retencja maksymalna S | mm | [`scs_cn_runoff`](03-opad-efektywny.md#spec-scs_cn_runoff) |
 | $S$ | Retencja maksymalna po rozpoczęciu odpływu | mm | [`scs_cn_retention`](03-opad-efektywny.md#spec-scs_cn_retention) |
 | $S$ | Spadek dna, równy spadkowi linii energii przy przepływie jednostajnym | m/m | [`manning_normal_flow`](06-transformacja-fali.md#spec-manning_normal_flow) |
+| $S$ | Spadek krzywej w skali logarytmicznej na jednostkę prawdopodobieństwa przewyższenia | – | [`fdc_slope`](08-przeplywy-charakterystyczne-nizowki.md#spec-fdc_slope) |
 | $S$ | Spadek najdłuższej drogi spływu: wysokość jej początku minus wysokość przekroju, podzielona przez jej długość | m/m | [`kirpich`](04-czas-koncentracji.md#spec-kirpich) |
 | $S$ | Spadek powierzchni, po której spływa woda | m/m | [`faa`](04-czas-koncentracji.md#spec-faa), [`kerby`](04-czas-koncentracji.md#spec-kerby) |
 | $S$ | Spadek prostej przez przekrój, przy którym pola profilu nad nią i pod nią są równe | m/m | [`equal_area_slope`](01-zlewnia.md#spec-equal_area_slope) |

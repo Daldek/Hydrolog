@@ -116,6 +116,7 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.statistics.events",
     "hydrolog.statistics.volumes",
     "hydrolog.statistics.baseflow",
+    "hydrolog.statistics.signatures",
     "hydrolog.statistics.regime",
     "hydrolog.statistics.seasonality",
     "hydrolog.statistics.harmonics",

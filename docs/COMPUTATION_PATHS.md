@@ -1,8 +1,8 @@
 # Computation Paths for Unit Hydrograph Models (plus HSG and the Fisher–Tippett Distribution)
 
-**Document version:** 1.15
-**Date:** 2026-11-22
-**Applies to:** Hydrolog >= 0.8.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v0.8.0, the sub-steps of the SCS unit hydrograph (3.1.3) and the plausibility of a rating curve (3.8) from 0.8.1, maximum likelihood (3.6, 3.10), the Euler type II storm (3.15), the constants of Kirpich and NRCS (3.7), the specs and their `formula_version` (`docs/FORMULAS.md`) and the rating curve fit by trial values of H₀ (3.8) from 0.9.0; the rest: >= 0.6.0)
+**Document version:** 1.16
+**Date:** 2026-11-23
+**Applies to:** Hydrolog >= 0.8.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v0.8.0, the sub-steps of the SCS unit hydrograph (3.1.3) and the plausibility of a rating curve (3.8) from 0.8.1, maximum likelihood (3.6, 3.10), the Euler type II storm (3.15), the constants of Kirpich and NRCS (3.7), the specs and their `formula_version` (`docs/FORMULAS.md`) and the rating curve fit by trial values of H₀ (3.8) from 0.9.0, the hydrological signatures (3.17) from 0.10.0; the rest: >= 0.6.0)
 
 ---
 
@@ -1355,6 +1355,35 @@ print(round(float(beta.intensities_mm[0]), 4))   # 0.6372 = I_(1/12)(0.5, 5)
 
 **Areal precipitation by isohyets** (`isohyet_method`, `precip areal` `isohyet`; KZGW 2017, eq. 2.2; Chow et al. 1988, Fig. 3.4.3c). A zone's precipitation is the mean of its two bounding isohyets, so a zone at the edge of the watershed (beyond its highest or below its lowest isohyet) takes a notional bound that makes that mean the precipitation estimated for it: Chow's edge zones of 5 and 53 mm are the bounds 0 and 56 mm, and the example gives 27.9 mm.
 
+### 3.17 Hydrological Signatures of the CAMELS Data Sets (`hydrolog.statistics.signatures`; ADR-0073)
+
+A signature condenses a daily discharge record into one number that compares catchments (Sawicz et al., 2011; Westerberg and McMillan, 2015). The CAMELS data sets publish the same signatures for every gauge: CAMELS for 671 US catchments (Addor et al., 2017), CAMELS-DE and CAMELS-PL 2.1.0 for 869 Polish ones (Brzezińska et al., 2026). Five of them are Tier A formulas with specs (`formula_version` 1, status referenced; cards in [FORMULAS.md](FORMULAS.md)), library functions without a command, re-exported from `hydrolog.statistics`:
+
+| Function (spec) | Result | CAMELS column |
+|---|---|---|
+| `fdc_slope(values, from_percent=33, to_percent=66)` (`fdc_slope`) | S = [ln Q(p₁) − ln Q(p₂)] / [(p₂ − p₁)/100] on the duration curve of `exceedance_values` (Sawicz et al. 2011, eq. 3); a curve at 0 at p₂ is refused | `slope_fdc` (with p 34 and 67) |
+| `high_flow_days(values)` (`high_flow_days`) | `FlowDays`: days above 9 × the median per 365.25 days with a value, the mean length of their runs, `days`, `events` | `high_q_freq`, `high_q_dur` |
+| `low_flow_days(values)` (`low_flow_days`) | `FlowDays`: days below 0.2 × the mean, the same way | `low_q_freq`, `low_q_dur` |
+| `zero_flow_fraction(values)` (`zero_flow_fraction`) | the share of the days with a value whose flow is 0 | `zero_q_freq` |
+| `half_flow_date(values)` (`half_flow_date`) | the day of one year, from 1, on which the flow summed from its first day first exceeds half of the year's (Court, 1962) | `hfd_mean` (the mean over the years) |
+
+CAMELS's `Q5` and `Q95` are `exceedance_values` at 95 and 5 %, and `baseflow_index` is `baseflow_index` of section 3.12. The functions take a sample, never a calendar (ADR-0063): the days of the record in order with NaN on a day without a value (one year's days for the half-flow date); the period, the years kept and the year's first day are the caller's. A day without a value ends a run and adds nothing to a sum; frequencies count per day with a value. Each result is the same whatever the unit of the series (the values are scaled by a power of two before the comparisons and logarithms).
+
+```python
+import numpy as np
+from hydrolog.statistics import fdc_slope, half_flow_date, high_flow_days, low_flow_days, zero_flow_fraction
+
+q = np.array([1.0] * 9 + [10.0, 10.0] + [1.0] * 9)
+print(high_flow_days(q))              # FlowDays(days_per_year=36.525, mean_duration_days=2.0, days=2, events=1)
+print(zero_flow_fraction([0.0, 1.5, float("nan"), 2.0]))   # 0.333...
+print(half_flow_date([1.0] * 365))    # 183
+print(round(fdc_slope(np.exp(-2.0 * np.arange(1, 100) / 100.0)), 12))   # 2.0
+```
+
+**Verification against CAMELS-PL 2.1.0** (`tests/unit/test_formulas_signatures.py`; ADR-0073). CAMELS-PL publishes its signatures beside the daily discharge it computed them from, without code. Its method, found on all 869 gauges, is the code of CAMELS-DE (`08_hydrologic_attributes.ipynb`) with the hydrological year from 1 November, numpy's `nearest` quantiles (Q5, Q95, the slope), the slope from the positive flows of complete years, and low-flow frequency and duration 0 without an event; the years kept have at most 5 % of their days missing, and the frequencies divide by every day of them. With these rules Q5, Q95, the slope, the high- and low-flow frequencies and durations and the zero-flow share match on 869 of 869 gauges and the half-flow date on 828 (the rest differ only in years whose summed flow ties with half the year's in the published decimals). The signatures of thirteen gauges (6 to 193,728 km², four with zero flows) are 104 reference cases (`tests/fixtures/formulas/camels-pl-cases.json`) on their published discharge (`tests/fixtures/camels_pl/`). Each case names the sample CAMELS-PL computed on and every step where its computation and Hydrolog's part, and its locator names the release (Zenodo record 23275336, version 2.1.0, doi:10.5281/zenodo.23275336) and the SHA-256 of each file it reads (Nogat CMP-6.10; `CAMELS_PL_ATTRIBUTION.txt` lists them with the provider lines). Every signature but the baseflow index matches within the tolerance its case states.
+
+**The baseflow index is a recorded discrepancy** (Nogat CMP-5.2), a matter of definition: CAMELS-PL filters twice, forward and backward, the baseflow held at most the flow of its pass (the quickflow clipped at 0), from b = Q on the first day, as the LH method of the `baseflow` package (Xie et al., 2020), on the data to 2023-12-31 with gaps dropped; it reproduces CAMELS-PL's index on all 139 gauges without a missing day and on 824 of 869. Hydrolog keeps the standard approach of Ladson et al. (2013) of section 3.12 (three passes, the quickflow unclipped, 30 values reflected), which differs from it by −0.045 to +0.027 on the thirteen gauges and from CAMELS-PL's printed index by up to 0.19 over the 869. Compare a BFI only with one of the same filter.
+
 ---
 
 ## 4. Literature Verification
@@ -1412,6 +1441,7 @@ print(round(float(beta.intensities_mm[0]), 4))   # 0.6372 = I_(1/12)(0.5, 5)
 | Runoff volumes (`stats runoff-volume`), rating curves by period (`hydrometrics rating-curve`) | V = Σ Q · 86,400 s; the power-law fit of section 3.8 per block of years; the mockup's Kłodzko numbers reproduced | ✅ |
 | Euler type II design storm from a depth-duration curve (`EulerIIHietogram`, `euler_ii`; section 3.15) | ATV-DVWK-A 118 (2001) Kap. 5.2.2.1 as quoted by Thewes (2005), Malitz (2009), Kaźmierczak and Kotowski (2012); the storms printed by DWD (Malitz 2009), itwh (KOSTRA-DWD 2010R and 2020), Kaźmierczak and Kotowski (2012) and Wdowikowski et al. (2025) and the recorded PMAXTP tables reproduced | ✅ (the peak from 0.3·D also beyond 150 min, where the Wrocław monograph ends it at D/3; depths between the points of the curve linear in ln D) |
 | Design hyetographs: whole steps, the triangle, the Beta storm (`BlockHietogram`, `TriangularHietogram`, `BetaHietogram`; section 3.16) | Chow, Maidment and Mays (1988) sec. 14.3 after Yen and Chow (1980), Example 14.3.1 reproduced; KZGW (2017) eqs. 2.20–2.22 after Węglarczyk (1993), the steps checked against `scipy.stats.beta.cdf` | ✅ (block integrals instead of KZGW's density at the ends of the intervals) |
+| Hydrological signatures: the slope of the duration curve, high- and low-flow days, the zero-flow share, the half-flow date (`hydrolog.statistics.signatures`; section 3.17) | Sawicz et al. (2011), Addor et al. (2017) and their code, Westerberg and McMillan (2015), Court (1962), the code of CAMELS-DE (Loritz et al., 2024); CAMELS-PL 2.1.0 (Brzezińska et al., 2026): 104 reference cases of thirteen gauges reproduced | ✅ (the baseflow index of CAMELS-PL is another filter: a recorded discrepancy, checked against Xie et al. 2020) |
 
 ### 4.2 Key Publications
 
@@ -1754,7 +1784,23 @@ print(round(float(beta.intensities_mm[0]), 4))   # 0.6372 = I_(1/12)(0.5, 5)
 
 94. **WMO** (2009). *Manual on Low-flow Estimation and Prediction*. WMO No. 1029, Operational Hydrology Report No. 50, World Meteorological Organization, Geneva (section 5.3, Eq. 5.1-5.3: the recession constant).
 
+### Hydrological Signatures
+
+95. **Addor, N., Newman, A.J., Mizukami, N. & Clark, M.P.** (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. *Hydrology and Earth System Sciences*, 21, 5293-5313 (Table 3: the signatures); their code `hydro/hydro_signatures.R`, github.com/naddor/camels.
+
+96. **Sawicz, K., Wagener, T., Sivapalan, M., Troch, P.A. & Carrillo, G.** (2011). Catchment classification: empirical analysis of hydrologic similarity based on catchment function in the eastern USA. *Hydrology and Earth System Sciences*, 15, 2895-2911 (eq. 3: the slope of the duration curve).
+
+97. **Westerberg, I.K. & McMillan, H.K.** (2015). Uncertainty in hydrological signatures. *Hydrology and Earth System Sciences*, 19, 3951-3968 (Table 2: high- and low-flow frequencies).
+
+98. **Court, A.** (1962). Measures of streamflow timing. *Journal of Geophysical Research*, 67(11), 4335-4339 (the half-flow date).
+
+99. **Loritz, R., Dolich, A., Acuña Espinoza, E. et al.** (2024). CAMELS-DE: hydro-meteorological time series and attributes for 1582 catchments in Germany. *Earth System Science Data*, 16, 5625-5642; the code of its signatures, `version1/scripts/08_hydrologic_attributes.ipynb`, github.com/CAMELS-DE/camels_de.
+
+100. **Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A.E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. & Wrzesiński, D.** (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset]. Zenodo, record 23275336, doi:10.5281/zenodo.23275336, CC BY 4.0.
+
+101. **Xie, J., Liu, X., Wang, K., Yang, T., Liang, K. & Liu, C.** (2020). Evaluation of typical methods for baseflow separation in the contiguous United States. *Journal of Hydrology*, 583, 124628; their Python package `baseflow`, github.com/xiejx5/baseflow (the two-pass LH filter of CAMELS-PL's baseflow index).
+
 ---
 
-**Document version:** 1.15
-**Last updated:** 2026-11-22
+**Document version:** 1.16
+**Last updated:** 2026-11-23

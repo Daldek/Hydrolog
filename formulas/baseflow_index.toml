@@ -11,7 +11,7 @@ validation = "none: the definition of the index"
 conventions = ["the volumes are the sums of the daily values (each day the same length), summed exactly once rounded (math.fsum)", "a day counts when it has both a discharge and a baseflow; with gaps the index is the ratio of the sums over the days with values (Ladson et al., sect. 2.4), not the mean of the spans' indices weighted by their lengths that BFI.R computes", "the series in any unit: the index has none"]
 assumptions = []
 notices = []
-reference_cases = ["tests/fixtures/formulas/baseflow-cases.json"]
+reference_cases = ["tests/fixtures/formulas/baseflow-cases.json", "tests/fixtures/formulas/camels-pl-cases.json"]
 constants = []
 tables = []
 

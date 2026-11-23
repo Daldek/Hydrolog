@@ -1,0 +1,141 @@
+schema = "nogat-formula-card/1"
+name = "half_flow_date"
+title = "Half-flow date: the day on which half of a year's flow has passed"
+function = "hydrolog.statistics.signatures.half_flow_date"
+family = "index"
+formula_version = 1
+status = "referenced"
+equation = "d = min { k : 2 sum_(t=1..k) Q_t > sum_(t=1..n) Q_t }, the days numbered from the first day of the year, 1; a day without a value adds nothing"
+latex = "d = \\min\\Bigl\\{k : 2\\sum_{t=1}^{k} Q_t > \\sum_{t=1}^{n} Q_t\\Bigr\\}"
+validation = "none: a timing statistic of the observed record; Court (1962) and Addor et al. (2017) use it to compare the timing of runoff"
+conventions = ["the values are the days of one year in order, day 1 its first: IMGW-PIB's hydrological year from 1 November (CAMELS-PL), CAMELS-US's from 1 October; the mean half-flow date of a record is the mean of its years' dates", "the date is the first day whose summed flow exceeds half of the year's (strictly, as the codes of CAMELS-US and CAMELS-DE take it; Addor et al.'s Table 3 says 'reaches')", "a day without a value (NaN) adds nothing to either sum, so it is never the date (the code of CAMELS-US drops it and keeps the numbers of the days)", "the sums are exact for the binary values given, integer multiples of their smallest power of two: no rounding decides the date, and a sum equal to half of the year's, a tie, is not past it; values equal in their printed decimals can still tie in decimals and not in binary"]
+assumptions = ["the days without a value are few: each takes its flow out of the year and can move the date"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/camels-pl-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_series"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+day = 0.0
+
+[properties.scalings.tolerance]
+reason = "the sums are exact: doubling every value doubles both sides of the comparison"
+abs = 0.0
+
+[[properties.limits]]
+name = "uniform_flow"
+text = "a year of equal flows passes half of its flow on the day after its middle: day 183 of 365, day 184 of 366"
+
+[[properties.limits]]
+name = "one_day_of_flow"
+text = "all the flow of the year on one day is that day"
+
+[[properties.limits]]
+name = "half_reached_is_not_exceeded"
+text = "a sum equal to half of the year's is not past it: the date is the next day with flow"
+
+[[sources]]
+citation = "Court, A. (1962). Measures of streamflow timing. Journal of Geophysical Research 67(11), 4335-4339"
+access = "author-provided"
+locator = "the half-flow date, as Addor et al. (2017, Table 3) cite it"
+
+[[sources]]
+citation = "Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313"
+access = "open"
+locator = "Table 3, p. 5300: hfd_mean, the mean half-flow date, the 'date on which the cumulative discharge since 1 October reaches half of the annual discharge'"
+url = "https://doi.org/10.5194/hess-21-5293-2017"
+
+[[sources]]
+citation = "Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels"
+access = "open"
+locator = "compute_hfd_mean_sd: which(cumsum(hy_q) > 0.5 * sum(hy_q))[1], the number of days since the beginning of the hydrological year"
+url = "https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R"
+
+[[sources]]
+citation = "Dolich, A. (2024). 08_hydrologic_attributes.ipynb, the code of the hydrologic attributes of CAMELS-DE version 1 (Loritz et al. 2024, ESSD 16, 5625-5642), github.com/CAMELS-DE/camels_de"
+access = "open"
+locator = "hfd_mean: the first day whose cumulative discharge since the start of the year exceeds half of the year's, counted from 1"
+url = "https://github.com/CAMELS-DE/camels_de/blob/main/version1/scripts/08_hydrologic_attributes.ipynb"
+
+[[variables]]
+name = "values"
+symbol = "Q_t"
+unit = "m3/s"
+kind = "real_array"
+description = "The daily discharge of one year, from its first day; NaN on a day without a value."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+max_length = 366
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "the signatures are free of the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 6430.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0"
+access = "open"
+locator = "discharge_vol_obs of the 13 gauges of tests/fixtures/camels_pl/ (5.93 to 193,728 km2): 0 m3/s on days without flow (Brynica, Czarna, Gardęga, Noteć and five more) to 6430 m3/s (the Wisła at Tczew)"
+url = "https://doi.org/10.5281/zenodo.23275336"
+
+[[constraints]]
+name = "positive_flow_volume"
+class = "precondition"
+text = "sum(Q_t) > 0"
+
+[constraints.source]
+citation = "Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels"
+access = "open"
+locator = "compute_hfd_mean_sd: 'hfd can't be computed if annual discharge is 0'"
+url = "https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R"
+
+[[outputs]]
+name = "day"
+unit = "d"
+kind = "integer"
+symbol = "d"
+description = "The day of the year, from 1, on which the flow summed from its first day first exceeds half of the year's."
+
+[outputs.physical]
+low = 1.0
+low_inclusive = true
+high = 366.0
+high_inclusive = true
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "test_a_tie_is_decided_exactly: ten flows of 0.1, whose float sums put the date a day early, give the exact day"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case values-nan_element and limit half_reached_is_not_exceeded: a gap adds nothing and is never the date"
+
+[[oracles]]
+kind = "exact"
+description = "the cumulative sums in exact rational arithmetic (fractions), day by day"
+test = "tests/unit/test_formulas_signatures.py::test_the_date_is_the_exact_crossing"
+conventions = []

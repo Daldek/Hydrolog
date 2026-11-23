@@ -1360,6 +1360,32 @@ texture = classify_usda_texture(clay=20, sand=40, silt=40)
 print(texture, texture_to_hsg(texture))
 ```
 
+The hydrological signatures of the CAMELS data sets have no command:
+`fdc_slope`, `high_flow_days` and `low_flow_days` (a `FlowDays`: days per year and the mean length of
+their runs), `zero_flow_fraction` and `half_flow_date` take the days of a record in order, NaN on a day
+without a value, and the caller chooses the period and the years
+([COMPUTATION_PATHS.md](COMPUTATION_PATHS.md#317-hydrological-signatures-of-the-camels-data-sets-hydrologstatisticssignatures-adr-0073),
+[ADR-0073](decisions/0073-the-signatures-of-camels-pl-as-reference-cases.md)). Here on the specific
+discharge of the Nysa Kłodzka at Kłodzko from CAMELS-PL 2.1.0, the hydrological years 1952–2025 as
+CAMELS-PL takes them (its slope from the positive flows at 34 and 67 %):
+
+```python
+import csv
+import gzip
+
+import numpy as np
+
+from hydrolog.statistics import fdc_slope, half_flow_date, high_flow_days, low_flow_days
+
+with gzip.open("tests/fixtures/camels_pl/camels_pl_150160180.csv.gz", "rt", encoding="utf-8") as handle:
+    rows = [row for row in csv.DictReader(handle) if row["date"] >= "1951-11-01"]
+q = np.array([float(row["discharge_spec_obs"]) for row in rows])  # mm/d, 1951-11-01 to 2025-10-31
+year = np.array([int(row["date"][:4]) + (row["date"][5:7] in ("11", "12")) for row in rows])
+print(round(fdc_slope(q[q > 0], from_percent=34, to_percent=67), 2))  # 1.79, as CAMELS-PL
+print(high_flow_days(q).days_per_year, low_flow_days(q).mean_duration_days)  # 1.554..., 3.6857...
+print(np.mean([half_flow_date(q[year == y]) for y in np.unique(year)]))  # 174.2...: about 23 April
+```
+
 Also in the library: `WatershedGeometry` and `TerrainAnalysis` (shape and relief indicators),
 `HypsometricCurve`, `StreamNetwork` (Strahler and Shreve), `thiessen_polygons` and
 `inverse_distance_weighting` (areal precipitation), `hydrolog.routing` (`Hydrograph`,
