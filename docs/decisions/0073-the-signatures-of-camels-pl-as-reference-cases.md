@@ -3,8 +3,8 @@
 - Status: accepted
 - Date: 2026-11-23
 - Builds on: [ADR-0050](0050-formulas-declared-by-specs.md), [ADR-0063](0063-the-station-statistics-by-specs.md),
-  Nogat's computation standard (CMP-5.1, CMP-5.2, CMP-6.1) and Nogat plan `2026-11-22-camels-pl`, step 5 (the author's
-  decision 5 of 2026-11-22: „Sygnatur użyjemy do testów”)
+  Nogat's computation standard (CMP-5.1, CMP-5.2, CMP-6.1, CMP-6.10), Nogat DEV §20 (DEV-20.12, ECO-086) and Nogat plan
+  `2026-11-22-camels-pl`, step 5 (the author's decision 5 of 2026-11-22: „Sygnatur użyjemy do testów”)
 
 ## Context
 
@@ -36,21 +36,26 @@ one line each and ships no code; how they were computed had to be found from the
 3. **Thirteen gauges as reference cases** (`tests/fixtures/formulas/camels-pl-cases.json`, 104 cases): 6 to
    193,728 km², Sudetes, Carpathians, upland, lowland, lake-district and wetland rivers, the Odra and the Wisła, four
    with zero flows; their published daily discharge is kept in `tests/fixtures/camels_pl/` with
-   `CAMELS_PL_ATTRIBUTION.txt` (the citation, S and P of IMGW-PIB, the CRC-32 of each member read) and the script that
-   extracted it. Each case names CAMELS-PL's sample and lists the steps where its computation and Hydrolog's part
+   `CAMELS_PL_ATTRIBUTION.txt` and the script that extracted it. The cases are pinned to the release (CMP-6.10): the
+   attribution file names its record, version and DOI and gives the SHA-256 of the ZIP, of the data description and of
+   each member read, and each case's locator names the release and the SHA-256 of the files it reads; the file carries
+   the provider lines S and P (IMGW-PIB's discharge) and L and LP (CAMELS-PL 2.1.0) of Nogat DEV §20 (DEV-20.12).
+   Each case names CAMELS-PL's sample and lists the steps where its computation and Hydrolog's part
    (CMP-6.1): the `nearest` order statistic against Hydrolog's Weibull interpolation (the spread of the order statistics
    between the two positions), the half-flow dates of years that tie in the published decimals (1/N each), the binary
    representation of decimals (10⁻¹²). The frequencies and the share are compared after the conversion to CAMELS-PL's
    denominator. Q5 and Q95 are cases of `exceedance_values` (95 and 5 %).
 4. **The baseflow index is a discrepancy (CMP-5.2), recorded, not hidden.** CAMELS-PL's filter is not Hydrolog's:
    Hydrolog follows Ladson et al.'s standard approach (three passes, the quickflow unclipped, 30 values reflected),
-   CAMELS-PL two passes with the quickflow clipped at 0. On the thirteen gauges Hydrolog's index differs by −0.04 to
-   +0.03; the test checks the cause (the two-pass filter gives CAMELS-PL's values) and Hydrolog's numbers.
+   CAMELS-PL two passes with the quickflow clipped at 0. On the thirteen gauges Hydrolog's index differs from the
+   two-pass filter by −0.045 to +0.027; the test checks the cause (the two-pass filter gives CAMELS-PL's values) and
+   Hydrolog's numbers.
 
 ## Consequences
 
 - Every signature but the baseflow index matches CAMELS-PL 2.1.0 on the thirteen gauges within the stated tolerances.
-- A newer release of CAMELS-PL changes the cases only by a deliberate change: the script is run again on its ZIP.
+- A newer release of CAMELS-PL changes the cases only by a deliberate change: the script is run again on its ZIP and
+  data description, whose SHA-256 it checks, and the pins of every case move with it.
 - No command and no result schema change; the functions are new public library functions.
 
 ## Alternatives considered

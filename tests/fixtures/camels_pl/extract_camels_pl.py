@@ -12,11 +12,13 @@ This script copies from the release's ZIP only what the tests read:
   the columns ``date``, ``discharge_vol_obs`` and ``discharge_spec_obs`` as published;
 * ``CAMELS_PL_hydrologic_attributes.csv``: the header and the rows of the thirteen
   gauges of the release's file, as published;
-* ``CAMELS_PL_ATTRIBUTION.txt``: the citation, the licence, IMGW-PIB's lines and the
-  checksums of the ZIP and of the members read;
+* ``CAMELS_PL_ATTRIBUTION.txt``: the release (record, version, DOI), the SHA-256 of
+  the ZIP, of the data description and of each member read (Nogat CMP-6.10), the
+  citation and the provider lines S, P, L and LP (Nogat DEV §20, DEV-20.12);
 * ``tests/fixtures/formulas/camels-pl-cases.json``: the reference cases, each with the
   sample CAMELS-PL computed on and each step where its computation and Hydrolog's part
-  (CMP-6.1), the baseflow index as a discrepancy with its cause (CMP-5.2).
+  (CMP-6.1), the baseflow index as a discrepancy with its cause (CMP-5.2); the locator
+  of each names the release and the SHA-256 of the files it reads (CMP-6.10).
 
 How CAMELS-PL computed each signature was found on all 869 gauges on 2026-11-23: the
 code of CAMELS-DE (Dolich 2024, ``08_hydrologic_attributes.ipynb``) with the
@@ -24,10 +26,11 @@ hydrological year from 1 November and numpy's ``nearest`` quantiles reproduces e
 value but the baseflow index, which the two-pass filter of the ``baseflow`` package
 (Xie et al. 2020) reproduces on the data to 2023-12-31. The cases say so.
 
-Run it once from the repository's root (a newer release changes the cases only by a
-deliberate change)::
+Run it once from the repository's root, with the two files of the release's record (a
+newer release changes the cases only by a deliberate change, CMP-6.10)::
 
-    uv run python tests/fixtures/camels_pl/extract_camels_pl.py CAMELS_PL_2.1.zip
+    uv run python tests/fixtures/camels_pl/extract_camels_pl.py CAMELS_PL_2.1.zip \\
+        CAMELS_PL_Data_Description.pdf
 """
 
 import csv
@@ -48,6 +51,7 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._attribution import IMGW_PROCESSED, IMGW_SOURCE
 from hydrolog.statistics.baseflow import baseflow_index, lyne_hollick_filter
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -55,8 +59,17 @@ HERE = ROOT / "tests" / "fixtures" / "camels_pl"
 CASES = ROOT / "tests" / "fixtures" / "formulas" / "camels-pl-cases.json"
 RELATIVE = "tests/fixtures/camels_pl"
 
+RECORD = "23275336"
+VERSION = "2.1.0"
+DOI = "10.5281/zenodo.23275336"
+"""The DOI of release 2.1.0, never the concept DOI (Nogat DEV §20)."""
+RELEASE = f"CAMELS-PL {VERSION} (Zenodo record {RECORD}, doi:{DOI})"
 ZIP_MD5 = "05d4c1884d535c78299477ac8a00703a"
+"""The checksum the record lists for the ZIP."""
+ZIP_SHA256 = "7e8425dd6e078150c98ad26ed4903a52052da1481f393a52f4ac936bbb15cf4e"
 ZIP_SIZE = 1_670_805_350
+DESCRIPTION = "CAMELS_PL_Data_Description.pdf"
+DESCRIPTION_SHA256 = "46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de"
 GAUGES = (
     "150150030",
     "149180140",
@@ -87,7 +100,14 @@ CITATION = (
     "hydro-meteorological time series and landscape attributes for 869 catchments in "
     "Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0"
 )
-DOI_URL = "https://doi.org/10.5281/zenodo.23275336"
+DOI_URL = f"https://doi.org/{DOI}"
+CAMELS_SOURCE = (
+    f"Źródło danych: CAMELS-PL {VERSION} (Brzezińska i in., 2026), {DOI_URL}, licencja "
+    "CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)"
+)
+"""L of Nogat DEV §20 for release 2.1.0 (its record is of 2026)."""
+CAMELS_PROCESSED = "Dane CAMELS-PL zostały przetworzone"
+"""LP: the fixtures are a selection of rows and columns, recompressed (DEV-20.1)."""
 XIE = {
     "citation": "Xie, J., Liu, X., Wang, K., Yang, T., Liang, K. and Liu, C. (2020). "
     "Evaluation of typical methods for baseflow separation in the contiguous United "
@@ -219,11 +239,15 @@ def _two_pass_bfi(flows: NDArray[np.float64]) -> float:
 
 
 def _source(gauge_id: str, column: str) -> dict[str, str]:
+    attributes = "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv"
+    series = SERIES[gauge_id]
     return {
         "citation": CITATION,
-        "locator": f"CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of "
-        f"gauge {gauge_id}, column {column} ({RELATIVE}/CAMELS_PL_hydrologic_"
-        "attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+        "locator": f"{RELEASE}: {attributes} (SHA-256 {SHA256[attributes]}), the row "
+        f"of gauge {gauge_id}, column {column} ({RELATIVE}/CAMELS_PL_hydrologic_"
+        f"attributes.csv), computed from {series} (SHA-256 {SHA256[series]}; "
+        f"{RELATIVE}/camels_pl_{gauge_id}.csv.gz); its definition: {DESCRIPTION} "
+        f"(SHA-256 {DESCRIPTION_SHA256}), Table 7",
         "url": DOI_URL,
         "access": "open",
     }
@@ -502,19 +526,38 @@ def _cases(gauge: Gauge) -> list[dict[str, object]]:
 
 
 ATTRIBUTES: dict[str, dict[str, str]] = {}
+SERIES: dict[str, str] = {}
+"""The member of each gauge's series."""
+SHA256: dict[str, str] = {}
+"""The SHA-256 of each member read, by its name."""
+
+
+def _digests(path: Path) -> tuple[str, str]:
+    """The MD5 and SHA-256 of a file."""
+    md5, sha256 = hashlib.md5(usedforsecurity=False), hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1 << 22), b""):
+            md5.update(block)
+            sha256.update(block)
+    return md5.hexdigest(), sha256.hexdigest()
+
+
+def _read(archive: zipfile.ZipFile, info: zipfile.ZipInfo) -> None:
+    """Record the SHA-256 of a member read."""
+    SHA256[info.filename] = hashlib.sha256(archive.read(info)).hexdigest()
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 3:
         print(__doc__)
         return 2
-    path = Path(sys.argv[1])
-    digest = hashlib.md5(usedforsecurity=False)
-    with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1 << 22), b""):
-            digest.update(block)
-    if digest.hexdigest() != ZIP_MD5 or path.stat().st_size != ZIP_SIZE:
-        print(f"{path} is not CAMELS-PL 2.1.0 (MD5 {digest.hexdigest()})")
+    path, description = Path(sys.argv[1]), Path(sys.argv[2])
+    md5, sha256 = _digests(path)
+    if (md5, sha256) != (ZIP_MD5, ZIP_SHA256) or path.stat().st_size != ZIP_SIZE:
+        print(f"{path} is not CAMELS-PL {VERSION} (SHA-256 {sha256})")
+        return 1
+    if _digests(description)[1] != DESCRIPTION_SHA256:
+        print(f"{description} is not the {DESCRIPTION} of CAMELS-PL {VERSION}")
         return 1
     with zipfile.ZipFile(path) as archive:
         hydrologic = _member(archive, "/CAMELS_PL_hydrologic_attributes.csv")
@@ -538,8 +581,12 @@ def main() -> int:
         for gauge_id in GAUGES:
             gauge, data, info = _gauge(archive, gauge_id, topography)
             (HERE / f"camels_pl_{gauge_id}.csv.gz").write_bytes(data)
+            SERIES[gauge_id] = info.filename
             members.append(info)
             gauges.append(gauge)
+        for info in members:
+            _read(archive, info)
+        for gauge in gauges:
             cases += _cases(gauge)
     CASES.write_text(
         json.dumps(cases, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
@@ -564,11 +611,14 @@ def _attribution(members: list[zipfile.ZipInfo], gauges: list[Gauge]) -> None:
             "gauges of CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, as published."
         ),
         *prose(
-            f"Extracted by extract_camels_pl.py from CAMELS_PL_2.1.zip ({ZIP_SIZE} B, "
-            f"MD5 {ZIP_MD5}) on {date.today().isoformat()}; the members read, with "
-            "their CRC-32:"
+            f"Release: {RELEASE}, {DOI_URL}. Extracted by extract_camels_pl.py on "
+            f"{date.today().isoformat()} from the record's CAMELS_PL_2.1.zip "
+            f"({ZIP_SIZE} B, MD5 {ZIP_MD5} as the record lists it); the files read, "
+            "with their SHA-256 (Nogat CMP-6.10):"
         ),
-        *(f"  {info.filename}  {info.CRC:08x}" for info in members),
+        f"  CAMELS_PL_2.1.zip  {ZIP_SHA256}",
+        f"  {DESCRIPTION}  {DESCRIPTION_SHA256}",
+        *(f"  {info.filename}  {SHA256[info.filename]}" for info in members),
         "",
         "The gauges (IMGW-PIB code, name, river, area_metadata [km2]):",
         *(f"  {g.gauge_id}  {g.name}  {g.river}  {g.area_km2}" for g in gauges),
@@ -576,10 +626,14 @@ def _attribution(members: list[zipfile.ZipInfo], gauges: list[Gauge]) -> None:
         *prose(f"{CITATION}."),
         f"{DOI_URL}; licence CC BY 4.0, https://creativecommons.org/licenses/by/4.0/.",
         "",
-        "Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – "
-        "Państwowy Instytut Badawczy.",
-        "Dane IMGW-PIB zostały przetworzone (CAMELS-PL: przepływ jednostkowy z "
-        "powierzchni zlewni; wybór wierszy i kolumn).",
+        *prose(
+            "The lines of Nogat DEV §20 (DEV-20.12: discharge CAMELS-PL took from "
+            "IMGW-PIB, selected and recompressed here), quoted as they stand:"
+        ),
+        IMGW_SOURCE,
+        IMGW_PROCESSED,
+        CAMELS_SOURCE,
+        CAMELS_PROCESSED,
     ]
     (HERE / "CAMELS_PL_ATTRIBUTION.txt").write_text(
         "\n".join(lines) + "\n", encoding="utf-8"

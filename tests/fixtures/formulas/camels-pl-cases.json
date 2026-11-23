@@ -4,7 +4,7 @@
     "case_id": "camels_pl_2_1_0_150150030_q5",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150150030, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150150030, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150150030.csv (SHA-256 8fecb0b628f30861bc34dc84b2e251c84c105a4beb54817817b7d191a7436fb4; tests/fixtures/camels_pl/camels_pl_150150030.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -48,7 +48,7 @@
     "case_id": "camels_pl_2_1_0_150150030_q95",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150150030, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150150030, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150150030.csv (SHA-256 8fecb0b628f30861bc34dc84b2e251c84c105a4beb54817817b7d191a7436fb4; tests/fixtures/camels_pl/camels_pl_150150030.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -92,7 +92,7 @@
     "case_id": "camels_pl_2_1_0_150150030",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150150030, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150150030, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150150030.csv (SHA-256 8fecb0b628f30861bc34dc84b2e251c84c105a4beb54817817b7d191a7436fb4; tests/fixtures/camels_pl/camels_pl_150150030.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -133,7 +133,7 @@
     "case_id": "camels_pl_2_1_0_150150030",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150150030, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150150030, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150150030.csv (SHA-256 8fecb0b628f30861bc34dc84b2e251c84c105a4beb54817817b7d191a7436fb4; tests/fixtures/camels_pl/camels_pl_150150030.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -166,7 +166,7 @@
     "case_id": "camels_pl_2_1_0_150150030",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150150030, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150150030, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150150030.csv (SHA-256 8fecb0b628f30861bc34dc84b2e251c84c105a4beb54817817b7d191a7436fb4; tests/fixtures/camels_pl/camels_pl_150150030.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -199,7 +199,7 @@
     "case_id": "camels_pl_2_1_0_150150030",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150150030, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150150030, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150150030.csv (SHA-256 8fecb0b628f30861bc34dc84b2e251c84c105a4beb54817817b7d191a7436fb4; tests/fixtures/camels_pl/camels_pl_150150030.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -230,7 +230,7 @@
     "case_id": "camels_pl_2_1_0_150150030",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150150030, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150150030, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150150030.csv (SHA-256 8fecb0b628f30861bc34dc84b2e251c84c105a4beb54817817b7d191a7436fb4; tests/fixtures/camels_pl/camels_pl_150150030.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -262,7 +262,7 @@
     "case_id": "camels_pl_2_1_0_150150030",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150150030, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150150030, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150150030.csv (SHA-256 8fecb0b628f30861bc34dc84b2e251c84c105a4beb54817817b7d191a7436fb4; tests/fixtures/camels_pl/camels_pl_150150030.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -295,7 +295,7 @@
     "case_id": "camels_pl_2_1_0_149180140_q5",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149180140, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149180140, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149180140.csv (SHA-256 43933257c351762b2bbe26c9c0ff98a092e5cc2f370cf4bca59cd49b1686f48a; tests/fixtures/camels_pl/camels_pl_149180140.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -339,7 +339,7 @@
     "case_id": "camels_pl_2_1_0_149180140_q95",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149180140, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149180140, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149180140.csv (SHA-256 43933257c351762b2bbe26c9c0ff98a092e5cc2f370cf4bca59cd49b1686f48a; tests/fixtures/camels_pl/camels_pl_149180140.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -383,7 +383,7 @@
     "case_id": "camels_pl_2_1_0_149180140",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149180140, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149180140, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149180140.csv (SHA-256 43933257c351762b2bbe26c9c0ff98a092e5cc2f370cf4bca59cd49b1686f48a; tests/fixtures/camels_pl/camels_pl_149180140.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -424,7 +424,7 @@
     "case_id": "camels_pl_2_1_0_149180140",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149180140, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149180140, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149180140.csv (SHA-256 43933257c351762b2bbe26c9c0ff98a092e5cc2f370cf4bca59cd49b1686f48a; tests/fixtures/camels_pl/camels_pl_149180140.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -457,7 +457,7 @@
     "case_id": "camels_pl_2_1_0_149180140",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149180140, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149180140, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149180140.csv (SHA-256 43933257c351762b2bbe26c9c0ff98a092e5cc2f370cf4bca59cd49b1686f48a; tests/fixtures/camels_pl/camels_pl_149180140.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -490,7 +490,7 @@
     "case_id": "camels_pl_2_1_0_149180140",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149180140, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149180140, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149180140.csv (SHA-256 43933257c351762b2bbe26c9c0ff98a092e5cc2f370cf4bca59cd49b1686f48a; tests/fixtures/camels_pl/camels_pl_149180140.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -521,7 +521,7 @@
     "case_id": "camels_pl_2_1_0_149180140",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149180140, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149180140, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149180140.csv (SHA-256 43933257c351762b2bbe26c9c0ff98a092e5cc2f370cf4bca59cd49b1686f48a; tests/fixtures/camels_pl/camels_pl_149180140.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -560,7 +560,7 @@
     "case_id": "camels_pl_2_1_0_149180140",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149180140, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149180140, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149180140.csv (SHA-256 43933257c351762b2bbe26c9c0ff98a092e5cc2f370cf4bca59cd49b1686f48a; tests/fixtures/camels_pl/camels_pl_149180140.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -593,7 +593,7 @@
     "case_id": "camels_pl_2_1_0_149200260_q5",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149200260, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149200260, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149200260.csv (SHA-256 3e5e69268378a606a50499cf19ffe7cfc5830c20061c0939395bbeaf920477f8; tests/fixtures/camels_pl/camels_pl_149200260.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -637,7 +637,7 @@
     "case_id": "camels_pl_2_1_0_149200260_q95",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149200260, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149200260, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149200260.csv (SHA-256 3e5e69268378a606a50499cf19ffe7cfc5830c20061c0939395bbeaf920477f8; tests/fixtures/camels_pl/camels_pl_149200260.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -681,7 +681,7 @@
     "case_id": "camels_pl_2_1_0_149200260",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149200260, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149200260, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149200260.csv (SHA-256 3e5e69268378a606a50499cf19ffe7cfc5830c20061c0939395bbeaf920477f8; tests/fixtures/camels_pl/camels_pl_149200260.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -722,7 +722,7 @@
     "case_id": "camels_pl_2_1_0_149200260",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149200260, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149200260, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149200260.csv (SHA-256 3e5e69268378a606a50499cf19ffe7cfc5830c20061c0939395bbeaf920477f8; tests/fixtures/camels_pl/camels_pl_149200260.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -755,7 +755,7 @@
     "case_id": "camels_pl_2_1_0_149200260",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149200260, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149200260, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149200260.csv (SHA-256 3e5e69268378a606a50499cf19ffe7cfc5830c20061c0939395bbeaf920477f8; tests/fixtures/camels_pl/camels_pl_149200260.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -788,7 +788,7 @@
     "case_id": "camels_pl_2_1_0_149200260",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149200260, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149200260, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149200260.csv (SHA-256 3e5e69268378a606a50499cf19ffe7cfc5830c20061c0939395bbeaf920477f8; tests/fixtures/camels_pl/camels_pl_149200260.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -819,7 +819,7 @@
     "case_id": "camels_pl_2_1_0_149200260",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149200260, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149200260, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149200260.csv (SHA-256 3e5e69268378a606a50499cf19ffe7cfc5830c20061c0939395bbeaf920477f8; tests/fixtures/camels_pl/camels_pl_149200260.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -851,7 +851,7 @@
     "case_id": "camels_pl_2_1_0_149200260",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 149200260, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 149200260, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149200260.csv (SHA-256 3e5e69268378a606a50499cf19ffe7cfc5830c20061c0939395bbeaf920477f8; tests/fixtures/camels_pl/camels_pl_149200260.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -884,7 +884,7 @@
     "case_id": "camels_pl_2_1_0_150190010_q5",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150190010, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150190010, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150190010.csv (SHA-256 d345237d7cb9ff18e9ede26e369f1620d3648ed77b289b31e33181e7afbadc46; tests/fixtures/camels_pl/camels_pl_150190010.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -928,7 +928,7 @@
     "case_id": "camels_pl_2_1_0_150190010_q95",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150190010, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150190010, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150190010.csv (SHA-256 d345237d7cb9ff18e9ede26e369f1620d3648ed77b289b31e33181e7afbadc46; tests/fixtures/camels_pl/camels_pl_150190010.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -972,7 +972,7 @@
     "case_id": "camels_pl_2_1_0_150190010",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150190010, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150190010, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150190010.csv (SHA-256 d345237d7cb9ff18e9ede26e369f1620d3648ed77b289b31e33181e7afbadc46; tests/fixtures/camels_pl/camels_pl_150190010.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1013,7 +1013,7 @@
     "case_id": "camels_pl_2_1_0_150190010",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150190010, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150190010, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150190010.csv (SHA-256 d345237d7cb9ff18e9ede26e369f1620d3648ed77b289b31e33181e7afbadc46; tests/fixtures/camels_pl/camels_pl_150190010.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1046,7 +1046,7 @@
     "case_id": "camels_pl_2_1_0_150190010",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150190010, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150190010, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150190010.csv (SHA-256 d345237d7cb9ff18e9ede26e369f1620d3648ed77b289b31e33181e7afbadc46; tests/fixtures/camels_pl/camels_pl_150190010.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1079,7 +1079,7 @@
     "case_id": "camels_pl_2_1_0_150190010",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150190010, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150190010, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150190010.csv (SHA-256 d345237d7cb9ff18e9ede26e369f1620d3648ed77b289b31e33181e7afbadc46; tests/fixtures/camels_pl/camels_pl_150190010.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1110,7 +1110,7 @@
     "case_id": "camels_pl_2_1_0_150190010",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150190010, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150190010, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150190010.csv (SHA-256 d345237d7cb9ff18e9ede26e369f1620d3648ed77b289b31e33181e7afbadc46; tests/fixtures/camels_pl/camels_pl_150190010.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1149,7 +1149,7 @@
     "case_id": "camels_pl_2_1_0_150190010",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150190010, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150190010, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150190010.csv (SHA-256 d345237d7cb9ff18e9ede26e369f1620d3648ed77b289b31e33181e7afbadc46; tests/fixtures/camels_pl/camels_pl_150190010.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1182,7 +1182,7 @@
     "case_id": "camels_pl_2_1_0_152210050_q5",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152210050, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152210050, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152210050.csv (SHA-256 c96af3ed7af45e8c5c419eedd9ac6fab8bf9237d8b6613c9e33cc55b72d08bd3; tests/fixtures/camels_pl/camels_pl_152210050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1226,7 +1226,7 @@
     "case_id": "camels_pl_2_1_0_152210050_q95",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152210050, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152210050, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152210050.csv (SHA-256 c96af3ed7af45e8c5c419eedd9ac6fab8bf9237d8b6613c9e33cc55b72d08bd3; tests/fixtures/camels_pl/camels_pl_152210050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1270,7 +1270,7 @@
     "case_id": "camels_pl_2_1_0_152210050",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152210050, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152210050, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152210050.csv (SHA-256 c96af3ed7af45e8c5c419eedd9ac6fab8bf9237d8b6613c9e33cc55b72d08bd3; tests/fixtures/camels_pl/camels_pl_152210050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1311,7 +1311,7 @@
     "case_id": "camels_pl_2_1_0_152210050",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152210050, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152210050, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152210050.csv (SHA-256 c96af3ed7af45e8c5c419eedd9ac6fab8bf9237d8b6613c9e33cc55b72d08bd3; tests/fixtures/camels_pl/camels_pl_152210050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1344,7 +1344,7 @@
     "case_id": "camels_pl_2_1_0_152210050",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152210050, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152210050, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152210050.csv (SHA-256 c96af3ed7af45e8c5c419eedd9ac6fab8bf9237d8b6613c9e33cc55b72d08bd3; tests/fixtures/camels_pl/camels_pl_152210050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1377,7 +1377,7 @@
     "case_id": "camels_pl_2_1_0_152210050",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152210050, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152210050, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152210050.csv (SHA-256 c96af3ed7af45e8c5c419eedd9ac6fab8bf9237d8b6613c9e33cc55b72d08bd3; tests/fixtures/camels_pl/camels_pl_152210050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1408,7 +1408,7 @@
     "case_id": "camels_pl_2_1_0_152210050",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152210050, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152210050, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152210050.csv (SHA-256 c96af3ed7af45e8c5c419eedd9ac6fab8bf9237d8b6613c9e33cc55b72d08bd3; tests/fixtures/camels_pl/camels_pl_152210050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1440,7 +1440,7 @@
     "case_id": "camels_pl_2_1_0_152210050",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152210050, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152210050, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152210050.csv (SHA-256 c96af3ed7af45e8c5c419eedd9ac6fab8bf9237d8b6613c9e33cc55b72d08bd3; tests/fixtures/camels_pl/camels_pl_152210050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1473,7 +1473,7 @@
     "case_id": "camels_pl_2_1_0_153199999_q5",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153199999, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153199999, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153199999.csv (SHA-256 de80b57949102ecb59b2fdae430731911f5ef1ae98ae3b2261c701ab11203563; tests/fixtures/camels_pl/camels_pl_153199999.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1517,7 +1517,7 @@
     "case_id": "camels_pl_2_1_0_153199999_q95",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153199999, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153199999, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153199999.csv (SHA-256 de80b57949102ecb59b2fdae430731911f5ef1ae98ae3b2261c701ab11203563; tests/fixtures/camels_pl/camels_pl_153199999.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1561,7 +1561,7 @@
     "case_id": "camels_pl_2_1_0_153199999",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153199999, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153199999, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153199999.csv (SHA-256 de80b57949102ecb59b2fdae430731911f5ef1ae98ae3b2261c701ab11203563; tests/fixtures/camels_pl/camels_pl_153199999.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1602,7 +1602,7 @@
     "case_id": "camels_pl_2_1_0_153199999",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153199999, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153199999, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153199999.csv (SHA-256 de80b57949102ecb59b2fdae430731911f5ef1ae98ae3b2261c701ab11203563; tests/fixtures/camels_pl/camels_pl_153199999.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1635,7 +1635,7 @@
     "case_id": "camels_pl_2_1_0_153199999",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153199999, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153199999, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153199999.csv (SHA-256 de80b57949102ecb59b2fdae430731911f5ef1ae98ae3b2261c701ab11203563; tests/fixtures/camels_pl/camels_pl_153199999.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1668,7 +1668,7 @@
     "case_id": "camels_pl_2_1_0_153199999",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153199999, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153199999, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153199999.csv (SHA-256 de80b57949102ecb59b2fdae430731911f5ef1ae98ae3b2261c701ab11203563; tests/fixtures/camels_pl/camels_pl_153199999.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1699,7 +1699,7 @@
     "case_id": "camels_pl_2_1_0_153199999",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153199999, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153199999, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153199999.csv (SHA-256 de80b57949102ecb59b2fdae430731911f5ef1ae98ae3b2261c701ab11203563; tests/fixtures/camels_pl/camels_pl_153199999.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1731,7 +1731,7 @@
     "case_id": "camels_pl_2_1_0_153199999",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153199999, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153199999, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153199999.csv (SHA-256 de80b57949102ecb59b2fdae430731911f5ef1ae98ae3b2261c701ab11203563; tests/fixtures/camels_pl/camels_pl_153199999.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1764,7 +1764,7 @@
     "case_id": "camels_pl_2_1_0_152180100_q5",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152180100, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152180100, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152180100.csv (SHA-256 7d5c2faf254bd5d101542f3cce9dd7abd9e2d4e52e76218c50b26a3d97a64eec; tests/fixtures/camels_pl/camels_pl_152180100.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1808,7 +1808,7 @@
     "case_id": "camels_pl_2_1_0_152180100_q95",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152180100, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152180100, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152180100.csv (SHA-256 7d5c2faf254bd5d101542f3cce9dd7abd9e2d4e52e76218c50b26a3d97a64eec; tests/fixtures/camels_pl/camels_pl_152180100.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1852,7 +1852,7 @@
     "case_id": "camels_pl_2_1_0_152180100",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152180100, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152180100, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152180100.csv (SHA-256 7d5c2faf254bd5d101542f3cce9dd7abd9e2d4e52e76218c50b26a3d97a64eec; tests/fixtures/camels_pl/camels_pl_152180100.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1893,7 +1893,7 @@
     "case_id": "camels_pl_2_1_0_152180100",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152180100, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152180100, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152180100.csv (SHA-256 7d5c2faf254bd5d101542f3cce9dd7abd9e2d4e52e76218c50b26a3d97a64eec; tests/fixtures/camels_pl/camels_pl_152180100.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1926,7 +1926,7 @@
     "case_id": "camels_pl_2_1_0_152180100",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152180100, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152180100, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152180100.csv (SHA-256 7d5c2faf254bd5d101542f3cce9dd7abd9e2d4e52e76218c50b26a3d97a64eec; tests/fixtures/camels_pl/camels_pl_152180100.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1959,7 +1959,7 @@
     "case_id": "camels_pl_2_1_0_152180100",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152180100, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152180100, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152180100.csv (SHA-256 7d5c2faf254bd5d101542f3cce9dd7abd9e2d4e52e76218c50b26a3d97a64eec; tests/fixtures/camels_pl/camels_pl_152180100.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -1990,7 +1990,7 @@
     "case_id": "camels_pl_2_1_0_152180100",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152180100, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152180100, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152180100.csv (SHA-256 7d5c2faf254bd5d101542f3cce9dd7abd9e2d4e52e76218c50b26a3d97a64eec; tests/fixtures/camels_pl/camels_pl_152180100.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2022,7 +2022,7 @@
     "case_id": "camels_pl_2_1_0_152180100",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152180100, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152180100, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152180100.csv (SHA-256 7d5c2faf254bd5d101542f3cce9dd7abd9e2d4e52e76218c50b26a3d97a64eec; tests/fixtures/camels_pl/camels_pl_152180100.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2055,7 +2055,7 @@
     "case_id": "camels_pl_2_1_0_153170050_q5",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153170050, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153170050, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153170050.csv (SHA-256 17855ce050614ae7ef1a5cd4297dc09a08d40b07442ca49aa6fd7f8c91383bc5; tests/fixtures/camels_pl/camels_pl_153170050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2099,7 +2099,7 @@
     "case_id": "camels_pl_2_1_0_153170050_q95",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153170050, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153170050, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153170050.csv (SHA-256 17855ce050614ae7ef1a5cd4297dc09a08d40b07442ca49aa6fd7f8c91383bc5; tests/fixtures/camels_pl/camels_pl_153170050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2143,7 +2143,7 @@
     "case_id": "camels_pl_2_1_0_153170050",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153170050, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153170050, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153170050.csv (SHA-256 17855ce050614ae7ef1a5cd4297dc09a08d40b07442ca49aa6fd7f8c91383bc5; tests/fixtures/camels_pl/camels_pl_153170050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2184,7 +2184,7 @@
     "case_id": "camels_pl_2_1_0_153170050",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153170050, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153170050, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153170050.csv (SHA-256 17855ce050614ae7ef1a5cd4297dc09a08d40b07442ca49aa6fd7f8c91383bc5; tests/fixtures/camels_pl/camels_pl_153170050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2217,7 +2217,7 @@
     "case_id": "camels_pl_2_1_0_153170050",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153170050, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153170050, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153170050.csv (SHA-256 17855ce050614ae7ef1a5cd4297dc09a08d40b07442ca49aa6fd7f8c91383bc5; tests/fixtures/camels_pl/camels_pl_153170050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2250,7 +2250,7 @@
     "case_id": "camels_pl_2_1_0_153170050",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153170050, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153170050, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153170050.csv (SHA-256 17855ce050614ae7ef1a5cd4297dc09a08d40b07442ca49aa6fd7f8c91383bc5; tests/fixtures/camels_pl/camels_pl_153170050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2281,7 +2281,7 @@
     "case_id": "camels_pl_2_1_0_153170050",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153170050, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153170050, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153170050.csv (SHA-256 17855ce050614ae7ef1a5cd4297dc09a08d40b07442ca49aa6fd7f8c91383bc5; tests/fixtures/camels_pl/camels_pl_153170050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2320,7 +2320,7 @@
     "case_id": "camels_pl_2_1_0_153170050",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153170050, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153170050, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153170050.csv (SHA-256 17855ce050614ae7ef1a5cd4297dc09a08d40b07442ca49aa6fd7f8c91383bc5; tests/fixtures/camels_pl/camels_pl_153170050.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2353,7 +2353,7 @@
     "case_id": "camels_pl_2_1_0_152160060_q5",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152160060, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152160060, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152160060.csv (SHA-256 cce80e33a7c650d59f97bd7efef879fb247a3940187bd3961100b63368e14f5b; tests/fixtures/camels_pl/camels_pl_152160060.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2397,7 +2397,7 @@
     "case_id": "camels_pl_2_1_0_152160060_q95",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152160060, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152160060, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152160060.csv (SHA-256 cce80e33a7c650d59f97bd7efef879fb247a3940187bd3961100b63368e14f5b; tests/fixtures/camels_pl/camels_pl_152160060.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2441,7 +2441,7 @@
     "case_id": "camels_pl_2_1_0_152160060",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152160060, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152160060, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152160060.csv (SHA-256 cce80e33a7c650d59f97bd7efef879fb247a3940187bd3961100b63368e14f5b; tests/fixtures/camels_pl/camels_pl_152160060.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2482,7 +2482,7 @@
     "case_id": "camels_pl_2_1_0_152160060",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152160060, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152160060, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152160060.csv (SHA-256 cce80e33a7c650d59f97bd7efef879fb247a3940187bd3961100b63368e14f5b; tests/fixtures/camels_pl/camels_pl_152160060.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2515,7 +2515,7 @@
     "case_id": "camels_pl_2_1_0_152160060",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152160060, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152160060, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152160060.csv (SHA-256 cce80e33a7c650d59f97bd7efef879fb247a3940187bd3961100b63368e14f5b; tests/fixtures/camels_pl/camels_pl_152160060.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2548,7 +2548,7 @@
     "case_id": "camels_pl_2_1_0_152160060",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152160060, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152160060, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152160060.csv (SHA-256 cce80e33a7c650d59f97bd7efef879fb247a3940187bd3961100b63368e14f5b; tests/fixtures/camels_pl/camels_pl_152160060.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2579,7 +2579,7 @@
     "case_id": "camels_pl_2_1_0_152160060",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152160060, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152160060, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152160060.csv (SHA-256 cce80e33a7c650d59f97bd7efef879fb247a3940187bd3961100b63368e14f5b; tests/fixtures/camels_pl/camels_pl_152160060.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2611,7 +2611,7 @@
     "case_id": "camels_pl_2_1_0_152160060",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152160060, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152160060, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152160060.csv (SHA-256 cce80e33a7c650d59f97bd7efef879fb247a3940187bd3961100b63368e14f5b; tests/fixtures/camels_pl/camels_pl_152160060.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2644,7 +2644,7 @@
     "case_id": "camels_pl_2_1_0_150160180_q5",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150160180, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150160180, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150160180.csv (SHA-256 5db567697edcffd219da3c7cc5149b4382cdfdd9faa43997ec36a4986fad9d93; tests/fixtures/camels_pl/camels_pl_150160180.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2688,7 +2688,7 @@
     "case_id": "camels_pl_2_1_0_150160180_q95",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150160180, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150160180, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150160180.csv (SHA-256 5db567697edcffd219da3c7cc5149b4382cdfdd9faa43997ec36a4986fad9d93; tests/fixtures/camels_pl/camels_pl_150160180.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2732,7 +2732,7 @@
     "case_id": "camels_pl_2_1_0_150160180",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150160180, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150160180, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150160180.csv (SHA-256 5db567697edcffd219da3c7cc5149b4382cdfdd9faa43997ec36a4986fad9d93; tests/fixtures/camels_pl/camels_pl_150160180.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2773,7 +2773,7 @@
     "case_id": "camels_pl_2_1_0_150160180",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150160180, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150160180, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150160180.csv (SHA-256 5db567697edcffd219da3c7cc5149b4382cdfdd9faa43997ec36a4986fad9d93; tests/fixtures/camels_pl/camels_pl_150160180.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2806,7 +2806,7 @@
     "case_id": "camels_pl_2_1_0_150160180",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150160180, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150160180, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150160180.csv (SHA-256 5db567697edcffd219da3c7cc5149b4382cdfdd9faa43997ec36a4986fad9d93; tests/fixtures/camels_pl/camels_pl_150160180.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2839,7 +2839,7 @@
     "case_id": "camels_pl_2_1_0_150160180",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150160180, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150160180, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150160180.csv (SHA-256 5db567697edcffd219da3c7cc5149b4382cdfdd9faa43997ec36a4986fad9d93; tests/fixtures/camels_pl/camels_pl_150160180.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2870,7 +2870,7 @@
     "case_id": "camels_pl_2_1_0_150160180",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150160180, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150160180, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150160180.csv (SHA-256 5db567697edcffd219da3c7cc5149b4382cdfdd9faa43997ec36a4986fad9d93; tests/fixtures/camels_pl/camels_pl_150160180.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2902,7 +2902,7 @@
     "case_id": "camels_pl_2_1_0_150160180",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 150160180, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 150160180, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150160180.csv (SHA-256 5db567697edcffd219da3c7cc5149b4382cdfdd9faa43997ec36a4986fad9d93; tests/fixtures/camels_pl/camels_pl_150160180.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2935,7 +2935,7 @@
     "case_id": "camels_pl_2_1_0_153220170_q5",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153220170, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153220170, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153220170.csv (SHA-256 f825333031c5d4d6543d3dea2ce4d6493b96f3d1156f1e14477631fac66d8b04; tests/fixtures/camels_pl/camels_pl_153220170.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -2979,7 +2979,7 @@
     "case_id": "camels_pl_2_1_0_153220170_q95",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153220170, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153220170, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153220170.csv (SHA-256 f825333031c5d4d6543d3dea2ce4d6493b96f3d1156f1e14477631fac66d8b04; tests/fixtures/camels_pl/camels_pl_153220170.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3023,7 +3023,7 @@
     "case_id": "camels_pl_2_1_0_153220170",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153220170, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153220170, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153220170.csv (SHA-256 f825333031c5d4d6543d3dea2ce4d6493b96f3d1156f1e14477631fac66d8b04; tests/fixtures/camels_pl/camels_pl_153220170.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3064,7 +3064,7 @@
     "case_id": "camels_pl_2_1_0_153220170",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153220170, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153220170, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153220170.csv (SHA-256 f825333031c5d4d6543d3dea2ce4d6493b96f3d1156f1e14477631fac66d8b04; tests/fixtures/camels_pl/camels_pl_153220170.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3097,7 +3097,7 @@
     "case_id": "camels_pl_2_1_0_153220170",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153220170, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153220170, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153220170.csv (SHA-256 f825333031c5d4d6543d3dea2ce4d6493b96f3d1156f1e14477631fac66d8b04; tests/fixtures/camels_pl/camels_pl_153220170.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3130,7 +3130,7 @@
     "case_id": "camels_pl_2_1_0_153220170",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153220170, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153220170, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153220170.csv (SHA-256 f825333031c5d4d6543d3dea2ce4d6493b96f3d1156f1e14477631fac66d8b04; tests/fixtures/camels_pl/camels_pl_153220170.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3161,7 +3161,7 @@
     "case_id": "camels_pl_2_1_0_153220170",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153220170, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153220170, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153220170.csv (SHA-256 f825333031c5d4d6543d3dea2ce4d6493b96f3d1156f1e14477631fac66d8b04; tests/fixtures/camels_pl/camels_pl_153220170.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3193,7 +3193,7 @@
     "case_id": "camels_pl_2_1_0_153220170",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 153220170, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 153220170, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153220170.csv (SHA-256 f825333031c5d4d6543d3dea2ce4d6493b96f3d1156f1e14477631fac66d8b04; tests/fixtures/camels_pl/camels_pl_153220170.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3226,7 +3226,7 @@
     "case_id": "camels_pl_2_1_0_152140020_q5",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152140020, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152140020, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152140020.csv (SHA-256 9558ffff733d5785c24bddaaf4170d2cbd7428e0afc95bbee18191e4f6eef85e; tests/fixtures/camels_pl/camels_pl_152140020.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3270,7 +3270,7 @@
     "case_id": "camels_pl_2_1_0_152140020_q95",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152140020, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152140020, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152140020.csv (SHA-256 9558ffff733d5785c24bddaaf4170d2cbd7428e0afc95bbee18191e4f6eef85e; tests/fixtures/camels_pl/camels_pl_152140020.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3314,7 +3314,7 @@
     "case_id": "camels_pl_2_1_0_152140020",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152140020, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152140020, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152140020.csv (SHA-256 9558ffff733d5785c24bddaaf4170d2cbd7428e0afc95bbee18191e4f6eef85e; tests/fixtures/camels_pl/camels_pl_152140020.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3355,7 +3355,7 @@
     "case_id": "camels_pl_2_1_0_152140020",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152140020, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152140020, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152140020.csv (SHA-256 9558ffff733d5785c24bddaaf4170d2cbd7428e0afc95bbee18191e4f6eef85e; tests/fixtures/camels_pl/camels_pl_152140020.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3388,7 +3388,7 @@
     "case_id": "camels_pl_2_1_0_152140020",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152140020, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152140020, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152140020.csv (SHA-256 9558ffff733d5785c24bddaaf4170d2cbd7428e0afc95bbee18191e4f6eef85e; tests/fixtures/camels_pl/camels_pl_152140020.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3421,7 +3421,7 @@
     "case_id": "camels_pl_2_1_0_152140020",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152140020, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152140020, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152140020.csv (SHA-256 9558ffff733d5785c24bddaaf4170d2cbd7428e0afc95bbee18191e4f6eef85e; tests/fixtures/camels_pl/camels_pl_152140020.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3452,7 +3452,7 @@
     "case_id": "camels_pl_2_1_0_152140020",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152140020, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152140020, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152140020.csv (SHA-256 9558ffff733d5785c24bddaaf4170d2cbd7428e0afc95bbee18191e4f6eef85e; tests/fixtures/camels_pl/camels_pl_152140020.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3484,7 +3484,7 @@
     "case_id": "camels_pl_2_1_0_152140020",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 152140020, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 152140020, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152140020.csv (SHA-256 9558ffff733d5785c24bddaaf4170d2cbd7428e0afc95bbee18191e4f6eef85e; tests/fixtures/camels_pl/camels_pl_152140020.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3517,7 +3517,7 @@
     "case_id": "camels_pl_2_1_0_154180150_q5",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 154180150, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 154180150, column Q5 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_154180150.csv (SHA-256 b9e9cce4ebf781972040ac84ddefd88aa8cb61abcf44eab2fbb508019f75bdae; tests/fixtures/camels_pl/camels_pl_154180150.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3561,7 +3561,7 @@
     "case_id": "camels_pl_2_1_0_154180150_q95",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 154180150, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 154180150, column Q95 (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_154180150.csv (SHA-256 b9e9cce4ebf781972040ac84ddefd88aa8cb61abcf44eab2fbb508019f75bdae; tests/fixtures/camels_pl/camels_pl_154180150.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3605,7 +3605,7 @@
     "case_id": "camels_pl_2_1_0_154180150",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 154180150, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 154180150, column slope_fdc (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_154180150.csv (SHA-256 b9e9cce4ebf781972040ac84ddefd88aa8cb61abcf44eab2fbb508019f75bdae; tests/fixtures/camels_pl/camels_pl_154180150.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3646,7 +3646,7 @@
     "case_id": "camels_pl_2_1_0_154180150",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 154180150, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 154180150, column high_q_freq, high_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_154180150.csv (SHA-256 b9e9cce4ebf781972040ac84ddefd88aa8cb61abcf44eab2fbb508019f75bdae; tests/fixtures/camels_pl/camels_pl_154180150.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3679,7 +3679,7 @@
     "case_id": "camels_pl_2_1_0_154180150",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 154180150, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 154180150, column low_q_freq, low_q_dur (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_154180150.csv (SHA-256 b9e9cce4ebf781972040ac84ddefd88aa8cb61abcf44eab2fbb508019f75bdae; tests/fixtures/camels_pl/camels_pl_154180150.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3712,7 +3712,7 @@
     "case_id": "camels_pl_2_1_0_154180150",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 154180150, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 154180150, column zero_q_freq (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_154180150.csv (SHA-256 b9e9cce4ebf781972040ac84ddefd88aa8cb61abcf44eab2fbb508019f75bdae; tests/fixtures/camels_pl/camels_pl_154180150.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3743,7 +3743,7 @@
     "case_id": "camels_pl_2_1_0_154180150",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 154180150, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 154180150, column hfd_mean (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_154180150.csv (SHA-256 b9e9cce4ebf781972040ac84ddefd88aa8cb61abcf44eab2fbb508019f75bdae; tests/fixtures/camels_pl/camels_pl_154180150.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
@@ -3775,7 +3775,7 @@
     "case_id": "camels_pl_2_1_0_154180150",
     "source": {
       "citation": "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0",
-      "locator": "CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, the row of gauge 154180150, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv); its definition: CAMELS_PL_Data_Description.pdf, Table 7",
+      "locator": "CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336): CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv (SHA-256 370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43), the row of gauge 154180150, column baseflow_index (tests/fixtures/camels_pl/CAMELS_PL_hydrologic_attributes.csv), computed from CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_154180150.csv (SHA-256 b9e9cce4ebf781972040ac84ddefd88aa8cb61abcf44eab2fbb508019f75bdae; tests/fixtures/camels_pl/camels_pl_154180150.csv.gz); its definition: CAMELS_PL_Data_Description.pdf (SHA-256 46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de), Table 7",
       "url": "https://doi.org/10.5281/zenodo.23275336",
       "access": "open"
     },
