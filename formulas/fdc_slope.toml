@@ -1,0 +1,214 @@
+schema = "nogat-formula-card/1"
+name = "fdc_slope"
+title = "Slope of the duration curve between two exceedance percentages in log space"
+function = "hydrolog.statistics.signatures.fdc_slope"
+family = "index"
+formula_version = 1
+status = "referenced"
+equation = "S = [ln Q(p_1) - ln Q(p_2)] / [(p_2 - p_1) / 100], Q(p) the value equalled or exceeded on p % of the days (spec exceedance_values), p_1 < p_2"
+latex = "S = \\frac{\\ln Q(p_1) - \\ln Q(p_2)}{(p_2 - p_1)/100},\\quad p_1 < p_2"
+validation = "none: a descriptive statistic of the observed record; Sawicz et al. (2011) and Addor et al. (2017) relate it to catchment properties, not to an observation of the same quantity"
+conventions = ["Q(p) is Hydrolog's duration curve (spec exceedance_values): the value equalled or exceeded on p % of the days with a value, Weibull positions m / (n + 1) and linear interpolation; Sawicz et al. (2011) read the flows exceeded on 33 and 66 % of the days, the defaults", "Addor et al. (2017) and the codes of CAMELS-DE and CAMELS-PL take the non-exceedance quantiles 0.33 and 0.66, the flows exceeded on 67 and 34 % of the days ('slightly different', the code of CAMELS-US says): from_percent 34 and to_percent 67 give their slope", "zeros are values of the curve, as in Sawicz et al. and the code of CAMELS-US: a curve at 0 at p_2 is refused (precondition flow_at_both_points); the codes of CAMELS-DE and CAMELS-PL drop the days without flow first, which a caller does by passing the flows above 0", "the curve runs on the values divided by the power of two that brings the largest into [1/2, 1), and ln Q(p_1) - ln Q(p_2) is taken from their mantissas and exponents: the slope does not depend on the unit of the series and does not overflow", "Q(p_2) is held at most Q(p_1): the rounding of the interpolation could otherwise put a value a unit in the last place above the higher one", "a day without a value (NaN) is left out, n counts the days with a value"]
+assumptions = ["the values are those of one station over one period: the slope describes that period's curve", "the curve between the two points is nearly straight in log space, which is why Sawicz et al. chose 33 and 66 %; other points give a slope of their part of the curve"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/camels-pl-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_series"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+slope = 0.0
+
+[properties.scalings.tolerance]
+reason = "the comparisons and sums run on the values divided by the power of two that brings the largest into [1/2, 1), the same numbers for the series and the series doubled, so the result is the same to the bit"
+abs = 0.0
+
+[[properties.limits]]
+name = "constant_series"
+text = "a series of equal values has a flat curve, S = 0"
+
+[[properties.limits]]
+name = "exponential_curve"
+text = "99 values q(m) = exp(-2 m / 100) stand at their Weibull positions m / 100, so the slope from 33 to 66 % is 2"
+
+[properties.limits.source]
+citation = "Sawicz, K., Wagener, T., Sivapalan, M., Troch, P.A. and Carrillo, G. (2011). Catchment classification: empirical analysis of hydrologic similarity based on catchment function in the eastern USA. Hydrology and Earth System Sciences 15, 2895-2911"
+access = "open"
+locator = "sect. 3.2, eq. 3, p. 2898: S_FDC = [ln(Q33%) - ln(Q66%)] / (0.66 - 0.33), on the flow duration curve, 'the distribution of probabilities of streamflow being greater than or equal to a specified magnitude'"
+url = "https://doi.org/10.5194/hess-15-2895-2011"
+
+[[sources]]
+citation = "Sawicz, K., Wagener, T., Sivapalan, M., Troch, P.A. and Carrillo, G. (2011). Catchment classification: empirical analysis of hydrologic similarity based on catchment function in the eastern USA. Hydrology and Earth System Sciences 15, 2895-2911"
+access = "open"
+locator = "sect. 3.2, eq. 3, p. 2898: S_FDC = [ln(Q33%) - ln(Q66%)] / (0.66 - 0.33), on the flow duration curve, 'the distribution of probabilities of streamflow being greater than or equal to a specified magnitude'"
+url = "https://doi.org/10.5194/hess-15-2895-2011"
+
+[[sources]]
+citation = "Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313"
+access = "open"
+locator = "sect. 5.1, p. 5298: 'the slope of the flow duration curve ... between the log-transformed 33rd and 66th streamflow percentiles', undefined where the flow is 0 on more than a third of the days; Table 3, p. 5300, slope_fdc"
+url = "https://doi.org/10.5194/hess-21-5293-2017"
+
+[[sources]]
+citation = "Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels"
+access = "open"
+locator = "comp_s_fdc: sfdc_sawicz_2011 on the exceedance percentages 33 and 66, sfdc_addor_2017 on the quantiles 0.33 and 0.66, NA when q66 = 0"
+url = "https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R"
+
+[[variables]]
+name = "values"
+symbol = "Q_t"
+unit = "m3/s"
+kind = "real_array"
+description = "The daily values of the series, in any order; NaN on a day without a value, which is left out."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "the signatures are free of the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 6430.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0"
+access = "open"
+locator = "discharge_vol_obs of the 13 gauges of tests/fixtures/camels_pl/ (5.93 to 193,728 km2): 0 m3/s on days without flow (Brynica, Czarna, Gardęga, Noteć and five more) to 6430 m3/s (the Wisła at Tczew)"
+url = "https://doi.org/10.5281/zenodo.23275336"
+
+[[variables]]
+name = "from_percent"
+symbol = "p_1"
+unit = "%"
+kind = "real"
+description = "Exceedance percentage of the first, higher point of the curve."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+high = 100.0
+high_inclusive = false
+
+[variables.typical]
+low = 33.0
+low_inclusive = true
+high = 34.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0"
+access = "open"
+locator = "CAMELS_PL_Data_Description.pdf, Table 7, slope_fdc between the 33rd and 66th percentiles, the flows exceeded on 67 and 34 % of the days; Sawicz et al. (2011, eq. 3) take the flows exceeded on 33 and 66 %"
+url = "https://doi.org/10.5281/zenodo.23275336"
+
+[[variables]]
+name = "to_percent"
+symbol = "p_2"
+unit = "%"
+kind = "real"
+description = "Exceedance percentage of the second, lower point of the curve."
+applicability = "unstated"
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+high = 100.0
+high_inclusive = false
+
+[variables.typical]
+low = 66.0
+low_inclusive = true
+high = 67.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0"
+access = "open"
+locator = "CAMELS_PL_Data_Description.pdf, Table 7, slope_fdc between the 33rd and 66th percentiles, the flows exceeded on 67 and 34 % of the days; Sawicz et al. (2011, eq. 3) take the flows exceeded on 33 and 66 %"
+url = "https://doi.org/10.5281/zenodo.23275336"
+
+[[constraints]]
+name = "has_values"
+class = "precondition"
+text = "n >= 1: at least one day with a value"
+
+[constraints.source]
+citation = "Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels"
+access = "open"
+locator = "find_avail_data_array: a signature needs the days with a value, NA without"
+url = "https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R"
+
+[[constraints]]
+name = "ordered_percents"
+class = "precondition"
+text = "p_1 < p_2"
+
+[constraints.source]
+citation = "Sawicz, K., Wagener, T., Sivapalan, M., Troch, P.A. and Carrillo, G. (2011). Catchment classification: empirical analysis of hydrologic similarity based on catchment function in the eastern USA. Hydrology and Earth System Sciences 15, 2895-2911"
+access = "open"
+locator = "sect. 3.2, eq. 3, p. 2898: S_FDC = [ln(Q33%) - ln(Q66%)] / (0.66 - 0.33), on the flow duration curve, 'the distribution of probabilities of streamflow being greater than or equal to a specified magnitude'"
+url = "https://doi.org/10.5194/hess-15-2895-2011"
+
+[[constraints]]
+name = "flow_at_both_points"
+class = "precondition"
+text = "Q(p_2) > 0"
+
+[constraints.source]
+citation = "Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313"
+access = "open"
+locator = "sect. 5.1, p. 5298: 'In intermittent streams, the frequency of days with no flow can be greater than 33 % ... Since the logarithm cannot be extracted, the slope of the flow duration curve is undefined'"
+url = "https://doi.org/10.5194/hess-21-5293-2017"
+
+[[outputs]]
+name = "slope"
+unit = "-"
+kind = "real"
+symbol = "S"
+description = "The fall of the curve in log space per unit of the exceedance probability."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "constraint cases ordered_percents-boundary and -violated: p_1 = p_2 and p_1 > p_2 are refused before the division; test_close_percents_give_a_finite_slope"
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "constraint case flow_at_both_points-violated: the logarithm of a curve at 0 is refused; test_a_tiny_flow_has_a_finite_slope takes the logarithm of the smallest positive values"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case values-nan_element and test_a_day_without_a_value_is_left_out: a gap is left out, never a NaN slope"
+
+[[oracles]]
+kind = "established"
+description = "numpy.quantile with method='weibull' (NumPy 2.5) at the non-exceedance probabilities 1 - p / 100 and math.log of their ratio"
+test = "tests/unit/test_formulas_signatures.py::test_the_slope_is_numpys_weibull_curve"
+conventions = ["numpy's 'weibull' is Hyndman and Fan's type 6, the positions of exceedance_values counted from the other end"]

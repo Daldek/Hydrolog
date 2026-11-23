@@ -95,6 +95,11 @@
 | [Baseflow of a daily series by the Lyne and Hollick filter (standard approach of Ladson et al. 2013)](#lyne_hollick) | `hydrolog.statistics.baseflow.lyne_hollick_filter` | referenced | 1 | not measured |
 | [Baseflow index: the volume of baseflow over the volume of flow](#baseflow_index) | `hydrolog.statistics.baseflow.baseflow_index` | referenced | 1 | not measured |
 | [Recession constant of the total flow: the median daily ratio of runs of falling flow](#recession_constant) | `hydrolog.statistics.baseflow.recession_ratio` | oracle only | 1 | not measured |
+| [Slope of the duration curve between two exceedance percentages in log space](#fdc_slope) | `hydrolog.statistics.signatures.fdc_slope` | referenced | 1 | not measured |
+| [High-flow days: their frequency and the mean duration of their runs](#high_flow_days) | `hydrolog.statistics.signatures.high_flow_days` | referenced | 1 | not measured |
+| [Low-flow days: their frequency and the mean duration of their runs](#low_flow_days) | `hydrolog.statistics.signatures.low_flow_days` | referenced | 1 | not measured |
+| [Share of the days without flow](#zero_flow_fraction) | `hydrolog.statistics.signatures.zero_flow_fraction` | referenced | 1 | not measured |
+| [Half-flow date: the day on which half of a year's flow has passed](#half_flow_date) | `hydrolog.statistics.signatures.half_flow_date` | referenced | 1 | not measured |
 | [Pardé's coefficients: the mean discharge of each month over the mean annual discharge](#parde_coefficients) | `hydrolog.statistics.regime.parde_coefficients` | referenced | 1 | not measured |
 | [The March-April share of the annual volume of the mean monthly flows](#spring_share) | `hydrolog.statistics.regime.spring_share` | oracle only | 1 | not measured |
 | [Dynowska's type of a Polish river regime from Pardé's coefficients](#dynowska_regime_type) | `hydrolog.statistics.regime.dynowska_regime_type` | referenced | 1 | not measured |
@@ -6942,6 +6947,7 @@ Plain text: `q(1) >= ... >= q(n) the n values with a value; h = (n + 1) p / 100,
 **Reference cases (CMP-6.1)**
 
 - `tests/fixtures/formulas/daily-cases.json`
+- `tests/fixtures/formulas/camels-pl-cases.json`
 
 **Oracles (CMP-6.2 to CMP-6.4)**
 
@@ -7107,6 +7113,7 @@ None stated.
 **Reference cases (CMP-6.1)**
 
 - `tests/fixtures/formulas/baseflow-cases.json`
+- `tests/fixtures/formulas/camels-pl-cases.json`
 
 **Oracles (CMP-6.2 to CMP-6.4)**
 
@@ -7188,6 +7195,400 @@ None.
 - exact: the runs found by a scan of the days and the median of their ratios in exact rational arithmetic (fractions, statistics.median) (`tests/unit/test_formulas_baseflow.py::test_the_recession_constant_is_the_exact_median`)
 
 **Tests by class (CMP §6):** oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="fdc_slope"></a>
+### Slope of the duration curve between two exceedance percentages in log space
+
+`hydrolog.statistics.signatures.fdc_slope` · family `index` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+S = \frac{\ln Q(p_1) - \ln Q(p_2)}{(p_2 - p_1)/100},\quad p_1 < p_2
+$$
+
+Plain text: `S = [ln Q(p_1) - ln Q(p_2)] / [(p_2 - p_1) / 100], Q(p) the value equalled or exceeded on p % of the days (spec exceedance_values), p_1 < p_2`
+
+**Sources**
+
+- Sawicz, K., Wagener, T., Sivapalan, M., Troch, P.A. and Carrillo, G. (2011). Catchment classification: empirical analysis of hydrologic similarity based on catchment function in the eastern USA. Hydrology and Earth System Sciences 15, 2895-2911, sect. 3.2, eq. 3, p. 2898: S_FDC = [ln(Q33%) - ln(Q66%)] / (0.66 - 0.33), on the flow duration curve, 'the distribution of probabilities of streamflow being greater than or equal to a specified magnitude' (open) <https://doi.org/10.5194/hess-15-2895-2011>
+- Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, sect. 5.1, p. 5298: 'the slope of the flow duration curve ... between the log-transformed 33rd and 66th streamflow percentiles', undefined where the flow is 0 on more than a third of the days; Table 3, p. 5300, slope_fdc (open) <https://doi.org/10.5194/hess-21-5293-2017>
+- Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, comp_s_fdc: sfdc_sawicz_2011 on the exceedance percentages 33 and 66, sfdc_addor_2017 on the quantiles 0.33 and 0.66, NA when q66 = 0 (open) <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $Q_t$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (the signatures are free of the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)) | unstated | [0.0, 6430.0]: Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0, discharge_vol_obs of the 13 gauges of tests/fixtures/camels_pl/ (5.93 to 193,728 km2): 0 m3/s on days without flow (Brynica, Czarna, Gardęga, Noteć and five more) to 6430 m3/s (the Wisła at Tczew) |
+| `from_percent` | $p_1$ | % | real | (0.0, 100.0) | unstated | [33.0, 34.0]: Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0, CAMELS_PL_Data_Description.pdf, Table 7, slope_fdc between the 33rd and 66th percentiles, the flows exceeded on 67 and 34 % of the days; Sawicz et al. (2011, eq. 3) take the flows exceeded on 33 and 66 % |
+| `to_percent` | $p_2$ | % | real | (0.0, 100.0) | unstated | [66.0, 67.0]: Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0, CAMELS_PL_Data_Description.pdf, Table 7, slope_fdc between the 33rd and 66th percentiles, the flows exceeded on 67 and 34 % of the days; Sawicz et al. (2011, eq. 3) take the flows exceeded on 33 and 66 % |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `has_values` | precondition | n >= 1: at least one day with a value | Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, find_avail_data_array: a signature needs the days with a value, NA without |
+| `ordered_percents` | precondition | p_1 < p_2 | Sawicz, K., Wagener, T., Sivapalan, M., Troch, P.A. and Carrillo, G. (2011). Catchment classification: empirical analysis of hydrologic similarity based on catchment function in the eastern USA. Hydrology and Earth System Sciences 15, 2895-2911, sect. 3.2, eq. 3, p. 2898: S_FDC = [ln(Q33%) - ln(Q66%)] / (0.66 - 0.33), on the flow duration curve, 'the distribution of probabilities of streamflow being greater than or equal to a specified magnitude' |
+| `flow_at_both_points` | precondition | Q(p_2) > 0 | Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, sect. 5.1, p. 5298: 'In intermittent streams, the frequency of days with no flow can be greater than 33 % ... Since the logarithm cannot be extracted, the slope of the flow duration curve is undefined' |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `slope` | - | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- Q(p) is Hydrolog's duration curve (spec exceedance_values): the value equalled or exceeded on p % of the days with a value, Weibull positions m / (n + 1) and linear interpolation; Sawicz et al. (2011) read the flows exceeded on 33 and 66 % of the days, the defaults
+- Addor et al. (2017) and the codes of CAMELS-DE and CAMELS-PL take the non-exceedance quantiles 0.33 and 0.66, the flows exceeded on 67 and 34 % of the days ('slightly different', the code of CAMELS-US says): from_percent 34 and to_percent 67 give their slope
+- zeros are values of the curve, as in Sawicz et al. and the code of CAMELS-US: a curve at 0 at p_2 is refused (precondition flow_at_both_points); the codes of CAMELS-DE and CAMELS-PL drop the days without flow first, which a caller does by passing the flows above 0
+- the curve runs on the values divided by the power of two that brings the largest into [1/2, 1), and ln Q(p_1) - ln Q(p_2) is taken from their mantissas and exponents: the slope does not depend on the unit of the series and does not overflow
+- Q(p_2) is held at most Q(p_1): the rounding of the interpolation could otherwise put a value a unit in the last place above the higher one
+- a day without a value (NaN) is left out, n counts the days with a value
+
+**Assumptions**
+
+- the values are those of one station over one period: the slope describes that period's curve
+- the curve between the two points is nearly straight in log space, which is why Sawicz et al. chose 33 and 66 %; other points give a slope of their part of the curve
+
+**Validation:** none: a descriptive statistic of the observed record; Sawicz et al. (2011) and Addor et al. (2017) relate it to catchment properties, not to an observation of the same quantity
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `difference_denominator`: constraint cases ordered_percents-boundary and -violated: p_1 = p_2 and p_1 > p_2 are refused before the division; test_close_percents_give_a_finite_slope
+- `singular_at_bound`: constraint case flow_at_both_points-violated: the logarithm of a curve at 0 is refused; test_a_tiny_flow_has_a_finite_slope takes the logarithm of the smallest positive values
+- `gap_propagation`: type case values-nan_element and test_a_day_without_a_value_is_left_out: a gap is left out, never a NaN slope
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_series`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`slope` e = 0.0)
+- limit `constant_series`: a series of equal values has a flat curve, S = 0
+- limit `exponential_curve`: 99 values q(m) = exp(-2 m / 100) stand at their Weibull positions m / 100, so the slope from 33 to 66 % is 2
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/camels-pl-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- established: numpy.quantile with method='weibull' (NumPy 2.5) at the non-exceedance probabilities 1 - p / 100 and math.log of their ratio (`tests/unit/test_formulas_signatures.py::test_the_slope_is_numpys_weibull_curve`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="high_flow_days"></a>
+### High-flow days: their frequency and the mean duration of their runs
+
+`hydrolog.statistics.signatures.high_flow_days` · family `index` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+Q_t > 9\,\tilde{Q},\quad F = 365.25\,\frac{N_h}{n},\quad D = \frac{N_h}{E}
+$$
+
+Plain text: `a high-flow day has Q_t > 9 median(Q); F = 365.25 N_h / n, n the days with a value; D = N_h / E, E the runs of consecutive high-flow days, D = 0 when E = 0`
+
+**Sources**
+
+- Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, Table 3, p. 5300: high_q_freq and high_q_dur (open) <https://doi.org/10.5194/hess-21-5293-2017>
+- Westerberg, I.K. and McMillan, H.K. (2015). Uncertainty in hydrological signatures. Hydrology and Earth System Sciences 19, 3951-3968, Table 2, p. 3956: QHF and QHD, the frequency and the duration of daily flows higher than 9 times the median daily flow (Clausen and Biggs 2000); QLF and QLD, of daily flows lower than 0.2 times the mean daily flow (Olden and Poff 2003, who used a 5 % threshold) (open) <https://doi.org/10.5194/hess-19-3951-2015>
+- Clausen, B. and Biggs, B.J.F. (2000). Flow variables for ecological studies in temperate streams: groupings based on covariance. Journal of Hydrology 237, 184-197, the frequency of high flows above a multiple of the median flow, as Westerberg and McMillan (2015, Table 2) and Addor et al. (2017, Table 3) cite it (author-provided) <https://doi.org/10.1016/S0022-1694(00)00306-1>
+- Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, compute_hf_freq_dur: hf <- q > 9 * median(q) (open) <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $Q_t$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (the signatures are free of the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)) | unstated | [0.0, 6430.0]: Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0, discharge_vol_obs of the 13 gauges of tests/fixtures/camels_pl/ (5.93 to 193,728 km2): 0 m3/s on days without flow (Brynica, Czarna, Gardęga, Noteć and five more) to 6430 m3/s (the Wisła at Tczew) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `has_values` | precondition | n >= 1: at least one day with a value | Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, find_avail_data_array: a signature needs the days with a value, NA without |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `high_flow_multiple` | $9$ | 9 | - | Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, Table 3, p. 5300: high_q_freq, the frequency of high-flow days (> 9 times the median daily flow); confirmed by Westerberg and McMillan (2015), Table 2, p. 3956, QHF |
+| `days_per_year` | $365.25$ | 1461/4 | d | Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, compute_hf_freq_dur and compute_lf_freq_dur: hf_freq <- sum(hf) / sum(avail_data) * 365.25; the same in the code of CAMELS-DE (08_hydrologic_attributes.ipynb): high_q_freq = hf.sum() / len(df) * 365.25 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `days_per_year` | d/yr | real | [0.0, 365.25] | 4 ulp of the bound |
+| `mean_duration_days` | d | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- a high-flow day has a flow strictly above 9 times the median of the days with a value (Addor et al. 2017, Table 3; Westerberg and McMillan 2015, Table 2); the median of an even count is the mean of the two middle values
+- where the median is 0, every day with flow is a high-flow day (the code of CAMELS-US notes it)
+- the frequency counts per day with a value, times 365.25 days: Addor et al.'s code (sum(hf) / sum(avail_data) * 365.25); the codes of CAMELS-DE and CAMELS-PL divide by every day of their frame, the days without a value too
+- an event is a run of consecutive days beyond the threshold, and a day without a value ends it, as in the code of CAMELS-DE; Addor et al.'s code drops such days and joins the runs around them
+- the mean duration is the days beyond the threshold over the events; a series without such a day has the frequency 0 and the duration 0, as the codes of CAMELS-US, CAMELS-DE and CAMELS-PL give them
+- the comparisons run on the values divided by the power of two that brings the largest into [1/2, 1): the same numbers for a series in any unit
+
+**Assumptions**
+
+- the record is long enough for its median to be that of the regime: the frequency of a short or partial record says little
+
+**Validation:** none: a descriptive statistic of the observed record; Westerberg and McMillan (2015) estimate its uncertainty from the data's
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `difference_denominator`: constraint case has_values-violated: a series without a value is refused before n divides
+- `gap_propagation`: type case values-nan_element and limit gap_parts_the_event: a gap is neither a high-flow day nor counted, and it ends a run
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_series`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`days_per_year` e = 0.0, `mean_duration_days` e = 0.0)
+- limit `constant_series`: no day of a constant series is above nine times its median
+- limit `one_event`: one run of 2 days beyond the threshold in 20 days with a value
+- limit `gap_parts_the_event`: a day without a value inside a run ends it and is not counted: two runs of one day in 19 days with a value
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/camels-pl-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: a loop over the days that counts each day beyond the threshold and each run of them, with the median and the mean in exact rational arithmetic (fractions) (`tests/unit/test_formulas_signatures.py::test_the_flow_days_are_counted_day_by_day`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="low_flow_days"></a>
+### Low-flow days: their frequency and the mean duration of their runs
+
+`hydrolog.statistics.signatures.low_flow_days` · family `index` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+Q_t < 0.2\,\bar{Q},\quad F = 365.25\,\frac{N_l}{n},\quad D = \frac{N_l}{E}
+$$
+
+Plain text: `a low-flow day has Q_t < 0.2 mean(Q); F = 365.25 N_l / n, n the days with a value; D = N_l / E, E the runs of consecutive low-flow days, D = 0 when E = 0`
+
+**Sources**
+
+- Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, Table 3, p. 5300: low_q_freq and low_q_dur (open) <https://doi.org/10.5194/hess-21-5293-2017>
+- Westerberg, I.K. and McMillan, H.K. (2015). Uncertainty in hydrological signatures. Hydrology and Earth System Sciences 19, 3951-3968, Table 2, p. 3956: QHF and QHD, the frequency and the duration of daily flows higher than 9 times the median daily flow (Clausen and Biggs 2000); QLF and QLD, of daily flows lower than 0.2 times the mean daily flow (Olden and Poff 2003, who used a 5 % threshold) (open) <https://doi.org/10.5194/hess-19-3951-2015>
+- Olden, J.D. and Poff, N.L. (2003). Redundancy and the choice of hydrologic indices for characterizing streamflow regimes. River Research and Applications 19, 101-121, the frequency and duration of low flows, as Westerberg and McMillan (2015, Table 2) and Addor et al. (2017, Table 3) cite it, with a threshold of 5 % of the mean, which they raise to 0.2 times the mean (open) <https://doi.org/10.1002/rra.700>
+- Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, compute_lf_freq_dur: lf <- q <= 0.2 * mean(q) (open) <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $Q_t$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (the signatures are free of the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)) | unstated | [0.0, 6430.0]: Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0, discharge_vol_obs of the 13 gauges of tests/fixtures/camels_pl/ (5.93 to 193,728 km2): 0 m3/s on days without flow (Brynica, Czarna, Gardęga, Noteć and five more) to 6430 m3/s (the Wisła at Tczew) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `has_values` | precondition | n >= 1: at least one day with a value | Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, find_avail_data_array: a signature needs the days with a value, NA without |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `low_flow_multiple` | $0.2$ | 1/5 | - | Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, Table 3, p. 5300: low_q_freq, the frequency of low-flow days (< 0.2 times the mean daily flow); confirmed by Westerberg and McMillan (2015), Table 2, p. 3956, QLF |
+| `days_per_year` | $365.25$ | 1461/4 | d | Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, compute_hf_freq_dur and compute_lf_freq_dur: hf_freq <- sum(hf) / sum(avail_data) * 365.25; the same in the code of CAMELS-DE (08_hydrologic_attributes.ipynb): high_q_freq = hf.sum() / len(df) * 365.25 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `days_per_year` | d/yr | real | [0.0, 365.25] | 4 ulp of the bound |
+| `mean_duration_days` | d | real | [0.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- a low-flow day has a flow strictly below 0.2 times the mean of the days with a value (Addor et al. 2017, Table 3, and the codes of CAMELS-DE and CAMELS-PL; Westerberg and McMillan 2015, Table 2: 'lower than'); the code of CAMELS-US takes <=
+- the mean is the sum of the days with a value, exactly rounded once (math.fsum), over their number
+- the frequency counts per day with a value, times 365.25 days: Addor et al.'s code (sum(hf) / sum(avail_data) * 365.25); the codes of CAMELS-DE and CAMELS-PL divide by every day of their frame, the days without a value too
+- an event is a run of consecutive days beyond the threshold, and a day without a value ends it, as in the code of CAMELS-DE; Addor et al.'s code drops such days and joins the runs around them
+- the mean duration is the days beyond the threshold over the events; a series without such a day has the frequency 0 and the duration 0, as the codes of CAMELS-US, CAMELS-DE and CAMELS-PL give them
+- the comparisons run on the values divided by the power of two that brings the largest into [1/2, 1): the same numbers for a series in any unit
+
+**Assumptions**
+
+- the record is long enough for its mean to be that of the regime: the frequency of a short or partial record says little
+
+**Validation:** none: a descriptive statistic of the observed record; Westerberg and McMillan (2015) estimate its uncertainty from the data's
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `difference_denominator`: constraint case has_values-violated: a series without a value is refused before n divides
+- `gap_propagation`: type case values-nan_element and limit gap_parts_the_event: a gap is neither a low-flow day nor counted, and it ends a run
+- `many_small_terms`: test_the_mean_of_many_days_is_summed_exactly: the mean of 50,000 days against the exact rational sum
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_series`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`days_per_year` e = 0.0, `mean_duration_days` e = 0.0)
+- limit `constant_series`: no day of a constant series is below a fifth of its mean
+- limit `one_event`: one run of 2 days beyond the threshold in 20 days with a value
+- limit `gap_parts_the_event`: a day without a value inside a run ends it and is not counted: two runs of one day in 19 days with a value
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/camels-pl-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: a loop over the days that counts each day beyond the threshold and each run of them, with the median and the mean in exact rational arithmetic (fractions) (`tests/unit/test_formulas_signatures.py::test_the_flow_days_are_counted_day_by_day`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="zero_flow_fraction"></a>
+### Share of the days without flow
+
+`hydrolog.statistics.signatures.zero_flow_fraction` · family `index` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+f_0 = \frac{N_0}{n}
+$$
+
+Plain text: `f_0 = N_0 / n, N_0 the days with Q_t = 0, n the days with a value`
+
+**Sources**
+
+- Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, Table 3, p. 5300: zero_q_freq, the frequency of days with Q = 0 (open) <https://doi.org/10.5194/hess-21-5293-2017>
+- Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, compute_no_flow: sum(q[avail_data] <= thres) / length(...) (open) <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $Q_t$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (the signatures are free of the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)) | unstated | [0.0, 6430.0]: Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0, discharge_vol_obs of the 13 gauges of tests/fixtures/camels_pl/ (5.93 to 193,728 km2): 0 m3/s on days without flow (Brynica, Czarna, Gardęga, Noteć and five more) to 6430 m3/s (the Wisła at Tczew) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `has_values` | precondition | n >= 1: at least one day with a value | Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, find_avail_data_array: a signature needs the days with a value, NA without |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `fraction` | - | real | [0.0, 1.0] | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- a day without flow has a discharge of 0 exactly, in the rounding of the data: a flow below half the last printed unit is 0 (CAMELS-PL counts the days whose specific discharge, printed to 0.001 mm/d, is 0)
+- the share of the days with a value (the code of CAMELS-US); the codes of CAMELS-DE and CAMELS-PL divide by every day of their frame, the days without a value too
+- a fraction, not a percentage (Addor et al. 2017, Table 3, give %, the files of CAMELS-US, CAMELS-DE and CAMELS-PL fractions)
+
+**Assumptions**
+
+None stated.
+
+**Validation:** none: a count of the observed record
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `difference_denominator`: constraint case has_values-violated: a series without a value is refused before n divides
+- `gap_propagation`: type case values-nan_element and limit gap_left_out: a gap is left out of both counts
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_series`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`fraction` e = 0.0)
+- limit `always_flowing`: a series without a day of no flow has f_0 = 0
+- limit `never_flowing`: a series of days without flow has f_0 = 1
+- limit `gap_left_out`: a day without a value is neither counted nor a day without flow
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/camels-pl-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the count of the days without flow over the days with a value, as an exact fraction (`tests/unit/test_formulas_signatures.py::test_the_zero_flow_fraction_is_the_exact_share`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
+
+<a id="half_flow_date"></a>
+### Half-flow date: the day on which half of a year's flow has passed
+
+`hydrolog.statistics.signatures.half_flow_date` · family `index` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+d = \min\Bigl\{k : 2\sum_{t=1}^{k} Q_t > \sum_{t=1}^{n} Q_t\Bigr\}
+$$
+
+Plain text: `d = min { k : 2 sum_(t=1..k) Q_t > sum_(t=1..n) Q_t }, the days numbered from the first day of the year, 1; a day without a value adds nothing`
+
+**Sources**
+
+- Court, A. (1962). Measures of streamflow timing. Journal of Geophysical Research 67(11), 4335-4339, the half-flow date, as Addor et al. (2017, Table 3) cite it (author-provided)
+- Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, Table 3, p. 5300: hfd_mean, the mean half-flow date, the 'date on which the cumulative discharge since 1 October reaches half of the annual discharge' (open) <https://doi.org/10.5194/hess-21-5293-2017>
+- Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, compute_hfd_mean_sd: which(cumsum(hy_q) > 0.5 * sum(hy_q))[1], the number of days since the beginning of the hydrological year (open) <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+- Dolich, A. (2024). 08_hydrologic_attributes.ipynb, the code of the hydrologic attributes of CAMELS-DE version 1 (Loritz et al. 2024, ESSD 16, 5625-5642), github.com/CAMELS-DE/camels_de, hfd_mean: the first day whose cumulative discharge since the start of the year exceeds half of the year's, counted from 1 (open) <https://github.com/CAMELS-DE/camels_de/blob/main/version1/scripts/08_hydrologic_attributes.ipynb>
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $Q_t$ | m3/s | real_array | [0.0, inf), test bound high 1000000.0 (the signatures are free of the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)) | unstated | [0.0, 6430.0]: Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0, discharge_vol_obs of the 13 gauges of tests/fixtures/camels_pl/ (5.93 to 193,728 km2): 0 m3/s on days without flow (Brynica, Czarna, Gardęga, Noteć and five more) to 6430 m3/s (the Wisła at Tczew) |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `positive_flow_volume` | precondition | sum(Q_t) > 0 | Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, compute_hfd_mean_sd: 'hfd can't be computed if annual discharge is 0' |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `day` | d | integer | [1.0, 366.0] | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the values are the days of one year in order, day 1 its first: IMGW-PIB's hydrological year from 1 November (CAMELS-PL), CAMELS-US's from 1 October; the mean half-flow date of a record is the mean of its years' dates
+- the date is the first day whose summed flow exceeds half of the year's (strictly, as the codes of CAMELS-US and CAMELS-DE take it; Addor et al.'s Table 3 says 'reaches')
+- a day without a value (NaN) adds nothing to either sum, so it is never the date (the code of CAMELS-US drops it and keeps the numbers of the days)
+- the sums are exact for the binary values given, integer multiples of their smallest power of two: no rounding decides the date, and a sum equal to half of the year's, a tie, is not past it; values equal in their printed decimals can still tie in decimals and not in binary
+
+**Assumptions**
+
+- the days without a value are few: each takes its flow out of the year and can move the date
+
+**Validation:** none: a timing statistic of the observed record; Court (1962) and Addor et al. (2017) use it to compare the timing of runoff
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `many_small_terms`: test_a_tie_is_decided_exactly: ten flows of 0.1, whose float sums put the date a day early, give the exact day
+- `gap_propagation`: type case values-nan_element and limit half_reached_is_not_exceeded: a gap adds nothing and is never the date
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_series`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`day` e = 0.0)
+- limit `uniform_flow`: a year of equal flows passes half of its flow on the day after its middle: day 183 of 365, day 184 of 366
+- limit `one_day_of_flow`: all the flow of the year on one day is that day
+- limit `half_reached_is_not_exceeded`: a sum equal to half of the year's is not past it: the date is the next day with flow
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/camels-pl-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the cumulative sums in exact rational arithmetic (fractions), day by day (`tests/unit/test_formulas_signatures.py::test_the_date_is_the_exact_crossing`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
 <a id="parde_coefficients"></a>
 ### Pardé's coefficients: the mean discharge of each month over the mean annual discharge

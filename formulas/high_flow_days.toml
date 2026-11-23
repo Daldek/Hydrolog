@@ -1,0 +1,178 @@
+schema = "nogat-formula-card/1"
+name = "high_flow_days"
+title = "High-flow days: their frequency and the mean duration of their runs"
+function = "hydrolog.statistics.signatures.high_flow_days"
+family = "index"
+formula_version = 1
+status = "referenced"
+equation = "a high-flow day has Q_t > 9 median(Q); F = 365.25 N_h / n, n the days with a value; D = N_h / E, E the runs of consecutive high-flow days, D = 0 when E = 0"
+latex = "Q_t > 9\\,\\tilde{Q},\\quad F = 365.25\\,\\frac{N_h}{n},\\quad D = \\frac{N_h}{E}"
+validation = "none: a descriptive statistic of the observed record; Westerberg and McMillan (2015) estimate its uncertainty from the data's"
+conventions = ["a high-flow day has a flow strictly above 9 times the median of the days with a value (Addor et al. 2017, Table 3; Westerberg and McMillan 2015, Table 2); the median of an even count is the mean of the two middle values", "where the median is 0, every day with flow is a high-flow day (the code of CAMELS-US notes it)", "the frequency counts per day with a value, times 365.25 days: Addor et al.'s code (sum(hf) / sum(avail_data) * 365.25); the codes of CAMELS-DE and CAMELS-PL divide by every day of their frame, the days without a value too", "an event is a run of consecutive days beyond the threshold, and a day without a value ends it, as in the code of CAMELS-DE; Addor et al.'s code drops such days and joins the runs around them", "the mean duration is the days beyond the threshold over the events; a series without such a day has the frequency 0 and the duration 0, as the codes of CAMELS-US, CAMELS-DE and CAMELS-PL give them", "the comparisons run on the values divided by the power of two that brings the largest into [1/2, 1): the same numbers for a series in any unit"]
+assumptions = ["the record is long enough for its median to be that of the regime: the frequency of a short or partial record says little"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/camels-pl-cases.json"]
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_series"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+days_per_year = 0.0
+mean_duration_days = 0.0
+
+[properties.scalings.tolerance]
+reason = "the comparisons and sums run on the values divided by the power of two that brings the largest into [1/2, 1), the same numbers for the series and the series doubled, so the result is the same to the bit"
+abs = 0.0
+
+[[properties.limits]]
+name = "constant_series"
+text = "no day of a constant series is above nine times its median"
+
+[[properties.limits]]
+name = "one_event"
+text = "one run of 2 days beyond the threshold in 20 days with a value"
+
+[[properties.limits]]
+name = "gap_parts_the_event"
+text = "a day without a value inside a run ends it and is not counted: two runs of one day in 19 days with a value"
+
+[[sources]]
+citation = "Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313"
+access = "open"
+locator = "Table 3, p. 5300: high_q_freq and high_q_dur"
+url = "https://doi.org/10.5194/hess-21-5293-2017"
+
+[[sources]]
+citation = "Westerberg, I.K. and McMillan, H.K. (2015). Uncertainty in hydrological signatures. Hydrology and Earth System Sciences 19, 3951-3968"
+access = "open"
+locator = "Table 2, p. 3956: QHF and QHD, the frequency and the duration of daily flows higher than 9 times the median daily flow (Clausen and Biggs 2000); QLF and QLD, of daily flows lower than 0.2 times the mean daily flow (Olden and Poff 2003, who used a 5 % threshold)"
+url = "https://doi.org/10.5194/hess-19-3951-2015"
+
+[[sources]]
+citation = "Clausen, B. and Biggs, B.J.F. (2000). Flow variables for ecological studies in temperate streams: groupings based on covariance. Journal of Hydrology 237, 184-197"
+access = "author-provided"
+locator = "the frequency of high flows above a multiple of the median flow, as Westerberg and McMillan (2015, Table 2) and Addor et al. (2017, Table 3) cite it"
+url = "https://doi.org/10.1016/S0022-1694(00)00306-1"
+
+[[sources]]
+citation = "Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels"
+access = "open"
+locator = "compute_hf_freq_dur: hf <- q > 9 * median(q)"
+url = "https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R"
+
+[[variables]]
+name = "values"
+symbol = "Q_t"
+unit = "m3/s"
+kind = "real_array"
+description = "Daily discharge in time order; NaN on a day without a value."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "the signatures are free of the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 6430.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0"
+access = "open"
+locator = "discharge_vol_obs of the 13 gauges of tests/fixtures/camels_pl/ (5.93 to 193,728 km2): 0 m3/s on days without flow (Brynica, Czarna, Gardęga, Noteć and five more) to 6430 m3/s (the Wisła at Tczew)"
+url = "https://doi.org/10.5281/zenodo.23275336"
+
+[[constraints]]
+name = "has_values"
+class = "precondition"
+text = "n >= 1: at least one day with a value"
+
+[constraints.source]
+citation = "Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels"
+access = "open"
+locator = "find_avail_data_array: a signature needs the days with a value, NA without"
+url = "https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R"
+
+[[constants]]
+name = "high_flow_multiple"
+value = 9.0
+unit = "-"
+symbol = "9"
+exact = "9"
+
+[constants.source]
+citation = "Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313"
+access = "open"
+locator = "Table 3, p. 5300: high_q_freq, the frequency of high-flow days (> 9 times the median daily flow); confirmed by Westerberg and McMillan (2015), Table 2, p. 3956, QHF"
+url = "https://doi.org/10.5194/hess-21-5293-2017"
+
+[[constants]]
+name = "days_per_year"
+value = 365.25
+unit = "d"
+symbol = "365.25"
+exact = "1461/4"
+
+[constants.source]
+citation = "Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels"
+access = "open"
+locator = "compute_hf_freq_dur and compute_lf_freq_dur: hf_freq <- sum(hf) / sum(avail_data) * 365.25; the same in the code of CAMELS-DE (08_hydrologic_attributes.ipynb): high_q_freq = hf.sum() / len(df) * 365.25"
+url = "https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R"
+
+[[outputs]]
+name = "days_per_year"
+unit = "d/yr"
+kind = "real"
+symbol = "F_h"
+description = "The days beyond the threshold per year of the days with a value."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 365.25
+high_inclusive = true
+
+[[outputs]]
+name = "mean_duration_days"
+unit = "d"
+kind = "real"
+symbol = "D_h"
+description = "The mean length of the runs of such days, 0 without one."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "constraint case has_values-violated: a series without a value is refused before n divides"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case values-nan_element and limit gap_parts_the_event: a gap is neither a high-flow day nor counted, and it ends a run"
+
+[[oracles]]
+kind = "algorithm"
+description = "a loop over the days that counts each day beyond the threshold and each run of them, with the median and the mean in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_signatures.py::test_the_flow_days_are_counted_day_by_day"
+conventions = []
