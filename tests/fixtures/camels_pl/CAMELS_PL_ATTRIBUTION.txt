@@ -1,0 +1,45 @@
+camels_pl_<gauge>.csv.gz: the rows with a discharge of
+CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_<gauge>.csv, the columns date,
+discharge_vol_obs [m3/s] and discharge_spec_obs [mm/d] as published (gzip, no time stamp).
+CAMELS_PL_hydrologic_attributes.csv: the header and the rows of these gauges of
+CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, as published.
+Extracted by extract_camels_pl.py from CAMELS_PL_2.1.zip (1670805350 B, MD5
+05d4c1884d535c78299477ac8a00703a) on 2026-11-23; the members read, with their CRC-32:
+  CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv  407b8877
+  CAMELS_PL_2.1/CAMELS_PL_topographic_GLO_30_DEM_attributes.csv  468ef0a0
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150150030.csv  d0cdd2d4
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149180140.csv  a7daac7f
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149200260.csv  6946dbcf
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150190010.csv  bc52ef62
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152210050.csv  5dcbdb24
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153199999.csv  048b0e8f
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152180100.csv  c2af9595
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153170050.csv  3caa99e2
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152160060.csv  3799f780
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150160180.csv  f12e94c1
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153220170.csv  3c6a96d3
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152140020.csv  cac59bac
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_154180150.csv  734e0a32
+
+The gauges (IMGW-PIB code, name, river, area_metadata [km2]):
+  150150030  Jakuszyce  Kamienna  5.93
+  149180140  Wisła  Wisła  53.56
+  149200260  Nowy Sącz  Łubinka  66.44
+  150190010  Brynica  Brynica  104.47
+  152210050  Struga  Czarna  198.07
+  153199999  Szembruk  Gardęga  298.6
+  152180100  Łysek  Noteć  301.77
+  153170050  Ciecholewy  Brda  663.83
+  152160060  Konojad  Mogilnica  722.55
+  150160180  Kłodzko  Nysa Kłodzka  1083.05
+  153220170  Osowiec  Biebrza  4366.15
+  152140020  Gozdowice  Odra  109859.91
+  154180150  Tczew  Wisła  193728.02
+
+Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I.,
+Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape
+attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0.
+https://doi.org/10.5281/zenodo.23275336; licence CC BY 4.0, https://creativecommons.org/licenses/by/4.0/.
+
+Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy.
+Dane IMGW-PIB zostały przetworzone (CAMELS-PL: przepływ jednostkowy z powierzchni zlewni; wybór wierszy i kolumn).
