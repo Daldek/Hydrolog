@@ -3,8 +3,9 @@
 Rozdział opisuje statystyki, którymi charakteryzuje się reżim ilościowy przekroju wodowskazowego na co
 dzień, a nie tylko w czasie wezbrań: przepływy charakterystyczne pierwszego i drugiego stopnia, krzywą
 sum czasów trwania przepływów, niżówki z ich czasem trwania i deficytem odpływu, rozkład minimów
-rocznych, przepływ podstawowy i recesję. Wszystkie te wielkości liczy się z szeregu przepływów dobowych
-(albo z charakterystyk półrocznych IMGW-PIB) w ustalonym okresie odniesienia, zwykle 30-letnim.
+rocznych, przepływ podstawowy i recesję oraz sygnatury hydrologiczne zbiorów CAMELS. Wszystkie te
+wielkości liczy się z szeregu przepływów dobowych (albo z charakterystyk półrocznych IMGW-PIB)
+w ustalonym okresie odniesienia, zwykle 30-letnim.
 
 Przykłady dotyczą lat hydrologicznych 1991–2020 wodowskazu IMGW-PIB Świerzawa na Kaczawie (151150170),
 w miejscowości, w której zamyka się zlewnia Kamiennika, oraz wodowskazu Bukowna na Czarnej Wodzie
@@ -927,7 +928,429 @@ z 282 odcinków spadku, czyli czas połowicznego spadku przepływu 7,57 doby. Z
 recesja przepływu całkowitego po wezbraniach; recesja przepływu podstawowego w długich okresach bez opadu
 jest wolniejsza.
 
-## 8.7. Podsumowanie
+## 8.7. Sygnatury hydrologiczne i CAMELS-PL
+
+Sygnatura hydrologiczna (ang. *hydrological signature*) to jedna liczba, która streszcza szereg
+przepływów dobowych tak, aby można było porównywać zlewnie (Sawicz i in. 2011; Westerberg i McMillan
+2015). Zbiory CAMELS publikują dla każdego wodowskazu ten sam zestaw sygnatur: CAMELS dla 671 zlewni
+w USA (Addor i in. 2017), CAMELS-DE dla Niemiec i CAMELS-PL dla 869 zlewni w Polsce (Brzezińska i in.
+2026). Hydrolog liczy pięć z nich wzorami ze specyfikacjami; dwie kolejne to wielkości z poprzednich
+podrozdziałów: kwantyle $Q_5$ i $Q_{95}$ zbiorów CAMELS to wartości krzywej sum czasów trwania
+osiągane lub przekraczane w 95 i 5 % dni (podrozdział 8.2), a `baseflow_index` to BFI z podrozdziału
+8.5. Sygnatury są funkcjami biblioteki `hydrolog.statistics` (nie mają polecenia): przyjmują próbę,
+czyli kolejne dni zapisu z luką NaN, a nie kalendarz; który okres i które lata wejdą do próby,
+decyduje wywołujący.
+
+Nachylenie krzywej sum czasów trwania mierzy, jak szybko przepływ maleje między przepływami średnimi
+i niskimi: duże nachylenie ma rzeka „nerwowa”, małe — rzeka zasilana równomiernie, np. z wód
+podziemnych lub jezior (Sawicz i in. 2011).
+
+<!-- spec:fdc_slope -->
+
+<a id="spec-fdc_slope"></a>
+
+> **Nachylenie krzywej sum czasów trwania między dwoma procentami przewyższenia w skali logarytmicznej** · specyfikacja [`fdc_slope`](../FORMULAS.md#fdc_slope) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> S = \frac{\ln Q(p_1) - \ln Q(p_2)}{(p_2 - p_1)/100},\quad p_1 < p_2
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $Q_t$ | `values` (ciąg) | Wartości dobowe szeregu, w dowolnej kolejności; NaN w dniu bez wartości, który jest pomijany | m³/s | [0; ∞) | nie podano w źródłach | [0; 6430] (źr. 4) |
+> | $p_1$ | `from_percent` | Procent przewyższenia pierwszego, wyższego punktu krzywej | % | (0; 100) | nie podano w źródłach | [33; 34] (źr. 5) |
+> | $p_2$ | `to_percent` | Procent przewyższenia drugiego, niższego punktu krzywej | % | (0; 100) | nie podano w źródłach | [66; 67] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $S$ | `slope` | Spadek krzywej w skali logarytmicznej na jednostkę prawdopodobieństwa przewyższenia | – | [0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | n >= 1: co najmniej jeden dzień z wartością | `has_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 6) |
+> | p_1 < p_2 | `ordered_percents` | odmowa obliczeń: wzór jest nieokreślony | (źr. 1) |
+> | Q(p_2) > 0 | `flow_at_both_points` | odmowa obliczeń: wzór jest nieokreślony | (źr. 7) |
+>
+> **Konwencje**
+>
+> - Q(p) to krzywa sum czasów trwania Hydrologa (specyfikacja exceedance_values): wartość osiągana lub przekraczana w p % dni z wartością, pozycje Weibulla m / (n + 1) i interpolacja liniowa; Sawicz i in. (2011) odczytują przepływy przekraczane w 33 i 66 % dni, czyli wartości domyślne
+> - Addor i in. (2017) oraz kody CAMELS-DE i CAMELS-PL biorą kwantyle nieprzekroczenia 0,33 i 0,66, czyli przepływy przekraczane w 67 i 34 % dni („slightly different”, jak zaznacza kod CAMELS-US): from_percent 34 i to_percent 67 dają ich nachylenie
+> - zera są wartościami krzywej, jak u Sawicza i in. i w kodzie CAMELS-US: krzywa równa 0 w p_2 jest odrzucana (warunek flow_at_both_points); kody CAMELS-DE i CAMELS-PL najpierw pomijają dni bez przepływu, co wywołujący uzyskuje, podając tylko przepływy większe od 0
+> - krzywa jest liczona na wartościach podzielonych przez potęgę dwójki, która sprowadza największą do [1/2, 1), a ln Q(p_1) - ln Q(p_2) z ich mantys i wykładników: nachylenie nie zależy od jednostki szeregu i nie powoduje przepełnienia
+> - Q(p_2) jest ograniczane do co najwyżej Q(p_1): zaokrąglenie interpolacji mogłoby inaczej dać wartość o jednostkę ostatniego miejsca większą od wyższej
+> - dzień bez wartości (NaN) jest pomijany, n liczy dni z wartością
+>
+> **Założenia**
+>
+> - wartości pochodzą z jednej stacji i jednego okresu: nachylenie opisuje krzywą tego okresu
+> - krzywa między dwoma punktami jest w skali logarytmicznej prawie prosta, dlatego Sawicz i in. wybrali 33 i 66 %; inne punkty dają nachylenie swojej części krzywej
+>
+> **Zgodność z obserwacjami według źródeł:** brak: statystyka opisowa obserwowanego szeregu; Sawicz i in. (2011) oraz Addor i in. (2017) wiążą ją z cechami zlewni, a nie z obserwacją tej samej wielkości
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Sawicz, K., Wagener, T., Sivapalan, M., Troch, P.A. and Carrillo, G. (2011). Catchment classification: empirical analysis of hydrologic similarity based on catchment function in the eastern USA. Hydrology and Earth System Sciences 15, 2895-2911, sect. 3.2, eq. 3, p. 2898: S_FDC = [ln(Q33%) - ln(Q66%)] / (0.66 - 0.33), on the flow duration curve, 'the distribution of probabilities of streamflow being greater than or equal to a specified magnitude' <https://doi.org/10.5194/hess-15-2895-2011>
+> 2. Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, sect. 5.1, p. 5298: 'the slope of the flow duration curve ... between the log-transformed 33rd and 66th streamflow percentiles', undefined where the flow is 0 on more than a third of the days; Table 3, p. 5300, slope_fdc <https://doi.org/10.5194/hess-21-5293-2017>
+> 3. Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, comp_s_fdc: sfdc_sawicz_2011 on the exceedance percentages 33 and 66, sfdc_addor_2017 on the quantiles 0.33 and 0.66, NA when q66 = 0 <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+> 4. Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0, discharge_vol_obs of the 13 gauges of tests/fixtures/camels_pl/ (5.93 to 193,728 km2): 0 m3/s on days without flow (Brynica, Czarna, Gardęga, Noteć and five more) to 6430 m3/s (the Wisła at Tczew) <https://doi.org/10.5281/zenodo.23275336>
+> 5. Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0, CAMELS_PL_Data_Description.pdf, Table 7, slope_fdc between the 33rd and 66th percentiles, the flows exceeded on 67 and 34 % of the days; Sawicz et al. (2011, eq. 3) take the flows exceeded on 33 and 66 % <https://doi.org/10.5281/zenodo.23275336>
+> 6. Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, find_avail_data_array: a signature needs the days with a value, NA without <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+> 7. Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, sect. 5.1, p. 5298: 'In intermittent streams, the frequency of days with no flow can be greater than 33 % ... Since the logarithm cannot be extracted, the slope of the flow duration curve is undefined' <https://doi.org/10.5194/hess-21-5293-2017>
+>
+> Funkcja `hydrolog.statistics.signatures.fdc_slope`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
+<!-- /spec:fdc_slope -->
+
+Dni przepływów wysokich i niskich liczą, jak często przepływ wychodzi poza próg odniesiony do
+przepływu typowego zlewni (mediany albo średniej), i jak długo trwają ciągi takich dni. Częstość jest
+liczbą dni na rok (jednostka d/rok), a nie udziałem:
+
+<!-- spec:high_flow_days -->
+
+<a id="spec-high_flow_days"></a>
+
+> **Dni przepływów wysokich: ich częstość i średni czas trwania ich ciągów** · specyfikacja [`high_flow_days`](../FORMULAS.md#high_flow_days) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> Q_t > 9\,\tilde{Q},\quad F = 365{,}25\,\frac{N_h}{n},\quad D = \frac{N_h}{E}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $Q_t$ | `values` (ciąg) | Przepływ dobowy w porządku czasowym; NaN w dniu bez wartości | m³/s | [0; ∞) | nie podano w źródłach | [0; 6430] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $F_h$ | `days_per_year` | Liczba dni poza progiem na rok dni z wartością | d/rok | [0; 365,25] |
+> | $D_h$ | `mean_duration_days` | Średnia długość ciągów takich dni, 0 bez żadnego | d | [0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | n >= 1: co najmniej jeden dzień z wartością | `has_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 6) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $9$ | `high_flow_multiple` | Krotność mediany przepływu dobowego, powyżej której dzień jest dniem przepływu wysokiego | 9 | – | (źr. 7) |
+> | $365{,}25$ | `days_per_year` | Liczba dni roku, na który przelicza się częstość | 1461/4 | d | (źr. 8) |
+>
+> **Konwencje**
+>
+> - dzień przepływu wysokiego ma przepływ ściśle większy od 9-krotności mediany dni z wartością (Addor i in. 2017, tab. 3; Westerberg i McMillan 2015, tab. 2); mediana parzystej liczby wartości to średnia dwóch środkowych
+> - gdy mediana wynosi 0, każdy dzień z przepływem jest dniem przepływu wysokiego (zaznacza to kod CAMELS-US)
+> - częstość liczy się na dzień z wartością, razy 365,25 dnia: kod Addora i in. (sum(hf) / sum(avail_data) * 365.25); kody CAMELS-DE i CAMELS-PL dzielą przez wszystkie dni swojej ramki, także dni bez wartości
+> - zdarzenie to ciąg kolejnych dni poza progiem, a dzień bez wartości go kończy, jak w kodzie CAMELS-DE; kod Addora i in. pomija takie dni i łączy ciągi po obu ich stronach
+> - średni czas trwania to liczba dni poza progiem przez liczbę zdarzeń; szereg bez takiego dnia ma częstość 0 i czas trwania 0, tak jak w kodach CAMELS-US, CAMELS-DE i CAMELS-PL
+> - porównania wykonuje się na wartościach podzielonych przez potęgę dwójki, która sprowadza największą do [1/2, 1): te same liczby dla szeregu w dowolnej jednostce
+>
+> **Założenia**
+>
+> - zapis jest dość długi, aby jego mediana była medianą reżimu: częstość z krótkiego lub niepełnego zapisu mówi niewiele
+>
+> **Zgodność z obserwacjami według źródeł:** brak: statystyka opisowa obserwowanego szeregu; Westerberg i McMillan (2015) szacują jej niepewność z niepewności danych
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, Table 3, p. 5300: high_q_freq and high_q_dur <https://doi.org/10.5194/hess-21-5293-2017>
+> 2. Westerberg, I.K. and McMillan, H.K. (2015). Uncertainty in hydrological signatures. Hydrology and Earth System Sciences 19, 3951-3968, Table 2, p. 3956: QHF and QHD, the frequency and the duration of daily flows higher than 9 times the median daily flow (Clausen and Biggs 2000); QLF and QLD, of daily flows lower than 0.2 times the mean daily flow (Olden and Poff 2003, who used a 5 % threshold) <https://doi.org/10.5194/hess-19-3951-2015>
+> 3. Clausen, B. and Biggs, B.J.F. (2000). Flow variables for ecological studies in temperate streams: groupings based on covariance. Journal of Hydrology 237, 184-197, the frequency of high flows above a multiple of the median flow, as Westerberg and McMillan (2015, Table 2) and Addor et al. (2017, Table 3) cite it <https://doi.org/10.1016/S0022-1694(00)00306-1> — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 4. Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, compute_hf_freq_dur: hf <- q > 9 * median(q) <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+> 5. Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0, discharge_vol_obs of the 13 gauges of tests/fixtures/camels_pl/ (5.93 to 193,728 km2): 0 m3/s on days without flow (Brynica, Czarna, Gardęga, Noteć and five more) to 6430 m3/s (the Wisła at Tczew) <https://doi.org/10.5281/zenodo.23275336>
+> 6. Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, find_avail_data_array: a signature needs the days with a value, NA without <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+> 7. Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, Table 3, p. 5300: high_q_freq, the frequency of high-flow days (> 9 times the median daily flow); confirmed by Westerberg and McMillan (2015), Table 2, p. 3956, QHF <https://doi.org/10.5194/hess-21-5293-2017>
+> 8. Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, compute_hf_freq_dur and compute_lf_freq_dur: hf_freq <- sum(hf) / sum(avail_data) * 365.25; the same in the code of CAMELS-DE (08_hydrologic_attributes.ipynb): high_q_freq = hf.sum() / len(df) * 365.25 <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+>
+> Funkcja `hydrolog.statistics.signatures.high_flow_days`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
+<!-- /spec:high_flow_days -->
+
+<!-- spec:low_flow_days -->
+
+<a id="spec-low_flow_days"></a>
+
+> **Dni przepływów niskich: ich częstość i średni czas trwania ich ciągów** · specyfikacja [`low_flow_days`](../FORMULAS.md#low_flow_days) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> Q_t < 0{,}2\,\bar{Q},\quad F = 365{,}25\,\frac{N_l}{n},\quad D = \frac{N_l}{E}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $Q_t$ | `values` (ciąg) | Przepływ dobowy w porządku czasowym; NaN w dniu bez wartości | m³/s | [0; ∞) | nie podano w źródłach | [0; 6430] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $F_l$ | `days_per_year` | Liczba dni poza progiem na rok dni z wartością | d/rok | [0; 365,25] |
+> | $D_l$ | `mean_duration_days` | Średnia długość ciągów takich dni, 0 bez żadnego | d | [0; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | n >= 1: co najmniej jeden dzień z wartością | `has_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 6) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $0{,}2$ | `low_flow_multiple` | Krotność średniego przepływu dobowego, poniżej której dzień jest dniem przepływu niskiego | 1/5 | – | (źr. 7) |
+> | $365{,}25$ | `days_per_year` | Liczba dni roku, na który przelicza się częstość | 1461/4 | d | (źr. 8) |
+>
+> **Konwencje**
+>
+> - dzień przepływu niskiego ma przepływ ściśle mniejszy od 0,2 średniej dni z wartością (Addor i in. 2017, tab. 3, oraz kody CAMELS-DE i CAMELS-PL; Westerberg i McMillan 2015, tab. 2: „lower than”); kod CAMELS-US przyjmuje <=
+> - średnia to suma dni z wartością, zaokrąglona dokładnie raz (math.fsum), przez ich liczbę
+> - częstość liczy się na dzień z wartością, razy 365,25 dnia: kod Addora i in. (sum(hf) / sum(avail_data) * 365.25); kody CAMELS-DE i CAMELS-PL dzielą przez wszystkie dni swojej ramki, także dni bez wartości
+> - zdarzenie to ciąg kolejnych dni poza progiem, a dzień bez wartości go kończy, jak w kodzie CAMELS-DE; kod Addora i in. pomija takie dni i łączy ciągi po obu ich stronach
+> - średni czas trwania to liczba dni poza progiem przez liczbę zdarzeń; szereg bez takiego dnia ma częstość 0 i czas trwania 0, tak jak w kodach CAMELS-US, CAMELS-DE i CAMELS-PL
+> - porównania wykonuje się na wartościach podzielonych przez potęgę dwójki, która sprowadza największą do [1/2, 1): te same liczby dla szeregu w dowolnej jednostce
+>
+> **Założenia**
+>
+> - zapis jest dość długi, aby jego średnia była średnią reżimu: częstość z krótkiego lub niepełnego zapisu mówi niewiele
+>
+> **Zgodność z obserwacjami według źródeł:** brak: statystyka opisowa obserwowanego szeregu; Westerberg i McMillan (2015) szacują jej niepewność z niepewności danych
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, Table 3, p. 5300: low_q_freq and low_q_dur <https://doi.org/10.5194/hess-21-5293-2017>
+> 2. Westerberg, I.K. and McMillan, H.K. (2015). Uncertainty in hydrological signatures. Hydrology and Earth System Sciences 19, 3951-3968, Table 2, p. 3956: QHF and QHD, the frequency and the duration of daily flows higher than 9 times the median daily flow (Clausen and Biggs 2000); QLF and QLD, of daily flows lower than 0.2 times the mean daily flow (Olden and Poff 2003, who used a 5 % threshold) <https://doi.org/10.5194/hess-19-3951-2015>
+> 3. Olden, J.D. and Poff, N.L. (2003). Redundancy and the choice of hydrologic indices for characterizing streamflow regimes. River Research and Applications 19, 101-121, the frequency and duration of low flows, as Westerberg and McMillan (2015, Table 2) and Addor et al. (2017, Table 3) cite it, with a threshold of 5 % of the mean, which they raise to 0.2 times the mean <https://doi.org/10.1002/rra.700>
+> 4. Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, compute_lf_freq_dur: lf <- q <= 0.2 * mean(q) <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+> 5. Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0, discharge_vol_obs of the 13 gauges of tests/fixtures/camels_pl/ (5.93 to 193,728 km2): 0 m3/s on days without flow (Brynica, Czarna, Gardęga, Noteć and five more) to 6430 m3/s (the Wisła at Tczew) <https://doi.org/10.5281/zenodo.23275336>
+> 6. Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, find_avail_data_array: a signature needs the days with a value, NA without <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+> 7. Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, Table 3, p. 5300: low_q_freq, the frequency of low-flow days (< 0.2 times the mean daily flow); confirmed by Westerberg and McMillan (2015), Table 2, p. 3956, QLF <https://doi.org/10.5194/hess-21-5293-2017>
+> 8. Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, compute_hf_freq_dur and compute_lf_freq_dur: hf_freq <- sum(hf) / sum(avail_data) * 365.25; the same in the code of CAMELS-DE (08_hydrologic_attributes.ipynb): high_q_freq = hf.sum() / len(df) * 365.25 <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+>
+> Funkcja `hydrolog.statistics.signatures.low_flow_days`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
+<!-- /spec:low_flow_days -->
+
+Udział dni bez przepływu odróżnia rzeki okresowo wysychające od stałych:
+
+<!-- spec:zero_flow_fraction -->
+
+<a id="spec-zero_flow_fraction"></a>
+
+> **Udział dni bez przepływu** · specyfikacja [`zero_flow_fraction`](../FORMULAS.md#zero_flow_fraction) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> f_0 = \frac{N_0}{n}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $Q_t$ | `values` (ciąg) | Przepływ dobowy; NaN w dniu bez wartości | m³/s | [0; ∞) | nie podano w źródłach | [0; 6430] (źr. 3) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $f_0$ | `fraction` | Udział dni bez przepływu wśród dni z wartością | – | [0; 1] |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | n >= 1: co najmniej jeden dzień z wartością | `has_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 4) |
+>
+> **Konwencje**
+>
+> - dzień bez przepływu ma przepływ równy dokładnie 0 w zaokrągleniu danych: przepływ mniejszy od połowy ostatniej drukowanej jednostki to 0 (CAMELS-PL liczy dni, w których przepływ jednostkowy, drukowany z dokładnością 0,001 mm/d, wynosi 0)
+> - udział w dniach z wartością (kod CAMELS-US); kody CAMELS-DE i CAMELS-PL dzielą przez wszystkie dni swojej ramki, także dni bez wartości
+> - ułamek, a nie procent (Addor i in. 2017, tab. 3, podają %, pliki CAMELS-US, CAMELS-DE i CAMELS-PL ułamki)
+>
+> **Zgodność z obserwacjami według źródeł:** brak: liczba dni obserwowanego szeregu
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, Table 3, p. 5300: zero_q_freq, the frequency of days with Q = 0 <https://doi.org/10.5194/hess-21-5293-2017>
+> 2. Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, compute_no_flow: sum(q[avail_data] <= thres) / length(...) <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+> 3. Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0, discharge_vol_obs of the 13 gauges of tests/fixtures/camels_pl/ (5.93 to 193,728 km2): 0 m3/s on days without flow (Brynica, Czarna, Gardęga, Noteć and five more) to 6430 m3/s (the Wisła at Tczew) <https://doi.org/10.5281/zenodo.23275336>
+> 4. Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, find_avail_data_array: a signature needs the days with a value, NA without <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+>
+> Funkcja `hydrolog.statistics.signatures.zero_flow_fraction`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
+<!-- /spec:zero_flow_fraction -->
+
+Data połowy odpływu (Court 1962) mówi, kiedy w roku przepływa połowa jego odpływu: wcześnie w rzece
+o wezbraniach roztopowych, później w rzece zasilanej latem. Liczy się ją dla każdego roku osobno,
+a sygnaturą zapisu jest średnia dat jego lat:
+
+<!-- spec:half_flow_date -->
+
+<a id="spec-half_flow_date"></a>
+
+> **Data połowy odpływu: dzień, w którym upłynęła połowa odpływu roku** · specyfikacja [`half_flow_date`](../FORMULAS.md#half_flow_date) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> d = \min\Bigl\{k : 2\sum_{t=1}^{k} Q_t > \sum_{t=1}^{n} Q_t\Bigr\}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $Q_t$ | `values` (ciąg) | Przepływ dobowy jednego roku od jego pierwszego dnia; NaN w dniu bez wartości | m³/s | [0; ∞) | nie podano w źródłach | [0; 6430] (źr. 5) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $d$ | `day` (liczba całkowita) | Dzień roku, licząc od 1, w którym przepływ zsumowany od pierwszego dnia po raz pierwszy przekracza połowę sumy roku | d | [1; 366] |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | sum(Q_t) > 0 | `positive_flow_volume` | odmowa obliczeń: wzór jest nieokreślony | (źr. 6) |
+>
+> **Konwencje**
+>
+> - wartości to kolejne dni jednego roku, dzień 1 jest jego pierwszym: rok hydrologiczny IMGW-PIB od 1 listopada (CAMELS-PL), rok CAMELS-US od 1 października; średnia data połowy odpływu zapisu to średnia dat jego lat
+> - datą jest pierwszy dzień, w którym przepływ zsumowany od początku roku przekracza połowę sumy roku (ściśle, jak w kodach CAMELS-US i CAMELS-DE; tab. 3 Addora i in. mówi „reaches”)
+> - dzień bez wartości (NaN) nie dodaje nic do żadnej z sum, więc nigdy nie jest datą (kod CAMELS-US go pomija i zachowuje numery dni)
+> - sumy są dokładne dla podanych wartości dwójkowych, całkowitych wielokrotności ich najmniejszej potęgi dwójki: o dacie nie decyduje żadne zaokrąglenie, a suma równa połowie sumy roku (remis) nie jest jej przekroczeniem; wartości równe w drukowanych cyfrach dziesiętnych mogą dawać remis w zapisie dziesiętnym, a w dwójkowym nie
+>
+> **Założenia**
+>
+> - dni bez wartości jest mało: każdy zabiera swój przepływ z roku i może przesunąć datę
+>
+> **Zgodność z obserwacjami według źródeł:** brak: statystyka terminu w obserwowanym szeregu; Court (1962) i Addor i in. (2017) porównują nią terminy odpływu
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Court, A. (1962). Measures of streamflow timing. Journal of Geophysical Research 67(11), 4335-4339, the half-flow date, as Addor et al. (2017, Table 3) cite it — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 2. Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313, Table 3, p. 5300: hfd_mean, the mean half-flow date, the 'date on which the cumulative discharge since 1 October reaches half of the annual discharge' <https://doi.org/10.5194/hess-21-5293-2017>
+> 3. Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, compute_hfd_mean_sd: which(cumsum(hy_q) > 0.5 * sum(hy_q))[1], the number of days since the beginning of the hydrological year <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+> 4. Dolich, A. (2024). 08_hydrologic_attributes.ipynb, the code of the hydrologic attributes of CAMELS-DE version 1 (Loritz et al. 2024, ESSD 16, 5625-5642), github.com/CAMELS-DE/camels_de, hfd_mean: the first day whose cumulative discharge since the start of the year exceeds half of the year's, counted from 1 <https://github.com/CAMELS-DE/camels_de/blob/main/version1/scripts/08_hydrologic_attributes.ipynb>
+> 5. Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0, discharge_vol_obs of the 13 gauges of tests/fixtures/camels_pl/ (5.93 to 193,728 km2): 0 m3/s on days without flow (Brynica, Czarna, Gardęga, Noteć and five more) to 6430 m3/s (the Wisła at Tczew) <https://doi.org/10.5281/zenodo.23275336>
+> 6. Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels, compute_hfd_mean_sd: 'hfd can't be computed if annual discharge is 0' <https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R>
+>
+> Funkcja `hydrolog.statistics.signatures.half_flow_date`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
+<!-- /spec:half_flow_date -->
+
+### Porównanie z CAMELS-PL
+
+CAMELS-PL 2.1.0 publikuje sygnatury każdego wodowskazu obok jego przepływu dobowego, z którego je
+policzono, ale bez kodu. Ich sposób obliczenia odtworzono na wszystkich 869 wodowskazach: to kod
+CAMELS-DE (`08_hydrologic_attributes.ipynb`) z czterema zmianami. Rok hydrologiczny zaczyna się
+1 listopada, kwantyle $Q_5$, $Q_{95}$ i punkty nachylenia to najbliższe statystyki pozycyjne (metoda
+`nearest` numpy), nachylenie liczy się tylko z dodatnich przepływów pełnych lat, a częstość i czas
+trwania niżówek bez żadnego zdarzenia wynoszą 0. Do próby wchodzą lata hydrologiczne, w których brakuje
+najwyżej 5 % dni, a częstości dzieli się przez wszystkie dni tych lat, także dni bez wartości.
+Z tymi regułami $Q_5$, $Q_{95}$, nachylenie, częstości i czasy trwania przepływów wysokich i niskich
+oraz udział dni bez przepływu zgadzają się na 869 z 869 wodowskazów, a data połowy odpływu na 828;
+pozostałe 41 różnią się tylko w latach, w których suma przepływów wypada dokładnie na połowie sumy roku
+w drukowanych cyfrach dziesiętnych.
+
+Sygnatury trzynastu wodowskazów, od 6 do 193 728 km² (od Kamiennej w Jakuszycach po Wisłę w Tczewie,
+w tym cztery z dniami bez przepływu), są przypadkami referencyjnymi wzorów Hydrologa
+(`tests/fixtures/formulas/camels-pl-cases.json`, ADR-0073). Każdy przypadek podaje próbę, na której
+CAMELS-PL liczył sygnaturę, i każdy krok, w którym jego obliczenie różni się od obliczenia Hydrologa:
+$Q_5$ i $Q_{95}$ to u CAMELS-PL najbliższa statystyka pozycyjna, a u Hydrologa interpolacja w pozycji
+Weibulla, nachylenie CAMELS-PL ma punkty 34 i 67 % (kwantyle nieprzekroczenia 0,33 i 0,66), a częstość
+Hydrologa przelicza się na mianownik CAMELS-PL. Wszystkie sygnatury poza BFI zgadzają się w tolerancji,
+którą przypadek uzasadnia. Przypadki wskazują wydanie zbioru: rekord Zenodo 23275336, wersję 2.1.0,
+DOI i skrót SHA-256 każdego czytanego pliku (Nogat CMP-6.10); nowsze wydanie zmienia je tylko świadomą
+zmianą testów, bo wydanie może poprawiać wartości poprzedniego.
+
+**BFI się nie zgadza, i to z powodu definicji, a nie arytmetyki.** CAMELS-PL filtruje szereg filtrem
+Lyne’a–Hollicka ($\alpha$ = 0,925) dwukrotnie, naprzód i wstecz, z przepływem podstawowym nie większym
+niż przepływ danego przejścia (czyli z przepływem szybkim obciętym do 0, jak w drukowanym wzorze 1
+Ladsona i in. 2013), od $b = Q$ pierwszego dnia, tak jak metoda LH pakietu `baseflow` (Xie i in.
+2020), na danych do 31 grudnia 2023 r. z pominiętymi lukami. Hydrolog stosuje standard Ladsona i in.
+(2013) z podrozdziału 8.5: trzy przejścia, przepływ szybki nieobcinany i 30 wartości odbitych na każdym
+końcu. Dwuprzejściowy filtr odtwarza BFI CAMELS-PL na wszystkich 139 wodowskazach bez brakujących dni
+i na 824 z 869; BFI Hydrologa różni się od niego na trzynastu wodowskazach o −0,045 do +0,027, a od
+wartości CAMELS-PL na wszystkich 869 wodowskazach nawet o 0,19:
+
+| Wodowskaz | CAMELS-PL | Filtr dwuprzejściowy | Hydrolog |
+|---|---|---|---|
+| Jakuszyce (Kamienna) | 0,52 | 0,5182 | 0,5369 |
+| Wisła (Wisła) | 0,45 | 0,4518 | 0,4790 |
+| Nowy Sącz (Łubinka) | 0,44 | 0,4426 | 0,4649 |
+| Brynica (Brynica) | 0,54 | 0,5415 | 0,5654 |
+| Struga (Czarna) | 0,52 | 0,5214 | 0,5297 |
+| Szembruk (Gardęga) | 0,73 | 0,7338 | 0,6889 |
+| Łysek (Noteć) | 0,78 | 0,7778 | 0,7405 |
+| Ciecholewy (Brda) | 0,93 | 0,9252 | 0,9203 |
+| Konojad (Mogilnica) | 0,67 | 0,6673 | 0,6372 |
+| Kłodzko (Nysa Kłodzka) | 0,65 | 0,6504 | 0,6606 |
+| Osowiec (Biebrza) | 0,79 | 0,7907 | 0,7557 |
+| Gozdowice (Odra) | 0,85 | 0,8520 | 0,8359 |
+| Tczew (Wisła) | 0,78 | 0,7847 | 0,7919 |
+
+Przypadki BFI są więc zapisane jako rozbieżność (Nogat CMP-5.2) z jej przyczyną, sprawdzoną drugim
+źródłem, a nie ukryte. Zgodnie z podrozdziałem 8.5 porównuje się tylko BFI liczone tym samym filtrem:
+BFI z CAMELS-PL i z Hydrologa nie są zamienne.
+
+### Przykład 8.8: sygnatury Nysy Kłodzkiej w Kłodzku, 1952–2025
+
+Wodowskaz Kłodzko (150160180, 1083 km²) ma w CAMELS-PL 2.1.0 pełny zapis bez brakujących dni, więc
+próbą CAMELS-PL są wszystkie dni 74 lat hydrologicznych 1952–2025 (rok 1951 nie ma listopada i grudnia).
+Przepływ jednostkowy [mm/d] tego wodowskazu z CAMELS-PL jest w pliku
+`tests/fixtures/camels_pl/camels_pl_150160180.csv.gz` (opis i atrybucja:
+`tests/fixtures/camels_pl/CAMELS_PL_ATTRIBUTION.txt`):
+
+```python
+import csv, gzip
+import numpy as np
+from hydrolog.statistics import (exceedance_values, fdc_slope, half_flow_date,
+                                 high_flow_days, low_flow_days, zero_flow_fraction)
+
+with gzip.open("tests/fixtures/camels_pl/camels_pl_150160180.csv.gz", "rt") as plik:
+    wiersze = [w for w in csv.DictReader(plik) if w["date"] >= "1951-11-01"]
+q = np.array([float(w["discharge_spec_obs"]) for w in wiersze])     # 27 029 dni, mm/d
+rok = np.array([int(w["date"][:4]) + (w["date"][5:7] in ("11", "12")) for w in wiersze])
+
+print(exceedance_values(q, [95.0, 5.0]))          # [0.265 2.672]
+print(fdc_slope(q[q > 0], 34, 67))                # 1.788204805673388
+print(high_flow_days(q))                          # 1.554 d/rok, 1.620 d (115 dni, 71 zdarzeń)
+print(low_flow_days(q))                           # 3.486 d/rok, 3.686 d (258 dni, 70 zdarzeń)
+print(zero_flow_fraction(q))                      # 0.0
+print(np.mean([half_flow_date(q[rok == r]) for r in np.unique(rok)]))   # 174.2027...
+```
+
+| Sygnatura CAMELS-PL | CAMELS-PL 2.1.0 | Hydrolog |
+|---|---|---|
+| `Q5` [mm/d] | 0,27 | 0,265 |
+| `Q95` [mm/d] | 2,67 | 2,672 |
+| `slope_fdc` | 1,79 | 1,788 |
+| `high_q_freq` [d/rok] / `high_q_dur` [d] | 1,55 / 1,62 | 1,554 / 1,620 |
+| `low_q_freq` [d/rok] / `low_q_dur` [d] | 3,49 / 3,69 | 3,486 / 3,686 |
+| `zero_q_freq` | 0,0 | 0 |
+| `hfd_mean` [dzień roku] | 174,2 | 174,20 |
+| `baseflow_index` | 0,65 | 0,661 |
+
+Bez luk mianowniki częstości są te same, a statystyki pozycyjne wokół pozycji Weibulla i najbliższej
+są równe, więc sygnatury zgadzają się co do ostatniej drukowanej cyfry. Połowa odpływu przypada średnio
+na 174. dzień roku hydrologicznego, czyli około 23 kwietnia: wezbrania roztopowe z Sudetów przesuwają
+ją na wiosnę. BFI Hydrologa (`baseflow_index(okno, lyne_hollick_filter(okno))` na 26 663 dniach od
+1951-01-01 do 2023-12-31, oknie CAMELS-PL) wynosi 0,661 wobec 0,65 z CAMELS-PL; filtr dwuprzejściowy
+daje 0,650.
+
+## 8.8. Podsumowanie
 
 - Charakterystyki z szeregu dobowego i z danych IMGW-PIB to różne wielkości: średnie się zgadzają,
   ekstrema nie. Do celów prawnych ($SNQ$) i porównań z publikacjami IMGW-PIB używaj charakterystyk
@@ -938,9 +1361,21 @@ jest wolniejsza.
   nie opisuje obecnych warunków.
 - BFI i stała recesji zależą od metody (parametr filtru, definicja odcinków recesji); porównuj tylko
   wartości liczone tak samo.
+- Sygnatura zależy od próby (okres, lata z lukami, mianownik częstości) i od konwencji jej obliczenia;
+  porównując ją z CAMELS-PL, odtwórz jego próbę, a BFI z CAMELS-PL porównuj tylko z filtrem
+  dwuprzejściowym.
 
 ## Źródła
 
+- Addor N., Newman A.J., Mizukami N., Clark M.P. (2017). The CAMELS data set: catchment attributes and
+  meteorology for large-sample studies. *Hydrology and Earth System Sciences* 21, 5293–5313.
+  https://hess.copernicus.org/articles/21/5293/2017/ ; kod sygnatur: https://github.com/naddor/camels
+- Brzezińska W., Marcinkowski P., Dolich A., Perz A.E., Maharjan A., Piniewski M., Kardel I., Loritz R.,
+  Wrzesiński D. (2026). *CAMELS-PL: hydro-meteorological time series and landscape attributes for 869
+  catchments in Poland*, wersja 2.1.0 [zbiór danych]. Zenodo, rekord 23275336, CC BY 4.0.
+  https://doi.org/10.5281/zenodo.23275336
+- Court A. (1962). Measures of streamflow timing. *Journal of Geophysical Research* 67(11), 4335–4339.
+  Niedostępne w otwartym dostępie.
 - Fleig A.K., Tallaksen L.M., Hisdal H., Demuth S. (2006). A global evaluation of streamflow drought
   characteristics. *Hydrology and Earth System Sciences* 10, 535–552.
   https://hess.copernicus.org/articles/10/535/2006/
@@ -951,6 +1386,10 @@ jest wolniejsza.
 - Ladson A.R., Brown R., Neal B., Nathan R. (2013). A standard approach to baseflow separation using the
   Lyne and Hollick filter. *Australasian Journal of Water Resources* 17(1), 25–34. Rękopis autorski, kod
   i arkusz: https://github.com/TonyLadson/BaseflowSeparation_LyneHollick
+- Loritz R., Dolich A., Acuña Espinoza E. i in. (2024). CAMELS-DE: hydro-meteorological time series and
+  attributes for 1582 catchments in Germany. *Earth System Science Data* 16, 5625–5642.
+  https://essd.copernicus.org/articles/16/5625/2024/ ; kod sygnatur `08_hydrologic_attributes.ipynb`:
+  https://github.com/CAMELS-DE/camels_de
 - Lyne V., Hollick M. (1979). Stochastic time-variable rainfall-runoff modelling. Hydrology and Water
   Resources Symposium, Institution of Engineers Australia, Perth. Niedostępne w otwartym dostępie.
 - Nathan R.J., McMahon T.A. (1990). Evaluation of automated techniques for base flow and recession
@@ -961,6 +1400,9 @@ jest wolniejsza.
 - Rozporządzenie Ministra Infrastruktury z dnia 4 maja 2026 r. w sprawie warunków technicznych, jakim
   powinny odpowiadać budowle hydrotechniczne i ich usytuowanie (Dz.U. 2026 poz. 692), § 4 pkt 10.
   https://dziennikustaw.gov.pl/D2026000069201.pdf
+- Sawicz K., Wagener T., Sivapalan M., Troch P.A., Carrillo G. (2011). Catchment classification:
+  empirical analysis of hydrologic similarity based on catchment function in the eastern USA. *Hydrology
+  and Earth System Sciences* 15, 2895–2911. https://hess.copernicus.org/articles/15/2895/2011/
 - Searcy J.K. (1959). *Flow-duration curves*. Manual of Hydrology, Part 2, Low-flow techniques. U.S.
   Geological Survey Water-Supply Paper 1542-A. https://pubs.usgs.gov/wsp/1542a/report.pdf
 - Tallaksen L.M., van Lanen H.A.J. (red.) (2004). *Hydrological Drought: Processes and Estimation Methods
@@ -976,9 +1418,21 @@ jest wolniejsza.
 - Wałęga A., Młyński D., Kokoszka R. (2014). Weryfikacja wybranych metod empirycznych do obliczania
   przepływów minimalnych i średnich w zlewniach dorzecza Dunajca. *Infrastruktura i Ekologia Terenów
   Wiejskich* II/3, 825–837.
+- Westerberg I.K., McMillan H.K. (2015). Uncertainty in hydrological signatures. *Hydrology and Earth
+  System Sciences* 19, 3951–3968. https://hess.copernicus.org/articles/19/3951/2015/
 - WMO (2008). *Manual on Low-flow Estimation and Prediction* (red. A. Gustard, S. Demuth), Operational
   Hydrology Report No. 50, WMO-No. 1029. Genewa. https://library.wmo.int/idurl/4/32176
+- Xie J., Liu X., Wang K., Yang T., Liang K., Liu C. (2020). Evaluation of typical methods for baseflow
+  separation in the contiguous United States. *Journal of Hydrology* 583, 124628. Niedostępne
+  w otwartym dostępie; pakiet `baseflow`: https://github.com/xiejx5/baseflow
 
 Dane przykładów: źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy
 Instytut Badawczy; dane IMGW-PIB zostały przetworzone (regulamin:
 https://danepubliczne.imgw.pl/regulations).
+
+Dane przykładu 8.8 (CAMELS-PL 2.1.0, wybór wierszy i kolumn):
+
+- Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy
+- Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego zostały przetworzone
+- Źródło danych: CAMELS-PL 2.1.0 (Brzezińska i in., 2026), https://doi.org/10.5281/zenodo.23275336, licencja CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+- Dane CAMELS-PL zostały przetworzone

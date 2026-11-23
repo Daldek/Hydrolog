@@ -57,7 +57,8 @@ one line each and ships no code; how they were computed had to be found from the
 - A newer release of CAMELS-PL changes the cases only by a deliberate change: the script is run again on its ZIP and
   data description, whose SHA-256 it checks, and the pins of every case move with it.
 - No command and no result schema change; the functions are new public library functions, re-exported from
-  `hydrolog.statistics` like its other statistics.
+  `hydrolog.statistics` like its other statistics, shown in chapter 8.7 of the handbook (`docs/podrecznik/`) and in
+  COMPUTATION_PATHS 3.17.
 
 ## Alternatives considered
 

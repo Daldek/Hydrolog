@@ -27,6 +27,7 @@
 "a" = { name = "rok" }
 "cm" = { name = "centymetr" }
 "d" = { name = "doba" }
+"d/yr" = { name = "doba na rok (liczba dni w roku)", symbol = "d/rok" }
 "day" = { name = "doba", symbol = "d" }
 "degC" = { name = "stopień Celsjusza" }
 "ft^0.8 in^0.7 h^-1 %^0.5" = { name = "jednostka stałej wzoru w stopach, calach, godzinach i procentach" }
@@ -2303,6 +2304,138 @@ n_segments = "Liczba znalezionych odcinków recesji"
 
 [formulas.recession_constant.constraints]
 recession_segment = "ciąg co najmniej min_days dni z 0 < Q_(t+1) / Q_t < 1"
+
+[formulas.fdc_slope]
+en_sha256 = "2cb9e4cdcb6b6fa3de6be98dc872731b82a9ff6bacf4cc03d1002ac483a3f46c"
+title = "Nachylenie krzywej sum czasów trwania między dwoma procentami przewyższenia w skali logarytmicznej"
+validation = "brak: statystyka opisowa obserwowanego szeregu; Sawicz i in. (2011) oraz Addor i in. (2017) wiążą ją z cechami zlewni, a nie z obserwacją tej samej wielkości"
+conventions = [
+    "Q(p) to krzywa sum czasów trwania Hydrologa (specyfikacja exceedance_values): wartość osiągana lub przekraczana w p % dni z wartością, pozycje Weibulla m / (n + 1) i interpolacja liniowa; Sawicz i in. (2011) odczytują przepływy przekraczane w 33 i 66 % dni, czyli wartości domyślne",
+    "Addor i in. (2017) oraz kody CAMELS-DE i CAMELS-PL biorą kwantyle nieprzekroczenia 0,33 i 0,66, czyli przepływy przekraczane w 67 i 34 % dni („slightly different”, jak zaznacza kod CAMELS-US): from_percent 34 i to_percent 67 dają ich nachylenie",
+    "zera są wartościami krzywej, jak u Sawicza i in. i w kodzie CAMELS-US: krzywa równa 0 w p_2 jest odrzucana (warunek flow_at_both_points); kody CAMELS-DE i CAMELS-PL najpierw pomijają dni bez przepływu, co wywołujący uzyskuje, podając tylko przepływy większe od 0",
+    "krzywa jest liczona na wartościach podzielonych przez potęgę dwójki, która sprowadza największą do [1/2, 1), a ln Q(p_1) - ln Q(p_2) z ich mantys i wykładników: nachylenie nie zależy od jednostki szeregu i nie powoduje przepełnienia",
+    "Q(p_2) jest ograniczane do co najwyżej Q(p_1): zaokrąglenie interpolacji mogłoby inaczej dać wartość o jednostkę ostatniego miejsca większą od wyższej",
+    "dzień bez wartości (NaN) jest pomijany, n liczy dni z wartością",
+]
+assumptions = [
+    "wartości pochodzą z jednej stacji i jednego okresu: nachylenie opisuje krzywą tego okresu",
+    "krzywa między dwoma punktami jest w skali logarytmicznej prawie prosta, dlatego Sawicz i in. wybrali 33 i 66 %; inne punkty dają nachylenie swojej części krzywej",
+]
+
+[formulas.fdc_slope.variables]
+values = "Wartości dobowe szeregu, w dowolnej kolejności; NaN w dniu bez wartości, który jest pomijany"
+from_percent = "Procent przewyższenia pierwszego, wyższego punktu krzywej"
+to_percent = "Procent przewyższenia drugiego, niższego punktu krzywej"
+
+[formulas.fdc_slope.outputs]
+slope = "Spadek krzywej w skali logarytmicznej na jednostkę prawdopodobieństwa przewyższenia"
+
+[formulas.fdc_slope.constraints]
+has_values = "n >= 1: co najmniej jeden dzień z wartością"
+ordered_percents = "p_1 < p_2"
+flow_at_both_points = "Q(p_2) > 0"
+
+[formulas.high_flow_days]
+en_sha256 = "55338de88fbaf0ce350b9e309f5b96c9ef90fbf43333e5129184801d97188f42"
+title = "Dni przepływów wysokich: ich częstość i średni czas trwania ich ciągów"
+validation = "brak: statystyka opisowa obserwowanego szeregu; Westerberg i McMillan (2015) szacują jej niepewność z niepewności danych"
+conventions = [
+    "dzień przepływu wysokiego ma przepływ ściśle większy od 9-krotności mediany dni z wartością (Addor i in. 2017, tab. 3; Westerberg i McMillan 2015, tab. 2); mediana parzystej liczby wartości to średnia dwóch środkowych",
+    "gdy mediana wynosi 0, każdy dzień z przepływem jest dniem przepływu wysokiego (zaznacza to kod CAMELS-US)",
+    "częstość liczy się na dzień z wartością, razy 365,25 dnia: kod Addora i in. (sum(hf) / sum(avail_data) * 365.25); kody CAMELS-DE i CAMELS-PL dzielą przez wszystkie dni swojej ramki, także dni bez wartości",
+    "zdarzenie to ciąg kolejnych dni poza progiem, a dzień bez wartości go kończy, jak w kodzie CAMELS-DE; kod Addora i in. pomija takie dni i łączy ciągi po obu ich stronach",
+    "średni czas trwania to liczba dni poza progiem przez liczbę zdarzeń; szereg bez takiego dnia ma częstość 0 i czas trwania 0, tak jak w kodach CAMELS-US, CAMELS-DE i CAMELS-PL",
+    "porównania wykonuje się na wartościach podzielonych przez potęgę dwójki, która sprowadza największą do [1/2, 1): te same liczby dla szeregu w dowolnej jednostce",
+]
+assumptions = [
+    "zapis jest dość długi, aby jego mediana była medianą reżimu: częstość z krótkiego lub niepełnego zapisu mówi niewiele",
+]
+
+[formulas.high_flow_days.variables]
+values = "Przepływ dobowy w porządku czasowym; NaN w dniu bez wartości"
+
+[formulas.high_flow_days.outputs]
+days_per_year = "Liczba dni poza progiem na rok dni z wartością"
+mean_duration_days = "Średnia długość ciągów takich dni, 0 bez żadnego"
+
+[formulas.high_flow_days.constants]
+high_flow_multiple = "Krotność mediany przepływu dobowego, powyżej której dzień jest dniem przepływu wysokiego"
+days_per_year = "Liczba dni roku, na który przelicza się częstość"
+
+[formulas.high_flow_days.constraints]
+has_values = "n >= 1: co najmniej jeden dzień z wartością"
+
+[formulas.low_flow_days]
+en_sha256 = "3e75f0f82f45cd89a72185af63cd24e89cadd2c2ddfa31a027e43b08977b0be0"
+title = "Dni przepływów niskich: ich częstość i średni czas trwania ich ciągów"
+validation = "brak: statystyka opisowa obserwowanego szeregu; Westerberg i McMillan (2015) szacują jej niepewność z niepewności danych"
+conventions = [
+    "dzień przepływu niskiego ma przepływ ściśle mniejszy od 0,2 średniej dni z wartością (Addor i in. 2017, tab. 3, oraz kody CAMELS-DE i CAMELS-PL; Westerberg i McMillan 2015, tab. 2: „lower than”); kod CAMELS-US przyjmuje <=",
+    "średnia to suma dni z wartością, zaokrąglona dokładnie raz (math.fsum), przez ich liczbę",
+    "częstość liczy się na dzień z wartością, razy 365,25 dnia: kod Addora i in. (sum(hf) / sum(avail_data) * 365.25); kody CAMELS-DE i CAMELS-PL dzielą przez wszystkie dni swojej ramki, także dni bez wartości",
+    "zdarzenie to ciąg kolejnych dni poza progiem, a dzień bez wartości go kończy, jak w kodzie CAMELS-DE; kod Addora i in. pomija takie dni i łączy ciągi po obu ich stronach",
+    "średni czas trwania to liczba dni poza progiem przez liczbę zdarzeń; szereg bez takiego dnia ma częstość 0 i czas trwania 0, tak jak w kodach CAMELS-US, CAMELS-DE i CAMELS-PL",
+    "porównania wykonuje się na wartościach podzielonych przez potęgę dwójki, która sprowadza największą do [1/2, 1): te same liczby dla szeregu w dowolnej jednostce",
+]
+assumptions = [
+    "zapis jest dość długi, aby jego średnia była średnią reżimu: częstość z krótkiego lub niepełnego zapisu mówi niewiele",
+]
+
+[formulas.low_flow_days.variables]
+values = "Przepływ dobowy w porządku czasowym; NaN w dniu bez wartości"
+
+[formulas.low_flow_days.outputs]
+days_per_year = "Liczba dni poza progiem na rok dni z wartością"
+mean_duration_days = "Średnia długość ciągów takich dni, 0 bez żadnego"
+
+[formulas.low_flow_days.constants]
+low_flow_multiple = "Krotność średniego przepływu dobowego, poniżej której dzień jest dniem przepływu niskiego"
+days_per_year = "Liczba dni roku, na który przelicza się częstość"
+
+[formulas.low_flow_days.constraints]
+has_values = "n >= 1: co najmniej jeden dzień z wartością"
+
+[formulas.zero_flow_fraction]
+en_sha256 = "fbf89bf9bf3e2400aec981e5ff4bbab2803d556a6e375f380de4a394084cea18"
+title = "Udział dni bez przepływu"
+validation = "brak: liczba dni obserwowanego szeregu"
+conventions = [
+    "dzień bez przepływu ma przepływ równy dokładnie 0 w zaokrągleniu danych: przepływ mniejszy od połowy ostatniej drukowanej jednostki to 0 (CAMELS-PL liczy dni, w których przepływ jednostkowy, drukowany z dokładnością 0,001 mm/d, wynosi 0)",
+    "udział w dniach z wartością (kod CAMELS-US); kody CAMELS-DE i CAMELS-PL dzielą przez wszystkie dni swojej ramki, także dni bez wartości",
+    "ułamek, a nie procent (Addor i in. 2017, tab. 3, podają %, pliki CAMELS-US, CAMELS-DE i CAMELS-PL ułamki)",
+]
+
+[formulas.zero_flow_fraction.variables]
+values = "Przepływ dobowy; NaN w dniu bez wartości"
+
+[formulas.zero_flow_fraction.outputs]
+fraction = "Udział dni bez przepływu wśród dni z wartością"
+
+[formulas.zero_flow_fraction.constraints]
+has_values = "n >= 1: co najmniej jeden dzień z wartością"
+
+[formulas.half_flow_date]
+en_sha256 = "3d7d0fa1ca2e0017f8dca9838f557c7cf50231d2afeccd469718f6be841c8bd1"
+title = "Data połowy odpływu: dzień, w którym upłynęła połowa odpływu roku"
+validation = "brak: statystyka terminu w obserwowanym szeregu; Court (1962) i Addor i in. (2017) porównują nią terminy odpływu"
+conventions = [
+    "wartości to kolejne dni jednego roku, dzień 1 jest jego pierwszym: rok hydrologiczny IMGW-PIB od 1 listopada (CAMELS-PL), rok CAMELS-US od 1 października; średnia data połowy odpływu zapisu to średnia dat jego lat",
+    "datą jest pierwszy dzień, w którym przepływ zsumowany od początku roku przekracza połowę sumy roku (ściśle, jak w kodach CAMELS-US i CAMELS-DE; tab. 3 Addora i in. mówi „reaches”)",
+    "dzień bez wartości (NaN) nie dodaje nic do żadnej z sum, więc nigdy nie jest datą (kod CAMELS-US go pomija i zachowuje numery dni)",
+    "sumy są dokładne dla podanych wartości dwójkowych, całkowitych wielokrotności ich najmniejszej potęgi dwójki: o dacie nie decyduje żadne zaokrąglenie, a suma równa połowie sumy roku (remis) nie jest jej przekroczeniem; wartości równe w drukowanych cyfrach dziesiętnych mogą dawać remis w zapisie dziesiętnym, a w dwójkowym nie",
+]
+assumptions = [
+    "dni bez wartości jest mało: każdy zabiera swój przepływ z roku i może przesunąć datę",
+]
+
+[formulas.half_flow_date.variables]
+values = "Przepływ dobowy jednego roku od jego pierwszego dnia; NaN w dniu bez wartości"
+
+[formulas.half_flow_date.outputs]
+day = "Dzień roku, licząc od 1, w którym przepływ zsumowany od pierwszego dnia po raz pierwszy przekracza połowę sumy roku"
+
+[formulas.half_flow_date.constraints]
+positive_flow_volume = "sum(Q_t) > 0"
 
 [formulas.parde_coefficients]
 en_sha256 = "d6c9ffc4b5db732caaec74674ee0ab56cb03c71a9c84b6447fe905db03b9d964"
