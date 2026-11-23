@@ -56,7 +56,8 @@ one line each and ships no code; how they were computed had to be found from the
 - Every signature but the baseflow index matches CAMELS-PL 2.1.0 on the thirteen gauges within the stated tolerances.
 - A newer release of CAMELS-PL changes the cases only by a deliberate change: the script is run again on its ZIP and
   data description, whose SHA-256 it checks, and the pins of every case move with it.
-- No command and no result schema change; the functions are new public library functions.
+- No command and no result schema change; the functions are new public library functions, re-exported from
+  `hydrolog.statistics` like its other statistics.
 
 ## Alternatives considered
 
