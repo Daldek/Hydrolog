@@ -116,7 +116,7 @@ version = {attr = "hydrolog.__version__"}
 # release set candidate-13 (REL-5.3); its version 3.2.1 is within the declared range
 # >=3.1.0,<4 (REL-5.6). Once Obserwator is released this branch replaces it with the
 # tag v3.2.1.
-obserwator = { git = "https://github.com/Daldek/Obserwator.git", rev = "472446d3d3ac29cc9b4f46b89e4fba83e555f1ba" }
+obserwator = { git = "https://github.com/Daldek/Obserwator.git", rev = "ffcaa23a066aaf424eb0a64fb6c4c63c52e19aab" }
 
 [dependency-groups]
 dev = [

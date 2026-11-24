@@ -11,7 +11,7 @@ A patch release with Nogat's release set candidate-13: it changes only the Obser
 
 ### Changed
 
-- **The extras `pmaxtp`, `gui` and `all` install Obserwator 3.2.1** (Nogat release set candidate-13, REL-2.4, REL-5.3): `[tool.uv.sources]` pins commit `472446d3d3ac29cc9b4f46b89e4fba83e555f1ba` of Obserwator's `hotfix/3.2.1` instead of the tag `v3.1.0`, until Obserwator 3.2.1 is tagged; the range `obserwator>=3.1.0,<4` is unchanged and admits it. Obserwator 3.2.0 and 3.2.1 change nothing Hydrolog uses (`fetch_pmaxtp` and its errors). `uv.lock` updated.
+- **The extras `pmaxtp`, `gui` and `all` install Obserwator 3.2.1** (Nogat release set candidate-13, REL-2.4, REL-5.3): `[tool.uv.sources]` pins commit `ffcaa23a066aaf424eb0a64fb6c4c63c52e19aab` of Obserwator's `hotfix/3.2.1` instead of the tag `v3.1.0`, until Obserwator 3.2.1 is tagged; the range `obserwator>=3.1.0,<4` is unchanged and admits it. Obserwator 3.2.0 and 3.2.1 change nothing Hydrolog uses (`fetch_pmaxtp` and its errors). `uv.lock` updated.
 
 ## [0.9.0] - 2026-11-22
 
