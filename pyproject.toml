@@ -112,11 +112,9 @@ hydrolog = ["py.typed", "_data/agents/*.md", "_data/tables/*.csv", "schemas/*.js
 version = {attr = "hydrolog.__version__"}
 
 [tool.uv.sources]
-# Obserwator 3.3.0 is not tagged yet: the commit of its `chore/release-3.3.0` in
-# Nogat's release set candidate-16 (REL-5.3); its version 3.3.0 is within the
-# declared range >=3.1.0,<4 (REL-5.6). Once Obserwator is released this branch
-# replaces it with the tag v3.3.0.
-obserwator = { git = "https://github.com/Daldek/Obserwator.git", rev = "2637350d009896d4554b3b252a725c7613897f5d" }
+# Obserwator 3.3.0, the tag of Nogat's release set candidate-16 (REL-5.1); its
+# version is within the declared range >=3.1.0,<4.
+obserwator = { git = "https://github.com/Daldek/Obserwator.git", tag = "v3.3.0" }
 
 [dependency-groups]
 dev = [
