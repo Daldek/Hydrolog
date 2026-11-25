@@ -1337,7 +1337,8 @@ class TestLowFlow:
             last_year=2015,
         )
         assert result.result.hydrological_years == list(range(2009, 2016))
-        assert [n.code for n in result.notices] == ["small_sample"]
+        codes = [n.code for n in result.notices if n.code != "interval_not_computed"]
+        assert codes == ["small_sample"]
         assert result.notices[0].details == {"years": 7, "minimum": 10}
         assert "Only 7 year(s)" in result.notices[0].message
 
@@ -1366,7 +1367,8 @@ class TestLowFlow:
         )
         assert sample.n_years == 29
         assert sample.incomplete_years == [1991, 2021]
-        assert [n.code for n in result.notices] == ["incomplete_years"]
+        codes = [n.code for n in result.notices if n.code != "interval_not_computed"]
+        assert codes == ["incomplete_years"]
         assert result.notices[0].level == "warning"
         assert result.notices[0].message.endswith("every day of the year): 1991, 2021")
         assert result.notices[0].details == {
@@ -1482,6 +1484,126 @@ class TestLowFlow:
             stats.stats_low_flow(
                 values=[1.0], dates=["2022-01-01"], return_periods=[1.0]
             )
+
+
+def _nested(intervals, estimates) -> None:
+    """The narrower level's bounds lie inside the wider one's, around the estimates."""
+    by_level = sorted(intervals, key=lambda entry: entry.confidence_level)
+    for narrow, wide in zip(by_level, by_level[1:], strict=False):
+        assert np.all(np.asarray(wide.ci_lower) <= np.asarray(narrow.ci_lower))
+        assert np.all(np.asarray(narrow.ci_upper) <= np.asarray(wide.ci_upper))
+    for entry in intervals:
+        assert np.all(np.asarray(entry.ci_lower) <= np.asarray(estimates))
+        assert np.all(np.asarray(estimates) <= np.asarray(entry.ci_upper))
+
+
+_DAILY_15Y = {
+    "input_file": str(DAILY_FLOWS_15Y),
+    "value_column": "Q",
+    "date_column": "date",
+}
+
+
+class TestConfidenceLevels:
+    """``confidence_level`` of the three commands with ``intervals`` (ECO-091)."""
+
+    def test_flood_frequency_gives_each_fit_the_levels_in_the_order_asked(self):
+        result = run(
+            "stats flood-frequency",
+            input_file=str(ANNUAL_MAXIMA),
+            value_column="Qmax",
+            distribution="gev",
+            return_periods=[10, 100],
+            confidence_level=[0.68, 0.95],
+        ).result
+        (fit,) = result.distributions
+        assert [entry.confidence_level for entry in fit.intervals] == [0.68, 0.95]
+        assert {entry.ci_method for entry in fit.intervals} == {"parametric_bootstrap"}
+        _nested(fit.intervals, fit.quantiles)
+
+    def test_one_level_is_one_interval_and_the_default_is_95_percent(self):
+        common = {
+            "input_file": str(ANNUAL_MAXIMA),
+            "value_column": "Qmax",
+            "distribution": "log_normal",
+            "fit_method": "mle",
+        }
+        asked = run("stats flood-frequency", **common, confidence_level=0.9).result
+        default = run("stats flood-frequency", **common).result
+        (fit,) = asked.distributions
+        assert [(e.confidence_level, e.ci_method) for e in fit.intervals] == [
+            (0.9, "delta")
+        ]
+        (fit,) = default.distributions
+        assert [e.confidence_level for e in fit.intervals] == [0.95]
+
+    def test_low_flow_gives_the_fisher_tippett_fit_the_levels_in_order(self):
+        fitted = run(
+            "stats low-flow",
+            **_DAILY_15Y,
+            return_periods=[2, 10],
+            confidence_level=[0.95, 0.68],
+        ).result.fisher_tippett
+        assert [e.confidence_level for e in fitted.intervals] == [0.95, 0.68]
+        computed = [e for e in fitted.intervals if e.ci_method is not None]
+        assert {e.ci_method for e in computed} <= {"delta"}
+        if len(computed) == 2:
+            _nested(computed, fitted.quantiles)
+
+    def test_duration_curve_gives_the_median_annual_curve_its_levels_in_order(self):
+        envelope = run(
+            "stats duration-curve", **_DAILY_15Y, confidence_level=[0.95, 0.5]
+        ).to_dict()
+        result = envelope["result"]
+        percents = result["curve_exceedance_percents"]
+        assert len(result["annual_median_values"]) == len(percents)
+        assert [e["confidence_level"] for e in result["intervals"]] == [0.95, 0.5]
+        for entry in result["intervals"]:
+            assert entry["ci_method"] in ("order_statistics", None)
+            for bounds in (entry["ci_lower"], entry["ci_upper"]):
+                assert bounds is None or len(bounds) == len(percents)
+
+    @pytest.mark.parametrize(
+        "name", ["stats flood-frequency", "stats low-flow", "stats duration-curve"]
+    )
+    def test_a_level_given_twice_is_refused_before_the_series_is_read(self, name):
+        with pytest.raises(InvalidParameterError) as caught:
+            run(
+                name,
+                input_file="missing.csv",
+                value_column="Q",
+                date_column="date",
+                confidence_level=[0.95, 0.68, 0.95],
+            )
+        details = caught.value.details
+        assert (details["option"], details["reason"]) == (
+            "confidence_level",
+            "duplicate_level",
+        )
+
+    @pytest.mark.parametrize(
+        ("value", "reason"),
+        [(1.0, "exclusive_maximum"), ([0.9, 0], "exclusive_minimum")],
+    )
+    def test_the_catalog_refuses_a_level_outside_0_1(self, value, reason):
+        with pytest.raises(InvalidParameterError) as caught:
+            run("stats low-flow", **_DAILY_15Y, confidence_level=value)
+        assert caught.value.details["reason"] == reason
+
+    @pytest.mark.parametrize(
+        ("value", "reason"),
+        [(1.5, "range"), ([0.9, 0.0], "range"), ([], "empty"), ("0.9", "type")],
+    )
+    def test_the_operations_refuse_what_is_no_list_of_levels(self, value, reason):
+        """A Python caller passes no catalog: the operation checks the levels."""
+        for operation in (
+            stats.stats_flood_frequency,
+            stats.stats_low_flow,
+            stats.stats_duration_curve,
+        ):
+            with pytest.raises(InvalidParameterError) as caught:
+                operation(**_DAILY_15Y, confidence_level=value)
+            assert caught.value.details["reason"] == reason, operation
 
 
 class TestFitErrorClassification:

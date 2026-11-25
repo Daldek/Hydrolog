@@ -1,0 +1,129 @@
+schema = "nogat-formula-card/1"
+name = "zero_flow_fraction"
+title = "Share of the days without flow"
+function = "hydrolog.statistics.signatures.zero_flow_fraction"
+family = "index"
+formula_version = 1
+status = "referenced"
+equation = "f_0 = N_0 / n, N_0 the days with Q_t = 0, n the days with a value"
+latex = "f_0 = \\frac{N_0}{n}"
+validation = "none: a count of the observed record"
+conventions = ["a day without flow has a discharge of 0 exactly, in the rounding of the data: a flow below half the last printed unit is 0 (CAMELS-PL counts the days whose specific discharge, printed to 0.001 mm/d, is 0)", "the share of the days with a value (the code of CAMELS-US); the codes of CAMELS-DE and CAMELS-PL divide by every day of their frame, the days without a value too", "a fraction, not a percentage (Addor et al. 2017, Table 3, give %, the files of CAMELS-US, CAMELS-DE and CAMELS-PL fractions)"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/camels-pl-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_series"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+fraction = 0.0
+
+[properties.scalings.tolerance]
+reason = "a value doubled is 0 exactly when the value is: the count is the same"
+abs = 0.0
+
+[[properties.limits]]
+name = "always_flowing"
+text = "a series without a day of no flow has f_0 = 0"
+
+[[properties.limits]]
+name = "never_flowing"
+text = "a series of days without flow has f_0 = 1"
+
+[[properties.limits]]
+name = "gap_left_out"
+text = "a day without a value is neither counted nor a day without flow"
+
+[[sources]]
+citation = "Addor, N., Newman, A.J., Mizukami, N. and Clark, M.P. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences 21, 5293-5313"
+access = "open"
+locator = "Table 3, p. 5300: zero_q_freq, the frequency of days with Q = 0"
+url = "https://doi.org/10.5194/hess-21-5293-2017"
+
+[[sources]]
+citation = "Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels"
+access = "open"
+locator = "compute_no_flow: sum(q[avail_data] <= thres) / length(...)"
+url = "https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R"
+
+[[variables]]
+name = "values"
+symbol = "Q_t"
+unit = "m3/s"
+kind = "real_array"
+description = "Daily discharge; NaN on a day without a value."
+applicability = "unstated"
+gaps_allowed = true
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = true
+test_high = 1000000.0
+test_reason = "the signatures are free of the unit of the series (their scalings), so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river (the Amazon's floods reach about 300,000 m3/s)"
+
+[variables.typical]
+low = 0.0
+low_inclusive = true
+high = 6430.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I., Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0"
+access = "open"
+locator = "discharge_vol_obs of the 13 gauges of tests/fixtures/camels_pl/ (5.93 to 193,728 km2): 0 m3/s on days without flow (Brynica, Czarna, Gardęga, Noteć and five more) to 6430 m3/s (the Wisła at Tczew)"
+url = "https://doi.org/10.5281/zenodo.23275336"
+
+[[constraints]]
+name = "has_values"
+class = "precondition"
+text = "n >= 1: at least one day with a value"
+
+[constraints.source]
+citation = "Addor, N. (2017). hydro_signatures.R, the code of the hydrological signatures of CAMELS (Addor et al. 2017), github.com/naddor/camels"
+access = "open"
+locator = "find_avail_data_array: a signature needs the days with a value, NA without"
+url = "https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R"
+
+[[outputs]]
+name = "fraction"
+unit = "-"
+kind = "real"
+symbol = "f_0"
+description = "The share of the days with a value that have no flow."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[traps]]
+name = "difference_denominator"
+description = "A denominator that is a difference of inputs."
+test = "constraint case has_values-violated: a series without a value is refused before n divides"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case values-nan_element and limit gap_left_out: a gap is left out of both counts"
+
+[[oracles]]
+kind = "exact"
+description = "the count of the days without flow over the days with a value, as an exact fraction"
+test = "tests/unit/test_formulas_signatures.py::test_the_zero_flow_fraction_is_the_exact_share"
+conventions = []

@@ -9,6 +9,8 @@ Provides:
 - The flow regime (Pardé's coefficients, Dynowska's types), the seasonality of annual
   extremes (circular statistics of their dates) and the harmonics of the annual cycle
 - Baseflow (Lyne and Hollick's filter) and the recession constant
+- Hydrological signatures of the CAMELS data sets: the slope of the duration curve,
+  high- and low-flow days, the share of days without flow, the half-flow date
 - Flood frequency analysis (GEV, Log-Normal, Pearson III, Weibull)
 - Low-flow frequency analysis (Fisher-Tippett, drought sequences)
 - Mann-Kendall trend test for series stationarity, with Sen's slope
@@ -85,6 +87,13 @@ from hydrolog.statistics.homogeneity import (
     PettittResult,
     TwoSampleTestResult,
     homogeneity_tests,
+)
+from hydrolog.statistics.intervals import (
+    BootstrapInterval,
+    ConfidenceInterval,
+    DeltaInterval,
+    quantile_interval_bootstrap,
+    quantile_interval_delta,
 )
 from hydrolog.statistics.low_flows import (
     LowFlowAnalysis,
@@ -227,6 +236,14 @@ from hydrolog.statistics.seasonality import (
     extreme_seasonality,
     half_year_extremes,
 )
+from hydrolog.statistics.signatures import (
+    FlowDays,
+    fdc_slope,
+    half_flow_date,
+    high_flow_days,
+    low_flow_days,
+    zero_flow_fraction,
+)
 from hydrolog.statistics.stationarity import (
     MannKendallResult,
     SenSlope,
@@ -311,12 +328,25 @@ __all__ = [
     "lyne_hollick_filter",
     "recession_constant",
     "recession_ratio",
+    # Hydrological signatures
+    "FlowDays",
+    "fdc_slope",
+    "half_flow_date",
+    "high_flow_days",
+    "low_flow_days",
+    "zero_flow_fraction",
     # Flood frequency
     "FloodFrequencyAnalysis",
     "FrequencyAnalysisResult",
     "FIT_METHODS",
     "FitMethod",
     "EmpiricalFrequency",
+    # Intervals of the quantiles (ECO-091)
+    "ConfidenceInterval",
+    "BootstrapInterval",
+    "DeltaInterval",
+    "quantile_interval_bootstrap",
+    "quantile_interval_delta",
     # Low-flow
     "LowFlowAnalysis",
     "LowFlowFrequencyResult",

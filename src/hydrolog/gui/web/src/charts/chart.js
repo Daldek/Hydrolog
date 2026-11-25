@@ -18,15 +18,19 @@
  *   `band` draws one horizontal bar per point (`{x: value, y: name, sub, cls, text}`).
  * - `y2`: the same as `y` for a panel above the main one, sharing the x axis, whose bars
  *   hang from its top (the hyetograph above the hydrograph); `share` is its part of the height.
- * - `series`: `{id, kind: "line" | "step" | "area" | "bars" | "points" | "rug", data: [[x, y], …]
- *   (or `{x, y, cls}`; a `rug` takes x values only: short ticks on the x axis), axis: "y" | "y2",
+ * - `series`: `{id, kind: "line" | "step" | "area" | "band" | "bars" | "points" | "rug", data:
+ *   [[x, y], …] (a `band` takes `[x, lo, hi]`: filled between its ends, under the lines, broken
+ *   where an end is missing, read as „label: lo–hi unit”; or `{x, y, cls}`; a `rug` takes x
+ *   values only: short ticks on the x axis), axis: "y" | "y2",
  *   cls: "s1"…"s6" | "bar-p" | "bar-pe" | …, label, unit, digits, width, align, readout, legend}`.
+ *   The `band` kind is the kit's (Nogat `design/kit/nogat-chart.js`, ECO-090), its interface
+ *   and look unchanged, so the kit's module can replace this one.
  * - `marks`: `{kind: "peak", x, y, label, cls, guides: "x" | "xy"}`, `{kind: "hline", y, label}`,
  *   `{kind: "vline", x, from, to, extend, label}`, `{kind: "note", x, y, label, dx, dy, anchor}`;
  *   `axis: "y2"` puts a mark on the upper panel.
  * - `legend`: `true` (the labelled series) or items `{label, kind, cls}` (`kind: "text"` a note,
- *   `"stroke"` a line styled as the curves are: its classes' colour and dashes, `"break"` the
- *   start of a new line of the legend).
+ *   `"stroke"` a line styled as the curves are: its classes' colour and dashes, `"band"` a
+ *   band's filled box, `"break"` the start of a new line of the legend).
  * - `readout`: `true` or `{series, x: (x) => text, value: (value, series) => text}`: a cursor
  *   by pointer and by keys (arrows, Shift or Page for ten steps, Home, End, Esc).
  * - `size`: "wide" (760 × 432, the default), "small" (360 × 178) or `{width, height}`;

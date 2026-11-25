@@ -743,6 +743,7 @@ dev = [
     { name = "httpx2" },
     { name = "hypothesis" },
     { name = "jsonschema" },
+    { name = "mpmath" },
     { name = "mutmut" },
     { name = "mypy" },
     { name = "playwright" },
@@ -758,9 +759,9 @@ requires-dist = [
     { name = "mcp", marker = "extra == 'all'", specifier = ">=2.3,<3" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=2.3,<3" },
     { name = "numpy", specifier = ">=1.24" },
-    { name = "obserwator", marker = "extra == 'all'", git = "https://github.com/Daldek/Obserwator.git?tag=v3.2.1" },
-    { name = "obserwator", marker = "extra == 'gui'", git = "https://github.com/Daldek/Obserwator.git?tag=v3.2.1" },
-    { name = "obserwator", marker = "extra == 'pmaxtp'", git = "https://github.com/Daldek/Obserwator.git?tag=v3.2.1" },
+    { name = "obserwator", marker = "extra == 'all'", git = "https://github.com/Daldek/Obserwator.git?tag=v3.3.0" },
+    { name = "obserwator", marker = "extra == 'gui'", git = "https://github.com/Daldek/Obserwator.git?tag=v3.3.0" },
+    { name = "obserwator", marker = "extra == 'pmaxtp'", git = "https://github.com/Daldek/Obserwator.git?tag=v3.3.0" },
     { name = "platformdirs", specifier = ">=4.0" },
     { name = "pyproj", marker = "extra == 'all'", specifier = ">=3.6" },
     { name = "pyproj", marker = "extra == 'raster'", specifier = ">=3.6" },
@@ -781,6 +782,7 @@ dev = [
     { name = "httpx2", specifier = ">=2.16,<3" },
     { name = "hypothesis", specifier = ">=6.170.15" },
     { name = "jsonschema", specifier = ">=4.18" },
+    { name = "mpmath", specifier = ">=1.4.1" },
     { name = "mutmut", specifier = ">=3.8.1" },
     { name = "mypy", specifier = ">=1.13" },
     { name = "playwright", specifier = ">=1.64,<2" },
@@ -1327,6 +1329,15 @@ wheels = [
 ]
 
 [[package]]
+name = "mpmath"
+version = "1.4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/b0/6de8e78014ff1842a90cc9a56da6ccfb598a5390ed0257fcdb7d9680c18b/mpmath-1.4.1.tar.gz", hash = "sha256:efd6d1b75f09d69524a67609949812668b28e81ecbfe0ab449ced8c13e92642e", size = 2093211, upload-time = "2026-03-15T01:17:38.245Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/13/f2/abeec3db71d221ccd3cd89d206be1fabf5a3ee7178862f5fba23a59607e0/mpmath-1.4.1-py3-none-any.whl", hash = "sha256:dc4f0ea2304480d4a9a48a94c1020571558ade522b44a6912efac63a586e140f", size = 567787, upload-time = "2026-03-15T01:17:36.392Z" },
+]
+
+[[package]]
 name = "mutmut"
 version = "3.8.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1481,13 +1492,14 @@ wheels = [
 
 [[package]]
 name = "obserwator"
-version = "3.2.1"
-source = { git = "https://github.com/Daldek/Obserwator.git?tag=v3.2.1#288b32e44af21bfa0bedfdbe4635231082c92aa4" }
+version = "3.3.0"
+source = { git = "https://github.com/Daldek/Obserwator.git?tag=v3.3.0#34978a45b0b3450a338d4facb3f3e677ab0ac343" }
 dependencies = [
     { name = "httpx" },
     { name = "platformdirs" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
 
 [[package]]

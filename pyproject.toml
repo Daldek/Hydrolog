@@ -112,9 +112,9 @@ hydrolog = ["py.typed", "_data/agents/*.md", "_data/tables/*.csv", "schemas/*.js
 version = {attr = "hydrolog.__version__"}
 
 [tool.uv.sources]
-# Obserwator 3.2.1, the tag of Nogat's release set candidate-15 (REL-5.1); its
+# Obserwator 3.3.0, the tag of Nogat's release set candidate-16 (REL-5.1); its
 # version is within the declared range >=3.1.0,<4.
-obserwator = { git = "https://github.com/Daldek/Obserwator.git", tag = "v3.2.1" }
+obserwator = { git = "https://github.com/Daldek/Obserwator.git", tag = "v3.3.0" }
 
 [dependency-groups]
 dev = [
@@ -133,6 +133,8 @@ dev = [
     # versions of Nogat's release set (CMP-8.3).
     "hypothesis>=6.170.15",
     "mutmut>=3.8.1",
+    # The exact oracles of the interval specs, evaluated at 50 digits (Nogat CMP-6.2).
+    "mpmath>=1.4.1",
 ]
 
 [tool.ruff]
@@ -163,8 +165,8 @@ files = ["src", "tests"]
 exclude = ['^\.claude/']
 
 [[tool.mypy.overrides]]
-# SciPy, seaborn and jsonschema ship neither a py.typed marker nor bundled stubs.
-module = ["scipy", "scipy.*", "seaborn", "seaborn.*", "jsonschema", "jsonschema.*"]
+# SciPy, seaborn, jsonschema and mpmath ship neither a py.typed marker nor bundled stubs.
+module = ["scipy", "scipy.*", "seaborn", "seaborn.*", "jsonschema", "jsonschema.*", "mpmath", "mpmath.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -183,13 +185,15 @@ warn_unused_ignores = false
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-# The default run and the gate exclude `live` (DEV-10.1); `-m live` replaces it.
-addopts = "--strict-markers -m 'not live' --tb=short"
+# The default run and the gate exclude `live` (DEV-10.1) and `nightly` (the coverage
+# of the intervals, Nogat CMP-6.11); `-m live` or `-m nightly` replaces it.
+addopts = "--strict-markers -m 'not live and not nightly' --tb=short"
 markers = [
     "live: real network services (the PMAXTP of IMGW-PIB); run on demand",
     "slow: more than ~10 s or Docker",
     "db: needs a database (none in this project)",
     "formula: a test of a formula of the computation standard (Nogat CMP-6.8)",
+    "nightly: the simulated coverage of an interval (Nogat CMP-6.11), nightly and before each release, never in the gate",
 ]
 
 [tool.coverage.run]

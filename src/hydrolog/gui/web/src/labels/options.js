@@ -262,6 +262,7 @@ export const commandResultFields = {
 /** Labels of scalar result fields by name (a field without one shows its name). */
 export const resultFields = {
   annual_mean: "Średni przepływ",
+  annual_median_values: "Mediana roczna krzywej czasu trwania",
   areal_precipitation_mm: "Opad obszarowy",
   balance_error_m3: "Błąd bilansu",
   bfi: "Wskaźnik odpływu podstawowego BFI",

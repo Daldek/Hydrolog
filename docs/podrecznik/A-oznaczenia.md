@@ -36,6 +36,7 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | a | `a` | rok |
 | cm | `cm` | centymetr |
 | d | `d` | doba |
+| d/rok | `d/yr` | doba na rok (liczba dni w roku) |
 | d | `day` | doba |
 | °C | `degC` | stopień Celsjusza |
 | $\mathrm{ft^{0{,}8}\,in^{0{,}7}\,h^{-1}\,\%^{0{,}5}}$ | `ft^0.8 in^0.7 h^-1 %^0.5` | jednostka stałej wzoru w stopach, calach, godzinach i procentach |
@@ -109,11 +110,12 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $A_j$ | Powierzchnia każdej komórki w dowolnej jednej jednostce (liczą się tylko udziały) | – | [`hypsometric_integral`](01-zlewnia.md#spec-hypsometric_integral) |
 | $\alpha$ | Parametr filtru | – | [`lyne_hollick`](08-przeplywy-charakterystyczne-nizowki.md#spec-lyne_hollick) |
 | $\alpha$ | Parametr kształtu rozkładu gamma (`spi_gamma_fit`) | – | [`spi`](11-wskazniki-meteorologiczne.md#spec-spi) |
-| $\alpha$ | Parametr skali | m³/s | [`gev_quantiles`](07-przeplywy-maksymalne.md#spec-gev_quantiles), [`anderson_darling`](07-przeplywy-maksymalne.md#spec-anderson_darling), [`akaike_information_criterion`](07-przeplywy-maksymalne.md#spec-akaike_information_criterion), [`fisher_tippett_minima`](08-przeplywy-charakterystyczne-nizowki.md#spec-fisher_tippett_minima) |
+| $\alpha$ | Parametr skali | m³/s | [`gev_quantiles`](07-przeplywy-maksymalne.md#spec-gev_quantiles), [`anderson_darling`](07-przeplywy-maksymalne.md#spec-anderson_darling), [`akaike_information_criterion`](07-przeplywy-maksymalne.md#spec-akaike_information_criterion), [`quantile_interval_bootstrap`](07-przeplywy-maksymalne.md#spec-quantile_interval_bootstrap), [`quantile_interval_delta`](07-przeplywy-maksymalne.md#spec-quantile_interval_delta), [`fisher_tippett_minima`](08-przeplywy-charakterystyczne-nizowki.md#spec-fisher_tippett_minima) |
 | $\alpha$ | Parametr skali; wartość, która uległaby niedomiarowi, zastępuje się najmniejszą liczbą float64 (tolerancja brzegowa) | m³/s | [`fit_l_moments`](07-przeplywy-maksymalne.md#spec-fit_l_moments), [`fit_moments`](07-przeplywy-maksymalne.md#spec-fit_moments), [`fit_maximum_likelihood`](07-przeplywy-maksymalne.md#spec-fit_maximum_likelihood), [`fit_least_squares`](07-przeplywy-maksymalne.md#spec-fit_least_squares) |
 | $\alpha$ | Pierwszy parametr kształtu (r w KZGW): narastanie deszczu | – | [`beta_hyetograph`](02-opad.md#spec-beta_hyetograph) |
 | $\alpha$ | Poziom istotności: przedział ufności obejmuje 1 - alpha | – | [`sen_interval`](10-jednorodnosc-i-trend.md#spec-sen_interval) |
 | $ARC$ | Warunki wilgotnościowe poprzedzające, na które przelicza się CN: I suche, III wilgotne | – | [`scs_cn_amc`](03-opad-efektywny.md#spec-scs_cn_amc) |
+| $B$ | Liczba prób bootstrapu | – | [`quantile_interval_bootstrap`](07-przeplywy-maksymalne.md#spec-quantile_interval_bootstrap) |
 | $b$ | Nachylenie Sena: mediana nachyleń par o różnych czasach, w jednostce wartości na jednostkę czasu | m³/s/a | [`sen_slope`](10-jednorodnosc-i-trend.md#spec-sen_slope) |
 | $b$ | Szerokość dna przekroju; zero dla trójkąta | m | [`manning_normal_flow`](06-transformacja-fali.md#spec-manning_normal_flow) |
 | $b$ | Wykładnik krzywej | – | [`rating_curve_plausibility`](09-rezim-i-zmiennosc.md#spec-rating_curve_plausibility) |
@@ -138,6 +140,8 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $b_U$ | Górna granica przedziału nachylenia | m³/s/a | [`sen_interval`](10-jednorodnosc-i-trend.md#spec-sen_interval) |
 | $c$ | Parametr kształtu c funkcji genextreme biblioteki scipy dla zanegowanych minimów: dolne ograniczenie minimów loc - scale / c dla c > 0 | – | [`fisher_tippett_minima`](08-przeplywy-charakterystyczne-nizowki.md#spec-fisher_tippett_minima) |
 | $c$ | Parametr kształtu c: górne ograniczenie dla c > 0, ciężki górny ogon dla c < 0 | – | [`gev_quantiles`](07-przeplywy-maksymalne.md#spec-gev_quantiles) |
+| $c$ | Poziomy ufności, różne: każdy przedział jest dwustronny i centralny, każdy ogon (1 - c) / 2 | – | [`quantile_interval_bootstrap`](07-przeplywy-maksymalne.md#spec-quantile_interval_bootstrap), [`quantile_interval_delta`](07-przeplywy-maksymalne.md#spec-quantile_interval_delta) |
+| $c$ | Poziomy ufności, różne: każdy przedział jest dwustronny i centralny, każdy ogon najwyżej (1 - c) / 2 | – | [`duration_curve_annual_median_interval`](08-przeplywy-charakterystyczne-nizowki.md#spec-duration_curve_annual_median_interval) |
 | $c$ | Prędkość fali wezbraniowej przy przepływie odniesienia | m/s | [`muskingum_cunge`](06-transformacja-fali.md#spec-muskingum_cunge) |
 | $c$ | Prędkość kinematycznej fali wezbraniowej, dQ/dA przy stałym spadku | m/s | [`manning_normal_flow`](06-transformacja-fali.md#spec-manning_normal_flow) |
 | $C$ | Stosunek odpływu bezpośredniego do opadu | – | [`scs_cn_runoff`](03-opad-efektywny.md#spec-scs_cn_runoff) |
@@ -167,6 +171,7 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $D$ | Czas trwania jednostkowego opadu efektywnego | min | [`snyder`](05-hydrogram-jednostkowy.md#spec-snyder), [`nash_iuh`](05-hydrogram-jednostkowy.md#spec-nash_iuh), [`clark`](05-hydrogram-jednostkowy.md#spec-clark) |
 | $D$ | Czas trwania opadu efektywnego | h | [`nash_urban_regression`](05-hydrogram-jednostkowy.md#spec-nash_urban_regression) |
 | $d$ | Dzień roku hydrologicznego każdej wartości, 1 = 1 listopada | d | [`harmonic_fit`](09-rezim-i-zmiennosc.md#spec-harmonic_fit) |
+| $d$ | Dzień roku, licząc od 1, w którym przepływ zsumowany od pierwszego dnia po raz pierwszy przekracza połowę sumy roku | d | [`half_flow_date`](08-przeplywy-charakterystyczne-nizowki.md#spec-half_flow_date) |
 | $D$ | Krok czasowy hydrogramu i czas trwania jego jednostkowego opadu efektywnego | min | [`scs`](05-hydrogram-jednostkowy.md#spec-scs) |
 | $D$ | Liczba dni powyżej progu | d | [`heavy_precipitation_share`](11-wskazniki-meteorologiczne.md#spec-heavy_precipitation_share) |
 | $D$ | Największa odległość między dystrybuantami prób | – | [`ks_exact`](10-jednorodnosc-i-trend.md#spec-ks_exact) |
@@ -179,10 +184,13 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $\Delta t$ | Krok czasowy: długość każdego bloku deszczu | min | [`block_hyetograph`](02-opad.md#spec-block_hyetograph), [`triangular_hyetograph`](02-opad.md#spec-triangular_hyetograph), [`beta_hyetograph`](02-opad.md#spec-beta_hyetograph), [`euler_ii_hyetograph`](02-opad.md#spec-euler_ii_hyetograph) |
 | $\Delta x$ | Krok przestrzenny L / N | m | [`muskingum_cunge`](06-transformacja-fali.md#spec-muskingum_cunge) |
 | $D_g$ | Siatkowa liczba Reynoldsa D / dx = 1 - 2X | – | [`muskingum_cunge`](06-transformacja-fali.md#spec-muskingum_cunge) |
+| $D_h$ | Średnia długość ciągów takich dni, 0 bez żadnego | d | [`high_flow_days`](08-przeplywy-charakterystyczne-nizowki.md#spec-high_flow_days) |
 | $D_i$ | Czasy trwania punktów krzywej wysokość–czas trwania, rosnące | min | [`euler_ii_hyetograph`](02-opad.md#spec-euler_ii_hyetograph) |
 | $d_{II}$ | Liczba dni lutego w roku średnim | d | [`spring_share`](09-rezim-i-zmiennosc.md#spec-spring_share) |
 | $d_k$ | Dzień roku hydrologicznego pierwszego maksimum każdej harmoniki | d | [`harmonic_fit`](09-rezim-i-zmiennosc.md#spec-harmonic_fit) |
+| $D_l$ | Średnia długość ciągów takich dni, 0 bez żadnego | d | [`low_flow_days`](08-przeplywy-charakterystyczne-nizowki.md#spec-low_flow_days) |
 | $e$ | Granice klas stanów, rosnące | cm | [`rybczynski_zones`](09-rezim-i-zmiennosc.md#spec-rybczynski_zones) |
+| $e$ | Maksima albo minima dopasowane jako rozkład GEV zanegowanych minimów (fisher_tippett_minima: jego parametr położenia odnosi się do minimów) | – | [`quantile_interval_delta`](07-przeplywy-maksymalne.md#spec-quantile_interval_delta) |
 | $e^{2{,}3 C_g}$ | Granica dokładności siatkowej liczby Reynoldsa według NEH, exp(2,3 Cg), ograniczona do exp(700) | – | [`muskingum_cunge`](06-transformacja-fali.md#spec-muskingum_cunge) |
 | $\ell$ | Długość spływu: najdłuższa droga, którą woda spływa od działu wodnego do przekroju | km | [`nrcs`](04-czas-koncentracji.md#spec-nrcs) |
 | $e^{\mu}$ | Funkcja wykładnicza (exp) średniej logarytmów | m³/s | [`log_normal_quantiles`](07-przeplywy-maksymalne.md#spec-log_normal_quantiles) |
@@ -190,12 +198,16 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $\epsilon$ | Dolne ograniczenie: 0 dla rozkładu dwuparametrowego dopasowywanego w Hydrologu | m³/s | [`log_normal_quantiles`](07-przeplywy-maksymalne.md#spec-log_normal_quantiles) |
 | $\epsilon$ | Margines obcięcia dystrybuanty F od zera i od jedności | – | [`anderson_darling`](07-przeplywy-maksymalne.md#spec-anderson_darling) |
 | $f$ | Kierunek średniego wektora jako ułamek roku | – | [`circular_mean`](09-rezim-i-zmiennosc.md#spec-circular_mean) |
-| $F$ | Rozkład: logarytmiczno-normalny o parametrze położenia 0, GEV, Pearsona typu III lub trójparametrowy rozkład Weibulla z scipy.stats | – | [`fit_l_moments`](07-przeplywy-maksymalne.md#spec-fit_l_moments), [`fit_moments`](07-przeplywy-maksymalne.md#spec-fit_moments), [`fit_maximum_likelihood`](07-przeplywy-maksymalne.md#spec-fit_maximum_likelihood), [`fit_least_squares`](07-przeplywy-maksymalne.md#spec-fit_least_squares), [`anderson_darling`](07-przeplywy-maksymalne.md#spec-anderson_darling), [`akaike_information_criterion`](07-przeplywy-maksymalne.md#spec-akaike_information_criterion) |
+| $F$ | Rozkład: logarytmiczno-normalny o parametrze położenia 0, GEV, Pearsona typu III lub trójparametrowy rozkład Weibulla z scipy.stats | – | [`fit_l_moments`](07-przeplywy-maksymalne.md#spec-fit_l_moments), [`fit_moments`](07-przeplywy-maksymalne.md#spec-fit_moments), [`fit_maximum_likelihood`](07-przeplywy-maksymalne.md#spec-fit_maximum_likelihood), [`fit_least_squares`](07-przeplywy-maksymalne.md#spec-fit_least_squares), [`anderson_darling`](07-przeplywy-maksymalne.md#spec-anderson_darling), [`akaike_information_criterion`](07-przeplywy-maksymalne.md#spec-akaike_information_criterion), [`quantile_interval_bootstrap`](07-przeplywy-maksymalne.md#spec-quantile_interval_bootstrap), [`quantile_interval_delta`](07-przeplywy-maksymalne.md#spec-quantile_interval_delta) |
 | $f$ | Waga wcześniejszej rzędnej: część kroku, o którą przesunięcie odbiega od całkowitej liczby kroków | – | [`lag`](06-transformacja-fali.md#spec-lag) |
+| $f_0$ | Udział dni bez przepływu wśród dni z wartością | – | [`zero_flow_fraction`](08-przeplywy-charakterystyczne-nizowki.md#spec-zero_flow_fraction) |
+| $F_h$ | Liczba dni poza progiem na rok dni z wartością | d/rok | [`high_flow_days`](08-przeplywy-charakterystyczne-nizowki.md#spec-high_flow_days) |
 | $F_i$ | Prawdopodobieństwo nieprzewyższenia każdej wartości | – | [`non_exceedance_positions`](08-przeplywy-charakterystyczne-nizowki.md#spec-non_exceedance_positions) |
+| $F_l$ | Liczba dni poza progiem na rok dni z wartością | d/rok | [`low_flow_days`](08-przeplywy-charakterystyczne-nizowki.md#spec-low_flow_days) |
 | $F_s$ | Wskaźnik częstości cieków | 1/km² | [`stream_frequency`](01-zlewnia.md#spec-stream_frequency) |
 | $G$ | Skorygowany współczynnik skośności Fishera–Pearsona | – | [`sample_moments`](07-przeplywy-maksymalne.md#spec-sample_moments) |
 | $\gamma$ | Skośność rozkładu | – | [`pearson3_quantiles`](07-przeplywy-maksymalne.md#spec-pearson3_quantiles) |
+| $\Gamma'(2)$ | Wartość pochodnej funkcji gamma w punkcie dwa | – | [`quantile_interval_delta`](07-przeplywy-maksymalne.md#spec-quantile_interval_delta) |
 | $\gamma_G$ | Skośność rozkładu Gumbela | – | [`fit_moments`](07-przeplywy-maksymalne.md#spec-fit_moments), [`fit_least_squares`](07-przeplywy-maksymalne.md#spec-fit_least_squares) |
 | $h$ | Natężenie w szczycie trójkąta | mm/h | [`triangular_hyetograph`](02-opad.md#spec-triangular_hyetograph) |
 | $H$ | Stan wody H każdego pomiaru przepływu, w jednej jednostce stanów | cm | [`rating_curve_fit`](09-rezim-i-zmiennosc.md#spec-rating_curve_fit) |
@@ -224,7 +236,7 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $K$ | Czas przepływu przez cały odcinek, stała retencji K | min | [`muskingum`](06-transformacja-fali.md#spec-muskingum) |
 | $k$ | Dobowa stała recesji przepływu całkowitego | – | [`recession_constant`](08-przeplywy-charakterystyczne-nizowki.md#spec-recession_constant) |
 | $K$ | Liczba dopasowywanych harmonik | – | [`harmonic_fit`](09-rezim-i-zmiennosc.md#spec-harmonic_fit) |
-| $k$ | Parametr kształtu: s rozkładu logarytmiczno-normalnego, c rozkładu GEV (znak jak w scipy, k Hoskinga, -xi Colesa), skośność rozkładu Pearsona III, parametr kształtu rozkładu Weibulla | – | [`fit_l_moments`](07-przeplywy-maksymalne.md#spec-fit_l_moments), [`fit_moments`](07-przeplywy-maksymalne.md#spec-fit_moments), [`fit_maximum_likelihood`](07-przeplywy-maksymalne.md#spec-fit_maximum_likelihood), [`fit_least_squares`](07-przeplywy-maksymalne.md#spec-fit_least_squares), [`anderson_darling`](07-przeplywy-maksymalne.md#spec-anderson_darling), [`akaike_information_criterion`](07-przeplywy-maksymalne.md#spec-akaike_information_criterion) |
+| $k$ | Parametr kształtu: s rozkładu logarytmiczno-normalnego, c rozkładu GEV (znak jak w scipy, k Hoskinga, -xi Colesa), skośność rozkładu Pearsona III, parametr kształtu rozkładu Weibulla | – | [`fit_l_moments`](07-przeplywy-maksymalne.md#spec-fit_l_moments), [`fit_moments`](07-przeplywy-maksymalne.md#spec-fit_moments), [`fit_maximum_likelihood`](07-przeplywy-maksymalne.md#spec-fit_maximum_likelihood), [`fit_least_squares`](07-przeplywy-maksymalne.md#spec-fit_least_squares), [`anderson_darling`](07-przeplywy-maksymalne.md#spec-anderson_darling), [`akaike_information_criterion`](07-przeplywy-maksymalne.md#spec-akaike_information_criterion), [`quantile_interval_bootstrap`](07-przeplywy-maksymalne.md#spec-quantile_interval_bootstrap), [`quantile_interval_delta`](07-przeplywy-maksymalne.md#spec-quantile_interval_delta) |
 | $K$ | Statystyka Pettitta, największe \|U_t\| | – | [`pettitt`](10-jednorodnosc-i-trend.md#spec-pettitt) |
 | $K$ | Stała retencji jednego zbiornika | min | [`linear_reservoir_cascade`](06-transformacja-fali.md#spec-linear_reservoir_cascade) |
 | $K$ | Stała retencji każdego zbiornika | min | [`nash_iuh`](05-hydrogram-jednostkowy.md#spec-nash_iuh), [`nash_iuh_peak`](05-hydrogram-jednostkowy.md#spec-nash_iuh_peak), [`lutz`](05-hydrogram-jednostkowy.md#spec-lutz) |
@@ -232,6 +244,7 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $k$ | Wskaźnik lemniskaty: powierzchnia koła o średnicy L podzielona przez powierzchnię zlewni; 1 dla tego koła, większy dla zlewni bardziej wydłużonych | – | [`lemniscate_ratio`](01-zlewnia.md#spec-lemniscate_ratio) |
 | $k$ | Współczynnik hydrotermiczny | – | [`sielianinov_coefficient`](11-wskazniki-meteorologiczne.md#spec-sielianinov_coefficient), [`sielianinov_class`](11-wskazniki-meteorologiczne.md#spec-sielianinov_class) |
 | $K$ | Wykładnik krzywej | – | [`snyder_shape`](05-hydrogram-jednostkowy.md#spec-snyder_shape) |
+| $K$ | Zachowane próby bootstrapu: dopasowane ponownie metodą L-momentów | – | [`quantile_interval_bootstrap`](07-przeplywy-maksymalne.md#spec-quantile_interval_bootstrap) |
 | $k\,\Delta t$ | Początek przedziału szczytu liczony od początku deszczu | min | [`euler_ii_hyetograph`](02-opad.md#spec-euler_ii_hyetograph) |
 | $k D$ | Chwile rzędnych liczone od początku opadu efektywnego | min | [`scs`](05-hydrogram-jednostkowy.md#spec-scs) |
 | $k \Delta t$ | Chwile rzędnych liczone od początku opadu | min | [`snyder_shape`](05-hydrogram-jednostkowy.md#spec-snyder_shape) |
@@ -239,6 +252,8 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $k_{III}$ | Stosunek retencji maksymalnej w warunkach III do retencji w warunkach II | – | [`scs_cn_amc`](03-opad-efektywny.md#spec-scs_cn_amc) |
 | $K_m$ | Współczynnik Pardégo każdego miesiąca, od listopada do października | – | [`parde_coefficients`](09-rezim-i-zmiennosc.md#spec-parde_coefficients) |
 | $K_m$ | Współczynniki Pardégo miesięcy od listopada do października | – | [`dynowska_regime_type`](09-rezim-i-zmiennosc.md#spec-dynowska_regime_type) |
+| $K_{min}$ | Najmniejsza liczba zachowanych prób, przy której przedział jest wyznaczany | – | [`quantile_interval_bootstrap`](07-przeplywy-maksymalne.md#spec-quantile_interval_bootstrap) |
+| $L$ | Dolna granica dla każdego poziomu (wiersz na poziom, w podanej kolejności) i okresu powtarzalności; luka tam, gdzie granica przepływu byłaby poniżej 0 | m³/s | [`quantile_interval_bootstrap`](07-przeplywy-maksymalne.md#spec-quantile_interval_bootstrap), [`quantile_interval_delta`](07-przeplywy-maksymalne.md#spec-quantile_interval_delta) |
 | $L$ | Długość cieku głównego | km | [`giandotti`](04-czas-koncentracji.md#spec-giandotti) |
 | $L$ | Długość cieku głównego od przekroju zamykającego do działu wodnego | km | [`snyder`](05-hydrogram-jednostkowy.md#spec-snyder) |
 | $L$ | Długość najdłuższej drogi spływu, od przekroju do punktu zlewni najdalszego hydraulicznie | km | [`kirpich`](04-czas-koncentracji.md#spec-kirpich) |
@@ -284,6 +299,7 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $n$ | Liczba jednakowych zbiorników połączonych szeregowo; nie musi być całkowita | – | [`linear_reservoir_cascade`](06-transformacja-fali.md#spec-linear_reservoir_cascade) |
 | $n$ | Liczba równo rozmieszczonych wysokości względnych krzywej | – | [`hypsometric_integral`](01-zlewnia.md#spec-hypsometric_integral) |
 | $n$ | Liczba stanów w każdej klasie | – | [`rybczynski_zones`](09-rezim-i-zmiennosc.md#spec-rybczynski_zones) |
+| $n$ | Liczba wartości próby, do której dopasowano rozkład | – | [`quantile_interval_bootstrap`](07-przeplywy-maksymalne.md#spec-quantile_interval_bootstrap) |
 | $N$ | Liczba zbiorników kaskady Nasha | – | [`lutz`](05-hydrogram-jednostkowy.md#spec-lutz), [`nash_urban_regression`](05-hydrogram-jednostkowy.md#spec-nash_urban_regression) |
 | $n$ | Liczba zbiorników kaskady, parametr kształtu; nie musi być całkowita | – | [`nash_iuh`](05-hydrogram-jednostkowy.md#spec-nash_iuh), [`nash_iuh_peak`](05-hydrogram-jednostkowy.md#spec-nash_iuh_peak) |
 | $N$ | Liczba zbiorników połączonych szeregowo, z których każdy mieści S / N z tabeli przy tym samym odpływie | – | [`level_pool`](06-transformacja-fali.md#spec-level_pool) |
@@ -314,6 +330,8 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $P/N$ | Opad w % normy | % | [`kaczorowska_class`](11-wskazniki-meteorologiczne.md#spec-kaczorowska_class), [`month_precipitation_class`](11-wskazniki-meteorologiczne.md#spec-month_precipitation_class) |
 | $P_0$ | Najmniejszy opad dnia z opadem | mm | [`spell_lengths`](11-wskazniki-meteorologiczne.md#spec-spell_lengths) |
 | $P1$ | Parametr szorstkościowy Lutza w zależności na tp | $\mathrm{h\,km^{-0{,}52}}$ | [`lutz`](05-hydrogram-jednostkowy.md#spec-lutz) |
+| $p_1$ | Procent przewyższenia pierwszego, wyższego punktu krzywej | % | [`fdc_slope`](08-przeplywy-charakterystyczne-nizowki.md#spec-fdc_slope) |
+| $p_2$ | Procent przewyższenia drugiego, niższego punktu krzywej | % | [`fdc_slope`](08-przeplywy-charakterystyczne-nizowki.md#spec-fdc_slope) |
 | $P_{e,m}$ | Opad efektywny w każdym kroku | mm | [`uh_convolution`](05-hydrogram-jednostkowy.md#spec-uh_convolution) |
 | $p_i$ | Dwanaście sum miesięcznych roku albo dwanaście norm miesięcznych, w dowolnej kolejności | mm | [`precipitation_concentration_index`](11-wskazniki-meteorologiczne.md#spec-precipitation_concentration_index) |
 | $P_i$ | Opad dobowy dni okresu; NaN w dniu z brakiem danych, który jest pomijany | mm | [`sdii`](11-wskazniki-meteorologiczne.md#spec-sdii), [`wet_day_percentile`](11-wskazniki-meteorologiczne.md#spec-wet_day_percentile), [`heavy_precipitation_share`](11-wskazniki-meteorologiczne.md#spec-heavy_precipitation_share) |
@@ -344,13 +362,21 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $q_p$ | Największa rzędna hydrogramu jednostkowego | m³/s na mm | [`nash_iuh`](05-hydrogram-jednostkowy.md#spec-nash_iuh) |
 | $q_p$ | Przepływ kulminacyjny ze wzoru dla czasu trwania D | m³/s na mm | [`scs`](05-hydrogram-jednostkowy.md#spec-scs) |
 | $Q_p$ | Wartość osiągana lub przekraczana w każdym z podanych procentów dni, w jednostce szeregu | m³/s | [`exceedance_values`](08-przeplywy-charakterystyczne-nizowki.md#spec-exceedance_values) |
+| $Q_p(i)$ | Wartości krzywych rocznych: wiersz na każdy pełny rok hydrologiczny i, w dowolnej kolejności, kolumna na każdy procent przewyższenia p (Q_p(i) Vogela i Fennesseya, każda z dni swojego roku) | m³/s | [`duration_curve_annual_median_interval`](08-przeplywy-charakterystyczne-nizowki.md#spec-duration_curve_annual_median_interval) |
+| $Q_{p,(k)}$ | Dolna granica każdej mediany, wiersz na poziom w podanej kolejności: k-ta najmniejsza wartość roczna; luka tam, gdzie N lat nie osiąga poziomu | m³/s | [`duration_curve_annual_median_interval`](08-przeplywy-charakterystyczne-nizowki.md#spec-duration_curve_annual_median_interval) |
+| $Q_{p,(N+1-k)}$ | Górna granica: k-ta największa wartość roczna; luka jak w dolnej | m³/s | [`duration_curve_annual_median_interval`](08-przeplywy-charakterystyczne-nizowki.md#spec-duration_curve_annual_median_interval) |
+| $Q_{p,0{,}5}$ | Medianowa krzywa roczna: dla każdego procentu mediana N wartości rocznych, w jednostce szeregu | m³/s | [`duration_curve_annual_median_interval`](08-przeplywy-charakterystyczne-nizowki.md#spec-duration_curve_annual_median_interval) |
 | $q_{pR}$ | Kulminacja dla czasu trwania D | m³/s na mm | [`snyder`](05-hydrogram-jednostkowy.md#spec-snyder) |
 | $q_{pR}$ | Kulminacja hydrogramu jednostkowego (specyfikacja `snyder`) | m³/s na mm | [`snyder_shape`](05-hydrogram-jednostkowy.md#spec-snyder_shape) |
 | $Q_T$ | Minima o danych okresach powtarzalności; luka tam, gdzie przepływ byłby ujemny | m³/s | [`fisher_tippett_minima`](08-przeplywy-charakterystyczne-nizowki.md#spec-fisher_tippett_minima) |
+| $Q_t$ | Przepływ dobowy jednego roku od jego pierwszego dnia; NaN w dniu bez wartości | m³/s | [`half_flow_date`](08-przeplywy-charakterystyczne-nizowki.md#spec-half_flow_date) |
 | $Q_t$ | Przepływ dobowy w kolejnych dniach; luka (NaN) oznacza dzień bez wartości | m³/s | [`recession_constant`](08-przeplywy-charakterystyczne-nizowki.md#spec-recession_constant) |
+| $Q_t$ | Przepływ dobowy w porządku czasowym; NaN w dniu bez wartości | m³/s | [`high_flow_days`](08-przeplywy-charakterystyczne-nizowki.md#spec-high_flow_days), [`low_flow_days`](08-przeplywy-charakterystyczne-nizowki.md#spec-low_flow_days) |
 | $Q_t$ | Przepływ dobowy, znany dla każdego dnia, w porządku czasowym | m³/s | [`lyne_hollick`](08-przeplywy-charakterystyczne-nizowki.md#spec-lyne_hollick) |
+| $Q_t$ | Przepływ dobowy; NaN w dniu bez wartości | m³/s | [`zero_flow_fraction`](08-przeplywy-charakterystyczne-nizowki.md#spec-zero_flow_fraction) |
 | $Q_t$ | Przepływ dobowy; luka (NaN) oznacza dzień bez wartości | m³/s | [`baseflow_index`](08-przeplywy-charakterystyczne-nizowki.md#spec-baseflow_index) |
 | $Q_T$ | Przepływy o danych okresach powtarzalności | m³/s | [`gev_quantiles`](07-przeplywy-maksymalne.md#spec-gev_quantiles), [`log_normal_quantiles`](07-przeplywy-maksymalne.md#spec-log_normal_quantiles), [`pearson3_quantiles`](07-przeplywy-maksymalne.md#spec-pearson3_quantiles), [`weibull_quantiles`](07-przeplywy-maksymalne.md#spec-weibull_quantiles) |
+| $Q_t$ | Wartości dobowe szeregu, w dowolnej kolejności; NaN w dniu bez wartości, który jest pomijany | m³/s | [`fdc_slope`](08-przeplywy-charakterystyczne-nizowki.md#spec-fdc_slope) |
 | $r$ | Długość średniego wektora: 1 dla jednego terminu, bliska 0, gdy terminy rozkładają się na cały rok | – | [`circular_mean`](09-rezim-i-zmiennosc.md#spec-circular_mean) |
 | $r$ | Najmniejszy stosunek współczynnika miesiąca letniego do wiosennego uznawany za „prawie równy” | – | [`dynowska_regime_type`](09-rezim-i-zmiennosc.md#spec-dynowska_regime_type) |
 | $R$ | Opad dni powyżej progu (R95p) | mm | [`heavy_precipitation_share`](11-wskazniki-meteorologiczne.md#spec-heavy_precipitation_share) |
@@ -381,11 +407,13 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $S$ | Retencja maksymalna S | mm | [`scs_cn_runoff`](03-opad-efektywny.md#spec-scs_cn_runoff) |
 | $S$ | Retencja maksymalna po rozpoczęciu odpływu | mm | [`scs_cn_retention`](03-opad-efektywny.md#spec-scs_cn_retention) |
 | $S$ | Spadek dna, równy spadkowi linii energii przy przepływie jednostajnym | m/m | [`manning_normal_flow`](06-transformacja-fali.md#spec-manning_normal_flow) |
+| $S$ | Spadek krzywej w skali logarytmicznej na jednostkę prawdopodobieństwa przewyższenia | – | [`fdc_slope`](08-przeplywy-charakterystyczne-nizowki.md#spec-fdc_slope) |
 | $S$ | Spadek najdłuższej drogi spływu: wysokość jej początku minus wysokość przekroju, podzielona przez jej długość | m/m | [`kirpich`](04-czas-koncentracji.md#spec-kirpich) |
 | $S$ | Spadek powierzchni, po której spływa woda | m/m | [`faa`](04-czas-koncentracji.md#spec-faa), [`kerby`](04-czas-koncentracji.md#spec-kerby) |
 | $S$ | Spadek prostej przez przekrój, przy którym pola profilu nad nią i pod nią są równe | m/m | [`equal_area_slope`](01-zlewnia.md#spec-equal_area_slope) |
 | $S$ | Statystyka S Kendalla: liczba par rosnących pomniejszona o liczbę par malejących | – | [`mann_kendall`](10-jednorodnosc-i-trend.md#spec-mann_kendall) |
 | $s$ | Udział marca i kwietnia w objętości rocznej, od 0 do 1 | – | [`spring_share`](09-rezim-i-zmiennosc.md#spec-spring_share) |
+| $s$ | Ziarno generatora liczb losowych | – | [`quantile_interval_bootstrap`](07-przeplywy-maksymalne.md#spec-quantile_interval_bootstrap) |
 | $S_0$ | Spadek dna odcinka | m/m | [`muskingum_cunge`](06-transformacja-fali.md#spec-muskingum_cunge) |
 | $S_1$ | Górna granica współczynnika miesiąca wiosennego w reżimie niwalnym słabo wykształconym | – | [`dynowska_regime_type`](09-rezim-i-zmiennosc.md#spec-dynowska_regime_type) |
 | $S_2$ | Górna granica współczynnika miesiąca wiosennego w reżimie niwalnym średnio wykształconym | – | [`dynowska_regime_type`](09-rezim-i-zmiennosc.md#spec-dynowska_regime_type) |
@@ -402,7 +430,7 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $T$ | Długość hydrogramu: krzywa poza nią jest odcinana | min | [`snyder_shape`](05-hydrogram-jednostkowy.md#spec-snyder_shape) |
 | $T$ | Długość hydrogramu; `ClarkIUH` przyjmuje tc + 5 R + D | min | [`clark`](05-hydrogram-jednostkowy.md#spec-clark) |
 | $T$ | Długość hydrogramu; `NashIUH` przyjmuje 5 n K + D | min | [`nash_iuh`](05-hydrogram-jednostkowy.md#spec-nash_iuh) |
-| $T$ | Okresy powtarzalności: kwantyl T-letni jest przewyższany z prawdopodobieństwem 1/T w roku | lata | [`gev_quantiles`](07-przeplywy-maksymalne.md#spec-gev_quantiles), [`log_normal_quantiles`](07-przeplywy-maksymalne.md#spec-log_normal_quantiles), [`pearson3_quantiles`](07-przeplywy-maksymalne.md#spec-pearson3_quantiles), [`weibull_quantiles`](07-przeplywy-maksymalne.md#spec-weibull_quantiles) |
+| $T$ | Okresy powtarzalności: kwantyl T-letni jest przewyższany z prawdopodobieństwem 1/T w roku | lata | [`gev_quantiles`](07-przeplywy-maksymalne.md#spec-gev_quantiles), [`log_normal_quantiles`](07-przeplywy-maksymalne.md#spec-log_normal_quantiles), [`pearson3_quantiles`](07-przeplywy-maksymalne.md#spec-pearson3_quantiles), [`weibull_quantiles`](07-przeplywy-maksymalne.md#spec-weibull_quantiles), [`quantile_interval_bootstrap`](07-przeplywy-maksymalne.md#spec-quantile_interval_bootstrap), [`quantile_interval_delta`](07-przeplywy-maksymalne.md#spec-quantile_interval_delta) |
 | $T$ | Okresy powtarzalności: wartość niższa od kwantyla T-letniego występuje z prawdopodobieństwem 1/T w roku | lata | [`fisher_tippett_minima`](08-przeplywy-charakterystyczne-nizowki.md#spec-fisher_tippett_minima) |
 | $t$ | Podział t, przy którym występuje K: liczba wartości przed zmianą | – | [`pettitt`](10-jednorodnosc-i-trend.md#spec-pettitt) |
 | $T$ | Szerokość zwierciadła wody przy głębokości normalnej | m | [`manning_normal_flow`](06-transformacja-fali.md#spec-manning_normal_flow) |
@@ -454,6 +482,7 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $T_s$ | Próg: dzień gorący ma Tmax powyżej tej wartości | °C | [`threshold_days`](11-wskazniki-meteorologiczne.md#spec-threshold_days) |
 | $T_t$ | Próg: noc tropikalna ma Tmin powyżej tej wartości | °C | [`threshold_days`](11-wskazniki-meteorologiczne.md#spec-threshold_days) |
 | $T_x$ | Maksymalna dobowa temperatura powietrza; NaN w dniu z brakiem danych | °C | [`threshold_days`](11-wskazniki-meteorologiczne.md#spec-threshold_days) |
+| $U$ | Górna granica, jak dolna | m³/s | [`quantile_interval_bootstrap`](07-przeplywy-maksymalne.md#spec-quantile_interval_bootstrap), [`quantile_interval_delta`](07-przeplywy-maksymalne.md#spec-quantile_interval_delta) |
 | $u$ | Rząd cieku poniżej węzła według Strahlera | – | [`strahler_order`](01-zlewnia.md#spec-strahler_order) |
 | $U$ | Udział powierzchni nieprzepuszczalnych w powierzchni zlewni | – | [`nash_urban_regression`](05-hydrogram-jednostkowy.md#spec-nash_urban_regression) |
 | $U$ | Udział terenów zurbanizowanych w powierzchni zlewni | % | [`lutz`](05-hydrogram-jednostkowy.md#spec-lutz) |
@@ -464,6 +493,7 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $u_p$ | Rzędna szczytowa hydrogramu jednostkowego chwilowego | 1/min | [`nash_iuh_peak`](05-hydrogram-jednostkowy.md#spec-nash_iuh_peak) |
 | $V$ | Objętość hydrogramu, sum(Q_n) dt | m³ | [`uh_convolution`](05-hydrogram-jednostkowy.md#spec-uh_convolution) |
 | $V$ | Prędkość średnia Q / A | m/s | [`manning_normal_flow`](06-transformacja-fali.md#spec-manning_normal_flow) |
+| $v$ | Rodzaj ekstremów: przepływ albo inna wielkość nigdy poniżej 0, np. wysokość opadu, albo stan wody, którego 0 jest zerem wodowskazu | – | [`quantile_interval_bootstrap`](07-przeplywy-maksymalne.md#spec-quantile_interval_bootstrap), [`quantile_interval_delta`](07-przeplywy-maksymalne.md#spec-quantile_interval_delta) |
 | $v$ | Rodzaj minimów: przepływ, nigdy poniżej 0, lub stan wody, którego 0 jest zerem wodowskazu | – | [`fisher_tippett_minima`](08-przeplywy-charakterystyczne-nizowki.md#spec-fisher_tippett_minima) |
 | $v_i$ | Wartości kolejnych izohiet ograniczających pasy | mm | [`isohyet_precipitation`](02-opad.md#spec-isohyet_precipitation) |
 | $W$ | Liczba dni z opadem | d | [`sdii`](11-wskazniki-meteorologiczne.md#spec-sdii) |
@@ -484,8 +514,9 @@ obejmują jednostki i symbole tych wzorów i odsyłają do ramek.
 | $x_{(i)}$ | Wartości uporządkowane malejąco | m³/s | [`plotting_positions`](07-przeplywy-maksymalne.md#spec-plotting_positions) |
 | $x_{(i)}$ | Wartości uporządkowane rosnąco | m³/s | [`non_exceedance_positions`](08-przeplywy-charakterystyczne-nizowki.md#spec-non_exceedance_positions) |
 | $x_i$ | Minima roczne przepływu lub stanu wody | m³/s | [`fisher_tippett_minima`](08-przeplywy-charakterystyczne-nizowki.md#spec-fisher_tippett_minima) |
-| $\xi$ | Parametr położenia | m³/s | [`gev_quantiles`](07-przeplywy-maksymalne.md#spec-gev_quantiles), [`anderson_darling`](07-przeplywy-maksymalne.md#spec-anderson_darling), [`akaike_information_criterion`](07-przeplywy-maksymalne.md#spec-akaike_information_criterion), [`fisher_tippett_minima`](08-przeplywy-charakterystyczne-nizowki.md#spec-fisher_tippett_minima) |
+| $\xi$ | Parametr położenia | m³/s | [`gev_quantiles`](07-przeplywy-maksymalne.md#spec-gev_quantiles), [`anderson_darling`](07-przeplywy-maksymalne.md#spec-anderson_darling), [`akaike_information_criterion`](07-przeplywy-maksymalne.md#spec-akaike_information_criterion), [`quantile_interval_bootstrap`](07-przeplywy-maksymalne.md#spec-quantile_interval_bootstrap), [`quantile_interval_delta`](07-przeplywy-maksymalne.md#spec-quantile_interval_delta), [`fisher_tippett_minima`](08-przeplywy-charakterystyczne-nizowki.md#spec-fisher_tippett_minima) |
 | $\xi$ | Parametr położenia: 0 dla rozkładu logarytmiczno-normalnego, średnia rozkładu Pearsona III, dolne ograniczenie rozkładu Weibulla | m³/s | [`fit_l_moments`](07-przeplywy-maksymalne.md#spec-fit_l_moments), [`fit_moments`](07-przeplywy-maksymalne.md#spec-fit_moments), [`fit_maximum_likelihood`](07-przeplywy-maksymalne.md#spec-fit_maximum_likelihood), [`fit_least_squares`](07-przeplywy-maksymalne.md#spec-fit_least_squares) |
+| $x_i$ | Próba, do której dopasowano rozkład metodą największej wiarygodności: maksima roczne albo minima roczne (extremes minima) | m³/s | [`quantile_interval_delta`](07-przeplywy-maksymalne.md#spec-quantile_interval_delta) |
 | $x_i$ | Próba: maksima lub minima roczne | m³/s | [`sample_moments`](07-przeplywy-maksymalne.md#spec-sample_moments), [`sample_l_moments`](07-przeplywy-maksymalne.md#spec-sample_l_moments) |
 | $x_i$ | Próba: maksima roczne lub dowolna próba z danego rozkładu | m³/s | [`fit_l_moments`](07-przeplywy-maksymalne.md#spec-fit_l_moments), [`fit_moments`](07-przeplywy-maksymalne.md#spec-fit_moments), [`fit_maximum_likelihood`](07-przeplywy-maksymalne.md#spec-fit_maximum_likelihood), [`fit_least_squares`](07-przeplywy-maksymalne.md#spec-fit_least_squares), [`anderson_darling`](07-przeplywy-maksymalne.md#spec-anderson_darling), [`akaike_information_criterion`](07-przeplywy-maksymalne.md#spec-akaike_information_criterion) |
 | $x_i$ | Sumy opadu jednego miesiąca kalendarzowego i jednej skali czasowej, po jednej na każdy rok okresu odniesienia | mm | [`spi_gamma_fit`](11-wskazniki-meteorologiczne.md#spec-spi_gamma_fit) |

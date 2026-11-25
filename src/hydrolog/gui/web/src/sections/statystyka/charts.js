@@ -8,15 +8,30 @@
 // the line styles, and a curve's name holds its method when more than one is drawn (the
 // density and distribution-function charts then read the active curve only). On the
 // probability plot the chosen quantile of the active combination is marked with guides to
-// both axes (none for „brak”). The axis ranges depend on the run alone (`axisRanges`), never
-// on the combinations shown, ticked or active; a curve leaving a frame is clipped at it.
-// Probabilities are drawn in per cent there; F = 1 − p is the only arithmetic of the browser.
+// both axes (none for „brak”), and its confidence interval (ECO-091: the first level Hydrolog
+// computed) is a band under its curve, one band so that none overlap, read by the readout as
+// its two ends. The axis ranges depend on the run alone (`axisRanges`), never on the
+// combinations shown, ticked or active, nor on the band; a curve or a band leaving a frame is
+// clipped at it. Probabilities are drawn in per cent there; F = 1 − p is the only arithmetic
+// of the browser.
 
 import { extent, gumbelDomain, niceDomain } from "../../charts/scale.js";
 import { num } from "../../format.js";
 import { t } from "../../labels/common.js";
 import { statystyka as texts } from "../../labels/statystyka.js";
-import { DISTRIBUTION_CLASS, DISTRIBUTIONS, FIT_METHODS, fitKey, METHOD_CLASS, percentAt, quantileAt, shortNumber, shownFits } from "./state.js";
+import {
+  DISTRIBUTION_CLASS,
+  DISTRIBUTIONS,
+  FIT_METHODS,
+  fitKey,
+  levelPercent,
+  METHOD_CLASS,
+  percentAt,
+  quantileAt,
+  shortNumber,
+  shownFits,
+  shownInterval,
+} from "./state.js";
 
 /**
  * The name of a distribution in the chart's legend.
@@ -177,18 +192,18 @@ export function axisRanges(result, curves) {
 }
 
 /**
- * The legend of a chart: the annual maxima and a key of the colours (the distributions
- * drawn), then on a line of its own a key of the line styles (the fit methods drawn), not an
- * entry per curve.
+ * The legend of a chart: the annual maxima (and the band of an interval) and a key of the
+ * colours (the distributions drawn), then on a line of its own a key of the line styles (the
+ * fit methods drawn), not an entry per curve.
  *
  * @param {object[]} fits the combinations drawn
- * @param {object} maxima the legend item of the annual maxima
+ * @param {object[]} first the legend items before the keys: the annual maxima, the band
  * @returns {object[]} the legend items
  */
-function legendOf(fits, maxima) {
+function legendOf(fits, first) {
   const names = DISTRIBUTIONS.filter((name) => fits.some((fit) => fit.distribution_name === name));
   const methods = FIT_METHODS.filter((method) => fits.some((fit) => fit.fit_method === method));
-  const items = [maxima];
+  const items = [...first];
   if (names.length) {
     items.push({ kind: "text", label: texts.chart.keyDistributions });
     for (const name of names) items.push({ kind: "stroke", cls: DISTRIBUTION_CLASS[name], label: legendName(name) });
@@ -198,6 +213,28 @@ function legendOf(fits, maxima) {
     for (const method of methods) items.push({ kind: "stroke", cls: METHOD_CLASS[method], label: methodLegend(method) });
   }
   return items;
+}
+
+/**
+ * The band of a combination's confidence interval (ECO-091) on the probability plot: its
+ * first computed level, filled between the ends Hydrolog gave on the grid of its quantiles
+ * (an end left out, null, breaks the band), in the distribution's colour.
+ *
+ * @param {object|undefined} fit the combination (of the curves' run, else of the result)
+ * @returns {object|null} the band series, null when the combination has no interval
+ */
+function intervalBand(fit) {
+  const entry = shownInterval(fit);
+  if (!entry) return null;
+  return {
+    id: "interval",
+    kind: "band",
+    cls: DISTRIBUTION_CLASS[fit.distribution_name] || "s4",
+    label: t(texts.chart.interval, { level: levelPercent(entry.confidence_level) }),
+    unit: "m³/s",
+    digits: 1,
+    data: fit.exceedance_probabilities.map((p, index) => [p * 100, entry.ci_lower[index], entry.ci_upper[index]]),
+  };
 }
 
 /**
@@ -225,9 +262,14 @@ export function probabilitySpec({ result, curves, shown, chosen, active, ranges 
       data: result.empirical.exceedance_prob.map((p, index) => [p * 100, result.empirical.values_sorted[index]]),
     },
   ];
+  // The active curve's band follows it, so the readout reads its ends after its value
+  let band = null;
   for (const fit of fits) {
     const data = fit.exceedance_probabilities.map((p, index) => [p * 100, fit.quantiles[index]]).filter(([, q]) => Number.isFinite(q));
     series.push(curve(fit, active, named, { unit: "m³/s", digits: 1, data: clipped(data, low, top) }));
+    if (fitKey(fit) !== active) continue;
+    band = intervalBand(fit);
+    if (band) series.push(band);
   }
   const marks = [];
   const activeFit = chosen === null ? null : result.distributions.find((fit) => fitKey(fit) === active);
@@ -251,7 +293,10 @@ export function probabilitySpec({ result, curves, shown, chosen, active, ranges 
     y: { label: texts.chart.y, unit: "m³/s", min: low, max: top, ticks: Y_TICKS },
     series,
     marks,
-    legend: legendOf(fits, { kind: "points", label: texts.chart.points }),
+    legend: legendOf(fits, [
+      { kind: "points", label: texts.chart.points },
+      ...(band ? [{ kind: "band", cls: band.cls, label: band.label }] : []),
+    ]),
     readout: { series: active },
   };
 }
@@ -369,7 +414,7 @@ export function densitySpec({ result, curves, shown, active, ranges }) {
     x: { label: texts.shape.x, min: left, max: right, ticks: X_TICKS },
     y: { label: texts.shape.densityY, unit: texts.shape.densityUnit, min: low, max: top, ticks: Y_TICKS },
     series,
-    legend: legendOf(fits, { kind: "rug", label: texts.chart.points }),
+    legend: legendOf(fits, [{ kind: "rug", label: texts.chart.points }]),
     readout: { series: active, x: readoutQ, value: (value) => shortNumber(value) },
   };
 }
@@ -404,7 +449,7 @@ export function distributionSpec({ result, curves, shown, active, ranges }) {
     x: { label: texts.shape.x, min: left, max: right, ticks: X_TICKS },
     y: { label: texts.shape.distributionY, min: 0, max: 1, ticks: Y_TICKS },
     series,
-    legend: legendOf(fits, { kind: "points", label: texts.chart.points }),
+    legend: legendOf(fits, [{ kind: "points", label: texts.chart.points }]),
     readout: { series: active, x: readoutQ },
   };
 }

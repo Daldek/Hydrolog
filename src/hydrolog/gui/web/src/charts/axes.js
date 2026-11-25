@@ -32,15 +32,17 @@ const SIZES = {
 const PANEL_GAP = 28;
 
 /**
- * Return a series' points as `{x, y, cls?, label?, sub?, text?}` objects.
+ * Return a series' points as `{x, y, cls?, label?, sub?, text?}` objects (a band's `{x, lo,
+ * hi}`, as the kit's `nogat-chart.js` reads it).
  *
- * @param {object} series a series of the spec; `data` holds `[x, y]` pairs, objects or (a
- *   rug) bare x values
- * @returns {{x: number | string, y: number | string, cls?: string, label?: string, sub?: string, text?: string}[]}
+ * @param {object} series a series of the spec; `data` holds `[x, y]` pairs (a band's
+ *   `[x, lo, hi]`), objects or (a rug) bare x values
+ * @returns {{x: number | string, y?: number | string, lo?: number, hi?: number, cls?: string, label?: string, sub?: string, text?: string}[]}
  */
 export function points(series) {
+  const band = series.kind === "band";
   return (series.data ?? []).map((datum) => {
-    if (Array.isArray(datum)) return { x: datum[0], y: datum[1] };
+    if (Array.isArray(datum)) return band ? { x: datum[0], lo: datum[1], hi: datum[2] } : { x: datum[0], y: datum[1] };
     return typeof datum === "number" ? { x: datum } : { ...datum };
   });
 }
@@ -94,7 +96,8 @@ function extents(spec, band) {
       xs.push(point.x);
       if (width) xs.push(point.x + (series.align === "center" ? width / 2 : width));
       if (series.kind === "bars" && series.align === "center") xs.push(point.x - width / 2);
-      if (series.kind !== "rug") ys[axis].push(point.y);
+      if (series.kind === "band") ys[axis].push(point.lo, point.hi);
+      else if (series.kind !== "rug") ys[axis].push(point.y);
     }
   }
   for (const mark of spec.marks ?? []) {

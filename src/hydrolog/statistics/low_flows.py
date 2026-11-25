@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import math
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Final, NamedTuple
 
@@ -43,7 +43,12 @@ from scipy.stats import genextreme, kstest
 
 from hydrolog._formulas import checked_inputs, checked_outputs
 from hydrolog._serialization import JsonResultMixin
-from hydrolog._warnings import IncompleteYears, NegativeQuantiles, SmallSample
+from hydrolog._warnings import (
+    IncompleteYears,
+    IntervalNotComputed,
+    NegativeQuantiles,
+    SmallSample,
+)
 from hydrolog.exceptions import CalculationError, InvalidParameterError
 from hydrolog.nogat_formulas import (
     Constraint,
@@ -84,6 +89,13 @@ from hydrolog.statistics.frequency import (
     _not_constant,
     fit_maximum_likelihood,
     gev_quantiles,
+)
+from hydrolog.statistics.intervals import (
+    ConfidenceInterval,
+    confidence_levels,
+    interval_entries,
+    intervals_not_computed,
+    quantile_interval_delta,
 )
 
 _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0])
@@ -132,6 +144,12 @@ class LowFlowFrequencyResult(JsonResultMixin):
         Kolmogorov-Smirnov *p*-value.
     ks_valid : bool
         Always ``False`` — parameters estimated from the same data.
+    intervals : list of ConfidenceInterval
+        The interval of ``quantiles`` at each confidence level asked, in the order
+        asked (ECO-091), by the delta method of the GEV of the negated minima (spec
+        ``quantile_interval_delta``, extremes ``minima``); a bound of a discharge
+        below 0 is NaN; not computed (null, the warning ``interval_not_computed``,
+        ``nonregular_fit``) where the likelihood is not regular.
     """
 
     distribution_name: str
@@ -142,6 +160,7 @@ class LowFlowFrequencyResult(JsonResultMixin):
     ks_statistic: float
     ks_p_value: float
     ks_valid: bool
+    intervals: list[ConfidenceInterval] = field(default_factory=list)
 
 
 @dataclass
@@ -225,12 +244,16 @@ class LowFlowAnalysis:
     return_periods : NDArray[np.float64] or None, optional
         Return periods for quantile estimation.  Defaults to
         ``[2, 5, 10, 20, 50, 100, 500, 1000]``.
+    confidence_level : float or sequence of float, optional
+        The confidence level, or distinct levels, of the intervals of the low-flow
+        quantiles, each in (0, 1), by default 0.95 (``intervals`` of
+        :meth:`fit_fisher_tippett`).
 
     Raises
     ------
     InvalidParameterError
         If *daily_flows* is empty or lengths of *daily_flows* and *dates*
-        do not match.
+        do not match, or a confidence level is not in (0, 1) or is given twice.
 
     Notes
     -----
@@ -259,6 +282,8 @@ class LowFlowAnalysis:
         daily_flows: NDArray[np.float64],
         dates: NDArray[np.datetime64],
         return_periods: NDArray[np.float64] | None = None,
+        *,
+        confidence_level: float | Sequence[float] = 0.95,
     ) -> None:
         daily_flows = np.asarray(daily_flows, dtype=np.float64)
         dates = np.asarray(dates)
@@ -278,6 +303,7 @@ class LowFlowAnalysis:
             if return_periods is not None
             else _DEFAULT_RETURN_PERIODS.copy()
         )
+        self._levels = confidence_levels(confidence_level)
 
     # ------------------------------------------------------------------
     # Public methods
@@ -372,8 +398,9 @@ class LowFlowAnalysis:
         -----
         UserWarning
             If incomplete years were skipped or fewer than 10 complete years are
-            available (see :meth:`annual_minima`), or quantiles are left out as
-            negative discharges (``negative_quantiles``).
+            available (see :meth:`annual_minima`), quantiles are left out as
+            negative discharges (``negative_quantiles``), or an interval or bound is
+            not computed (``interval_not_computed``).
 
         Notes
         -----
@@ -397,9 +424,19 @@ class LowFlowAnalysis:
         low flow -0.047 m³/s instead of 0.017 for 20 minima of a small stream). For
         short records (a few tens of years) the shape, and with it the quantiles of
         rare droughts, is very uncertain.
+
+        The interval of the quantiles at each confidence level (``intervals``,
+        ECO-091) is the delta method of the GEV of the negated minima with its
+        observed information (spec ``quantile_interval_delta``, extremes
+        ``minima``): a bound below 0 is NaN (``below_physical_range``), and a fit
+        whose likelihood is not regular (scipy's c of 0.5 or more) has none
+        (``nonregular_fit``).
         """
         return _fisher_tippett(
-            self.annual_minima(), self._return_periods, discharge=True
+            self.annual_minima(),
+            self._return_periods,
+            discharge=True,
+            levels=self._levels,
         )
 
     def empirical_frequency(self, method: str = "weibull") -> EmpiricalFrequency:
@@ -606,6 +643,7 @@ def fit_fisher_tippett_minima(
     return_periods: NDArray[np.float64] | None = None,
     *,
     discharge: bool = True,
+    confidence_level: float | Sequence[float] = 0.95,
 ) -> LowFlowFrequencyResult:
     """Fit the Fisher-Tippett distribution of smallest values to annual minima.
 
@@ -625,24 +663,32 @@ def fit_fisher_tippett_minima(
         quantile below 0 is then NaN with the warning ``negative_quantiles``. False
         for a variable without that limit, such as a stage, whose zero is the
         gauge's.
+    confidence_level : float or sequence of float, optional
+        The confidence level, or distinct levels, of the intervals of the quantiles,
+        each in (0, 1), by default 0.95 (see
+        :meth:`LowFlowAnalysis.fit_fisher_tippett`).
 
     Returns
     -------
     LowFlowFrequencyResult
-        The fitted parameters, the low-flow quantiles and the K-S statistics.
+        The fitted parameters, the low-flow quantiles, their intervals and the K-S
+        statistics.
 
     Raises
     ------
     InvalidParameterError
-        If a minimum is not a finite number, or the minima are refused by the spec
+        If a minimum is not a finite number, a confidence level is not in (0, 1) or
+        is given twice, or the minima are refused by the spec
         ``fisher_tippett_minima`` (see :meth:`LowFlowAnalysis.fit_fisher_tippett`).
 
     Warns
     -----
     UserWarning
-        If fewer than 10 minima are given (``small_sample``), or quantiles are left
-        out as negative discharges (``negative_quantiles``).
+        If fewer than 10 minima are given (``small_sample``), quantiles are left
+        out as negative discharges (``negative_quantiles``), or an interval or bound
+        is not computed (``interval_not_computed``).
     """
+    levels = confidence_levels(confidence_level)
     sample = np.asarray(minima, dtype=np.float64)
     if not np.all(np.isfinite(sample)):
         raise InvalidParameterError(
@@ -659,18 +705,52 @@ def fit_fisher_tippett_minima(
         if return_periods is not None
         else _DEFAULT_RETURN_PERIODS.copy()
     )
-    return _fisher_tippett(sample, periods, discharge=discharge)
+    return _fisher_tippett(sample, periods, discharge=discharge, levels=levels)
 
 
 def _fisher_tippett(
-    minima: NDArray[np.float64], periods: NDArray[np.float64], *, discharge: bool
+    minima: NDArray[np.float64],
+    periods: NDArray[np.float64],
+    *,
+    discharge: bool,
+    levels: tuple[float, ...],
 ) -> LowFlowFrequencyResult:
-    """Return the fit of :func:`fit_fisher_tippett_minima`, with its K-S statistic."""
-    fit = fisher_tippett_minima(minima, periods, "discharge" if discharge else "stage")
+    """Return the fit of :func:`fit_fisher_tippett_minima`, its K-S and intervals."""
+    variable = "discharge" if discharge else "stage"
+    fit = fisher_tippett_minima(minima, periods, variable)
     fitted = genextreme(fit.shape, loc=0.0 - fit.loc, scale=fit.scale)
     # K-S test (informational; invalid when parameters estimated from data).
     # The statistic is the same for a sample and its mirror image.
     ks_stat, ks_pval = kstest(-np.asarray(minima, dtype=np.float64), fitted.cdf)
+    try:
+        delta = quantile_interval_delta(
+            minima,
+            "gev",
+            fit.shape,
+            fit.loc,
+            fit.scale,
+            periods,
+            levels,
+            variable,
+            "minima",
+        )
+        intervals = interval_entries(levels, "delta", delta.lower, delta.upper)
+    except InvalidParameterError as exc:
+        if exc.details.get("constraint") != "regular_likelihood":
+            raise
+        warnings.warn(
+            IntervalNotComputed(
+                reason="nonregular_fit",
+                confidence_levels=list(levels),
+                distribution="fisher_tippett",
+                fit_method="mle",
+                return_periods=None,
+                complete_years=None,
+                required_years=None,
+            ),
+            stacklevel=3,
+        )
+        intervals = intervals_not_computed(levels)
     return LowFlowFrequencyResult(
         distribution_name="fisher_tippett",
         parameters={"shape": fit.shape, "loc": fit.loc, "scale": fit.scale},
@@ -680,6 +760,7 @@ def _fisher_tippett(
         ks_statistic=float(ks_stat),
         ks_p_value=float(ks_pval),
         ks_valid=False,
+        intervals=intervals,
     )
 
 

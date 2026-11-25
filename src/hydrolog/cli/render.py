@@ -14,6 +14,10 @@ The summary is *generic*: it walks the JSON form of the envelope
   :data:`RECORD_BLOCKS` blocks are shown;
 * several long numeric arrays of equal length in one object (a time axis and its
   values) become one table of the first :data:`ARRAY_ROWS` rows;
+* an object with ``intervals`` (the confidence intervals of its estimates, one entry
+  per level) shows the bounds of the first level beside its ``quantiles`` or
+  ``annual_median_values`` (``1.19 [0.996–1.38]``, or ``ci_lower``/``ci_upper``
+  columns of their table) and the levels with their methods in one line;
 * the ``schema`` of the result is not shown, its ``files`` come last as the written
   files, after the notices; the lines of the data providers (``attribution`` and
   ``terms_notice`` of the envelope, Nogat DEV-20.5) come before the notices, verbatim
@@ -128,6 +132,22 @@ def _is_long_numbers(value: object) -> bool:
         and all(item is None or _is_number(item) for item in items)
         and any(_is_number(item) for item in items)
     )
+
+
+_ESTIMATES: Final = ("quantiles", "annual_median_values")
+"""Fields whose bounds ``intervals`` hold, in the order they are looked for."""
+
+
+def _intervals_of(value: object) -> Sequence[Mapping[str, Any]] | None:
+    """Return ``value`` if it is a list of interval entries, else ``None``."""
+    items = _as_list(value)
+    if not items or not all(
+        isinstance(item, Mapping)
+        and {"confidence_level", "ci_method", "ci_lower", "ci_upper"} <= set(item)
+        for item in items
+    ):
+        return None
+    return items
 
 
 def _limit(total: int, limit: int) -> int:
@@ -362,6 +382,52 @@ class _Renderer:
             lines.append(self.more(len(items) - len(shown), indent))
         return lines
 
+    def with_intervals(self, data: Mapping[str, Any]) -> Mapping[str, Any]:
+        """Show the bounds of the first level of ``intervals`` beside the estimates.
+
+        An inline list of estimates becomes ``estimate [lower–upper]`` items (the
+        estimate alone where a bound is null), a long one gets ``ci_lower`` and
+        ``ci_upper`` columns in its table; ``intervals`` itself becomes one line of
+        the levels and their methods.
+        """
+        intervals = _intervals_of(data.get("intervals"))
+        if intervals is None:
+            return data
+        first = intervals[0]
+        lower, upper = _as_list(first["ci_lower"]), _as_list(first["ci_upper"])
+        key = next((name for name in _ESTIMATES if _as_list(data.get(name))), None)
+        estimates = _as_list(data.get(key)) if key else None
+        shown: dict[str, Any] = {}
+        for name, value in data.items():
+            if name == "intervals":
+                value = ", ".join(
+                    f"{self.scalar(entry['confidence_level'])} "
+                    + self.scalar(entry["ci_method"])
+                    for entry in intervals
+                )
+            elif (
+                name == key
+                and estimates is not None
+                and lower is not None
+                and upper is not None
+                and len(lower) == len(upper) == len(estimates)
+            ):
+                if _is_long_numbers(estimates):
+                    shown[name] = value
+                    shown["ci_lower"], shown["ci_upper"] = lower, upper
+                    continue
+                value = [
+                    self.scalar(estimate)
+                    if low is None or high is None
+                    else (
+                        f"{self.scalar(estimate)} "
+                        f"[{self.scalar(low)}–{self.scalar(high)}]"
+                    )
+                    for estimate, low, high in zip(estimates, lower, upper, strict=True)
+                ]
+            shown[name] = value
+        return shown
+
     def mapping(
         self,
         data: Mapping[str, Any],
@@ -371,6 +437,7 @@ class _Renderer:
     ) -> list[str]:
         """Lines of an object: aligned scalars, nested blocks and tables."""
         unit_of = units or {}
+        data = self.with_intervals(data)
         groups = self.parallel_arrays(data)
         first = {group[0]: group for group in groups}
         tabled = {key for group in groups for key in group}

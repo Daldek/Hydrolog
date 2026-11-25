@@ -4,9 +4,11 @@
  * notice without them (`route network` gives its nodes' notices only `node_id`), may
  * have partial forms for a notice that lacks some of them (a range with one end, whose
  * other end is null: the first form whose values are all there is used), may name the
- * codes a detail holds (`names`: detail -> code -> Polish name), and may word a list
+ * codes a detail holds (`names`: detail -> code -> Polish name), may word a list
  * detail item by item (`each`: detail -> the text of one item, filled with the items at
- * its place in the lists of details of that length). A null detail counts as absent. A
+ * its place in the lists of details of that length), and may be worded by its reason
+ * (`reasons`: the code of `details.reason` -> the forms of that reason, over the code's
+ * own, which word a reason the GUI does not know). A null detail counts as absent. A
  * contract test fails for a code without a text here; a code the GUI does not know shows
  * the English message marked „(EN)”.
  */
@@ -169,6 +171,34 @@ export const notices = {
       text: "Dopasowany rozkład Fishera–Tippetta osiąga przepływ 0 raz na {zero_return_period} lat: kwantyle okresów {return_periods} lat byłyby ujemne i pominięto je.",
       plain: "Część kwantyli niżówek byłaby ujemnym przepływem: pominięto je.",
     },
+    // ECO-091: an interval of an estimate, or a bound of it, not computed (null), by its reason
+    interval_not_computed: {
+      text: "Przedziału ufności przy poziomie ufności {confidence_levels} nie wyznaczono.",
+      plain: "Przedziału ufności nie wyznaczono.",
+      names: { ...FREQUENCY_NAMES, distribution: { ...FREQUENCY_NAMES.distribution, fisher_tippett: "Fishera–Tippetta" } },
+      reasons: {
+        fit_method: {
+          text: "Rozkład {distribution} dopasowany metodą {fit_method}: dla metody momentów i najmniejszych kwadratów przedział ufności nie jest wyznaczany.",
+          plain: "Dla metody momentów i najmniejszych kwadratów przedział ufności nie jest wyznaczany.",
+        },
+        bootstrap_failures: {
+          text: "Rozkład {distribution} dopasowany metodą {fit_method}: przedziału ufności nie wyznaczono, bo za mało prób bootstrapu parametrycznego dało się dopasować ponownie.",
+          plain: "Przedziału ufności nie wyznaczono: za mało prób bootstrapu parametrycznego dało się dopasować ponownie.",
+        },
+        nonregular_fit: {
+          text: "Rozkład {distribution} dopasowany metodą {fit_method}: przedziału ufności nie wyznaczono, bo wiarygodność nie jest regularna w oszacowaniu (kształt GEV ξ ≤ −0,5 albo macierz informacji, która nie jest dodatnio określona) i metoda delta go nie daje.",
+          plain: "Przedziału ufności nie wyznaczono: wiarygodność nie jest regularna w oszacowaniu, więc metoda delta go nie daje.",
+        },
+        too_few_complete_years: {
+          text: "Mediana roczna krzywej czasu trwania: pełnych lat hydrologicznych jest {complete_years}, a jej przedział ufności przy poziomie ufności {confidence_levels} wymaga {required_years}: nie wyznaczono go.",
+          plain: "Za mało pełnych lat hydrologicznych na przedział ufności mediany rocznej krzywej czasu trwania: nie wyznaczono go.",
+        },
+        below_physical_range: {
+          text: "Rozkład {distribution} dopasowany metodą {fit_method}: granice przedziału ufności okresów {return_periods} lat przy poziomie ufności {confidence_levels} byłyby ujemne, a przepływ ani opad nie bywa ujemny, więc je pominięto.",
+          plain: "Część granic przedziału ufności byłaby ujemnym przepływem albo opadem: pominięto je.",
+        },
+      },
+    },
     homogeneity_rejected: {
       text: "Testy odrzucające jednorodność ciągu przy α = {alpha}: {tests}.",
       plain: "Test odrzuca jednorodność ciągu.",
@@ -295,10 +325,13 @@ function named(names, value) {
  */
 export function describeNotice(notice) {
   const code = notice && notice.code;
-  const entry = code && Object.hasOwn(notices.codes, code) ? notices.codes[code] : null;
+  const own = code && Object.hasOwn(notices.codes, code) ? notices.codes[code] : null;
   const message = (notice && notice.message) || "";
-  if (!entry) return { text: `${message} ${common.english}`.trim(), english: true };
+  if (!own) return { text: `${message} ${common.english}`.trim(), english: true };
   const details = (notice && notice.details) || {};
+  // A notice worded by its reason takes that reason's forms; an unknown reason, the code's own
+  const reasons = (typeof own === "object" && own.reasons) || {};
+  const entry = typeof details.reason === "string" && Object.hasOwn(reasons, details.reason) ? { ...own, ...reasons[details.reason] } : own;
   const values = { message };
   const names = (typeof entry === "object" && entry.names) || {};
   for (const [key, value] of Object.entries(details)) {

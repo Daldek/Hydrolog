@@ -15,6 +15,13 @@ takes are Tier B (:data:`TIER_B`); ``docs/FORMULAS.md`` shows the equations, ran
 and sources. Searcy (1959) and WMO-No. 1029 (sect. 6.1) give the days of a class
 their share i/N of the record; the positions of the curve are m / (n + 1).
 
+Beside that curve of the whole period, the median annual curve of Vogel and Fennessey
+(1994) takes the curve of each complete hydrological year and, per percentage, the
+median of the annual values, with its interval: the pair of their order statistics
+whose binomial coverage is at least the confidence level asked, the years taken as
+independent (:data:`DURATION_CURVE_ANNUAL_MEDIAN_INTERVAL`, spec
+``duration_curve_annual_median_interval``; Helsel and Hirsch, 2002, sect. 3.3.1).
+
 Examples
 --------
 The positions of four values are 20, 40, 60 and 80 %; between them the values are
@@ -28,6 +35,13 @@ A day without a value is left out:
 >>> exceedance_values([10.0, float("nan"), 30.0], [50.0])
 array([20.])
 
+The median of six annual values and its interval at the level 0.95: the smallest and
+the largest of them, whose binomial coverage is 1 - 2 / 2**6 = 0.96875:
+
+>>> found = annual_median_interval([[3.0], [1.0], [2.0], [6.0], [5.0], [4.0]], [0.95])
+>>> found.median.tolist(), found.lower.tolist(), found.upper.tolist()
+([3.5], [[1.0]], [[6.0]])
+
 References
 ----------
 Searcy, J. K. (1959): Flow-duration curves. Manual of Hydrology, Part 2. USGS
@@ -38,22 +52,26 @@ Vogel, R. M. & Fennessey, N. M. (1994): Flow-duration curves. I: New interpretat
 NIST/SEMATECH (2012): e-Handbook of Statistical Methods, section 7.2.6.2,
     Percentiles.
 Byczkowski, A. (1996): Hydrologia, t. 1. Wydawnictwo SGGW, Warszawa.
+Helsel, D. R. & Hirsch, R. M. (2002): Statistical Methods in Water Resources. USGS
+    Techniques of Water-Resources Investigations, book 4, chapter A3.
 """
 
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
 from fractions import Fraction
-from typing import Final, Literal
+from typing import Final, Literal, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._formulas import checked_inputs, checked_outputs
 from hydrolog._serialization import JsonResultMixin
+from hydrolog._warnings import IntervalNotComputed
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.nogat_formulas import (
     Constraint,
@@ -72,17 +90,32 @@ from hydrolog.nogat_formulas import (
     Variable,
     assert_within,
 )
-from hydrolog.statistics._hydrological_year import hydrological_year
+from hydrolog.statistics._hydrological_year import (
+    FIRST_MONTH,
+    days_in_hydrological_year,
+    hydrological_year,
+)
+from hydrolog.statistics.intervals import (
+    ConfidenceInterval,
+    interval_entries,
+    intervals_not_computed,
+)
+from hydrolog.statistics.intervals import (
+    confidence_levels as asked_levels,
+)
 
 __all__ = [
     "CURVE_PERCENTS",
     "DEFAULT_PERCENTS",
+    "DURATION_CURVE_ANNUAL_MEDIAN_INTERVAL",
     "EXCEEDANCE_VALUES",
     "SPECS",
     "TIER_B",
+    "AnnualMedianInterval",
     "DurationClass",
     "DurationCurve",
     "ModalClass",
+    "annual_median_interval",
     "duration_curve",
     "exceedance_values",
 ]
@@ -454,15 +487,19 @@ EXCEEDANCE_VALUES: Final = FormulaSpec(
         "the values are those of one station over one period: the curve describes "
         "that period (the period-of-record curve of Vogel and Fennessey), not a "
         "climate",
-        "no independence of the days is needed: the curve is descriptive, and its "
-        "confidence intervals (Vogel and Fennessey, sect. 5) are not computed",
+        "no independence of the days is needed: the curve is descriptive and has no "
+        "interval; the median annual curve beside it, whose years are taken as "
+        "independent, has one (spec duration_curve_annual_median_interval)",
     ),
     traps={
         "gap_propagation": "type case values-nan_element, limit constant_series and "
         "test_gaps_are_left_out: a day without a value is left out, never a NaN of the "
         "curve",
     },
-    reference_cases=("tests/fixtures/formulas/daily-cases.json",),
+    reference_cases=(
+        "tests/fixtures/formulas/daily-cases.json",
+        "tests/fixtures/formulas/camels-pl-cases.json",
+    ),
     oracles=(
         Oracle(
             kind="exact",
@@ -485,9 +522,6 @@ EXCEEDANCE_VALUES: Final = FormulaSpec(
         ),
     ),
 )
-
-SPECS: Final[tuple[FormulaSpec, ...]] = (EXCEEDANCE_VALUES,)
-"""The Tier A formulas of the module."""
 
 
 def exceedance_values(
@@ -521,6 +555,588 @@ def exceedance_values(
     return checked_outputs(
         EXCEEDANCE_VALUES, {"exceedance_values": _exceedance(x)}
     ).array("exceedance_values")
+
+
+# --- the median annual curve (spec duration_curve_annual_median_interval) -------------
+
+_VF94_ANNUAL: Final = Source(
+    citation=_VF94.citation,
+    locator="pp. 494-497: 'Annual Interpretation of Flow-Duration Curves', the FDC of "
+    "each of the n years from its own daily flows by Q_p,2 and, per exceedance "
+    "probability, the median of the n annual values, the median annual FDC (p. 494), "
+    "the distribution of daily flow in a typical year (p. 496); 'Confidence Intervals "
+    "for Quantiles of Flow-Duration Curves', the n values Q_p(i) treated as a random "
+    "sample (p. 496) and their interval, eqs. (10a)-(10b) (p. 497)",
+    url=_VF94.url,
+)
+_HELSEL_HIRSCH: Final = Source(
+    citation="Helsel, D.R. and Hirsch, R.M. (2002). Statistical Methods in Water "
+    "Resources. Techniques of Water-Resources Investigations of the U.S. Geological "
+    "Survey, book 4, chapter A3 (superseded by Techniques and Methods 4-A3, 2020)",
+    locator="sect. 3.3.1, pp. 70-72, eqs. 3.2-3.3: the nonparametric interval of the "
+    "median between the R_l-th observations from each end, R_l = x' + 1 and R_u = "
+    "n - x', x' the critical value of the binomial distribution with p = 0.5 at "
+    "alpha/2 (table B5); example 2, 25 arsenic concentrations: 4.8 <= C_0.5 <= 110 "
+    "at alpha = 0.044",
+    url="https://pubs.usgs.gov/twri/twri4a3/twri4a3.pdf",
+)
+_ECO_091: Final = Source(
+    citation="Nogat (2026). Decisions of the ecosystem, ECO-091: Intervals beside "
+    "point estimates, computed by Hydrolog, shown by Obserwator",
+    locator="two-sided and central at each confidence_level asked; Obserwator stores "
+    "0.95 and 0.68",
+    url="https://github.com/Daldek/Nogat/blob/main/standards/DECISIONS.md",
+)
+
+
+def _pair_rank(count: int, level: float) -> int:
+    """Return the k of the pair Q(k), Q(N + 1 - k) of N annual values at a level c.
+
+    The largest k >= 1 whose coverage 1 - 2 F(k - 1) is at least c, F the binomial
+    distribution function of N trials with probability 1/2, or 0 when even k = 1
+    falls short. Exact in integers: c is a / b, as every float is, and the coverage
+    is at least c when 2 b S <= (b - a) 2**N, S = C(N, 0) + ... + C(N, k - 1).
+    """
+    share = Fraction(level)
+    allowed = (share.denominator - share.numerator) << count
+    term, tail, rank = 1, 0, 0  # C(N, k - 1), S and the k found
+    for k in range(1, count // 2 + 1):
+        tail += term
+        if 2 * share.denominator * tail > allowed:
+            break
+        rank = k
+        term = term * (count - k + 1) // k
+    return rank
+
+
+def _years_needed(level: float) -> int:
+    """Return the fewest years whose extreme pair, k = 1, reaches the level c.
+
+    The smallest N with 1 - 2**(1 - N) >= c, exact in integers as in
+    :func:`_pair_rank`; one year has no pair.
+    """
+    share = Fraction(level)
+    count = 2
+    while 2 * share.denominator > (share.denominator - share.numerator) << count:
+        count += 1
+    return count
+
+
+_ORACLE_SEED: Final = 20261125
+_EXACT_COVERAGES: Final = 53
+"""Up to this many years every coverage, a multiple of 2**(1 - N), is a float."""
+
+
+def _exact_ranks(count: int, levels: Sequence[float]) -> list[int]:
+    """Return per level the oracle's k at N years, 0 where no pair reaches it.
+
+    The pair Q(k), Q(N + 1 - k) holds the median when from k to N - k of the N
+    values lie below it, B ~ Bin(N, 1/2): its coverage is the middle terms of the
+    binomial distribution summed as fractions, and k the largest whose coverage is
+    at least c.
+    """
+    whole = 2**count
+    inside = {
+        k: Fraction(sum(math.comb(count, j) for j in range(k, count - k + 1)), whole)
+        for k in range(1, count // 2 + 1)
+    }
+    return [
+        max((k for k, held in inside.items() if held >= Fraction(level)), default=0)
+        for level in levels
+    ]
+
+
+def _levels_to_try(count: int) -> list[float]:
+    """Return usual levels and, up to 53 years, each coverage and the float above it."""
+    levels = {0.5, 0.68, 0.8, 0.9, 0.95, 0.99, 0.999}
+    if count <= _EXACT_COVERAGES:
+        whole = 2**count
+        for k in range(1, count // 2 + 1):
+            middle = sum(math.comb(count, j) for j in range(k, count - k + 1))
+            coverage = float(Fraction(middle, whole))
+            levels |= {coverage, math.nextafter(coverage, 1.0)}
+    return sorted(levels)
+
+
+def _binomial_pairs(run: Callable[..., Values]) -> None:
+    """Assert the pairs of 1 to 200 years against the binomial coverage in fractions."""
+    order = np.random.default_rng(_ORACLE_SEED)
+    for count in (*range(1, 61), *range(61, 200, 13), 200):
+        ranks = order.permutation(count) + 1.0  # the k-th smallest value is k
+        levels = _levels_to_try(count)
+        out = run(annual_values=ranks[:, np.newaxis], confidence_levels=levels)
+        pairs = _exact_ranks(count, levels)
+        reason = (
+            "the k-th smallest of the values 1 to N is k: the bounds are the ranks "
+            "that the binomial coverage in exact rational arithmetic chooses"
+        )
+        assert_within(
+            out.array("lower")[:, 0],
+            [float(k) if k else math.nan for k in pairs],
+            abs=0.0,
+            reason=reason,
+        )
+        assert_within(
+            out.array("upper")[:, 0],
+            [float(count + 1 - k) if k else math.nan for k in pairs],
+            abs=0.0,
+            reason=reason,
+        )
+        assert_within(
+            out.array("median"),
+            [(count + 1) / 2],
+            abs=0.0,
+            reason="the middle rank, or the mean of the two middle ones: a half",
+        )
+
+
+_FEWEST_YEARS: Final = ((0.95, 6), (0.9, 5), (0.68, 3))
+"""Levels and the fewest years whose smallest and largest values reach them."""
+
+
+def _fewest_years(run: Callable[..., Values]) -> None:
+    """Assert that a level has bounds from its fewest years on and none before."""
+    for level, fewest in _FEWEST_YEARS:
+        for count in (fewest - 1, fewest):
+            out = run(
+                annual_values=[[float(year)] for year in range(count, 0, -1)],
+                confidence_levels=[level],
+            )
+            reached = count == fewest
+            reason = "values of the sample, or a gap where the years are too few"
+            assert_within(
+                out.array("lower"),
+                [[1.0 if reached else math.nan]],
+                abs=0.0,
+                reason=reason,
+            )
+            assert_within(
+                out.array("upper"),
+                [[float(count) if reached else math.nan]],
+                abs=0.0,
+                reason=reason,
+            )
+
+
+def _mirrored_years(x: Values) -> dict[str, object]:
+    return {
+        "annual_values": -x.array("annual_values"),
+        "confidence_levels": x.array("confidence_levels"),
+    }
+
+
+_ORDER_FREE: Final = Tolerance(
+    abs=0.0,
+    reason="the order statistics and the halves of the middle ones do not depend on "
+    "the order of the years or of the levels",
+)
+
+DURATION_CURVE_ANNUAL_MEDIAN_INTERVAL: Final = FormulaSpec(
+    name="duration_curve_annual_median_interval",
+    title="Median annual flow-duration curve and its confidence interval by order "
+    "statistics (binomial coverage, the years independent)",
+    function="hydrolog.statistics.duration.annual_median_interval",
+    family="statistic",
+    equation=(
+        "Q_p(1) <= ... <= Q_p(N) the N annual values of a percentage p in order; "
+        "their median Q_p,0.5 = Q_p((N + 1) / 2) for N odd, (Q_p(N / 2) + "
+        "Q_p(N / 2 + 1)) / 2 for N even; per confidence level c the bounds Q_p(k) and "
+        "Q_p(N + 1 - k) with the largest k >= 1 such that 1 - 2 F(k - 1) >= c, F(j) "
+        "the sum of C(N, i) 2^-N for i = 0 to j; without such k no bounds"
+    ),
+    latex=(
+        r"Q_{p,0.5} = \tfrac{1}{2}\bigl(Q_{p,(\lfloor (N+1)/2 \rfloor)} + "
+        r"Q_{p,(\lceil (N+1)/2 \rceil)}\bigr),\quad \bigl[Q_{p,(k)},\ "
+        r"Q_{p,(N+1-k)}\bigr],\quad k = \max\Bigl\{k \ge 1 : 1 - 2\sum_{j=0}^{k-1}"
+        r"\binom{N}{j}\,2^{-N} \ge c\Bigr\}"
+    ),
+    variables=(
+        Variable(
+            name="annual_values",
+            symbol="Q_p(i)",
+            unit="m3/s",
+            kind="real_array",
+            description="The values of the annual curves: a row per complete "
+            "hydrological year i, in any order, a column per exceedance percentage p "
+            "(Q_p(i) of Vogel and Fennessey, each from the days of its year).",
+            physical=Range(
+                test_low=-1.0e6, test_high=1.0e6, test_reason=_ANY_VALUE_REASON
+            ),
+            applicability="unstated",
+            typical=Range(low=1.24, high=522.0, source=_KLODZKO),
+            dims=2,
+        ),
+        Variable(
+            name="confidence_levels",
+            symbol="c",
+            unit="-",
+            kind="real_array",
+            description="Confidence levels, distinct: each interval is two-sided and "
+            "central, each tail at most (1 - c) / 2.",
+            physical=Range(
+                low=0.0, high=1.0, low_inclusive=False, high_inclusive=False
+            ),
+            applicability="unstated",
+            typical=Range(low=0.68, high=0.95, source=_ECO_091),
+        ),
+    ),
+    outputs=(
+        Output(
+            name="median",
+            unit="m3/s",
+            kind="real_array",
+            symbol="Q_{p,0.5}",
+            description="The median annual curve: per percentage the median of the N "
+            "annual values, in the unit of the series.",
+            physical=Range(),
+        ),
+        Output(
+            name="lower",
+            unit="m3/s",
+            kind="real_array",
+            symbol="Q_{p,(k)}",
+            description="The lower bound of each median, a row per level in the order "
+            "given: the k-th smallest annual value; a gap where N years cannot reach "
+            "the level.",
+            physical=Range(),
+            gaps_allowed=True,
+        ),
+        Output(
+            name="upper",
+            unit="m3/s",
+            kind="real_array",
+            symbol="Q_{p,(N+1-k)}",
+            description="The upper bound: the k-th largest annual value; a gap as the "
+            "lower.",
+            physical=Range(),
+            gaps_allowed=True,
+        ),
+    ),
+    sources=(_VF94_ANNUAL, _HELSEL_HIRSCH),
+    constraints=(
+        Constraint(
+            name="distinct_levels",
+            cls="precondition",
+            check=lambda x: (
+                np.unique(x.array("confidence_levels")).size
+                == x.array("confidence_levels").size
+            ),
+            text="the confidence levels are distinct",
+            source=_ECO_091,
+            satisfied={"confidence_levels": [0.95, 0.68]},
+            violated={"confidence_levels": [0.95, 0.95]},
+        ),
+    ),
+    properties=Properties(
+        units="homogeneous",
+        monotonic={"annual_values": 1},
+        scalings=(
+            Scaling(
+                name="unit_of_the_series",
+                inputs={"annual_values": 1.0},
+                outputs={"median": 1.0, "lower": 1.0, "upper": 1.0},
+                tolerance=_EXACT_SCALING,
+            ),
+        ),
+        symmetries=(
+            Symmetry(
+                name="mirror",
+                text="the negated values give the negated median and the negated "
+                "bounds swapped: the k-th smallest of them is minus the k-th largest",
+                inputs=_mirrored_years,
+                outputs=lambda out: {
+                    "median": -out.array("median"),
+                    "lower": -out.array("upper"),
+                    "upper": -out.array("lower"),
+                },
+                tolerance=Tolerance(
+                    abs=0.0,
+                    reason="negation is exact and rounding to nearest is symmetric "
+                    "about zero",
+                ),
+            ),
+            Symmetry(
+                name="order_of_the_years",
+                text="the years in reverse order give the same median and bounds",
+                inputs=lambda x: {
+                    "annual_values": x.array("annual_values")[::-1],
+                    "confidence_levels": x.array("confidence_levels"),
+                },
+                outputs=lambda out: {
+                    "median": out.array("median"),
+                    "lower": out.array("lower"),
+                    "upper": out.array("upper"),
+                },
+                tolerance=_ORDER_FREE,
+            ),
+            Symmetry(
+                name="order_of_the_levels",
+                text="the levels in reverse order give the rows of the bounds in "
+                "reverse order",
+                inputs=lambda x: {
+                    "annual_values": x.array("annual_values"),
+                    "confidence_levels": x.array("confidence_levels")[::-1],
+                },
+                outputs=lambda out: {
+                    "median": out.array("median"),
+                    "lower": out.array("lower")[::-1],
+                    "upper": out.array("upper")[::-1],
+                },
+                tolerance=_ORDER_FREE,
+            ),
+        ),
+        limits=(
+            Limit(
+                name="exact_binomial",
+                text="the bounds of every N from 1 to 60 years and of twelve from 61 "
+                "to 200 are the order statistics that the binomial coverage in exact "
+                "rational arithmetic chooses, at usual levels, at levels equal to a "
+                "coverage and at the float above each",
+                check=_binomial_pairs,
+            ),
+            Limit(
+                name="fewest_years",
+                text="a level has bounds from the fewest years whose smallest and "
+                "largest values reach it on: 6 at c = 0.95, 5 at 0.90, 3 at 0.68",
+                check=_fewest_years,
+            ),
+            Limit(
+                name="too_few_years",
+                text="five years reach 0.90 and 0.68 with their smallest and largest "
+                "values, not 0.95: the rows of that level alone are gaps",
+                inputs={
+                    "annual_values": [[2.0], [5.0], [1.0], [4.0], [3.0]],
+                    "confidence_levels": [0.95, 0.9, 0.68],
+                },
+                expected={
+                    "median": [3.0],
+                    "lower": [[math.nan], [1.0], [1.0]],
+                    "upper": [[math.nan], [5.0], [5.0]],
+                },
+                tolerance=Tolerance(
+                    abs=0.0, reason="values of the sample, not computed"
+                ),
+            ),
+            Limit(
+                name="median_of_an_even_count",
+                text="the median of an even count is the mean of the two middle "
+                "values, Q_0.5,2 of Vogel and Fennessey's eq. (3)",
+                inputs={
+                    "annual_values": [
+                        [4.0, 40.0],
+                        [1.0, 10.0],
+                        [3.0, 30.0],
+                        [2.0, 20.0],
+                    ],
+                    "confidence_levels": [0.68],
+                },
+                expected={
+                    "median": [2.5, 25.0],
+                    "lower": [[1.0, 10.0]],
+                    "upper": [[4.0, 40.0]],
+                },
+                tolerance=Tolerance(
+                    abs=0.0, reason="halves of whole numbers and values of the sample"
+                ),
+                source=_VF94,
+            ),
+            Limit(
+                name="equal_values",
+                text="equal annual values (ties) give that value as the median and as "
+                "both bounds",
+                inputs={
+                    "annual_values": [[7.5]] * 6,
+                    "confidence_levels": [0.95, 0.68],
+                },
+                expected={
+                    "median": [7.5],
+                    "lower": [[7.5], [7.5]],
+                    "upper": [[7.5], [7.5]],
+                },
+                tolerance=Tolerance(abs=0.0, reason="values of the sample"),
+            ),
+            Limit(
+                name="one_year",
+                text="one year gives its values as the median and no bounds at any "
+                "level: its only pair, k = 1, covers with probability 0",
+                inputs={"annual_values": [[12.0, 3.0]], "confidence_levels": [0.68]},
+                expected={
+                    "median": [12.0, 3.0],
+                    "lower": [[math.nan, math.nan]],
+                    "upper": [[math.nan, math.nan]],
+                },
+                tolerance=Tolerance(abs=0.0, reason="values of the sample"),
+            ),
+        ),
+    ),
+    validation="none: an interval of an estimator; its coverage, simulated from "
+    "log-normal annual values at 30 and 60 years, is reported under the formula "
+    "(CMP-6.11)",
+    formula_version=1,
+    status="referenced",
+    conventions=(
+        "two-sided and central at each confidence level c: the order statistics "
+        "Q_p(k) and Q_p(N + 1 - k) of the N annual values of a percentage, the k-th "
+        "from each end, with the largest k >= 1 whose coverage 1 - 2 F(k - 1) is at "
+        "least c, F the binomial distribution function of N trials with probability "
+        "1/2 (the years below the true median): each tail at most (1 - c) / 2 "
+        "(Helsel and Hirsch 2002, eqs. 3.2-3.3)",
+        "order statistics, distribution-free: the coverage is exact for a continuous "
+        "distribution of the annual values; not eq. (10) of Vogel and Fennessey "
+        "(1994, p. 497), whose bounds, the alpha/2 and 1 - alpha/2 quantiles Q_p,2 "
+        "of the n annual values, bracket the value of one year rather than the "
+        "median and do not narrow as n grows",
+        "the coverage is compared with c exactly, in integers: a level equal to a "
+        "coverage takes its pair (c = 0.75 at N = 3: the smallest and the largest "
+        "value); Helsel and Hirsch (2002, p. 71) take the tail nearest (1 - c) / 2, "
+        "which may leave the coverage below c",
+        "a level that even k = 1 cannot reach, 1 - 2^(1 - N) < c (fewer than 6 years "
+        "at c = 0.95, 5 at 0.90, 3 at 0.68), has no bounds: its rows of lower and "
+        "upper are gaps, and duration_curve gives its interval as not computed with "
+        "the notice interval_not_computed (too_few_complete_years)",
+        "the median of an odd count is the middle value, of an even count the mean "
+        "of the two middle values, taken as the sum of their halves so that values "
+        "near the largest float do not overflow: Q_0.5,2 of Vogel and Fennessey's "
+        "eq. (3) and numpy.median",
+        "ties: equal annual values keep a rank each; with ties the coverage is at "
+        "least the binomial one, as P(Q < M) <= 1/2 <= P(Q <= M) at the median M",
+        "gaps: none; the annual values are the curves of the complete hydrological "
+        "years (Tier B annual_duration_curves), and a gap is refused",
+        "the values in any unit: the median and the bounds in that unit (m3/s in the "
+        "documents, cm for stages)",
+        "every level of one call from one sort of each percentage's values; the rows "
+        "of lower and upper follow the levels in the order given",
+    ),
+    assumptions=(
+        "the N annual values of a percentage are independent and identically "
+        "distributed: the years are taken as independent, as Vogel and Fennessey "
+        "(1994, p. 496) treat the n values Q_p(i) as a random sample; a serial "
+        "correlation of the years, as in droughts of several years, would lower the "
+        "coverage below c",
+        "the interval is that of the median annual curve, the curve of a typical "
+        "year (Vogel and Fennessey 1994, p. 496), not of the period-of-record curve "
+        "(spec exceedance_values), which has none",
+    ),
+    traps={
+        "singular_at_bound": "range case confidence_levels-physical_high_inside: a "
+        "level just below 1 needs 54 years, so the 10 of the typical point leave "
+        "its rows gaps and the other level's bounds finite",
+        "gap_propagation": "type case annual_values-nan_element: a gap is refused; "
+        "limit too_few_years: a level the years cannot reach leaves gaps in its own "
+        "rows only",
+        "many_small_terms": "limit exact_binomial: the binomial tail, a sum of up to "
+        "N / 2 terms C(N, j) 2^-N, is summed in integers and matches the fractions "
+        "up to N = 200",
+    },
+    reference_cases=("tests/fixtures/formulas/duration-cases.json",),
+    oracles=(
+        Oracle(
+            kind="exact",
+            description="the coverage P(k <= B <= N - k) of B ~ Bin(N, 1/2) in exact "
+            "rational arithmetic (fractions) and its pair, the largest k with a "
+            "coverage of at least c, for every N from 1 to 60 and twelve from 61 to "
+            "200",
+            test="tests/unit/test_formulas_duration.py (limit exact_binomial)",
+        ),
+        Oracle(
+            kind="established",
+            description="scipy.stats.quantile_test(x, p=0.5).confidence_interval(c), "
+            "two-sided (SciPy 1.18), and numpy.median",
+            test="tests/unit/test_formulas_duration.py "
+            "(test_the_interval_is_scipys_quantile_test)",
+            conventions=(
+                "both the order statistics of ranks k and N + 1 - k of the binomial "
+                "distribution with probability 1/2, each tail at most (1 - c) / 2",
+                "where a tail equals (1 - c) / 2 exactly, scipy takes the lower bound "
+                "one rank further out (none below the smallest value) and keeps the "
+                "upper; the test draws levels that are no coverage",
+            ),
+        ),
+    ),
+    base={"confidence_levels": [0.95, 0.68]},
+)
+
+SPECS: Final[tuple[FormulaSpec, ...]] = (
+    EXCEEDANCE_VALUES,
+    DURATION_CURVE_ANNUAL_MEDIAN_INTERVAL,
+)
+"""The Tier A formulas of the module."""
+
+
+class AnnualMedianInterval(NamedTuple):
+    """The median annual curve and its interval (``annual_median_interval``).
+
+    Attributes
+    ----------
+    median : NDArray[np.float64]
+        Per percentage, the median of the annual values.
+    lower, upper : NDArray[np.float64]
+        The bounds of the medians, a row per confidence level in the order given and
+        a column per percentage; NaN in the rows of a level the years cannot reach.
+    """
+
+    median: NDArray[np.float64]
+    lower: NDArray[np.float64]
+    upper: NDArray[np.float64]
+
+
+def annual_median_interval(
+    annual_values: NDArray[np.float64] | Sequence[Sequence[float]],
+    confidence_levels: NDArray[np.float64] | Sequence[float],
+) -> AnnualMedianInterval:
+    """Return the median annual curve and its interval by order statistics.
+
+    The formula of spec duration_curve_annual_median_interval: per percentage the
+    median of the values of the complete years and, per level, the pair of their
+    order statistics whose binomial coverage is at least the level.
+
+    Parameters
+    ----------
+    annual_values : array_like of float
+        The values of the annual curves: a row per complete hydrological year, in
+        any order, a column per exceedance percentage.
+    confidence_levels : array_like of float
+        Distinct confidence levels, each between nought and one, both excluded.
+
+    Returns
+    -------
+    AnnualMedianInterval
+        The median of each percentage and, per level, the order statistics that
+        bound it; NaN in the rows of a level the years are too few to reach.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the spec refuses an input: no year, a value that is not finite, a level
+        outside its range or a level given twice.
+    """
+    x = checked_inputs(
+        DURATION_CURVE_ANNUAL_MEDIAN_INTERVAL,
+        annual_values=annual_values,
+        confidence_levels=confidence_levels,
+    )
+    ordered = np.sort(x.array("annual_values"), axis=0)  # Q_p(1) <= ... <= Q_p(N)
+    count = int(ordered.shape[0])
+    middle = count // 2
+    if count % 2:
+        median = ordered[middle].copy()
+    else:  # the halves are exact, so their sum cannot overflow
+        median = 0.5 * ordered[middle - 1] + 0.5 * ordered[middle]
+    levels = x.array("confidence_levels")
+    lower = np.full((levels.size, ordered.shape[1]), np.nan)
+    upper = np.full_like(lower, np.nan)
+    for row, level in enumerate(levels.tolist()):
+        rank = _pair_rank(count, level)
+        if rank:
+            lower[row] = ordered[rank - 1]
+            upper[row] = ordered[count - rank]
+    checked = checked_outputs(
+        DURATION_CURVE_ANNUAL_MEDIAN_INTERVAL,
+        {"median": median, "lower": lower, "upper": upper},
+    )
+    return AnnualMedianInterval(
+        checked.array("median"), checked.array("lower"), checked.array("upper")
+    )
 
 
 @dataclass
@@ -609,6 +1225,16 @@ class DurationCurve(JsonResultMixin):
         values only.
     modal_class : ModalClass or None
         The most frequent class; ``None`` without classes.
+    annual_median_values : list of float or None
+        The median annual curve at ``curve_exceedance_percents``: per percentage the
+        median of the curves of the complete hydrological years (Vogel and
+        Fennessey, 1994; spec ``duration_curve_annual_median_interval``); ``None``
+        when no year is complete.
+    intervals : list of ConfidenceInterval
+        Per confidence level asked, in the order asked, the interval of each value
+        of ``annual_median_values`` (``ci_method`` ``"order_statistics"``); not
+        computed (method and bounds ``None``) at a level the complete years are too
+        few for, with the warning ``IntervalNotComputed``.
     """
 
     first_year: int
@@ -629,6 +1255,8 @@ class DurationCurve(JsonResultMixin):
     bin_count: int | None
     classes: list[DurationClass] = field(default_factory=list)
     modal_class: ModalClass | None = None
+    annual_median_values: list[float | None] = field(default_factory=list)
+    intervals: list[ConfidenceInterval] = field(default_factory=list)
 
 
 def _class_edges(
@@ -714,6 +1342,81 @@ def _classes(
     )
 
 
+def _annual_curves(
+    values: NDArray[np.float64],
+    dates: NDArray[np.datetime64],
+    usable: NDArray[np.bool_],
+    month: int | None,
+) -> NDArray[np.float64]:
+    """Return the curve of each complete hydrological year at CURVE_PERCENTS, by rows.
+
+    A year is complete when each of its days, or with ``month`` each day of that
+    calendar month in it, is ``usable`` (has a finite value). The dates increase
+    strictly, so the days of a year are one run of the series and none counts twice.
+    """
+    labels, starts = np.unique(hydrological_year(dates), return_index=True)
+    present = np.add.reduceat(usable.astype(np.int64), starts)
+    if month is None:
+        needed = days_in_hydrological_year(labels)
+    else:  # November and December lie in the calendar year before the year's name
+        calendar = labels - 1 if month >= FIRST_MONTH else labels
+        months = ((calendar - 1970) * 12 + month - 1).astype("timedelta64[M]")
+        first = np.datetime64("1970-01", "M") + months
+        after = first + np.timedelta64(1, "M")
+        days = after.astype("datetime64[D]") - first.astype("datetime64[D]")
+        needed = days.astype(np.int64)
+    ends = np.append(starts[1:], dates.size)
+    curves = [
+        exceedance_values(values[start:end][usable[start:end]], CURVE_PERCENTS)
+        for start, end, complete in zip(starts, ends, present == needed, strict=True)
+        if complete
+    ]
+    return np.array(curves, dtype=np.float64).reshape(len(curves), len(CURVE_PERCENTS))
+
+
+def _median_annual_curve(
+    annual: NDArray[np.float64], levels: tuple[float, ...]
+) -> tuple[list[float | None], list[ConfidenceInterval]]:
+    """Return the median annual curve and its interval at each level, in order.
+
+    A level the complete years cannot reach has its interval not computed, with the
+    warning ``IntervalNotComputed`` (``too_few_complete_years``) for all such levels.
+    """
+    years = int(annual.shape[0])
+    needed = [_years_needed(level) for level in levels]
+    short = [row for row, fewest in enumerate(needed) if fewest > years]
+    if short:
+        warnings.warn(
+            IntervalNotComputed(
+                reason="too_few_complete_years",
+                confidence_levels=[levels[row] for row in short],
+                distribution=None,
+                fit_method=None,
+                return_periods=None,
+                complete_years=years,
+                required_years=[needed[row] for row in short],
+            ),
+            stacklevel=3,
+        )
+    if not years:
+        nothing: list[float | None] = [None] * len(CURVE_PERCENTS)
+        return nothing, intervals_not_computed(levels)
+    found = annual_median_interval(annual, list(levels))
+    intervals: list[ConfidenceInterval] = []
+    for row, level in enumerate(levels):
+        intervals += (
+            intervals_not_computed([level])
+            if row in short
+            else interval_entries(
+                [level],
+                "order_statistics",
+                found.lower[row : row + 1],
+                found.upper[row : row + 1],
+            )
+        )
+    return [float(value) for value in found.median], intervals
+
+
 def duration_curve(
     values: NDArray[np.float64],
     dates: NDArray[np.datetime64],
@@ -723,6 +1426,7 @@ def duration_curve(
     bin_method: BinMethod = "width",
     bin_width: float = 10.0,
     bin_count: int = 40,
+    confidence_level: float | Sequence[float] = 0.95,
 ) -> DurationCurve:
     """Compute the duration curve and the class frequencies of a daily series.
 
@@ -745,17 +1449,27 @@ def duration_curve(
         Width of the classes, positive, in the unit of the series, by default 10.
     bin_count : int, optional
         Number of logarithmic classes, at least 2, by default 40.
+    confidence_level : float or sequence of float, optional
+        The confidence level of the interval of the median annual curve, or a list
+        of distinct levels, each in (0, 1), by default 0.95.
 
     Returns
     -------
     DurationCurve
-        The curve, its table and the classes.
+        The curve, its table, the classes, and the median annual curve of the
+        complete hydrological years with its intervals.
 
     Raises
     ------
     InvalidParameterError
         If the arrays differ in length, the dates do not increase strictly, an option
         is out of its range, or no day (of ``month``) has a value.
+
+    Warns
+    -----
+    IntervalNotComputed
+        ``too_few_complete_years``: fewer complete years than the interval needs at
+        a level (6 at 0.95, 3 at 0.68), whose interval is not computed.
     """
     values = np.asarray(values, dtype=np.float64)
     dates = np.asarray(dates).astype("datetime64[D]")
@@ -778,6 +1492,7 @@ def duration_curve(
         raise InvalidParameterError(
             "bin_width must be positive and bin_count at least 2"
         )
+    levels = asked_levels(confidence_level)
     calendar_months = dates.astype("datetime64[M]").astype(np.int64) % 12 + 1
     keep = np.isfinite(values)
     if month is not None:
@@ -792,6 +1507,9 @@ def duration_curve(
     table = exceedance_values(used, table_percents)
     edges = _class_edges(used, bin_method, bin_width, bin_count)
     classes, modal = _classes(used, calendar_months[keep], edges)
+    annual_median, intervals = _median_annual_curve(
+        _annual_curves(values, dates, keep, month), levels
+    )
     return DurationCurve(
         first_year=int(years.min()),
         last_year=int(years.max()),
@@ -811,6 +1529,8 @@ def duration_curve(
         bin_count=int(bin_count) if bin_method == "log" else None,
         classes=classes,
         modal_class=modal,
+        annual_median_values=annual_median,
+        intervals=intervals,
     )
 
 
@@ -850,6 +1570,26 @@ TIER_B: Final = (
         "value written on a class bound starts its class (0.3 with the width 0.1 is in "
         "[0.3, 0.4); ADR-0048); the edges are the floats nearest those bounds",
         source=_SEARCY,
+    ),
+    TierBSpec(
+        name="annual_duration_curves",
+        function="hydrolog.statistics.duration.duration_curve",
+        definition="the curve of each complete hydrological year at CURVE_PERCENTS "
+        "(spec exceedance_values) from the days of that year, or with month from the "
+        "days of that calendar month in it; a year is complete when each of its days "
+        "(365 or 366, or those of the month) has a value; per percentage the median "
+        "of the curves of the complete years, annual_median_values, and its intervals "
+        "at each confidence level asked (spec duration_curve_annual_median_interval)",
+        convention="the annual flow-duration curves of Vogel and Fennessey (1994, p. "
+        "494), one per year from its own daily values, here per hydrological year (1 "
+        "November - 31 October); a year with a day without a value (its date absent, "
+        "its value NaN or not finite) is left out, not filled, as for the annual "
+        "extremes (complete_year_extremes); a leap year counts its 366 days, where "
+        "Vogel and Fennessey count 365 a year; with month the days of that month in "
+        "the hydrological year, those of November and December in the calendar year "
+        "before its name; without a complete year annual_median_values is null and "
+        "every interval not computed",
+        source=_VF94_ANNUAL,
     ),
 )
 """The Tier B formulas of the module (CMP-2.2)."""

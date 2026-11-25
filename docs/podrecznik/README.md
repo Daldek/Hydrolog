@@ -42,7 +42,7 @@ Kod Hydrologa pozostaje na licencji MIT.
    Weibulla), estymacja (momenty, L-momenty, największa wiarygodność), formuły pozycji
    wykreślnych, testy zgodności, prawdopodobieństwo przewyższenia i okres powtarzalności.
 8. Przepływy charakterystyczne i niżówki: WWQ…NNQ, krzywe czasu trwania, niżówki i deficyty,
-   przepływ bazowy (filtr Lyne’a–Hollicka, BFI), recesja.
+   przepływ bazowy (filtr Lyne’a–Hollicka, BFI), recesja, sygnatury hydrologiczne (CAMELS-PL).
 9. Reżim i zmienność: współczynniki Pardégo, typy reżimu według Dynowskiej, sezonowość
    (statystyka kołowa), analiza harmoniczna, krzywa natężenia przepływu.
 10. Jednorodność i trend: testy Manna–Kendalla, Sena, Pettitta, Manna–Whitneya,

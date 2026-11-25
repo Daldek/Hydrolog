@@ -62,6 +62,25 @@ _RETURN_PERIODS = Option(
     exclusive_minimum=1,
 )
 
+# The levels of the `intervals` of the frequency commands (ECO-091): one or a list.
+_CONFIDENCE_LEVEL = Option(
+    name="confidence_level",
+    type="number_or_list",
+    description_pl=(
+        "Poziom ufności przedziałów kwantyli (`intervals`), z przedziału otwartego "
+        "(0, 1), np. 0,95, albo lista różnych poziomów, np. 0,95 i 0,68 (wyniki w tej "
+        "kolejności)."
+    ),
+    description=(
+        "Confidence level of the quantiles' `intervals`, in the open interval (0, 1), "
+        "e.g. 0.95, or a list of distinct levels, e.g. [0.95, 0.68] (results in that "
+        "order)."
+    ),
+    default=0.95,
+    exclusive_minimum=0,
+    exclusive_maximum=1,
+)
+
 # The variable of IMGW-PIB's half-year file in the frequency commands (plan D9).
 _HALF_YEAR_PARAMETER = Option(
     name="parameter",
@@ -428,26 +447,27 @@ COMMANDS: tuple[Command, ...] = (
             "Wartość osiągana lub przekraczana przez p % dni (pozycje Weibulla "
             "m/(n+1)) w okresie albo jednym miesiącu oraz dni każdej klasy (o równej "
             "szerokości albo logarytmicznej) z sumami „z wyższymi” i „z niższymi” i "
-            "podziałem na miesiące hydrologiczne. Do krzywych czasu trwania H i Q; "
-            "strefy Rybczyńskiego: `hydrometrics water-level-zones`."
+            "podziałem na miesiące hydrologiczne, a także mediana krzywych rocznych "
+            "z przedziałami ufności (`intervals`). Strefy Rybczyńskiego: "
+            "`hydrometrics water-level-zones`."
         ),
         description=(
             "The value equalled or exceeded on p % of the days (Weibull positions "
             "m/(n+1)) over the period or one month, and the days of each class (equal "
             "width or logarithmic) with the cumulative days including higher and "
-            "lower, split by hydrological month. Use for H and Q duration curves; for "
-            "Rybczyński zones use `hydrometrics water-level-zones`."
+            "lower, split by hydrological month, and the median annual curve with its "
+            "`intervals`. For Rybczyński zones use `hydrometrics water-level-zones`."
         ),
         result_schema="hydrolog-stats-duration-curve/1",
         cardinality="bounded",
         rules=(
             "Use `bin_width` 10 (cm) for H and `bin_method` log for Q.",
-            "`exceedance_percents` are exceedance percentages; classes run from the "
-            "highest.",
+            "Classes run from the highest; check `notices` for "
+            "`interval_not_computed`.",
         ),
         rules_pl=(
             "Użyj `bin_width` 10 (cm) dla H i `bin_method` log dla Q.",
-            "`exceedance_percents` to procenty przekroczenia; klasy idą od najwyższej.",
+            "Klasy idą od najwyższej; sprawdź `notices`: `interval_not_computed`.",
         ),
         errors=_STATION_ERRORS,
         example_results=(
@@ -473,6 +493,14 @@ COMMANDS: tuple[Command, ...] = (
                 "bin_method": "log",
                 "values": [1.335, 0.61, 0.58],
                 "modal_class": {"lower": 0.54, "days": 60},
+            },
+            {
+                "period_years": 15,
+                "bin_method": "log",
+                "intervals": [
+                    {"confidence_level": 0.95, "ci_method": "order_statistics"},
+                    {"confidence_level": 0.68, "ci_method": "order_statistics"},
+                ],
             },
         ),
         function="hydrolog.operations.stats_duration_curve",
@@ -553,6 +581,19 @@ COMMANDS: tuple[Command, ...] = (
                 ),
                 minimum=2,
             ),
+            replace(
+                _CONFIDENCE_LEVEL,
+                description_pl=(
+                    "Poziom ufności przedziałów mediany krzywych rocznych "
+                    "(`intervals`), z przedziału otwartego (0, 1), np. 0,95, albo "
+                    "lista różnych poziomów, np. 0,95 i 0,68 (wyniki w tej kolejności)."
+                ),
+                description=(
+                    "Confidence level of the `intervals` of the median annual curve, "
+                    "in the open interval (0, 1), e.g. 0.95, or a list of distinct "
+                    "levels, e.g. [0.95, 0.68] (results in that order)."
+                ),
+            ),
             ATTRIBUTION,
         ),
         one_of=DATED_ONE_OF,
@@ -571,6 +612,13 @@ COMMANDS: tuple[Command, ...] = (
                 "exceedance_percents": [50, 70, 90],
                 "bin_method": "log",
                 "bin_count": 20,
+            },
+            {
+                "input_file": _DAILY_FLOWS_15Y,
+                "value_column": "Q",
+                "date_column": "date",
+                "bin_method": "log",
+                "confidence_level": [0.95, 0.68],
             },
         ),
     ),
@@ -1196,14 +1244,14 @@ COMMANDS: tuple[Command, ...] = (
             "Dopasowuje rozkłady log-normalny, GEV, Pearsona III i Weibulla do "
             "maksimów rocznych (domyślnie L-momenty; największa wiarygodność, "
             "momenty, najmniejsze kwadraty albo wszystkie metody naraz) i podaje "
-            "kwantyle z miarami zgodności (KS, A², AIC). Do przepływów miarodajnych; "
-            "niżówki: `stats low-flow`."
+            "kwantyle z przedziałami ufności (`intervals`) i miarami zgodności (KS, "
+            "A², AIC). Do przepływów miarodajnych; niżówki: `stats low-flow`."
         ),
         description=(
             "Fits log-normal, GEV, Pearson III and Weibull distributions to annual "
             "maxima (L-moments by default; maximum likelihood, moments, least squares "
-            "or all at once) and gives quantiles with goodness-of-fit (KS, A², AIC). "
-            "Use for design discharges; for low flows use `stats low-flow`."
+            "or all at once) and gives quantiles with `intervals` and goodness-of-fit "
+            "(KS, A², AIC). Use for design discharges; low flows: `stats low-flow`."
         ),
         result_schema="hydrolog-stats-flood-frequency/1",
         cardinality="bounded",
@@ -1213,12 +1261,12 @@ COMMANDS: tuple[Command, ...] = (
                 "`half_year_file`."
             ),
             (
-                "Check `notices` for `incomplete_years` and samples shorter than 30 "
-                "years."
+                "Check `notices`: `incomplete_years`, samples under 30 years, "
+                "`interval_not_computed`."
             ),
             (
-                "Rank by `aic`; the KS p-value is indicative; `ad_critical_values` "
-                "only for L-moments."
+                "Rank by `aic`; KS p-value is indicative; `ad_critical_values` only "
+                "for L-moments."
             ),
         ),
         rules_pl=(
@@ -1226,7 +1274,10 @@ COMMANDS: tuple[Command, ...] = (
                 "Podaj maksima roczne bez dat, szereg dobowy z datami albo "
                 "`half_year_file`."
             ),
-            ("Sprawdź `notices`: `incomplete_years` i próby krótsze niż 30 lat."),
+            (
+                "Sprawdź `notices`: `incomplete_years`, próby krótsze niż 30 lat, "
+                "`interval_not_computed`."
+            ),
             (
                 "Porządkuj rozkłady wg `aic`; p-value KS jest orientacyjne; "
                 "`ad_critical_values` tylko dla L-momentów."
@@ -1255,6 +1306,22 @@ COMMANDS: tuple[Command, ...] = (
                 "hydrological_years": [2019, 2020, 2021, 2022, 2023],
                 "incomplete_years": [],
                 "source": "half_years",
+                "distributions": [
+                    {
+                        "distribution_name": "log_normal",
+                        "intervals": [
+                            {
+                                "confidence_level": 0.95,
+                                "ci_method": "parametric_bootstrap",
+                                "ci_samples": 999,
+                            },
+                            {
+                                "confidence_level": 0.68,
+                                "ci_method": "parametric_bootstrap",
+                            },
+                        ],
+                    }
+                ],
             },
         ),
         function="hydrolog.operations.stats_flood_frequency",
@@ -1313,6 +1380,7 @@ COMMANDS: tuple[Command, ...] = (
             ),
             _RETURN_PERIODS,
             *PERIOD_OPTIONS,
+            _CONFIDENCE_LEVEL,
             ATTRIBUTION,
         ),
         one_of=_ANNUAL_ONE_OF,
@@ -1330,7 +1398,11 @@ COMMANDS: tuple[Command, ...] = (
                 "date_column": "date",
                 "distribution": "gev",
             },
-            {"half_year_file": _STATION_HALF_YEARS, "return_periods": [10, 100]},
+            {
+                "half_year_file": _STATION_HALF_YEARS,
+                "return_periods": [10, 100],
+                "confidence_level": [0.95, 0.68],
+            },
         ),
     ),
     Command(
@@ -1343,16 +1415,16 @@ COMMANDS: tuple[Command, ...] = (
         description_pl=(
             "Dopasowuje rozkład Fishera–Tippetta (GEV dla minimów) do minimów "
             "rocznych i podaje kwantyle niskich przepływów (osiągane lub niższe raz"
-            " na T lat). Do częstości niżówek; wezbrania: `stats flood-frequency`, "
-            "zdarzenia suszy: `stats low-flow-sequences`. Wymaga dat albo "
-            "`half_year_file`."
+            " na T lat) z przedziałami ufności (`intervals`). Do częstości niżówek; "
+            "wezbrania: `stats flood-frequency`, zdarzenia suszy: "
+            "`stats low-flow-sequences`."
         ),
         description=(
             "Fits the Fisher–Tippett (GEV for minima) distribution to annual minima"
             " and gives low-flow quantiles (flow reached or undercut once in T "
-            "years). Use for low-flow frequency; for floods use `stats "
-            "flood-frequency`, for drought events `stats low-flow-sequences`. Needs"
-            " dates or `half_year_file`."
+            "years) with `intervals`. Use for low-flow frequency; for floods "
+            "use `stats flood-frequency`, for drought events "
+            "`stats low-flow-sequences`."
         ),
         result_schema="hydrolog-stats-low-flow/1",
         cardinality="bounded",
@@ -1362,8 +1434,8 @@ COMMANDS: tuple[Command, ...] = (
                 "missing day are skipped."
             ),
             (
-                "Check `notices` for `incomplete_years`, `negative_quantiles` (null) "
-                "and samples under 10 years."
+                "Check `notices`: `incomplete_years`, samples under 10 years, "
+                "`negative_quantiles`, `interval_not_computed` (null)."
             ),
             "At least 4 complete hydrological years are required.",
         ),
@@ -1373,8 +1445,8 @@ COMMANDS: tuple[Command, ...] = (
                 "brakującym dniem są pomijane."
             ),
             (
-                "Sprawdź `notices`: `incomplete_years`, `negative_quantiles` (null) i "
-                "próby krótsze niż 10 lat."
+                "Sprawdź `notices`: `incomplete_years`, próby krótsze niż 10 lat, "
+                "`negative_quantiles` i `interval_not_computed` (null)."
             ),
             "Wymagane są co najmniej 4 kompletne lata hydrologiczne.",
         ),
@@ -1396,6 +1468,12 @@ COMMANDS: tuple[Command, ...] = (
                 "n_years": 15,
                 "hydrological_years": list(range(2009, 2024)),
                 "source": "half_years",
+                "fisher_tippett": {
+                    "intervals": [
+                        {"confidence_level": 0.95, "ci_method": "delta"},
+                        {"confidence_level": 0.68, "ci_method": "delta"},
+                    ]
+                },
             },
         ),
         function="hydrolog.operations.stats_low_flow",
@@ -1405,6 +1483,7 @@ COMMANDS: tuple[Command, ...] = (
             _HALF_YEAR_PARAMETER,
             _RETURN_PERIODS,
             *PERIOD_OPTIONS,
+            _CONFIDENCE_LEVEL,
             ATTRIBUTION,
         ),
         one_of=(*DATED_ONE_OF, ("half_year_file",)),
@@ -1415,7 +1494,11 @@ COMMANDS: tuple[Command, ...] = (
                 "date_column": "date",
                 "return_periods": [2, 10, 50],
             },
-            {"half_year_file": _HALF_YEARS_15Y, "return_periods": [2, 10]},
+            {
+                "half_year_file": _HALF_YEARS_15Y,
+                "return_periods": [2, 10],
+                "confidence_level": [0.95, 0.68],
+            },
         ),
     ),
     Command(

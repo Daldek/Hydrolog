@@ -134,6 +134,25 @@ export function exact(value) {
 }
 
 /**
+ * An interval as it follows its estimate, in square brackets („412 [356–498]”):
+ * intervalText(356.2, 498.4, 0) gives "[356–498]"; an end below zero takes the minus sign
+ * and a spaced en dash, intervalText(-0.3, 1.35) "[−0,30 – 1,35]" (Nogat DEV-15.14); the
+ * spaces do not break.
+ *
+ * @param {number|null|undefined} lower the lower end
+ * @param {number|null|undefined} upper the upper end
+ * @param {number} [digits=2] decimals of both ends
+ * @returns {string|null} the bracket, null when an end is missing (the estimate stands alone)
+ */
+export function intervalText(lower, upper, digits = 2) {
+  if (typeof lower !== "number" || !Number.isFinite(lower) || typeof upper !== "number" || !Number.isFinite(upper)) return null;
+  const low = num(lower, digits);
+  const high = num(upper, digits);
+  const dash = low.startsWith(MINUS) || high.startsWith(MINUS) ? "\u00a0–\u00a0" : "–";
+  return `[${low}${dash}${high}]`;
+}
+
+/**
  * Minutes as hours and minutes: hmm(380) gives "6:20".
  *
  * @param {number} minutes time [min]

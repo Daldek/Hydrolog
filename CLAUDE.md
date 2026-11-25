@@ -58,7 +58,11 @@ Python 3.12 or newer. The tests are offline: an autouse fixture of `tests/confte
 answers Obserwator's PMAXTP fetch from a recorded table, and the browser tests answer
 `api/run/precip/pmaxtp` with an envelope computed from another one. The one `live` test
 (`precip pmaxtp` against IMGW-PIB) is deselected by default and by the gate;
-`uv run pytest -m live` runs it. Coverage floor 80%.
+`uv run pytest -m live` runs it. The tests marked `nightly`, the simulated coverage of the
+intervals (Nogat CMP-6.11, ADR-0074), are deselected by default and by the gate too; CI runs
+them nightly, and before each release run `uv run pytest -m nightly`, then
+`uv run scripts/generate_formulas.py`, and commit the records
+(`tests/fixtures/formulas/interval-coverage.json`) with `docs/FORMULAS.md`. Coverage floor 80%.
 The browser tests of the GUI (`tests/e2e`, Playwright) run in the gate and need Chromium
 (installed as above).
 

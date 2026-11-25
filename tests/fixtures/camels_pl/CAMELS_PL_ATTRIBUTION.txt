@@ -1,0 +1,53 @@
+camels_pl_<gauge>.csv.gz: the rows with a discharge of
+CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_<gauge>.csv, the columns date,
+discharge_vol_obs [m3/s] and discharge_spec_obs [mm/d] as published (gzip, no time stamp).
+CAMELS_PL_hydrologic_attributes.csv: the header and the rows of these gauges of
+CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv, as published.
+Release: CAMELS-PL 2.1.0 (Zenodo record 23275336, doi:10.5281/zenodo.23275336),
+https://doi.org/10.5281/zenodo.23275336. Extracted by extract_camels_pl.py on 2026-11-23 from the
+record's CAMELS_PL_2.1.zip (1670805350 B, MD5 05d4c1884d535c78299477ac8a00703a as the record lists
+it); the files read, with their SHA-256 (Nogat CMP-6.10):
+  CAMELS_PL_2.1.zip  7e8425dd6e078150c98ad26ed4903a52052da1481f393a52f4ac936bbb15cf4e
+  CAMELS_PL_Data_Description.pdf  46322337d184bc29107650e59309563e5ee3a94c35ddbcb53cea563e5734a1de
+  CAMELS_PL_2.1/CAMELS_PL_hydrologic_attributes.csv  370cc2ff9a57292e3a1086ad31071c348fc73cec610b579d54ac7c7fd1f04f43
+  CAMELS_PL_2.1/CAMELS_PL_topographic_GLO_30_DEM_attributes.csv  720c0e77e16a7718f62e111ad71f6edacd445c8fc040926a648d904260ef0b21
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150150030.csv  8fecb0b628f30861bc34dc84b2e251c84c105a4beb54817817b7d191a7436fb4
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149180140.csv  43933257c351762b2bbe26c9c0ff98a092e5cc2f370cf4bca59cd49b1686f48a
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_149200260.csv  3e5e69268378a606a50499cf19ffe7cfc5830c20061c0939395bbeaf920477f8
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150190010.csv  d345237d7cb9ff18e9ede26e369f1620d3648ed77b289b31e33181e7afbadc46
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152210050.csv  c96af3ed7af45e8c5c419eedd9ac6fab8bf9237d8b6613c9e33cc55b72d08bd3
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153199999.csv  de80b57949102ecb59b2fdae430731911f5ef1ae98ae3b2261c701ab11203563
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152180100.csv  7d5c2faf254bd5d101542f3cce9dd7abd9e2d4e52e76218c50b26a3d97a64eec
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153170050.csv  17855ce050614ae7ef1a5cd4297dc09a08d40b07442ca49aa6fd7f8c91383bc5
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152160060.csv  cce80e33a7c650d59f97bd7efef879fb247a3940187bd3961100b63368e14f5b
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_150160180.csv  5db567697edcffd219da3c7cc5149b4382cdfdd9faa43997ec36a4986fad9d93
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_153220170.csv  f825333031c5d4d6543d3dea2ce4d6493b96f3d1156f1e14477631fac66d8b04
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_152140020.csv  9558ffff733d5785c24bddaaf4170d2cbd7428e0afc95bbee18191e4f6eef85e
+  CAMELS_PL_2.1/timeseries/CAMELS_PL_hydromet_timeseries_154180150.csv  b9e9cce4ebf781972040ac84ddefd88aa8cb61abcf44eab2fbb508019f75bdae
+
+The gauges (IMGW-PIB code, name, river, area_metadata [km2]):
+  150150030  Jakuszyce  Kamienna  5.93
+  149180140  Wisła  Wisła  53.56
+  149200260  Nowy Sącz  Łubinka  66.44
+  150190010  Brynica  Brynica  104.47
+  152210050  Struga  Czarna  198.07
+  153199999  Szembruk  Gardęga  298.6
+  152180100  Łysek  Noteć  301.77
+  153170050  Ciecholewy  Brda  663.83
+  152160060  Konojad  Mogilnica  722.55
+  150160180  Kłodzko  Nysa Kłodzka  1083.05
+  153220170  Osowiec  Biebrza  4366.15
+  152140020  Gozdowice  Odra  109859.91
+  154180150  Tczew  Wisła  193728.02
+
+Brzezińska, W., Marcinkowski, P., Dolich, A., Perz, A. E., Maharjan, A., Piniewski, M., Kardel, I.,
+Loritz, R. and Wrzesiński, D. (2026). CAMELS-PL: hydro-meteorological time series and landscape
+attributes for 869 catchments in Poland, version 2.1.0 [dataset], Zenodo record 23275336, CC BY 4.0.
+https://doi.org/10.5281/zenodo.23275336; licence CC BY 4.0, https://creativecommons.org/licenses/by/4.0/.
+
+The lines of Nogat DEV §20 (DEV-20.12: discharge CAMELS-PL took from IMGW-PIB, selected and
+recompressed here), quoted as they stand:
+Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy
+Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego zostały przetworzone
+Źródło danych: CAMELS-PL 2.1.0 (Brzezińska i in., 2026), https://doi.org/10.5281/zenodo.23275336, licencja CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+Dane CAMELS-PL zostały przetworzone

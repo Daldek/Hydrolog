@@ -14,8 +14,9 @@ set -euo pipefail
 PACKAGE="hydrolog"                 # import name, measured by coverage
 TYPED_PATHS=(src tests)              # mypy targets (DEV-7.3)
 # Marker expression of the gate (DEV-10.1); an `app` project without a local
-# database uses "not live and not db".
-OFFLINE="not live"
+# database uses "not live and not db". The coverage of the intervals runs nightly
+# and before each release, never in the gate (Nogat CMP-6.11).
+OFFLINE="not live and not nightly"
 # ------------------------------------------------------------------------------
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

@@ -18,6 +18,7 @@ option type           accepted text
 ``path``              the text as given (the catalog resolves it)
 ``boolean``           no text: ``--flag`` is ``true``, ``--no-flag`` is ``false``
 ``number_list``       ``1.5,2,3`` (spaces around items allowed) or a JSON array
+``number_or_list``    ``0.95`` (a number), ``0.95,0.68`` (a list) or a JSON array
 ``string_list``       ``a,b,c`` (spaces around items allowed) or a JSON array
 ``object``            JSON text: ``'{"area_km2": 45.3}'``
 ``object_list``       JSON array of objects
@@ -47,15 +48,22 @@ _EXPECTED: Final = {
     "number": "number",
     "integer": "integer",
     "number_list": "array of numbers",
+    "number_or_list": "number or array of numbers",
     "string_list": "array of strings",
     "object": "object",
     "object_list": "array of objects",
 }
-_ITEM_EXPECTED: Final = {"number_list": "number", "string_list": "string"}
+_ITEM_EXPECTED: Final = {
+    "number_list": "number",
+    "number_or_list": "number",
+    "string_list": "string",
+}
 _HINTS: Final = {
     "number": "Give a decimal number with a dot, e.g. 8.2 or -1e-3.",
     "integer": "Give a whole number, e.g. 5.",
     "number_list": "Give comma-separated numbers, e.g. 1.5,2,3 (or a JSON array).",
+    "number_or_list": "Give a number, e.g. 0.95, or comma-separated numbers, e.g. "
+    "0.95,0.68 (or a JSON array).",
     "string_list": "Give comma-separated items, e.g. a,b,c (or a JSON array).",
     "object": "Give a JSON object, e.g. '{\"area_km2\": 45.3}'.",
     "object_list": 'Give a JSON array of objects, e.g. \'[{"name": "A"}]\'.',
@@ -134,6 +142,12 @@ def _number_list(option: Option, text: str) -> Any:
     return [_number(option, item, index) for index, item in enumerate(_items(text))]
 
 
+def _number_or_list(option: Option, text: str) -> Any:
+    if text.lstrip().startswith("[") or "," in text:
+        return _number_list(option, text)
+    return _number(option, text)
+
+
 def _string_list(option: Option, text: str) -> Any:
     if text.lstrip().startswith("["):
         return _json(option, text)
@@ -186,6 +200,8 @@ def parse_option_value(option: Option, raw: str | bool) -> Any:
         return _integer(option, raw)
     if kind == "number_list":
         return _number_list(option, raw)
+    if kind == "number_or_list":
+        return _number_or_list(option, raw)
     if kind == "string_list":
         return _string_list(option, raw)
     if kind in ("object", "object_list"):

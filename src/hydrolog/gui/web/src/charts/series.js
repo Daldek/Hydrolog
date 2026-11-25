@@ -2,12 +2,16 @@
  * Series and marks of a chart: path geometry (pure) and SVG elements.
  *
  * Series kinds: `line`, `step` (a value holds until the next point), `area`
- * (filled down to zero, with its line), `bars` (vertical; on the `y2` panel
- * they hang from its top: the hyetograph), `points` (the empirical points of
- * a probability plot), `rug` (short ticks on the x axis at x values, without
+ * (filled down to zero, with its line), `band` (filled between two lines, its data
+ * `[x, lo, hi]`: an interval, broken where either end is missing), `bars` (vertical;
+ * on the `y2` panel they hang from its top: the hyetograph), `points` (the empirical
+ * points of a probability plot), `rug` (short ticks on the x axis at x values, without
  * a y and without a readout value) and, on a band y axis, horizontal bars (one
  * category per point, `{x: value, y: name, sub, cls, text}`). A series' `cls`
  * (`s1` to `s6`, `bar-p`, `bar-pe`, `best`, …) picks its colour in `css/charts.css`.
+ * The `band` series is the kit's (Nogat `design/kit/nogat-chart.js`, ECO-090): its
+ * interface, geometry, readout and look are ported from there unchanged, so the kit's
+ * module replaces this one (the unified-charts plan, step 3) without a change of spec.
  * Marks: `peak` (a dot, a guide to the axis and a boxed label), `hline` (a
  * reference value across the plot), `vline` (a moment, with a note) and
  * `note` (a text at a point).
@@ -78,9 +82,38 @@ function areaPath(xy, base) {
 }
 
 /**
+ * A band between two lines: "M…Z" for each run where both ends are finite (the kit's).
+ *
+ * @param {number[]} px the points' x in viewBox units
+ * @param {number[]} hi the upper ends' y in viewBox units
+ * @param {number[]} lo the lower ends' y in viewBox units
+ * @returns {string}
+ */
+function bandPath(px, hi, lo) {
+  const runs = [];
+  let run = [];
+  px.forEach((x, at) => {
+    if (Number.isFinite(x) && Number.isFinite(hi[at]) && Number.isFinite(lo[at])) run.push(at);
+    else if (run.length) {
+      runs.push(run);
+      run = [];
+    }
+  });
+  if (run.length) runs.push(run);
+  return runs
+    .map((part) => {
+      const upper = part.map((at) => [px[at], hi[at]]);
+      const lower = [...part].reverse().map((at) => [px[at], lo[at]]);
+      return `${linePath([...upper, ...lower])}Z`;
+    })
+    .join("");
+}
+
+/**
  * Value of a series at an x coordinate of the viewBox: linear between points
- * (lines, areas), the last value before it (steps), the bar that contains it
- * (bars), the nearest point within `snap` (points); a rug has none.
+ * (lines, areas, a band's ends), none across a missing value, the last value before it
+ * (steps), the bar that contains it (bars), the nearest point within `snap` (points); a
+ * rug has none.
  *
  * @param {{kind: string, px: number[], values: number[], spans?: [number, number][]}} geometry
  *   a series' points in viewBox x (`px`, increasing) and their values
@@ -107,23 +140,32 @@ export function valueAt(geometry, at, snap = 6) {
   if (Math.abs(px[hi] - at) <= 1e-6) return values[hi];
   const lo = hi - 1;
   if (kind === "step") return values[lo];
+  // A missing value (null or NaN) on either side is a gap: nothing to read within it
+  if (!Number.isFinite(values[lo]) || !Number.isFinite(values[hi])) return null;
   const share = (at - px[lo]) / (px[hi] - px[lo]);
   return values[lo] + share * (values[hi] - values[lo]);
 }
 
+/** The value of a point for `thinPoints` by default: its y. */
+const yOf = (point) => point.y;
+
 /**
- * The points of a long line, area or step drawn (drawing only; the tables and exports keep
- * every value): with more than four points per column of the plot, each column keeps its
- * first, last, lowest and highest point and its first gap, so the drawn line and its peaks
- * look the same with a few thousand points instead of a hundred thousand.
+ * The points of a long line, area, step or band drawn (drawing only; the tables and exports
+ * keep every value): with more than four points per column of the plot, each column keeps
+ * its first, last, lowest and highest point and its first gap, so the drawn line and its
+ * peaks look the same with a few thousand points instead of a hundred thousand.
  *
- * @param {{x: number, y: number}[]} points the points in increasing x
+ * @param {object[]} points the points in increasing x
  * @param {(x: number) => number} place the x scale (to viewBox units)
  * @param {number} columns the plot's width in viewBox units
- * @returns {{x: number, y: number}[]} the points kept, in their order
+ * @param {{low?: (point: object) => number, high?: (point: object) => number}} [values] the
+ *   low and the high value of a point (both its `y` by default; a band's `lo` and `hi`)
+ * @returns {object[]} the points kept, in their order
  */
-export function thinPoints(points, place, columns) {
+export function thinPoints(points, place, columns, values = {}) {
   if (points.length <= 4 * columns) return points;
+  const lowOf = values.low ?? yOf;
+  const highOf = values.high ?? yOf;
   const start = place(points[0].x);
   const width = place(points.at(-1).x) - start || 1;
   const out = [];
@@ -151,12 +193,12 @@ export function thinPoints(points, place, columns) {
       gap = null;
     }
     last = index;
-    if (!Number.isFinite(point.y)) {
+    if (!Number.isFinite(lowOf(point)) || !Number.isFinite(highOf(point))) {
       if (gap === null) gap = index;
       return;
     }
-    if (low === null || point.y < points[low].y) low = index;
-    if (high === null || point.y > points[high].y) high = index;
+    if (low === null || lowOf(point) < lowOf(points[low])) low = index;
+    if (high === null || highOf(point) > highOf(points[high])) high = index;
   });
   flush();
   return out;
@@ -167,7 +209,8 @@ export function thinPoints(points, place, columns) {
  *
  * @param {object} spec the chart spec
  * @param {ReturnType<import("./axes.js").chartLayout>} layout
- * @returns {object[]} per series: `{series, kind, cls, axis, px, py, values, spans, xs}`
+ * @returns {object[]} per series: `{series, kind, cls, axis, px, py, values, spans, xs}`; a
+ *   band's `py` and `values` are its upper ends, `py2` and `lows` its lower ends
  */
 export function seriesGeometry(spec, layout) {
   let row = 0;
@@ -186,9 +229,28 @@ export function seriesGeometry(spec, layout) {
       .sort((a, b) => layout.x.scale(a.point.x) - layout.x.scale(b.point.x))
       .map(({ point }) => point);
     const thin = kind === "line" || kind === "area" || kind === "step";
-    const order = thin ? thinPoints(sorted, layout.x.scale, Math.ceil(layout.plot.right - layout.plot.left)) : sorted;
+    const columns = Math.ceil(layout.plot.right - layout.plot.left);
+    let order = sorted;
+    if (thin) order = thinPoints(sorted, layout.x.scale, columns);
+    else if (kind === "band") order = thinPoints(sorted, layout.x.scale, columns, { low: (point) => point.lo, high: (point) => point.hi });
     const px = order.map((point) => layout.x.scale(point.x));
-    const py = order.map((point) => (Number.isFinite(point.y) ? axis.scale(point.y) : NaN));
+    const place = (value) => (Number.isFinite(value) ? axis.scale(value) : NaN);
+    if (kind === "band") {
+      return {
+        series,
+        kind,
+        cls,
+        axis: series.axis === "y2" && layout.y2 ? "y2" : "y",
+        data: order,
+        xs: order.map((point) => point.x),
+        px,
+        py: order.map((point) => place(point.hi)),
+        py2: order.map((point) => place(point.lo)),
+        values: order.map((point) => point.hi),
+        lows: order.map((point) => point.lo),
+      };
+    }
+    const py = order.map((point) => place(point.y));
     let spans;
     if (kind === "bars") {
       const width = barWidth(series, order);
@@ -259,21 +321,24 @@ function drawHorizontalBars(geometry, layout) {
 }
 
 /**
- * Draw the series: areas first, then bars, lines and points on top.
+ * Draw the series: areas and bands first, then bars, lines and points on top.
  *
  * @param {object[]} geometries from `seriesGeometry`
  * @param {ReturnType<import("./axes.js").chartLayout>} layout
  * @returns {SVGElement[]}
  */
 export function drawSeries(geometries, layout) {
-  const rank = { area: 0, bars: 1, hbars: 1, step: 2, line: 2, points: 3, rug: 3 };
+  const rank = { area: 0, band: 0, bars: 1, hbars: 1, step: 2, line: 2, points: 3, rug: 3 };
   const ordered = [...geometries].sort((a, b) => (rank[a.kind] ?? 2) - (rank[b.kind] ?? 2));
   const out = [];
   for (const geometry of ordered) {
     const { kind, cls, series } = geometry;
     const xy = geometry.px.map((x, i) => [x, geometry.py[i]]);
     if (kind === "bars") out.push(drawBars(geometry, layout));
-    else if (kind === "hbars") out.push(drawHorizontalBars(geometry, layout));
+    else if (kind === "band") {
+      const d = bandPath(geometry.px, geometry.py, geometry.py2);
+      out.push(svgEl("path", { class: `band ${cls}`, d, "data-series": series.id }));
+    } else if (kind === "hbars") out.push(drawHorizontalBars(geometry, layout));
     else if (kind === "points") {
       const dots = xy
         .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y))

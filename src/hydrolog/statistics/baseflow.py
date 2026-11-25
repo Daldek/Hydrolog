@@ -825,7 +825,10 @@ BASEFLOW_INDEX: Final = FormulaSpec(
         "many_small_terms": "test_a_long_series_sums_exactly: 50,000 days against the "
         "exact rational sums",
     },
-    reference_cases=("tests/fixtures/formulas/baseflow-cases.json",),
+    reference_cases=(
+        "tests/fixtures/formulas/baseflow-cases.json",
+        "tests/fixtures/formulas/camels-pl-cases.json",
+    ),
     oracles=(
         Oracle(
             kind="exact",

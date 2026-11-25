@@ -1,0 +1,28 @@
+[
+  {
+    "formula": "duration_curve_annual_median_interval",
+    "case_id": "HH2002-ARSENIC-MEDIAN-95",
+    "source": {
+      "citation": "Helsel, D.R. and Hirsch, R.M. (2002). Statistical Methods in Water Resources. Techniques of Water-Resources Investigations of the U.S. Geological Survey, book 4, chapter A3 (superseded by Techniques and Methods 4-A3, 2020)",
+      "locator": "sect. 3.3.1, example 2, pp. 71-72: the 25 arsenic concentrations [ppb] of groundwaters of southeastern New Hampshire (Boudette and others, 1985), median 19, the 13th; x' = 7 from table B5 (0.022, nearest alpha/2 = 0.025), R_l = 8 and R_u = 25 - 7 = 18 (eqs. 3.2-3.3): 4.8 <= C_0.5 <= 110 at alpha = 0.044",
+      "url": "https://pubs.usgs.gov/twri/twri4a3/twri4a3.pdf",
+      "access": "open"
+    },
+    "inputs": {
+      "annual_values": [[1.3], [1.5], [1.8], [2.6], [2.8], [3.5], [4.0], [4.8], [8.0], [9.5], [12.0], [14.0], [19.0], [23.0], [41.0], [80.0], [100.0], [110.0], [120.0], [190.0], [240.0], [250.0], [300.0], [340.0], [580.0]],
+      "confidence_levels": [0.95]
+    },
+    "expected": {
+      "median": [19.0],
+      "lower": [[4.8]],
+      "upper": [[110.0]]
+    },
+    "conventions": [
+      "the 25 concentrations as the annual values of one percentage in 25 years: the formula is the interval of the median of any independent sample, and the bounds and the median are values of the sample, printed as given",
+      "the tail of x' = 7, P(B <= 7) = 0.0216 for B ~ Bin(25, 1/2), is the one nearest alpha/2 = 0.025 and also below it, so the source's rule and the spec's (each tail at most (1 - c) / 2) give the same pair, k = 8 and N + 1 - k = 18, of coverage 0.9567",
+      "the large-sample ranks of eqs. 3.4-3.5 on p. 73, 7.6 and 18.4 rounded, give the same pair",
+      "the 2020 edition (Helsel, Hirsch, Ryberg, Archfield and Gilroy, Techniques and Methods 4-A3, example 3.1, p. 63) prints [4.8, 100] from qbinom's ranks 8 and 17 while stating the coverage sum(dbinom(8:17, 25, 0.5)) = 0.9567, which is that of the 8th to the 18th value: its upper rank is one too low, so it is no second source of this case"
+    ],
+    "status": "single_source"
+  }
+]

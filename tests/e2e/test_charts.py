@@ -8,10 +8,14 @@ probability plot, the tc comparison and a legend of keys (line swatches styled
 as the curves, a line of their own) into the GUI's page (its policy, its
 tokens); the readout follows the keys and the pointer and stays within the
 chart, and ``toPng`` gives a PNG twice the drawn size without breaking the
-policy. ``Chart`` (Preact) draws them in both themes, and a theme switch
-recolours them without a redraw.
+policy. A band (the kit's series kind ``band``, ``[x, lo, hi]``: an interval,
+ECO-090, ECO-091) fills between its ends under the lines, breaks where an end is
+missing, is keyed in the legend, read as its two ends and drawn into the PNG.
+``Chart`` (Preact) draws them in both themes, and a theme switch recolours them
+without a redraw.
 """
 
+import math
 import re
 import struct
 from collections.abc import Callable
@@ -100,6 +104,41 @@ const spec = {
   readout: {series: "gev"},
 };
 """
+
+# A band of an interval with its own grid of probabilities over a GEV curve, its lower
+# end missing at 50 %: the band breaks there.
+BAND = """
+const q = (p) => {
+  const u = -Math.log(-Math.log(1 - p / 100));
+  return 120 + 40 * u + 2 * u * u;
+};
+const ps = [99, 95, 90, 80, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1];
+const spec = {
+  x: {label: "prawdopodobieństwo przewyższenia (siatka Gumbela)", scale: "gumbel",
+      domain: [99.3, 0.09]},
+  y: {label: "Q [m³/s]", unit: "m³/s"},
+  series: [
+    {id: "gev", kind: "line", cls: "s1", label: "GEV", digits: 1,
+     data: ps.map((p) => [p, q(p)])},
+    {id: "ci", kind: "band", cls: "s1", label: "przedział ufności 95 %", digits: 1,
+     data: [99, 90, 50, 10, 1, 0.1]
+       .map((p) => [p, p === 50 ? null : 0.8 * q(p), 1.25 * q(p)])},
+  ],
+  legend: true,
+  readout: {series: "gev"},
+};
+"""
+
+
+def gev(p: float) -> float:
+    """The curve of ``BAND`` at the exceedance probability ``p`` [%]."""
+    u = -math.log(-math.log(1 - p / 100))
+    return 120 + 40 * u + 2 * u * u
+
+
+def tenths(value: float) -> str:
+    """``value`` as the readout writes it with one decimal: "50,9"."""
+    return f"{value:.1f}".replace(".", ",")
 
 
 def open_page(tab: Tab) -> Any:
@@ -407,6 +446,72 @@ def test_a_probability_plot_on_gumbel_paper(page: Any) -> None:
     assert labels[:2] == ["p [%]", "T [lata]"]
     assert page.locator("#host .peak-line").count() == 2  # guides to both axes
     assert page.locator("#host .chart-legend i.sw-dot").count() == 1
+
+
+def test_a_band_fills_between_its_ends_under_its_line_and_breaks_at_a_gap(
+    page: Any,
+) -> None:
+    draw(page, BAND)
+    band = page.locator("#host path.band.s1")
+    assert band.count() == 1
+    shape = band.get_attribute("d") or ""
+    # Two runs where both ends are known: 99–90 % and 10–0,1 %
+    assert shape.count("M") == 2 and shape.count("Z") == 2
+    drawn = page.evaluate(
+        "() => [...document.querySelectorAll('#host g.framed > path')]"
+        ".map((path) => path.getAttribute('class'))"
+    )
+    assert drawn == ["band s1", "ser s1"]  # under the line
+    key = page.locator("#host .chart-legend span").filter(
+        has=page.locator("i.sw.band.s1")
+    )
+    assert key.text_content() == "przedział ufności 95 %"
+
+    def reading(index: int) -> str:
+        page.evaluate(f"window.__chart.readout.show({index})")
+        return page.locator("#host .chart-sr").text_content() or ""
+
+    def ends(low: float, high: float) -> str:
+        return f"przedział ufności 95 %: {tenths(low)}–{tenths(high)}{NBSP}m³/s"
+
+    # At its own points, between them (5 % lies between 10 and 1 %, linear in the
+    # reduced variate), and nothing within its gap; the band has no readout dot
+    assert ends(0.8 * gev(99), 1.25 * gev(99)) in reading(0)
+    assert page.locator("#host .readout-dot").count() == 1
+    assert ends(0.8 * gev(10), 1.25 * gev(10)) in reading(6)
+    u = {p: -math.log(-math.log(1 - p / 100)) for p in (10, 5, 1)}
+    share = (u[5] - u[10]) / (u[1] - u[10])
+    low = 0.8 * (gev(10) + share * (gev(1) - gev(10)))
+    assert ends(low, 1.25 * low / 0.8) in reading(7)
+    for index in (3, 5):  # 80 % and 20 %: beside the missing end at 50 %
+        text = reading(index)
+        assert "GEV: " in text and "przedział ufności" not in text
+
+
+def test_to_png_draws_the_band_and_leaves_its_gap_empty(page: Any) -> None:
+    got = page.evaluate(
+        "async () => { const {drawChart} = await import('./src/charts/draw.js');"
+        " const {chartLayout} = await import('./src/charts/axes.js');"
+        " const {toPng} = await import('./src/charts/png.js');"
+        f"{BAND} const chart = drawChart(document.getElementById('host'), spec);"
+        " const layout = chartLayout(spec);"
+        " const box = chart.svg.getBoundingClientRect();"
+        " const matrix = chart.svg.getScreenCTM();"
+        " const at = (p, y) => { const point = new DOMPoint(layout.x.scale(p),"
+        "  layout.y.scale(y)).matrixTransform(matrix);"
+        "  return [Math.round((point.x - box.left) * 2),"
+        "   Math.round((point.y - box.top) * 2)]; };"
+        " const bitmap = await createImageBitmap(await toPng(chart.svg));"
+        " const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);"
+        " const context = canvas.getContext('2d'); context.drawImage(bitmap, 0, 0);"
+        " const pixel = ([x, y]) => Array.from(context.getImageData(x, y, 1, 1).data);"
+        " return {inside: pixel(at(3, 330)), gap: pixel(at(70, 135))}; }"
+    )
+    # Within the band (3 %, between the curve and the upper end): the theme's --info
+    # (rgb(29, 78, 216)) at 18 % over the surface; within its gap, the surface alone
+    red, green, blue, _ = got["inside"]
+    assert blue > red + 15 and blue > green and red < 245
+    assert got["gap"] == [255, 255, 255, 255]
 
 
 def test_horizontal_bars_on_a_band_axis(page: Any) -> None:

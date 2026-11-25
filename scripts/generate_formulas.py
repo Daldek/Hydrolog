@@ -3,7 +3,9 @@
 Every Tier A formula of Hydrolog is declared once by its ``FormulaSpec``
 (``hydrolog._formulas.specs()``); from the specs this script writes
 
-* ``docs/FORMULAS.md``: the catalogue of the formulas (``formulas_markdown``);
+* ``docs/FORMULAS.md``: the catalogue of the formulas (``formulas_markdown``), with the
+  simulated coverage of the intervals of the last nightly run under their formulas
+  (Nogat CMP-6.11; ``tests/fixtures/formulas/interval-coverage.json``);
 * ``formulas/<name>.toml``: the card of each formula (``card``, Nogat
   ``schemas/formula/card-1.schema.json``, copied to ``schemas/nogat/``);
 * ``src/hydrolog/_applicability.py``: the applicability ranges of the specs as plain
@@ -27,6 +29,7 @@ from pathlib import Path
 
 from hydrolog._formulas import DELEGATED, specs, tier_b
 from hydrolog.nogat_formulas import (
+    Coverage,
     FormulaSpec,
     Range,
     card,
@@ -38,14 +41,24 @@ ROOT = Path(__file__).resolve().parent.parent
 DOCUMENT = ROOT / "docs" / "FORMULAS.md"
 CARDS = ROOT / "formulas"
 MODULE = ROOT / "src" / "hydrolog" / "_applicability.py"
+COVERAGE = ROOT / "tests" / "fixtures" / "formulas" / "interval-coverage.json"
 TITLE = "Formulas of Hydrolog"
 
 _WIDTH = 70  # text per line of a wrapped string literal (indent 12 + quotes <= 88)
 
 
+def coverage() -> list[Coverage]:
+    """Return the coverage of the intervals of the last nightly run (CMP-6.11)."""
+    if not COVERAGE.exists():
+        return []
+    return [Coverage(**item) for item in json.loads(COVERAGE.read_text("utf-8"))]
+
+
 def document() -> str:
     """Return the text of ``docs/FORMULAS.md``."""
-    return formulas_markdown(specs(), tier_b(), delegated=DELEGATED, title=TITLE)
+    return formulas_markdown(
+        specs(), tier_b(), delegated=DELEGATED, title=TITLE, coverage=coverage()
+    )
 
 
 def cards() -> dict[str, str]:

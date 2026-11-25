@@ -303,6 +303,29 @@ class TestRunning:
         assert document == expected.to_dict()
         assert document["inputs"]["values"][0] == -5.0
 
+    @pytest.mark.parametrize(
+        ("text", "levels"),
+        [("0.9", [0.9]), ("0.95,0.68", [0.95, 0.68]), ("[0.68, 0.95]", [0.68, 0.95])],
+    )
+    def test_confidence_levels_one_or_a_list(self, capsys, text, levels):
+        _, document = _json_run(
+            capsys,
+            "stats",
+            "low-flow",
+            "--half-year-file",
+            str(FIXTURES / "station_half_years_15y.csv"),
+            "--return-periods",
+            "2,10",
+            "--confidence-level",
+            text,
+            "--json",
+        )
+        intervals = document["result"]["fisher_tippett"]["intervals"]
+        assert [entry["confidence_level"] for entry in intervals] == levels
+        assert document["inputs"]["confidence_level"] == (
+            levels[0] if text == "0.9" else levels
+        )
+
     @pytest.mark.parametrize("flag", ["--h0-initial", "--h0-initial="])
     def test_negative_number_after_a_flag(self, capsys, flag):
         levels = ["62", "88", "115", "142", "170", "200", "235", "270"]
