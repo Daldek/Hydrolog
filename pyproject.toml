@@ -116,7 +116,7 @@ version = {attr = "hydrolog.__version__"}
 # Nogat's release set candidate-16 (REL-5.3); its version 3.3.0 is within the
 # declared range >=3.1.0,<4 (REL-5.6). Once Obserwator is released this branch
 # replaces it with the tag v3.3.0.
-obserwator = { git = "https://github.com/Daldek/Obserwator.git", rev = "0f8fd3144657a76c785b6bc6156690196c73d01b" }
+obserwator = { git = "https://github.com/Daldek/Obserwator.git", rev = "2637350d009896d4554b3b252a725c7613897f5d" }
 
 [dependency-groups]
 dev = [

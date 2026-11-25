@@ -27,7 +27,7 @@ Interval estimates beside the point estimates (Nogat ECO-091, plan `2026-11-24-i
 
 ### Changed
 
-- **The extras `pmaxtp`, `gui` and `all` install Obserwator 3.3.0** (Nogat release set candidate-16, REL-5.3): `[tool.uv.sources]` pins commit `0f8fd3144657a76c785b6bc6156690196c73d01b` of Obserwator's `chore/release-3.3.0` instead of the tag `v3.2.1`, until Obserwator 3.3.0 is tagged; the range `obserwator>=3.1.0,<4` is unchanged and admits it. Obserwator 3.3.0 changes nothing Hydrolog uses (`fetch_pmaxtp` and the three errors it catches). `uv.lock` updated.
+- **The extras `pmaxtp`, `gui` and `all` install Obserwator 3.3.0** (Nogat release set candidate-16, REL-5.3): `[tool.uv.sources]` pins commit `2637350d009896d4554b3b252a725c7613897f5d` of Obserwator's `chore/release-3.3.0` instead of the tag `v3.2.1`, until Obserwator 3.3.0 is tagged; the range `obserwator>=3.1.0,<4` is unchanged and admits it. Obserwator 3.3.0 changes nothing Hydrolog uses (`fetch_pmaxtp` and the three errors it catches). `uv.lock` updated.
 
 ## [0.9.1] - 2026-11-24
 
