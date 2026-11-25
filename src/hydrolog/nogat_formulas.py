@@ -93,10 +93,12 @@ __all__ = [
     "DEFAULT_ERRORS",
     "TRAPS",
     "UNITS",
+    "Bounds",
     "Case",
     "Conservation",
     "Constant",
     "Constraint",
+    "Coverage",
     "Delegated",
     "Errors",
     "FormulaCalculationError",
@@ -104,6 +106,7 @@ __all__ = [
     "FormulaErrors",
     "FormulaSpec",
     "FormulaValidationError",
+    "IntervalFunction",
     "FrozenOracle",
     "Limit",
     "Notice",
@@ -125,6 +128,8 @@ __all__ = [
     "Values",
     "Variable",
     "assert_case",
+    "assert_coverage",
+    "assert_interval_properties",
     "assert_limits",
     "assert_monotonic",
     "assert_properties",
@@ -3165,6 +3170,333 @@ def assert_case(
         )
 
 
+# --- coverage of interval estimators (CMP-6.11) ----------------------------------
+
+type Bounds = tuple[ArrayLike, ArrayLike]
+type IntervalFunction = Callable[
+    [NDArray[np.float64], tuple[float, ...]], Sequence[Bounds]
+]
+CoverageCheck = Literal["exact", "expected", "bound"]
+_COVERAGE_SAMPLES: Final = 1000
+_COVERAGE_ERRORS: Final = 3.0
+
+
+@dataclass(frozen=True, kw_only=True)
+class Coverage:
+    """The simulated coverage of an interval at one setting and level (CMP-6.11).
+
+    ``coverage`` and ``undefined`` hold one entry per element of the true value
+    in C order (one for a scalar): the share of the ``samples`` intervals that
+    hold it and how many of them had a bound not computed. ``check`` names what
+    the coverage was asserted against, per element in ``target``: ``exact`` the
+    level itself, ``expected`` the coverage the method is known or reported to
+    have, ``bound`` a lower bound. :func:`assert_coverage` returns the records; a
+    project keeps those of its last run (``dataclasses.asdict`` and
+    ``Coverage(**record)`` round-trip through JSON) and passes them to
+    :func:`formulas_markdown`.
+    """
+
+    formula: str
+    setting: str
+    size: int
+    samples: int
+    seed: int
+    confidence_level: float
+    check: CoverageCheck
+    target: tuple[float, ...]
+    coverage: tuple[float, ...]
+    undefined: tuple[int, ...]
+    reason: str
+
+    def __post_init__(self) -> None:
+        """Hold the per-element values as tuples, so a JSON record rebuilds one."""
+        object.__setattr__(self, "target", tuple(map(float, self.target)))
+        object.__setattr__(self, "coverage", tuple(map(float, self.coverage)))
+        object.__setattr__(self, "undefined", tuple(map(int, self.undefined)))
+        if self.check not in _choices_of(CoverageCheck):
+            raise SpecError(f"coverage check {self.check!r} is not a check")
+        if not len(self.target) == len(self.coverage) == len(self.undefined) > 0:
+            raise SpecError("coverage, target and undefined need one entry per element")
+
+    def text(self) -> str:
+        """Return the record as ``docs/FORMULAS.md`` lists it."""
+
+        def shares(values: tuple[float, ...]) -> str:
+            low, high = min(values), max(values)
+            return f"{low:.3f}" if low == high else f"{low:.3f} to {high:.3f}"
+
+        against = {"exact": "the level", "expected": "expected", "bound": "at least"}
+        over = f" over {len(self.coverage)} values" if len(self.coverage) > 1 else ""
+        return (
+            f"{self.setting}, n = {self.size}, c = {_num(self.confidence_level)}: "
+            f"coverage {shares(self.coverage)}{over}, asserted against "
+            f"{against[self.check]} {shares(self.target)} within the Monte Carlo "
+            f"error; {self.samples} samples, seed {self.seed}, "
+            f"{sum(self.undefined)} bounds not computed: {self.reason}"
+        )
+
+
+def _levels(confidence_level: float | Sequence[float]) -> tuple[float, ...]:
+    """Return the levels asked as a tuple, refusing what is no set of levels."""
+    asked = (
+        (confidence_level,)
+        if isinstance(confidence_level, (int, float))
+        else tuple(confidence_level)
+    )
+    for c in asked:
+        if isinstance(c, bool) or not isinstance(c, (int, float)) or not 0 < c < 1:
+            raise ValueError(f"a confidence level is a number in (0, 1), not {c!r}")
+    if not asked or len(set(asked)) != len(asked):
+        raise ValueError(f"confidence levels {asked!r} are not distinct levels")
+    return tuple(float(c) for c in asked)
+
+
+def _where(flat: int, shape: tuple[int, ...]) -> str:
+    return f" at {_index(flat, shape)}" if shape else ""
+
+
+def assert_interval_properties(
+    interval: IntervalFunction,
+    sample: ArrayLike,
+    confidence_level: float | Sequence[float],
+) -> list[tuple[NDArray[np.float64], NDArray[np.float64]]]:
+    """Assert the generated properties of an interval on one sample (CMP-6.11).
+
+    Every interval has its lower bound at most its upper bound, and the interval
+    of a smaller level lies inside that of a larger one, element by element where
+    both bounds are computed; a bound not computed is NaN.
+
+    Parameters
+    ----------
+    interval : callable
+        ``interval(sample, levels)`` gives one ``(lower, upper)`` per level, in
+        the order of ``levels``, each a scalar or an array of one shape.
+    sample : array_like
+        The values the interval is computed from.
+    confidence_level : float or sequence of float
+        The level or the distinct levels asked, each in (0, 1).
+
+    Returns
+    -------
+    list of (ndarray, ndarray)
+        The bounds per level, as float64 arrays.
+
+    Raises
+    ------
+    ValueError
+        If a level is not in (0, 1) or the levels are not distinct.
+    AssertionError
+        Naming the level, the element and the bounds that break a property.
+    """
+    levels = _levels(confidence_level)
+    given = interval(np.asarray(sample, dtype=np.float64), levels)
+    if len(given) != len(levels):
+        _fail(f"{len(given)} pairs of bounds for the {len(levels)} levels {levels}")
+    bounds: list[tuple[NDArray[np.float64], NDArray[np.float64]]] = []
+    for c, (low, high) in zip(levels, given, strict=True):
+        lower = np.asarray(low, dtype=np.float64)
+        upper = np.asarray(high, dtype=np.float64)
+        shape = bounds[0][0].shape if bounds else lower.shape
+        if lower.shape != shape or upper.shape != shape:
+            _fail(f"bounds of shapes {lower.shape} and {upper.shape} at c = {c}")
+        crossed = lower > upper
+        if crossed.any():
+            flat = int(np.argmax(crossed))
+            _fail(
+                f"at c = {_num(c)} the lower bound {float(lower.flat[flat])!r} exceeds "
+                f"the upper {float(upper.flat[flat])!r}{_where(flat, shape)} (CMP-6.11)"
+            )
+        bounds.append((lower, upper))
+    order = sorted(range(len(levels)), key=lambda k: levels[k])
+    for inner, outer in itertools.combinations(order, 2):
+        (low_in, high_in), (low_out, high_out) = bounds[inner], bounds[outer]
+        outside = (low_out > low_in) | (high_in > high_out)
+        if outside.any():
+            flat = int(np.argmax(outside))
+            _fail(
+                f"the interval at c = {_num(levels[inner])}, "
+                f"[{float(low_in.flat[flat])!r}, {float(high_in.flat[flat])!r}], is "
+                f"not inside that at c = {_num(levels[outer])}, "
+                f"[{float(low_out.flat[flat])!r}, {float(high_out.flat[flat])!r}]"
+                f"{_where(flat, low_in.shape)} (CMP-6.11)"
+            )
+    return bounds
+
+
+def _targets(
+    given: Mapping[float, ArrayLike] | None,
+    levels: tuple[float, ...],
+    shape: tuple[int, ...],
+    what: str,
+) -> dict[float, NDArray[np.float64]]:
+    """Return the coverages asserted per level, broadcast to the true value."""
+    targets: dict[float, NDArray[np.float64]] = {}
+    for c, value in (given or {}).items():
+        if c not in levels:
+            raise ValueError(f"{what} for c = {c!r}, not a level asked {levels}")
+        target = np.asarray(value, dtype=np.float64)
+        if not np.all((target >= 0) & (target <= 1)):
+            raise ValueError(f"{what} at c = {c!r} is not a share in [0, 1]")
+        try:
+            targets[float(c)] = np.broadcast_to(target, shape)
+        except ValueError:
+            raise ValueError(
+                f"{what} at c = {c!r} has the shape {target.shape}, not {shape}"
+            ) from None
+    return targets
+
+
+def assert_coverage(
+    spec: FormulaSpec,
+    interval: IntervalFunction,
+    draw: Callable[[np.random.Generator, int], ArrayLike],
+    true_value: ArrayLike,
+    *,
+    setting: str,
+    size: int,
+    confidence_level: float | Sequence[float],
+    seed: int,
+    reason: str,
+    samples: int = _COVERAGE_SAMPLES,
+    expected: Mapping[float, ArrayLike] | None = None,
+    at_least: Mapping[float, ArrayLike] | None = None,
+) -> list[Coverage]:
+    """Assert an interval's coverage, simulated, seeded, at one setting (CMP-6.11).
+
+    ``samples`` samples of ``size`` values are drawn in turn from one generator
+    seeded with ``seed``; on each, :func:`assert_interval_properties` holds and
+    every interval asked either holds the true value, bounds included, or not.
+    A bound not computed (NaN) holds nothing. The share that holds, per level
+    and element, is asserted within the Monte Carlo error ``3 sqrt(p (1 - p) /
+    m)`` of ``m`` samples around ``p``, three standard errors, so a right method
+    fails one assertion in about 370: the level itself for an exact method; the
+    coverage in ``expected`` (an exact method's known coverage, an approximate
+    one's as its source reports it for the setting); or, for a level in
+    ``at_least``, at least that bound less the error. The test fixes ``seed``
+    once and records it; a seed is never chosen to pass.
+
+    Parameters
+    ----------
+    spec : FormulaSpec
+        The interval's formula.
+    interval : callable
+        ``interval(sample, levels)`` as in :func:`assert_interval_properties`,
+        each bound of the true value's shape.
+    draw : callable
+        ``draw(generator, size)`` gives one sample, ``size`` values along its
+        first axis, from the distribution of the setting.
+    true_value : array_like
+        The value the intervals estimate, finite.
+    setting : str
+        The distribution and its parameters, as the report names them.
+    size : int
+        Values per sample: 30 and 60 for annual series.
+    confidence_level : float or sequence of float
+        The levels asked, each in (0, 1), distinct.
+    seed : int
+        The generator's seed, at least 0.
+    reason : str
+        Why the coverage asserted is the method's (CMP-6.8); never empty.
+    samples : int
+        Samples drawn, at least 1,000.
+    expected, at_least : Mapping[float, array_like] or None
+        Per level, the coverage asserted or its lower bound, a share or one per
+        element; a level in neither is asserted at itself.
+
+    Returns
+    -------
+    list of Coverage
+        One record per level, in the order asked, for the report.
+
+    Raises
+    ------
+    ValueError
+        If an argument breaks what is above.
+    AssertionError
+        Naming the sample, level and element whose property or coverage fails,
+        the coverage, its target and the reason.
+    """
+    levels = _levels(confidence_level)
+    for name, text in (("setting", setting), ("reason", reason)):
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError(f"a coverage needs its {name} (CMP-6.8)")
+    for name, number, least in (
+        ("size", size, 1),
+        ("samples", samples, _COVERAGE_SAMPLES),
+        ("seed", seed, 0),
+    ):
+        if isinstance(number, bool) or not isinstance(number, int) or number < least:
+            raise ValueError(f"{name} is an integer of at least {least}: {number!r}")
+    truth = np.asarray(true_value, dtype=np.float64)
+    if not np.isfinite(truth).all():
+        raise ValueError("the true value is not finite")
+    known = _targets(expected, levels, truth.shape, "an expected coverage")
+    bound = _targets(at_least, levels, truth.shape, "a bound of the coverage")
+    if both := known.keys() & bound.keys():
+        raise ValueError(f"levels {sorted(both)} have both a coverage and a bound")
+    held = np.zeros((len(levels), *truth.shape), dtype=np.int64)
+    undefined = np.zeros_like(held)
+    generator = np.random.default_rng(seed)
+    where = f"{spec.name}, {setting}, n = {size}"
+    for number in range(samples):
+        sample = np.asarray(draw(generator, size), dtype=np.float64)
+        if sample.ndim == 0 or sample.shape[0] != size:
+            _fail(f"{where}: a sample of shape {sample.shape}, not {size} values")
+        try:
+            bounds = assert_interval_properties(interval, sample, levels)
+        except AssertionError as failure:
+            _fail(f"{where}, sample {number} of seed {seed}: {failure}")
+        for k, (lower, upper) in enumerate(bounds):
+            if lower.shape != truth.shape:
+                _fail(f"{where}: bounds of shape {lower.shape}, not {truth.shape}")
+            held[k] += (lower <= truth) & (truth <= upper)
+            undefined[k] += np.isnan(lower) | np.isnan(upper)
+    records: list[Coverage] = []
+    for k, c in enumerate(levels):
+        check: CoverageCheck = "exact"
+        target = np.broadcast_to(np.float64(c), truth.shape)
+        if c in known:
+            check = "expected"
+            target = known[c]
+        elif c in bound:
+            check = "bound"
+            target = bound[c]
+        share = held[k] / samples
+        error = _COVERAGE_ERRORS * np.sqrt(target * (1.0 - target) / samples)
+        bad = (
+            share < target - error if check == "bound" else abs(share - target) > error
+        )
+        if bad.any():
+            flat = int(np.argmax(bad))
+            p, e = float(target.flat[flat]), float(error.flat[flat])
+            allowed = f"{p!r} ± {e:.4f}"
+            if check == "bound":
+                allowed = f"at least {p!r} - {e:.4f}"
+            _fail(
+                f"{where}, c = {_num(c)}: coverage {float(share.flat[flat])!r}"
+                f"{_where(flat, truth.shape)}, not {allowed} ({check}; the Monte "
+                f"Carlo error 3 sqrt(p (1 - p) / m) of {samples} samples of seed "
+                f"{seed}; {int(undefined[k].flat[flat])} bounds not computed): "
+                f"{reason}"
+            )
+        records.append(
+            Coverage(
+                formula=spec.name,
+                setting=setting,
+                size=size,
+                samples=samples,
+                seed=seed,
+                confidence_level=c,
+                check=check,
+                target=tuple(target.ravel().tolist()),
+                coverage=tuple(share.ravel().tolist()),
+                undefined=tuple(undefined[k].ravel().tolist()),
+                reason=reason,
+            )
+        )
+    return records
+
+
 # --- frozen oracles (CMP-6.4) ----------------------------------------------------
 
 
@@ -3581,7 +3913,9 @@ def _exponents(exponents: Mapping[str, float]) -> str:
     return ", ".join(shown) or "none"
 
 
-def _spec_markdown(spec: FormulaSpec, scores: Mapping[str, float]) -> list[str]:
+def _spec_markdown(
+    spec: FormulaSpec, scores: Mapping[str, float], coverage: Sequence[Coverage]
+) -> list[str]:
     properties = spec.properties
     lines = [
         f'<a id="{spec.name}"></a>',
@@ -3716,7 +4050,12 @@ def _spec_markdown(spec: FormulaSpec, scores: Mapping[str, float]) -> list[str]:
             f"compared in `{t.comparison}`"
             for t in spec.tables
         ]
-    lines += ["", f"**Tests by class (CMP §6):** {'; '.join(_test_classes(spec))}."]
+    classes = _test_classes(spec)
+    if coverage:
+        lines += ["", "**Coverage of its intervals (CMP-6.11)**", ""]
+        lines += [f"- {_cell(record.text())}" for record in coverage]
+        classes.append("coverage (CMP-6.11)")
+    lines += ["", f"**Tests by class (CMP §6):** {'; '.join(classes)}."]
     return lines
 
 
@@ -3726,6 +4065,7 @@ def formulas_markdown(
     mutation_scores: Mapping[str, float] | None = None,
     *,
     delegated: Sequence[Delegated] = (),
+    coverage: Sequence[Coverage] = (),
     title: str = "Formulas",
 ) -> str:
     """Return ``docs/FORMULAS.md`` generated from the specs (CMP-2.6).
@@ -3741,6 +4081,9 @@ def formulas_markdown(
         (CMP-7.1); a formula shows the score of its module.
     delegated : sequence of Delegated
         Computations delegated to libraries (CMP-1.2).
+    coverage : sequence of Coverage
+        The coverage of the intervals from the last simulation (CMP-6.11), shown
+        under their formulas in the order given.
     title : str
         The document's heading.
 
@@ -3749,8 +4092,16 @@ def formulas_markdown(
     str
         The document; the same specs give the same text, so a check compares it
         with the committed file (DEV-10.4).
+
+    Raises
+    ------
+    ValueError
+        If a coverage record names no formula of ``specs``.
     """
     scores = dict(mutation_scores or {})
+    names = {spec.name for spec in specs}
+    if unknown := sorted({r.formula for r in coverage} - names):
+        raise ValueError(f"coverage of {unknown}, not formulas of the specs")
     lines = [
         f"# {title}",
         "",
@@ -3768,7 +4119,8 @@ def formulas_markdown(
         for s in specs
     ]
     for spec in specs:
-        lines += ["", *_spec_markdown(spec, scores)]
+        own = [record for record in coverage if record.formula == spec.name]
+        lines += ["", *_spec_markdown(spec, scores, own)]
     if tier_b:
         lines += [
             "",

@@ -348,6 +348,69 @@ class TestArrays:
         assert text.splitlines()[-2:] == ["  t: [0, 5, 10]", "  q: [1, 2, 3]"]
 
 
+class TestIntervals:
+    """The first level's bounds stand beside the estimates; the levels in one line."""
+
+    @staticmethod
+    def _interval(level, method, lower, upper):
+        return {
+            "confidence_level": level,
+            "ci_method": method,
+            "ci_lower": lower,
+            "ci_upper": upper,
+            "ci_samples": None,
+        }
+
+    def test_inline_quantiles_carry_the_bounds_of_the_first_level(self):
+        fit = {
+            "quantiles": [10.0, 20.0, 30.0],
+            "intervals": [
+                self._interval(0.68, "delta", [9.5, 18.25, None], [10.5, 21.0, None]),
+                self._interval(0.95, "delta", [9.0, 17.0, None], [11.0, 23.0, None]),
+            ],
+        }
+        text = _render({"fit": fit}, lang="en")
+        assert text.splitlines()[-2:] == [
+            "    quantiles: [10 [9.5–10.5], 20 [18.25–21], 30]",
+            "    intervals: 0.68 delta, 0.95 delta",
+        ]
+
+    def test_an_interval_not_computed_leaves_the_quantiles_alone(self):
+        fit = {
+            "quantiles": [10.0, 20.0],
+            "intervals": [self._interval(0.95, None, None, None)],
+        }
+        text = _render(fit, lang="en")
+        assert text.splitlines()[-2:] == [
+            "  quantiles: [10, 20]",
+            "  intervals: 0.95 n/a",
+        ]
+
+    def test_a_long_curve_gets_columns_of_the_bounds(self):
+        count = 10
+        result = {
+            "curve_exceedance_percents": [float(p) for p in range(count)],
+            "annual_median_values": [float(100 - p) for p in range(count)],
+            "intervals": [
+                self._interval(
+                    0.9,
+                    "order_statistics",
+                    [float(99 - p) for p in range(count)],
+                    [float(101 - p) for p in range(count)],
+                )
+            ],
+        }
+        lines = _render(result, lang="en").splitlines()
+        assert lines[2].split() == [
+            "curve_exceedance_percents",
+            "annual_median_values",
+            "ci_lower",
+            "ci_upper",
+        ]
+        assert lines[4].split() == ["0", "100", "99", "101"]
+        assert lines[-1] == "  intervals: 0.9 order_statistics"
+
+
 class TestResultSchema:
     """The ``schema`` of a result and its ``files`` are sections, not fields."""
 

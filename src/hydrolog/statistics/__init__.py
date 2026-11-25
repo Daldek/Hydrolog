@@ -88,6 +88,13 @@ from hydrolog.statistics.homogeneity import (
     TwoSampleTestResult,
     homogeneity_tests,
 )
+from hydrolog.statistics.intervals import (
+    BootstrapInterval,
+    ConfidenceInterval,
+    DeltaInterval,
+    quantile_interval_bootstrap,
+    quantile_interval_delta,
+)
 from hydrolog.statistics.low_flows import (
     LowFlowAnalysis,
     LowFlowAnalysisResult,
@@ -334,6 +341,12 @@ __all__ = [
     "FIT_METHODS",
     "FitMethod",
     "EmpiricalFrequency",
+    # Intervals of the quantiles (ECO-091)
+    "ConfidenceInterval",
+    "BootstrapInterval",
+    "DeltaInterval",
+    "quantile_interval_bootstrap",
+    "quantile_interval_delta",
     # Low-flow
     "LowFlowAnalysis",
     "LowFlowFrequencyResult",

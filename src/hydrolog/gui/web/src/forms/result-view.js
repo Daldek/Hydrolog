@@ -4,7 +4,7 @@
 // the envelope; the components show it, and each section's results panel puts them together.
 
 import { Chart } from "../charts/chart.js";
-import { auto, decimalsFor, hmm, num, plural } from "../format.js";
+import { auto, decimalsFor, exact, hmm, num, plural } from "../format.js";
 import { html, useMemo } from "../html.js";
 import { common, t } from "../labels/common.js";
 import { exportLabels } from "../labels/exports.js";
@@ -143,14 +143,52 @@ function isScalar(value) {
 }
 
 /**
+ * Whether a value is an array of numbers, some of them missing (null): a series with gaps
+ * (the bounds of an interval left out, the normals of months without enough years).
+ *
+ * @param {unknown} value the value
+ * @returns {boolean} true for numbers and nulls with at least one number
+ */
+function isNumericArray(value) {
+  return (
+    Array.isArray(value) &&
+    value.some((item) => typeof item === "number") &&
+    value.every((item) => typeof item === "number" || item === null)
+  );
+}
+
+/**
+ * The arrays of an `intervals` list (ECO-091: one entry per confidence level, its ends
+ * aligned with the estimates of its owner: `quantiles`, the median annual flow-duration
+ * curve): the lower and upper ends of each computed level, named by the level
+ * (`ci95_lower`, `ci95_upper`), so they join the table, the CSV and the chart of their
+ * estimates (the chart fills between them: seriesChartSpec). A level not computed has
+ * no ends (its notice says why).
+ *
+ * @param {unknown} value the value of a field named `intervals`
+ * @returns {{name: string, values: (number|null)[], interval: {level: number, end:
+ *   "lower"|"upper"}}[]} the arrays, none for another value
+ */
+function intervalArrays(value) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    const level = entry && typeof entry.confidence_level === "number" ? entry.confidence_level : null;
+    if (level === null || !isNumericArray(entry.ci_lower) || !isNumericArray(entry.ci_upper)) return [];
+    const name = `ci${Number((level * 100).toPrecision(12))}`;
+    return ["lower", "upper"].map((end) => ({ name: `${name}_${end}`, values: entry[`ci_${end}`], interval: { level, end } }));
+  });
+}
+
+/**
  * Read an envelope for display.
  *
  * @param {object|null} envelope a hydrolog-result/1 envelope
  * @returns {{schema: string|null, status: string|null, notices: object[], scalars: object[],
  *   objects: object[], series: object[], records: object[], files: object[],
  *   targets: object[]|null}} its parts: top-level scalars, nested objects of scalars, groups
- *   of numeric arrays of one length (each with its x axis when it has one: a time, months,
- *   days or another array of the result, see groupAxis; lists of years are neither),
+ *   of numeric arrays of one length, a missing value null (each with its x axis when it has
+ *   one: a time, months, days or another array of the result, see groupAxis; lists of years
+ *   are neither; the ends of an `intervals` list join their estimates: intervalArrays),
  *   arrays of records, written files and the targets of a plan
  */
 export function analyzeResult(envelope) {
@@ -174,8 +212,10 @@ export function analyzeResult(envelope) {
   if (Array.isArray(result.files)) found.files = result.files;
   const arrays = [];
   const collect = (key, value, owner) => {
-    if (Array.isArray(value) && value.length && value.every((item) => typeof item === "number")) {
-      arrays.push({ key: owner ? `${owner}.${key}` : key, name: key, values: value });
+    const keyOf = (name) => (owner ? `${owner}.${name}` : name);
+    if (key === "intervals") for (const array of intervalArrays(value)) arrays.push({ ...array, key: keyOf(array.name) });
+    if (isNumericArray(value)) {
+      arrays.push({ key: keyOf(key), name: key, values: value });
       return true;
     }
     return false;
@@ -214,10 +254,12 @@ export function analyzeResult(envelope) {
     const ys = data.filter((array) => array !== axis);
     if (!ys.length) continue;
     const unit = (array) => fieldUnit(array.name, command, parameter);
+    const label = (array) =>
+      array.interval ? t(texts.intervalEnds[array.interval.end], { level: exact(array.interval.level * 100) }) : fieldLabel(array.name, command);
     found.series.push({
       length,
       x: axis ? { label: fieldLabel(axis.name, command), unit: axis.implied ? null : unit(axis), ...axis } : null,
-      ys: ys.map((array) => ({ ...array, label: fieldLabel(array.name, command), unit: unit(array) })),
+      ys: ys.map((array) => ({ ...array, label: label(array), unit: unit(array) })),
     });
   }
   return found;
@@ -246,20 +288,21 @@ export function headline(analysis, inputs = {}, keys = null) {
 
 /**
  * The decimals of a column of numbers: none for whole numbers, else five significant
- * digits of the largest.
+ * digits of the largest; a missing value (null) counts for neither.
  *
- * @param {number[]} values the column
+ * @param {(number|null)[]} values the column
  * @returns {number} the decimals
  */
 function columnDecimals(values) {
-  if (values.every((value) => Number.isInteger(value))) return 0;
+  if (values.every((value) => value === null || Number.isInteger(value))) return 0;
   let largest = 0;
-  for (const value of values) if (Math.abs(value) > largest) largest = Math.abs(value);
+  for (const value of values) if (value !== null && Math.abs(value) > largest) largest = Math.abs(value);
   return Math.min(6, decimalsFor(largest, 5));
 }
 
 /**
- * A group of series as CSV: comma separated, decimal dot, a header of field names.
+ * A group of series as CSV: comma separated, decimal dot, a header of field names; a
+ * missing value is an empty cell.
  *
  * @param {object} group a group of analyzeResult's `series`
  * @returns {string} the CSV text
@@ -268,7 +311,7 @@ function seriesCsv(group) {
   const columns = [group.x || { name: "index", values: Array.from({ length: group.length }, (_, index) => index + 1) }, ...group.ys];
   const lines = [columns.map((column) => column.name).join(",")];
   for (let index = 0; index < group.length; index += 1) {
-    lines.push(columns.map((column) => String(column.values[index])).join(","));
+    lines.push(columns.map((column) => csvCell(column.values[index])).join(","));
   }
   return `${lines.join("\n")}\n`;
 }
@@ -298,14 +341,15 @@ function recordsCsv(record) {
 }
 
 /**
- * The table of a result as CSV: its first group of series, else its first table of
- * records, else its scalars as name, value and unit.
+ * The table of a result as CSV: a group of series (the first by default), else its first
+ * table of records, else its scalars as name, value and unit.
  *
  * @param {object} analysis the result of analyzeResult
+ * @param {object} [group] the group of series to write, one of `analysis.series`
  * @returns {string} the CSV text
  */
-export function resultCsv(analysis) {
-  if (analysis.series.length) return seriesCsv(analysis.series[0]);
+export function resultCsv(analysis, group = analysis.series[0]) {
+  if (group) return seriesCsv(group);
   if (analysis.records.length) return recordsCsv(analysis.records[0]);
   const rows = [
     ...analysis.scalars,
@@ -315,10 +359,19 @@ export function resultCsv(analysis) {
   return `${lines.join("\n")}\n`;
 }
 
+/** The colour classes of a chart's lines, by their order (the chart's own default). */
+const LINE_CLASSES = ["s1", "s2", "s3", "s4", "s5", "s6"];
+
+/** The arrays an `intervals` list bounds (ECO-091), its band drawn in their colour. */
+const ESTIMATES = ["quantiles", "annual_median_values"];
+
 /**
  * A group of series as a Chart spec (charts/chart.js): lines against the time axis (in
  * minutes when short, else in hours), the months (one step each, named, in the group's
- * order: November first in a hydrological year), another axis of the group or the step.
+ * order: November first in a hydrological year), another axis of the group or the step;
+ * the two ends of an interval (intervalArrays) a band filled between them under the
+ * lines, in the colour of their estimate (ESTIMATES of the same object), else of the line
+ * before them.
  *
  * @param {object} group a group of analyzeResult's `series`
  * @param {{size?: string}} [how] the chart's size ("wide", the default, or "small")
@@ -344,15 +397,31 @@ export function seriesChartSpec(group, how = {}) {
       labels: months.map((month, index) => ({ value: index + 1, label: texts.months[month - 1] })),
     };
   }
+  const lines = group.ys.filter((array) => !array.interval).slice(0, LINE_CLASSES.length);
+  const classOf = new Map(lines.map((array, index) => [array, LINE_CLASSES[index]]));
+  const series = [];
+  for (const array of group.ys) {
+    if (classOf.has(array)) {
+      series.push({ id: array.key, kind: "line", cls: classOf.get(array), data: xs.map((at, index) => [at, array.values[index]]), label: name(array) });
+      continue;
+    }
+    const upper = array.interval?.end === "lower" ? group.ys.find((other) => other.key === array.key.replace(/_lower$/, "_upper")) : null;
+    if (!upper) continue;
+    const owner = array.key.slice(0, array.key.length - array.name.length);
+    const before = lines.filter((line) => group.ys.indexOf(line) < group.ys.indexOf(array)).at(-1);
+    const estimate = lines.find((line) => ESTIMATES.includes(line.name) && line.key === `${owner}${line.name}`) ?? before;
+    series.push({
+      id: array.key.replace(/_lower$/, ""),
+      kind: "band",
+      cls: estimate ? classOf.get(estimate) : LINE_CLASSES[0],
+      data: xs.map((at, index) => [at, array.values[index], upper.values[index]]),
+      label: t(texts.interval, { level: exact(array.interval.level * 100) }),
+    });
+  }
   return {
     x,
     y: { label: group.ys.length === 1 ? `${name(group.ys[0])}${unit}` : unit.trim() },
-    series: group.ys.slice(0, 6).map((array) => ({
-      id: array.key,
-      kind: "line",
-      data: xs.map((at, index) => [at, array.values[index]]),
-      label: name(array),
-    })),
+    series,
     legend: group.ys.length > 1,
     readout: months ? { x: (at) => texts.monthNames[months[Math.round(at) - 1] - 1] } : true,
     size: how.size || "wide",

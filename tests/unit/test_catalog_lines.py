@@ -120,6 +120,10 @@ class TestOptionWords:
         ("kind", "value", "expected"),
         [
             ("number_list", [-1.5, 2, 3e-07], [-1.5, 2.0, 3e-07]),
+            ("number_or_list", 0.95, 0.95),
+            ("number_or_list", [0.95, 0.68], [0.95, 0.68]),
+            ("number_or_list", [0.95], [0.95]),
+            ("number_or_list", [-1, 2], [-1.0, 2.0]),
             ("string_list", ["x", "a,b", "[c]"], ["x", "a,b", "[c]"]),
             ("string_list", ["2020-01-01", "2020-01-02"], ["2020-01-01", "2020-01-02"]),
             ("object", {"a": [1, 2], "b": {"c": "ł"}}, {"a": [1, 2], "b": {"c": "ł"}}),
@@ -162,6 +166,20 @@ class TestFormatCommand:
         assert format_command("tc kirpich", {"length_km": 8.0}) == (
             "hydrolog tc kirpich --length-km 8"
         )
+
+    @pytest.mark.parametrize(
+        ("levels", "word"),
+        [(0.68, "0.68"), ([0.95, 0.68], "0.95,0.68"), ([0.95], "'[0.95]'")],
+    )
+    def test_confidence_levels_read_back_in_the_form_given(self, levels, word):
+        """One level is a number; a list of one level stays a list (JSON)."""
+        options = {"half_year_file": "half.csv", "confidence_level": levels}
+        line = format_command("stats low-flow", options)
+        assert line == (
+            "hydrolog stats low-flow --half-year-file half.csv "
+            f"--confidence-level {word}"
+        )
+        assert parse_command(line).options == options
 
     def test_none_is_an_option_that_is_not_given(self):
         given = {"length_km": 2.5, "slope_m_per_m": None}

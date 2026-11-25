@@ -16,7 +16,7 @@ import {
   ResultSummary,
 } from "../../forms/result-view.js";
 import { CommandLine, ExportButtons, FileList } from "../../ui/export-panel.js";
-import { exportSpec } from "./export.js";
+import { exportSpec, shownGroup } from "./export.js";
 
 /**
  * Tiles of a command's result, the key figure last (highlighted); a command whose result
@@ -79,7 +79,7 @@ function tilesOf(command, envelope) {
  * The group a run's chart draws: its series of CHARTED when it has any, else all.
  *
  * @param {string} command the command
- * @param {object} group a group of analyzeResult's `series`
+ * @param {object} group a group of analyzeResult's `series` (export.js shownGroup)
  * @returns {object} the group to draw
  */
 function charted(command, group) {
@@ -129,7 +129,8 @@ export function ResultsPanel({ run, chartSvg }) {
     `;
   }
   const spec = exportSpec({ command, options, envelope, analysis, chartSvg });
-  const first = analysis.series[0] ? charted(command, analysis.series[0]) : null;
+  const shown = shownGroup(command, analysis);
+  const first = shown ? charted(command, shown) : null;
   return html`
     <${ResultSummary} analysis=${analysis} inputs=${envelope.inputs} keys=${tilesOf(command, envelope)} />
     ${first ? html`<${ResultSeries} group=${first} table=${false} svgRef=${chartSvg} size="small" bare=${true} />` : null}

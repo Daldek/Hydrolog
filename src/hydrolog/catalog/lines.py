@@ -16,7 +16,8 @@ Canonical form
 * the options that are given, in catalog order (``None`` is "not given"), each as its
   flag and value: a number in its shortest exact form (``8.2``, ``50``, ``1e-05``), a
   list comma-separated (a list of strings that holds a comma or a blank item as JSON
-  text), an object as compact JSON, a boolean as ``--flag`` or ``--no-flag``; a value
+  text, a list of one item of an option that takes a number or a list as ``[0.95]``),
+  an object as compact JSON, a boolean as ``--flag`` or ``--no-flag``; a value
   that starts with ``-`` is joined to its flag by ``=`` (``--offset=-5``);
 * then the run flags, which change how a call is shown, not what it computes, in the
   order ``--json``, ``--lang pl|en``, ``--verbose``, ``--quiet``;
@@ -57,7 +58,7 @@ RUN_FLAGS: Final = ("json", "lang", "verbose", "quiet")
 
 _SWITCHES: Final = ("json", "verbose", "quiet")
 _DESCRIBING: Final = ("-h", "--help", "-V", "--version", "--schema")
-_NUMERIC: Final = ("number", "integer", "number_list")
+_NUMERIC: Final = ("number", "integer", "number_list", "number_or_list")
 
 
 class ParsedCommand(NamedTuple):
@@ -98,6 +99,12 @@ def _value_text(option: Option, value: Any) -> str:
     if kind in ("number", "integer"):
         return _number_text(value)
     if kind == "number_list":
+        return ",".join(_number_text(item) for item in value)
+    if kind == "number_or_list":
+        if not isinstance(value, list | tuple):
+            return _number_text(value)
+        if len(value) == 1:  # a JSON array, read back as a list and not as a number
+            return f"[{_number_text(value[0])}]"
         return ",".join(_number_text(item) for item in value)
     if kind == "string_list":
         items = [str(item) for item in value]

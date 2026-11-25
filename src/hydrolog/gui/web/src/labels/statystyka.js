@@ -77,6 +77,8 @@ export const statystyka = {
     keyDistributions: "Rozkłady:",
     keyMethods: "Metody:",
     peak: "Q {p}% = {q} m³/s ({name})",
+    /** The band of the active combination's interval (ECO-091), in the legend and the readout. */
+    interval: "przedział ufności {level}\u00a0%",
     curvesFailed: "Krzywe narysowano z kwantyli wyniku: nie udało się policzyć gęstszej siatki ({message}).",
   },
   shape: {
@@ -127,6 +129,9 @@ export const statystyka = {
     bestDistribution: "Najlepszy",
     length: "Długość",
     q: "Q {p}%",
+    /** Under the tiles whose quantile has its interval in brackets: the level and the method. */
+    interval: "[dolna–górna]: przedział ufności {level}\u00a0% ({method})",
+    intervalMethods: { parametric_bootstrap: "bootstrap parametryczny", delta: "metoda delta" },
     notices: "Uwagi",
     distributions: "Rozkłady",
     aic: "AIC",

@@ -122,6 +122,7 @@ from hydrolog.statistics.baseflow import (
     MIN_YEAR_DAYS as BASEFLOW_MIN_YEAR_DAYS,
 )
 from hydrolog.statistics.harmonics import MAX_HARMONICS, MIN_YEAR_VALUES, PERIOD_DAYS
+from hydrolog.statistics.intervals import confidence_levels
 from hydrolog.statistics.volumes import DAY_SECONDS
 
 __all__ = [
@@ -948,6 +949,7 @@ def stats_flood_frequency(
     fit_method: FitMethod | Literal["all"] = "l_moments",
     first_year: int | None = None,
     last_year: int | None = None,
+    confidence_level: float | Sequence[float] = 0.95,
     attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Flood frequency analysis (``stats flood-frequency``).
@@ -991,6 +993,9 @@ def stats_flood_frequency(
     first_year, last_year : int, optional
         First and last hydrological year of a daily series or of ``half_year_file``,
         by default those of the record; not for annual maxima without dates.
+    confidence_level : float or sequence of float, optional
+        Confidence level of the intervals of the quantiles, in (0, 1), or a list of
+        distinct levels, by default 0.95.
     attribution : list of str, optional
         Lines of the providers of the series (ADR-0028), e.g. those of the hand-off
         it came from; the envelope carries them, with those of ``input_file`` or
@@ -999,7 +1004,9 @@ def stats_flood_frequency(
     Returns
     -------
     OperationOutput
-        ``result`` is a :class:`FloodFrequencyResult`; the notices report removed
+        ``result`` is a :class:`FloodFrequencyResult`; each fit carries
+        ``intervals``, one per level in the order asked (bootstrap for L-moments,
+        delta method for maximum likelihood). The notices report removed
         missing values, skipped incomplete years (code ``incomplete_years``) and the
         warnings of the fit: a sample of fewer than 10 years (``small_sample``) or of
         fewer than the 30 years of the KZGW 2017 methodology (``short_record``), a
@@ -1007,15 +1014,20 @@ def stats_flood_frequency(
         combination of a distribution and a method that gives it no parameters (also
         maximum likelihood whose likelihood has no maximum), left out when several
         are fitted (``distribution_left_out``), and annual maxima without density
-        under a fitted distribution, whose AIC is then null (``outside_support``).
+        under a fitted distribution, whose AIC is then null (``outside_support``),
+        and intervals or bounds that are not computed (``interval_not_computed``:
+        moments and least squares, a nonregular fit, failed refits, a bound of a
+        discharge below 0).
 
     Raises
     ------
     InvalidParameterError
         If the series options are inconsistent, ``distribution``, ``fit_method`` or
         ``parameter`` is not allowed, a return period is not greater than 1,
-        ``first_year`` is after ``last_year`` or a period is given for values
-        without dates.
+        ``first_year`` is after ``last_year``, a period is given for values
+        without dates, or ``confidence_level`` is not a level in (0, 1) or a list
+        of distinct levels (``details.reason`` ``type``, ``empty``, ``range``,
+        ``duplicate_level``).
     NotFoundError, InputDataError
         If a file does not exist or cannot be read.
     CalculationError
@@ -1029,6 +1041,7 @@ def stats_flood_frequency(
     check_choice("parameter", parameter, _FREQUENCY_PARAMETERS)
     check_years(first_year, last_year)
     periods = _return_periods(return_periods)
+    levels = confidence_levels(confidence_level)
     notices: list[Notice] = []
     hydrological_years: list[int] | None = None
     incomplete_years: list[int] | None = None
@@ -1087,7 +1100,13 @@ def stats_flood_frequency(
             notices.extend(year_notices)
             source = "daily"
     with capture_warnings(_NUMERIC_WARNINGS) as numeric:
-        analysis = FloodFrequencyAnalysis(maxima, periods)
+        analysis = FloodFrequencyAnalysis(
+            maxima,
+            periods,
+            confidence_level=levels,
+            # a stage (H of the half-year file) may be below 0, a discharge may not
+            discharge=not (half_year_file is not None and parameter == "H"),
+        )
         fitted: list[FrequencyAnalysisResult] = list(
             _fit(
                 "the four flood frequency distributions"
@@ -1128,6 +1147,7 @@ def stats_low_flow(
     return_periods: Sequence[float] = DEFAULT_RETURN_PERIODS,
     first_year: int | None = None,
     last_year: int | None = None,
+    confidence_level: float | Sequence[float] = 0.95,
     attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Low-flow frequency analysis (``stats low-flow``).
@@ -1170,6 +1190,9 @@ def stats_low_flow(
         ``DEFAULT_RETURN_PERIODS``.
     first_year, last_year : int, optional
         First and last hydrological year, by default those of the record.
+    confidence_level : float or sequence of float, optional
+        Confidence level of the intervals of the quantiles, in (0, 1), or a list of
+        distinct levels, by default 0.95.
     attribution : list of str, optional
         Lines of the providers of the series (ADR-0028); the envelope carries them,
         with those of ``input_file`` or ``half_year_file``.
@@ -1177,16 +1200,21 @@ def stats_low_flow(
     Returns
     -------
     OperationOutput
-        ``result`` is a :class:`LowFlowFrequencyAnalysis`; the notices report removed
-        missing values, skipped incomplete years (code ``incomplete_years``) and the
-        warnings of the fit (fewer than 10 years: ``small_sample``; quantiles that
-        would be negative discharges, null: ``negative_quantiles``).
+        ``result`` is a :class:`LowFlowFrequencyAnalysis`; its ``fisher_tippett``
+        block carries ``intervals``, one per level in the order asked (delta
+        method). The notices report removed missing values, skipped incomplete years
+        (code ``incomplete_years``) and the warnings of the fit (fewer than 10 years:
+        ``small_sample``; quantiles that would be negative discharges, null:
+        ``negative_quantiles``; intervals or bounds that are not computed, null:
+        ``interval_not_computed``).
 
     Raises
     ------
     InvalidParameterError
         If the series options are inconsistent, ``parameter`` is not allowed, a
         return period is not greater than 1, ``first_year`` is after ``last_year``,
+        ``confidence_level`` is not a level in (0, 1) or a list of distinct levels
+        (``details.reason`` ``type``, ``empty``, ``range``, ``duplicate_level``),
         or the annual minima are refused by the spec ``fisher_tippett_minima``:
         ``details.reason`` ``precondition_failed`` with ``details.constraint``
         ``values_not_all_equal`` or ``likelihood_has_a_maximum`` (no maximum of the
@@ -1202,6 +1230,7 @@ def stats_low_flow(
     check_choice("parameter", parameter, _FREQUENCY_PARAMETERS)
     check_years(first_year, last_year)
     periods = _return_periods(return_periods)
+    levels = confidence_levels(confidence_level)
     if half_year_file is not None:
         half = _half_year_extremes(
             half_year_file,
@@ -1226,7 +1255,10 @@ def stats_low_flow(
             fitted: LowFlowFrequencyResult = _fit(
                 "the Fisher-Tippett distribution",
                 lambda: fit_fisher_tippett_minima(
-                    minima, periods, discharge=parameter == "Q"
+                    minima,
+                    periods,
+                    discharge=parameter == "Q",
+                    confidence_level=levels,
                 ),
             )
         result = LowFlowFrequencyAnalysis(
@@ -1254,7 +1286,12 @@ def stats_low_flow(
     # The analysis takes the complete years of the days it is given; hand it those
     # only, so that the skipped years are reported once, in the notice above.
     complete = np.isin(hydrological_year(dates_array), extremes.years)
-    analysis = LowFlowAnalysis(series.values[complete], dates_array[complete], periods)
+    analysis = LowFlowAnalysis(
+        series.values[complete],
+        dates_array[complete],
+        periods,
+        confidence_level=levels,
+    )
     with capture_warnings(_NUMERIC_WARNINGS) as numeric:
         fitted = _fit("the Fisher-Tippett distribution", analysis.fit_fisher_tippett)
         empirical = analysis.empirical_non_exceedance()
@@ -1670,6 +1707,7 @@ def stats_duration_curve(
     bin_method: Literal["width", "log"] = "width",
     bin_width: float | None = None,
     bin_count: int | None = None,
+    confidence_level: float | Sequence[float] = 0.95,
     attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Duration curve with class frequencies (``stats duration-curve``).
@@ -1709,6 +1747,9 @@ def stats_duration_curve(
     bin_count : int, optional
         Only for ``bin_method`` ``"log"``: the number of logarithmic classes, at
         least 2, by default 40.
+    confidence_level : float or sequence of float, optional
+        Confidence level of the intervals of the median annual curve, in (0, 1), or a
+        list of distinct levels, by default 0.95.
     attribution : list of str, optional
         Lines of the providers of the series (ADR-0028); the envelope carries them,
         with those of ``input_file``.
@@ -1716,16 +1757,21 @@ def stats_duration_curve(
     Returns
     -------
     OperationOutput
-        ``result`` is a :class:`~hydrolog.statistics.DurationCurve`; the notices
-        report removed missing values and a period shorter than 30 years
-        (``short_reference_period``).
+        ``result`` is a :class:`~hydrolog.statistics.DurationCurve` with the median
+        annual curve ``annual_median_values`` and its ``intervals``, one per level in
+        the order asked (order statistics), both aligned with
+        ``curve_exceedance_percents``; the notices report removed missing values, a
+        period shorter than 30 years (``short_reference_period``) and intervals that
+        are not computed (``interval_not_computed``).
 
     Raises
     ------
     InvalidParameterError
-        If the series options are inconsistent, an option is out of its range, or
+        If the series options are inconsistent, an option is out of its range,
         ``bin_width`` (``bin_count``) is given for logarithmic (equal-width) classes
-        (``details.reason`` ``not_applicable``).
+        (``details.reason`` ``not_applicable``), or ``confidence_level`` is not a
+        level in (0, 1) or a list of distinct levels (``details.reason`` ``type``,
+        ``empty``, ``range``, ``duplicate_level``).
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError
@@ -1735,6 +1781,7 @@ def stats_duration_curve(
     check_choice("bin_method", bin_method, ("width", "log"))
     for percent in exceedance_percents:
         _check_percent("exceedance_percents", percent)
+    levels = confidence_levels(confidence_level)
     if not exceedance_percents:
         raise InvalidParameterError(
             "Option 'exceedance_percents': must not be an empty list",
@@ -1785,15 +1832,18 @@ def stats_duration_curve(
                 details={"reason": "no_values_in_month", "month": month},
                 hint="Choose another month or a longer period.",
             )
-    result: DurationCurve = duration_curve(
-        series.values,
-        dates_array,
-        month=month,
-        exceedance_percents=exceedance_percents,
-        bin_method=bin_method,
-        bin_width=bin_width,
-        bin_count=bin_count,
-    )
+    with capture_warnings() as computed:
+        result: DurationCurve = duration_curve(
+            series.values,
+            dates_array,
+            month=month,
+            exceedance_percents=exceedance_percents,
+            bin_method=bin_method,
+            bin_width=bin_width,
+            bin_count=bin_count,
+            confidence_level=levels,
+        )
+    notices.extend(computed)
     notices.extend(
         reference_period_notices(
             result.period_years, result.first_year, result.last_year

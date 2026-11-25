@@ -78,11 +78,12 @@ _METAVARS: Final = {
     "string": "TEXT",
     "path": "PATH",
     "number_list": "N1,N2,...",
+    "number_or_list": "N[,N2,...]",
     "string_list": "S1,S2,...",
     "object": "JSON",
     "object_list": "JSON",
 }
-_NUMERIC: Final = ("number", "integer", "number_list")
+_NUMERIC: Final = ("number", "integer", "number_list", "number_or_list")
 _VALUE_INDENT: Final = 4
 _USAGE_HANG: Final = 4
 

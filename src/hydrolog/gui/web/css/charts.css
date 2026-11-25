@@ -61,6 +61,13 @@
 .chart .q-area.s2 { fill: color-mix(in srgb, var(--series-2) 16%, transparent); }
 .chart .q-area.s3 { fill: color-mix(in srgb, var(--series-3) 16%, transparent); }
 .chart .q-area.s4 { fill: color-mix(in srgb, var(--series-4) 20%, transparent); }
+/* A band (an interval): filled between its ends, under the lines; the kit's look (nogat-chart.css) */
+.chart .band { fill: color-mix(in srgb, var(--series-1) 18%, transparent); stroke: none; }
+.chart .band.s2 { fill: color-mix(in srgb, var(--series-2) 20%, transparent); }
+.chart .band.s3 { fill: color-mix(in srgb, var(--series-3) 20%, transparent); }
+.chart .band.s4 { fill: color-mix(in srgb, var(--series-4) 26%, transparent); }
+.chart .band.s5 { fill: color-mix(in srgb, var(--series-5) 18%, transparent); }
+.chart .band.s6 { fill: color-mix(in srgb, var(--series-6) 18%, transparent); }
 .chart .bars rect { fill: var(--series-1); }
 .chart .bars.s2 rect { fill: var(--series-2); }
 .chart .bars.s3 rect { fill: var(--series-3); }
@@ -142,6 +149,12 @@ svg.sw-stroke { display: inline-block; flex: none; width: 24px; height: 6px; ove
 .sw.warn { background: var(--warn); }
 .sw.bad { background: repeating-linear-gradient(45deg, var(--bad-bg), var(--bad-bg) 2px, var(--bad) 2px, var(--bad) 3px); }
 .sw.used { background: transparent; border: 2px solid var(--text); }
+.sw.band { background: color-mix(in srgb, var(--series-1) 26%, transparent); border: 1px solid color-mix(in srgb, var(--series-1) 45%, transparent); }
+.sw.band.s2 { background: color-mix(in srgb, var(--series-2) 28%, transparent); border-color: color-mix(in srgb, var(--series-2) 50%, transparent); }
+.sw.band.s3 { background: color-mix(in srgb, var(--series-3) 28%, transparent); border-color: color-mix(in srgb, var(--series-3) 50%, transparent); }
+.sw.band.s4 { background: color-mix(in srgb, var(--series-4) 34%, transparent); border-color: color-mix(in srgb, var(--series-4) 55%, transparent); }
+.sw.band.s5 { background: color-mix(in srgb, var(--series-5) 26%, transparent); border-color: color-mix(in srgb, var(--series-5) 45%, transparent); }
+.sw.band.s6 { background: color-mix(in srgb, var(--series-6) 26%, transparent); border-color: color-mix(in srgb, var(--series-6) 45%, transparent); }
 .sw-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--text); background: var(--surface); display: inline-block; }
 .sw-rug { width: 0; height: 10px; flex: none; border-left: 1.5px solid var(--text); display: inline-block; }
 

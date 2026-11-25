@@ -654,6 +654,10 @@ dialog.confirm .modal-body p { margin: 0 0 var(--space-3); line-height: var(--li
 @container (max-width: 380px) { .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .kpi.hi { background: var(--info-bg); }
 .kpi.hi .v { color: var(--info-ink); }
+/* Statystyka: a quantile's confidence interval under its value („[256,7–447,2]”), whole on its
+   line, and the caption naming its level right under the tiles */
+.kpi .ci { font-size: var(--text-xs); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-2); }
+.summary + .st-interval { margin-top: calc(-1 * var(--space-2)); margin-bottom: var(--space-3); }
 
 .notes { display: grid; gap: var(--space-2); margin: 0 0 var(--space-3); padding: 0; list-style: none; }
 .notes li {

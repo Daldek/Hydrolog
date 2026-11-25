@@ -36,12 +36,14 @@ drift` reports each copy as current, behind or modified.
   `66964a5167ab8edd40f5bcae4462bf685bbe2e34456e8bead6722fe8cf0d32b7`).
   `tests/integration/gui/test_serve.py` and `test_public.py` validate the records against this copy.
 - `card-1.schema.json` (Nogat `schemas/formula/card-1.schema.json` at `c3423da` of Nogat's
-  `develop`, ECO-078; SHA-256
+  `develop`, ECO-078, unchanged in Nogat since; SHA-256
   `b4b99807f226843f3c892c2b675694b8b8c297f91394bc41a2add032bd318804`): `nogat-formula-card/1`,
   the card of a Tier A formula (CMP-2.6) that `scripts/generate_formulas.py` writes to
   `formulas/<name>.toml` with Nogat's reference module `standards/reference/nogat_formulas.py`,
-  copied from the same commit, unchanged, to `src/hydrolog/nogat_formulas.py` (CMP-8.1; SHA-256
-  `e1f30cfb8c78f7312e4849d97a2b464ea46b45d6a883a3035025fd70f97f2bd1`).
-  `tests/contract/test_formulas.py` validates the cards against this copy.
+  copied, unchanged, to `src/hydrolog/nogat_formulas.py` (CMP-8.1) from Nogat `6920f91` of
+  `develop` (2026-11-25, the interval estimators of CMP-6.11 and ECO-091: `assert_coverage`,
+  `assert_interval_properties`, `Coverage` and the coverage in `formulas_markdown`; SHA-256
+  `f597461285e4b591993de0436fec39dcd7709c9c1d564edf581ab5f6c788755b`; it was copied from
+  `c3423da` before). `tests/contract/test_formulas.py` validates the cards against this copy.
 
 Do not edit these files; copy them again when the standard changes.

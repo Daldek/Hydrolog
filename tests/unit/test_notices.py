@@ -23,6 +23,7 @@ from hydrolog._warnings import (
     DistributionLeftOut,
     HydrologWarning,
     IncompleteYears,
+    IntervalNotComputed,
     IuhPeakUndefined,
     KsTestApproximate,
     NegativeQuantiles,
@@ -97,6 +98,15 @@ SAMPLES = {
         "values": [81.6, 87.2],
     },
     NegativeQuantiles: {"return_periods": [500.0, 1000.0], "zero_return_period": 312.5},
+    IntervalNotComputed: {
+        "reason": "below_physical_range",
+        "confidence_levels": [0.95],
+        "distribution": "gev",
+        "fit_method": "mle",
+        "return_periods": [500.0, 1000.0],
+        "complete_years": None,
+        "required_years": None,
+    },
     IncompleteYears: {
         "skipped": 2,
         "total": 31,
@@ -164,6 +174,7 @@ class TestLibraryWarnings:
             "distribution_left_out",
             "outside_support",
             "negative_quantiles",
+            "interval_not_computed",
             "incomplete_years",
             "unknown_hietogram_type",
             "uh_model_mismatch",
@@ -212,7 +223,10 @@ class TestLibraryWarnings:
         warning = kind(**SAMPLES[kind])
         assert isinstance(warning, UserWarning)
         assert warning.details == SAMPLES[kind]
-        assert str(warning) == render(kind.template, SAMPLES[kind])
+        # the class's wording: its template, or a form of its own (a range with one
+        # end of outside_applicability, the reason of interval_not_computed)
+        assert str(warning) == kind.message_of(SAMPLES[kind])
+        assert set(_fields(kind.template)) <= set(kind.keys)
 
     @pytest.mark.parametrize("kind", LIBRARY_WARNINGS, ids=lambda k: k.__name__)
     @pytest.mark.parametrize(

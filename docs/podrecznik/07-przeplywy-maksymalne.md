@@ -1080,14 +1080,220 @@ stałych budowli hydrotechnicznych:
 
 Dla rzek i potoków górskich i podgórskich do przepływu kontrolnego dodaje się średni błąd jego
 oszacowania $\delta$ przy poziomie ufności 0,84 i do wymiarowania przyjmuje $(1 + \delta)Q_k$
-(objaśnienie 3 załącznika). Metodyka KZGW (2017) podaje w tym celu górną granicę jednostronnego przedziału
-ufności kwantyla. **Hydrolog tej poprawki ani przedziału ufności nie liczy**; jeżeli projekt ich wymaga,
-trzeba je wyznaczyć osobno, procedurą KZGW.
+(objaśnienie 3 załącznika). Metodyka KZGW (2017) wyznacza w tym celu górną granicę jednostronnego
+przedziału ufności kwantyla na poziomie $\beta$ = 84 %. Hydrolog podaje przedział ufności każdego
+kwantyla (pole `intervals`, opcja `--confidence-level`, domyślnie 0,95). Przedział jest dwustronny
+i centralny, więc **jego górna granica przy poziomie 0,68 jest jednostronną górną granicą 84 % według
+KZGW** ($c = 2\beta - 1$). Dla dopasowania metodą największej wiarygodności Hydrolog liczy ją regułą
+KZGW (metoda delta), dla dopasowania metodą L-momentów z bootstrapu parametrycznego: to ta sama
+jednostronna granica 84 %, wyznaczona inną metodą. $(1 + \delta)Q_k$ to więc górna granica
+przedziału kwantyla $Q_k$ przy poziomie 0,68 (`--confidence-level 0.68` albo `0.95,0.68`).
 
 Prawdopodobieństwa z tabeli odpowiadają okresom powtarzalności od kilkudziesięciu do kilku tysięcy lat,
 daleko poza długością obserwacji. W tym zakresie różnice między rozkładami i metodami są największe,
 a próba prawie nic o nich nie mówi (przykłady 7.9 i 7.10). Kwantyl $Q_{0{,}1\%}$ z 34 lat danych jest
 ekstrapolacją kształtu rozkładu, nie pomiarem.
+
+### Przedział ufności kwantyla
+
+Przedział ufności (ang. *confidence interval*) na poziomie $c$ to przedział wyznaczony metodą, która przy
+wielokrotnym powtórzeniu obserwacji tej samej długości obejmowałaby prawdziwy kwantyl w około $c$
+przypadków. Hydrolog liczy go na każdym poziomie podanym w `--confidence-level` (jedna liczba albo lista
+różnych liczb, np. `0.95,0.68`); wszystkie poziomy jednego dopasowania pochodzą z jednego obliczenia,
+a wynik ma jeden wpis na poziom, w podanej kolejności (`confidence_level`, `ci_method`, `ci_lower`,
+`ci_upper`, `ci_samples`). Metoda zależy od metody estymacji parametrów (p. 7.6):
+
+- **L-momenty** (domyślne): przedział percentylowy bootstrapu parametrycznego (Efron i Tibshirani 1993).
+  Próby losowane z dopasowanego rozkładu i dopasowywane ponownie są tymi samymi, z których pochodzą
+  wartości krytyczne $A^2$ (p. 7.7); granicami są kwantyle empiryczne kwantyli tych dopasowań. Liczbę
+  prób, ziarno i regułę kwantyla empirycznego podaje ramka, a `ci_samples` mówi, ile prób dało się
+  dopasować ponownie.
+- **MNW**: metoda delta w postaci KZGW (2017), $Q_T \mp z\,\sigma_T$ z $z = \Phi^{-1}((1 + c)/2)$, gdzie
+  $\sigma_T$ wynika z informacji oczekiwanej dwóch parametrów przy ustalonej granicy nośnika (rozkłady
+  Pearsona III, Weibulla i logarytmiczno-normalny) albo z informacji obserwowanej trzech parametrów (GEV).
+  Dla GEV z $c \ge 0{,}5$ ($\xi \le -0{,}5$) wiarygodność nie jest regularna i przedziału nie ma (uwaga
+  `interval_not_computed`, przyczyna `nonregular_fit`).
+- **Momenty i MNK**: przedziału nie ma (przyczyna `fit_method`): bootstrap tych metod, które wymagają
+  iteracyjnej optymalizacji, trwałby minuty.
+
+Granica przedziału przepływu lub opadu, która wypadłaby poniżej zera, jest pusta (`null`, przyczyna
+`below_physical_range`); stan wody zachowuje każdą granicę. Metoda delta jest przybliżeniem
+asymptotycznym: przy 30–60 latach rzeczywiste pokrycie jej przedziału bywa niższe od $c$, zwłaszcza dla
+długich okresów powtarzalności. Pokrycie obu metod, symulowane przy 30 i 60 wartościach, podaje
+`docs/FORMULAS.md` pod każdym wzorem. Przedział opisuje niepewność parametrów przyjętego rozkładu, a nie
+niepewność wyboru rozkładu, która dla długich $T$ bywa większa (p. 7.9).
+
+<!-- spec:quantile_interval_bootstrap -->
+
+<a id="spec-quantile_interval_bootstrap"></a>
+
+> **Przedział ufności kwantyli dopasowania metodą L-momentów z bootstrapu parametrycznego (przedział percentylowy)** · specyfikacja [`quantile_interval_bootstrap`](../FORMULAS.md#quantile_interval_bootstrap) · wersja wzoru 1 · status: **sprawdzony tylko wyroczniami** (`oracle only`)
+>
+> $$
+> \hat{Q}^{*}_{b}(T) = F^{-1}\left(1 - \tfrac{1}{T};\ \hat\theta^{*}_{b}\right),\ b = 1 \dots K;\qquad [L, U] = \left[\hat{Q}^{*}_{((K + 1)(1 - c)/2)},\ \hat{Q}^{*}_{((K + 1)(1 + c)/2)}\right]
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $F$ | `distribution` (wybór) | Rozkład: logarytmiczno-normalny o parametrze położenia 0, GEV, Pearsona typu III lub trójparametrowy rozkład Weibulla z scipy.stats | – | jedna z: `log_normal`, `gev`, `pearson3`, `weibull` | – | – |
+> | $k$ | `shape` | Parametr kształtu: s rozkładu logarytmiczno-normalnego, c rozkładu GEV (znak jak w scipy, k Hoskinga, -xi Colesa), skośność rozkładu Pearsona III, parametr kształtu rozkładu Weibulla | – | (−∞; ∞) | nie podano w źródłach | [−0,6; 2,7] (źr. 6) |
+> | $\xi$ | `loc` | Parametr położenia | m³/s | (−∞; ∞) | nie podano w źródłach | [−1; 35,4] (źr. 6) |
+> | $\alpha$ | `scale` | Parametr skali | m³/s | (0; ∞) | nie podano w źródłach | [1; 37] (źr. 6) |
+> | $n$ | `size` (liczba całkowita) | Liczba wartości próby, do której dopasowano rozkład | – | [1; ∞) | nie podano w źródłach | [30; 60] (źr. 7) |
+> | $T$ | `return_periods_years` (ciąg) | Okresy powtarzalności: kwantyl T-letni jest przewyższany z prawdopodobieństwem 1/T w roku | lata | (1; ∞) | nie podano w źródłach | [2; 5000] (źr. 8) |
+> | $c$ | `confidence_levels` (ciąg) | Poziomy ufności, różne: każdy przedział jest dwustronny i centralny, każdy ogon (1 - c) / 2 | – | (0; 1) | nie podano w źródłach | [0,68; 0,95] (źr. 9) |
+> | $v$ | `variable` (wybór) | Rodzaj ekstremów: przepływ albo inna wielkość nigdy poniżej 0, np. wysokość opadu, albo stan wody, którego 0 jest zerem wodowskazu | – | jedna z: `discharge`, `stage` | – | – |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $L$ | `lower` (ciąg) | Dolna granica dla każdego poziomu (wiersz na poziom, w podanej kolejności) i okresu powtarzalności; luka tam, gdzie granica przepływu byłaby poniżej 0 | m³/s | (−∞; ∞) |
+> | $U$ | `upper` (ciąg) | Górna granica, jak dolna | m³/s | (−∞; ∞) |
+> | $K$ | `samples` (liczba całkowita) | Zachowane próby bootstrapu: dopasowane ponownie metodą L-momentów | – | [990; 999] |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | shape > 0 dla rozkładu logarytmiczno-normalnego (s) i Weibulla (k) | `shape_of_the_distribution` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 10) |
+> | n >= 3: L-skośność próby wymaga 3 wartości | `enough_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 2) |
+> | poziomy ufności są różne | `distinct_levels` | odmowa obliczeń: wzór jest nieokreślony | (źr. 9) |
+> | co najmniej K_min = 990 z B = 999 prób daje się dopasować ponownie metodą L-momentów | `enough_refits` | odmowa obliczeń: wzór jest nieokreślony | (źr. 11) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $B$ | `samples` | Liczba prób bootstrapu | 999 | – | (źr. 5) |
+> | $s$ | `seed` | Ziarno generatora liczb losowych | 20 261 118 | – | (źr. 5) |
+> | $K_{min}$ | `least_kept` | Najmniejsza liczba zachowanych prób, przy której przedział jest wyznaczany | 990 | – | (źr. 11) |
+>
+> **Konwencje**
+>
+> - dwustronny i centralny przy każdym poziomie ufności c, każdy ogon (1 - c) / 2; górna granica przy c = 0,68 to jednostronna górna granica KZGW przy beta = 84 % (c = 2 beta - 1); wszystkie poziomy jednego wywołania z jednego obliczenia
+> - bootstrap parametryczny, przedział percentylowy Efrona i Tibshiraniego (1993, rozdz. 13): B = 999 prób po n wartości z dopasowanego rozkładu, default_rng biblioteki numpy z ziarnem 20261118, te same próby i ponowne dopasowania co wartości krytyczne A² dopasowania (ADR-0048)
+> - kwantyl empiryczny typu 6 Hyndmana i Fana (1996), pozycje i / (K + 1): metoda 'weibull' biblioteki numpy, typ 6 funkcji quantile w R (empiryczne granice lmomco); przy K = 999 granice przy c = 0,95 to 25. ponowne dopasowanie od każdego końca, a przy 0,68 — 160., wartość ((B + 1) alfa)-ta Efrona i Tibshiraniego; poziom poza zasięgiem K dopasowań, (K + 1)(1 - c) / 2 < 1, przyjmuje najmniejsze i największe
+> - próbę, której L-momentów rozkład nie może przyjąć, pomija się, a nie losuje ponownie (qua2ci.simple pakietu lmomco losuje ponownie), i liczy: samples to liczba K zachowanych; mniej niż 990 oznacza odmowę (enough_refits)
+> - ponowne dopasowania funkcją fit_l_moments, kwantyle z isf biblioteki scipy przy prawdopodobieństwie przewyższenia 1/T, jak w specyfikacjach kwantyli; parametry w konwencji scipy (c rozkładu GEV to -xi Colesa)
+> - variable discharge (przepływ albo inna wielkość nigdy poniżej 0, np. wysokość opadu): granica poniżej 0 jest luką, z komunikatem interval_not_computed (below_physical_range), który podaje jej okresy powtarzalności i poziomy; stage: bez tej reguły
+>
+> **Założenia**
+>
+> - dopasowany rozkład zastępuje rozkład populacji: przedział to rozrzut estymatora L-momentów w próbach po n wartości z tego rozkładu
+> - ekstrema roczne są niezależne i mają jednakowy rozkład
+>
+> **Zgodność z obserwacjami według źródeł:** brak: przedział estymatora; jego pokrycie, symulowane z rozkładów, które dopasowuje, przy 30 i 60 wartościach, podaje się pod wzorem (CMP-6.11)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Efron, B. and Tibshirani, R.J. (1993). An Introduction to the Bootstrap. Chapman and Hall, ch. 6 (the parametric bootstrap), ch. 13 (the percentile interval, the empirical (B + 1) alpha-th value of the B replications) — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 2. Hosking, J.R.M. and Wallis, J.R. (1997). Regional Frequency Analysis: An Approach Based on L-Moments. Cambridge University Press, appendix A.5 (GEV), A.8 (log-normal), A.9 (Pearson type III, the rational approximations of alpha from \|t3\|) — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 3. Kyselý, J. (2008). A cautionary note on the use of nonparametric bootstrap for estimating uncertainties in extreme-value models. Journal of Applied Meteorology and Climatology 47, 3236-3251, the parametric bootstrap before the nonparametric one for short samples of extremes <https://doi.org/10.1175/2008JAMC1763.1> — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 4. R Core Team. R: A Language and Environment for Statistical Computing, stats::quantile, Sample Quantiles (Hyndman and Fan 1996, types 1 to 9), type 6: m = p, p_k = k / (n + 1), the plotting position of Weibull <https://stat.ethz.ch/R-manual/R-devel/library/stats/html/quantile.html>
+> 5. Hydrolog (2026). ADR-0048: Anderson-Darling critical values by a parametric bootstrap, decision 1: 999 samples of n values drawn from the fitted distribution, each refitted by the same method, seed 20261118; a sample the method cannot fit is left out <https://github.com/Daldek/Hydrolog/blob/main/docs/decisions/0048-anderson-darling-critical-values-by-a-parametric-bootstrap.md>
+> 6. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 7. Nogat (2026). Computations: formulas, their limits and their verification, standard 1.3, CMP-6.11: the sample sizes of the ecosystem's use, 30 and 60 values for annual series <https://github.com/Daldek/Nogat/blob/main/standards/COMPUTATIONS.md>
+> 8. Rozporządzenie Ministra Środowiska z dnia 20 kwietnia 2007 r. w sprawie warunków technicznych, jakim powinny odpowiadać budowle hydrotechniczne i ich usytuowanie (Dz.U. 2007 nr 86 poz. 579); Dz.U. 2026 poz. 692 repeats its values, załącznik nr 4: the control flood of a structure of class I at p = 0.02 %, 5,000 years; Hydrolog's default return periods start at 2 years <https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=WDU20070860579>
+> 9. Nogat (2026). Decisions of the ecosystem, ECO-091: Intervals beside point estimates, computed by Hydrolog, shown by Obserwator, two-sided and central at each confidence_level asked; Obserwator stores 0.95 and 0.68 <https://github.com/Daldek/Nogat/blob/main/standards/DECISIONS.md>
+> 10. Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.lognorm, shape s > 0, and scipy.stats.weibull_min, shape c > 0 <https://docs.scipy.org/doc/scipy/reference/stats.html>
+> 11. Hydrolog (2026). ADR-0074: Intervals of the quantiles and of the median annual flow-duration curve, decisions 1 and 2: the refits of ADR-0048 give the percentile interval, fewer than 990 kept give none; the delta method of KZGW for maximum likelihood <https://github.com/Daldek/Hydrolog/blob/main/docs/decisions/0074-intervals-of-the-quantiles-and-of-the-median-annual-flow-duration-curve.md>
+>
+> Funkcja `hydrolog.statistics.intervals.quantile_interval_bootstrap`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
+<!-- /spec:quantile_interval_bootstrap -->
+
+<!-- spec:quantile_interval_delta -->
+
+<a id="spec-quantile_interval_delta"></a>
+
+> **Przedział ufności kwantyli dopasowania metodą największej wiarygodności, wyznaczany metodą delta (KZGW 2017)** · specyfikacja [`quantile_interval_delta`](../FORMULAS.md#quantile_interval_delta) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> Q_T \mp z\,\sigma_T,\quad z = \Phi^{-1}\left(\tfrac{1 + c}{2}\right);\quad\sigma_T^2 = \frac{\varphi^2(p, \lambda)}{\alpha^2 N},\ \varphi^2 = \frac{\lambda t'^2 - 2 t' t + \psi'(\lambda) t^2}{\lambda\psi'(\lambda) - 1};\quad \sigma_T = \frac{Q_T - \varepsilon}{k\sqrt{N}}\sqrt{1 + \frac{(\Gamma'(2) - \ln(-\ln p))^2}{\pi^2/6}};\quad \varepsilon + (Q_T - \varepsilon)\,e^{\mp z \frac{s}{\sqrt{N}}\sqrt{1 + u_p^2/2}};\quad \sigma_T^2 = \nabla Q_T^{\top} I_o^{-1} \nabla Q_T
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $x_i$ | `values` (ciąg) | Próba, do której dopasowano rozkład metodą największej wiarygodności: maksima roczne albo minima roczne (extremes minima) | m³/s | (−∞; ∞) | nie podano w źródłach | [0,81; 111] (źr. 5) |
+> | $F$ | `distribution` (wybór) | Rozkład: logarytmiczno-normalny o parametrze położenia 0, GEV, Pearsona typu III lub trójparametrowy rozkład Weibulla z scipy.stats | – | jedna z: `log_normal`, `gev`, `pearson3`, `weibull` | – | – |
+> | $k$ | `shape` | Parametr kształtu: s rozkładu logarytmiczno-normalnego, c rozkładu GEV (znak jak w scipy, k Hoskinga, -xi Colesa), skośność rozkładu Pearsona III, parametr kształtu rozkładu Weibulla | – | (−∞; ∞) | nie podano w źródłach | [−0,6; 2,7] (źr. 6) |
+> | $\xi$ | `loc` | Parametr położenia | m³/s | (−∞; ∞) | nie podano w źródłach | [−1; 35,4] (źr. 6) |
+> | $\alpha$ | `scale` | Parametr skali | m³/s | (0; ∞) | nie podano w źródłach | [1; 37] (źr. 6) |
+> | $T$ | `return_periods_years` (ciąg) | Okresy powtarzalności: kwantyl T-letni jest przewyższany z prawdopodobieństwem 1/T w roku | lata | (1; ∞) | nie podano w źródłach | [2; 5000] (źr. 7) |
+> | $c$ | `confidence_levels` (ciąg) | Poziomy ufności, różne: każdy przedział jest dwustronny i centralny, każdy ogon (1 - c) / 2 | – | (0; 1) | nie podano w źródłach | [0,68; 0,95] (źr. 8) |
+> | $v$ | `variable` (wybór) | Rodzaj ekstremów: przepływ albo inna wielkość nigdy poniżej 0, np. wysokość opadu, albo stan wody, którego 0 jest zerem wodowskazu | – | jedna z: `discharge`, `stage` | – | – |
+> | $e$ | `extremes` (wybór) | Maksima albo minima dopasowane jako rozkład GEV zanegowanych minimów (fisher_tippett_minima: jego parametr położenia odnosi się do minimów) | – | jedna z: `maxima`, `minima` | – | – |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $L$ | `lower` (ciąg) | Dolna granica dla każdego poziomu (wiersz na poziom, w podanej kolejności) i okresu powtarzalności; luka tam, gdzie granica przepływu byłaby poniżej 0 | m³/s | (−∞; ∞) |
+> | $U$ | `upper` (ciąg) | Górna granica, jak dolna | m³/s | (−∞; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | shape > 0 dla rozkładu logarytmiczno-normalnego (s) i Weibulla (k) | `shape_of_the_distribution` | odmowa obliczeń: wartości niemożliwe fizycznie | (źr. 9) |
+> | N > p, liczba parametrów dopasowania: N >= 3 dla rozkładu logarytmiczno-normalnego, N >= 4 dla pozostałych | `enough_values` | odmowa obliczeń: wzór jest nieokreślony | (źr. 10) |
+> | min(x) < max(x) | `values_not_all_equal` | odmowa obliczeń: wzór jest nieokreślony | (źr. 11) |
+> | kształty, przy których poszukiwanie fit_maximum_likelihood znajduje maksimum: GEV -1 < c < 1, Pearson III \|G\| < 2, Weibull 1 < k < 50 | `shape_of_a_likelihood_maximum` | odmowa obliczeń: wzór jest nieokreślony | (źr. 12) |
+> | minima tylko jako rozkład GEV zanegowanych minimów | `minima_of_the_gev` | odmowa obliczeń: wzór jest nieokreślony | (źr. 13) |
+> | poziomy ufności są różne | `distinct_levels` | odmowa obliczeń: wzór jest nieokreślony | (źr. 8) |
+> | rozkład GEV regularny w punkcie: c < 0,5 (xi > -0,5) i dodatnio określona macierz informacji obserwowanej | `regular_likelihood` | odmowa obliczeń: wzór jest nieokreślony | (źr. 14) |
+>
+> **Stałe**
+>
+> | Symbol | Stała | Znaczenie | Wartość | Jednostka | Źródło |
+> |---|---|---|---|---|---|
+> | $\Gamma'(2)$ | `gamma_prime_2` | Wartość pochodnej funkcji gamma w punkcie dwa | 0,42278433509846713 | – | (źr. 1) |
+>
+> **Konwencje**
+>
+> - dwustronny i centralny przy każdym poziomie ufności c, każdy ogon (1 - c) / 2; górna granica przy c = 0,68 to jednostronna górna granica KZGW przy beta = 84 % (c = 2 beta - 1); wszystkie poziomy jednego wywołania z jednego obliczenia
+> - metoda delta w postaci stosowanej przez KZGW (2017): granica nośnika ustalona na swoim oszacowaniu (loc - 2 scale / G rozkładu Pearsona III, loc rozkładu Weibulla, loc rozkładu logarytmiczno-normalnego, 0 w dopasowaniach Hydrologa) i informacja oczekiwana dwóch pozostałych parametrów w postaci jawnej: dla rozkładu Pearsona III lambda i alfa rozkładu gamma, dla rozkładu Weibulla ln(x - loc) jako rozkładu Gumbela minimów, dla rozkładu logarytmiczno-normalnego średniej i odchylenia standardowego rozkładu normalnego ln(x - loc), z przedziałem wyznaczanym w tej skali; dla GEV informacja obserwowana jego trzech parametrów
+> - parametry z fit_maximum_likelihood: s rozkładu logarytmiczno-normalnego z dzielnikiem N (wzór 2.6 KZGW dzieli przez N - 1); N to liczba wartości
+> - u_beta = 0,994 KZGW przy beta = 84 % to z przy c = 0,68, bez zaokrąglenia 0,99446
+> - wzór 3.27 dla rozkładu Pearsona III przekształcony tak, by uniknąć skracania się wyrazów rzędu lambda przy G -> 0: dK/dG z różnic centralnych pearson3.isf biblioteki scipy względem G, z krokami 1e-3 i 5e-4 połączonymi ekstrapolacją Richardsona, dla \|G\| >= 0,01, a poniżej z rozwinięcia Cornisha–Fishera kwantyla rozkładu gamma do G**3; lambda (lambda psi'(lambda) - 1) z szeregu asymptotycznego powyżej lambda = 10; ujemne G przez rozkład lustrzany, tym samym wyrażeniem
+> - wzór 3.57 dla rozkładu Weibulla zastosowany do kwantyla powyżej granicy, Q_T - loc (kwantyla dwuparametrowego, dla którego go wyprowadzono); przykład 3.4 KZGW stosuje go do Q_T (5,24 wobec 4,88 m3/s przy p = 10 %), więc przykład 3.4 nie jest przypadkiem referencyjnym, dopóki nie zostanie przeczytana praca Heo i in. (2001), źródło wzoru 3.57 (CMP-5.2; źródło niedostępne publicznie 2026-11-25)
+> - informacja obserwowana rozkładu GEV z różnic centralnych logarytmu wiarygodności próby standaryzowanej (tej, na której szuka fit_maximum_likelihood), z krokami 1e-4 dla c i loc oraz 1e-4 razy scale dla parametru skali, 19 obliczeń; genextreme biblioteki scipy z c = -xi; regularna, gdy c < 0,5, a macierz informacji jest dodatnio określona (Smith 1985), w przeciwnym razie odmowa (regular_likelihood)
+> - tam, gdzie KZGW odczytuje granicę z wykresu (przykłady 3.2, 3.4) albo ze swojego wzoru na kwantyl (wzór 3.36), Hydrolog ustala własne oszacowanie; wzory 2.9 i 3.41 KZGW mnożą cały kwantyl jego trójparametrowego rozkładu logarytmiczno-normalnego (granica 19,6 mm w tabeli 2.3, 0,384 m3/s w przykładzie 3.3), a rozkład logarytmiczno-normalny Hydrologa ma granicę 0, przy której oba się zgadzają (przypadki referencyjne przyjmują loc 0 i skalę drukowanego kwantyla)
+> - minima (stats low-flow): rozkład GEV zanegowanych minimów z parametrem położenia z fisher_tippett_minima, kwantyl minimów przy prawdopodobieństwie nieprzewyższenia 1/T
+> - variable discharge (przepływ albo inna wielkość nigdy poniżej 0, np. wysokość opadu): granica poniżej 0 jest luką, z komunikatem interval_not_computed (below_physical_range), który podaje jej okresy powtarzalności i poziomy; stage: bez tej reguły
+>
+> **Założenia**
+>
+> - estymator ma rozkład bliski normalnemu z wariancją z teorii asymptotycznej: przybliżenie dla 30–60 wartości, którego pokrycie się symuluje (CMP-6.11)
+> - ekstrema roczne są niezależne i mają jednakowy rozkład
+>
+> **Zgodność z obserwacjami według źródeł:** brak: przedział estymatora; jego pokrycie, symulowane z rozkładów, które dopasowuje, przy 30 i 60 wartościach, podaje się pod wzorem (CMP-6.11)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eq. 3.26-3.27 and ex. 3.2 (Pearson III), eq. 3.41 and ex. 3.3, eq. 2.9 and table 2.3 (log-normal), eq. 3.56-3.57 and ex. 3.4 (Weibull), pp. 21-55; the upper bound at beta = 84 % with u_beta = 0.994 (eq. 3.12) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 2. Stedinger, J.R., Vogel, R.M. and Foufoula-Georgiou, E. (1993). Frequency analysis of extreme events. In: Maidment, D.R. (ed.), Handbook of Hydrology, ch. 18. McGraw-Hill, sect. 18.4.2, eqs. 18.4.7-18.4.8, p. 18.30: the variance of the log-normal quantile by maximum likelihood (the source of KZGW's eq. 2.9) <https://efi.eng.uci.edu/papers/efg_FA.pdf>
+> 3. Coles, S. (2001). An Introduction to Statistical Modeling of Extreme Values. Springer, sect. 3.3.2-3.3.3: the observed information of the GEV's maximum likelihood, the delta method for return levels, regular for xi > -0.5 — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 4. Heo, J.-H., Salas, J.D. and Kim, K.-D. (2001). Estimation of confidence intervals of quantiles for the Weibull distribution. Stochastic Environmental Research and Risk Assessment 15(4), 284-309, the variance of the Weibull quantile by maximum likelihood (KZGW's eq. 3.57) — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 5. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4, tables 3.5, 3.10 and 3.13 (pp. 39-55): annual maxima of 0.81 m3/s (Rypienica at Rypin) to 111 m3/s (Czarna at Polana) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 6. KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 3.2 to 3.4 (the Czarna at Polana, the Rypienica at Rypin, the Świślina at Rzepin, tables 3.5, 3.10 and 3.13): the parameters Hydrolog's four estimators give their annual maxima, with the log-normal and Weibull parameters the examples print (pp. 47-48 and 53-54) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+> 7. Rozporządzenie Ministra Środowiska z dnia 20 kwietnia 2007 r. w sprawie warunków technicznych, jakim powinny odpowiadać budowle hydrotechniczne i ich usytuowanie (Dz.U. 2007 nr 86 poz. 579); Dz.U. 2026 poz. 692 repeats its values, załącznik nr 4: the control flood of a structure of class I at p = 0.02 %, 5,000 years; Hydrolog's default return periods start at 2 years <https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=WDU20070860579>
+> 8. Nogat (2026). Decisions of the ecosystem, ECO-091: Intervals beside point estimates, computed by Hydrolog, shown by Obserwator, two-sided and central at each confidence_level asked; Obserwator stores 0.95 and 0.68 <https://github.com/Daldek/Nogat/blob/main/standards/DECISIONS.md>
+> 9. Virtanen, P. et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods 17, 261-272, scipy.stats.lognorm, shape s > 0, and scipy.stats.weibull_min, shape c > 0 <https://docs.scipy.org/doc/scipy/reference/stats.html>
+> 10. Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, n values fit n parameters exactly, where the likelihood has no maximum — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 11. WMO (2009). Guide to Hydrological Practices, 6th ed., Volume II: Management of Water Resources and Application of Hydrological Practices, WMO-No. 168, sect. 5.5: the likelihood of values all equal grows without limit as the scale falls to 0 <https://www.hydrology.nl/images/docs/hwrp/WMO_Guide_168_Vol_II_en.pdf>
+> 12. Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, the density infinite at the bound of the support (GEV c >= 1, Pearson III \|G\| >= 2, Weibull k <= 1) leaves the likelihood without a maximum — *źródło niedostępne publicznie (dostarczone przez autora)*
+> 13. WMO (2008). Manual on Low-flow Estimation and Prediction, Operational Hydrology Report No. 50, WMO-No. 1029, sect. 7.5: the GEV of minima, min(x) = -max(-x) <https://library.wmo.int/idurl/4/32176>
+> 14. Smith, R.L. (1985). Maximum likelihood estimation in a class of nonregular cases. Biometrika 72(1), 67-90, the maximum-likelihood estimators of the GEV are regular, with the usual asymptotic normality, for xi > -0.5 — *źródło niedostępne publicznie (dostarczone przez autora)*
+>
+> Funkcja `hydrolog.statistics.intervals.quantile_interval_delta`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
+<!-- /spec:quantile_interval_delta -->
 
 ## 7.9. Przykład: Czarna — Polana (metodyka KZGW 2017, przykład 3.2)
 
@@ -1152,12 +1358,36 @@ ciężki ogon) daje $Q_{0{,}1\%}$ prawie trzy razy większe niż Pearson III, ch
 niewielka. Momenty dają kwantyle najniższe, MNK — wysokie, zgodnie z p. 7.6.
 
 **Porównanie z metodyką KZGW.** KZGW (2017, tab. 3.9) dopasowuje rozkład Pearsona III warunkową MNW
-z dolnym ograniczeniem odczytanym graficznie i otrzymuje $Q_{1\%} = 123{,}2$ m³/s oraz
-$Q_{0{,}1\%} = 177{,}1$ m³/s. Rozkład Pearsona III z L-momentów daje w Hydrologu kwantyle o ok. 4 %
-wyższe, z pełnej MNW o 6,5 % ($Q_{1\%}$) i 8,4 % ($Q_{0{,}1\%}$) wyższe, a domyślny „najlepszy” rozkład
-według AIC (logarytmiczno-normalny z L-momentów) $Q_{1\%}$ wyższe o 21 %. Jeżeli projekt ma być zgodny
-z metodyką KZGW, trzeba zastosować jej procedurę, łącznie z górną granicą przedziału ufności (p. 7.8);
-Hydrolog daje wtedy niezależne oszacowanie do porównania.
+z dolnym ograniczeniem odczytanym graficznie i otrzymuje $Q_{1\%} = 123{,}2$ m³/s oraz
+$Q_{0{,}1\%} = 177{,}1$ m³/s, a jako górne granice jednostronnego przedziału ufności 84 % 144,8 i 210,9 m³/s.
+Rozkład Pearsona III z L-momentów daje w Hydrologu kwantyle o ok. 4 % wyższe, z pełnej MNW o 6,5 %
+($Q_{1\%}$) i 8,4 % ($Q_{0{,}1\%}$) wyższe, a domyślny „najlepszy” rozkład według AIC (logarytmiczno-normalny
+z L-momentów) $Q_{1\%}$ wyższe o 21 %. Jeżeli projekt ma być zgodny z metodyką KZGW, trzeba zastosować jej
+procedurę (z graficznym dolnym ograniczeniem); Hydrolog daje wtedy niezależne oszacowanie do porównania.
+
+**Przedziały ufności** rozkładu Pearsona III, na poziomach 0,95 i 0,68:
+
+```sh
+hydrolog stats flood-frequency --values 10.2,9.24,58.8,8.23,16.2,4.92,26.8,25.1,97.2,23.5,22.3,21.1,59.9,55.1,16.2,24.6,14.8,73.8,28.9,18.6,18.2,25.8,14.5,11.2,54.5,111,35.1,43,52,45.4,8.9,9.72,57.4,50.8 --distribution pearson3 --fit-method mle --return-periods 2,10,100,1000 --confidence-level 0.95,0.68
+```
+
+| Pearson III | | $Q_{50\%}$ [m³/s] | $Q_{10\%}$ [m³/s] | $Q_{1\%}$ [m³/s] | $Q_{0{,}1\%}$ [m³/s] |
+|---|---|---|---|---|---|
+| MNW (metoda delta) | kwantyl | 25,9 | 69,9 | 131,3 | 192,0 |
+| | przedział 95 % | 18,5–33,2 | 48,2–91,7 | 83,3–179,2 | 115,7–268,3 |
+| | przedział 68 % | 22,1–29,6 | 58,9–80,9 | 106,9–155,6 | 153,2–230,7 |
+| L-momenty (bootstrap) | kwantyl | 26,5 | 69,5 | 127,7 | 184,6 |
+| | przedział 95 % | 18,9–36,3 | 50,1–91,7 | 81,7–183,7 | 105,7–285,4 |
+| | przedział 68 % | 22,6–31,0 | 59,0–80,1 | 100,0–155,7 | 135,8–232,0 |
+
+Górna granica przy 68 % z MNW, 155,6 m³/s dla $Q_{1\%}$ i 230,7 m³/s dla $Q_{0{,}1\%}$, odpowiada górnej
+granicy 84 % KZGW (144,8 i 210,9 m³/s). Jest wyższa, bo wyższe są same kwantyle Hydrologa (dolne
+ograniczenie z MNW zamiast odczytanego z wykresu), ale zapas nad kwantylem jest podobny: 18,5 % wobec
+17,5 % dla $Q_{1\%}$ i 20,2 % wobec 19,1 % dla $Q_{0{,}1\%}$. Bootstrap dopasowania L-momentami (polecenie
+bez `--fit-method mle`; 999 z 999 prób dopasowanych ponownie) daje prawie te same górne granice przy 68 %.
+Przedział 95 % kwantyla $Q_{0{,}1\%}$ sięga od ok. 106 do 285 m³/s: z 34 lat obserwacji przepływ
+tysiącletni jest znany z dokładnością do czynnika bliskiego trzem, i to przy założeniu, że rozkład
+Pearsona III jest właściwy.
 
 ## 7.10. Przykład: Kaczawa — Świerzawa (IMGW-PIB 151150170), lata 1961–2025
 
@@ -1254,9 +1484,10 @@ dobowe.
   powyżej wartości krytycznej i z maksimami poza nośnikiem.
 - Kwantyle dla $T$ wielokrotnie dłuższych od ciągu zależą bardziej od przyjętego rozkładu niż od danych;
   podawaj je z rozkładem, metodą i liczbą lat.
+- Podawaj kwantyl z przedziałem ufności (`--confidence-level`); górna granica przy poziomie 0,68 to
+  jednostronna górna granica 84 % według KZGW. Przedział nie obejmuje niepewności wyboru rozkładu.
 - Hydrolog nie realizuje procedury KZGW 2017 w całości (graficzne dolne ograniczenie, metoda decyli,
-  trójparametrowy rozkład logarytmiczno-normalny, górna granica przedziału ufności); wynik zgodny
-  z metodyką trzeba policzyć jej procedurą.
+  trójparametrowy rozkład logarytmiczno-normalny); wynik zgodny z metodyką trzeba policzyć jej procedurą.
 
 ## Źródła
 
@@ -1265,6 +1496,8 @@ dobowe.
 - Burnham K.P., Anderson D.R. (2002). *Model Selection and Multimodel Inference: A Practical
   Information-Theoretic Approach*, wyd. 2. Springer, Nowy Jork. Niedostępne w otwartym dostępie.
 - Coles S. (2001). *An Introduction to Statistical Modeling of Extreme Values*. Springer, Londyn.
+  Niedostępne w otwartym dostępie.
+- Efron B., Tibshirani R.J. (1993). *An Introduction to the Bootstrap*. Chapman and Hall, Nowy Jork.
   Niedostępne w otwartym dostępie.
 - Hosking J.R.M. (1990). L-moments: analysis and estimation of distributions using linear combinations of
   order statistics. *Journal of the Royal Statistical Society, Series B* 52(1), 105–124. Niedostępne

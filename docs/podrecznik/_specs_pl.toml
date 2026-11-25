@@ -1965,6 +1965,97 @@ aic = "Kryterium: im mniejsze, tym lepsze dopasowanie przy danej liczbie paramet
 shape_of_the_distribution = "shape > 0 dla rozkładu logarytmiczno-normalnego (s) i Weibulla (k)"
 values_within_support = "ln f(x_i) jest skończony dla każdej wartości, a więc i ich suma: każda wartość leży wewnątrz nośnika rozkładu, gdzie gęstość jest dodatnia i skończona"
 
+[formulas.quantile_interval_bootstrap]
+en_sha256 = "e82706b3522363d38e233bedcef5f2c1b1527b011574a306528f27623549a42c"
+title = "Przedział ufności kwantyli dopasowania metodą L-momentów z bootstrapu parametrycznego (przedział percentylowy)"
+validation = "brak: przedział estymatora; jego pokrycie, symulowane z rozkładów, które dopasowuje, przy 30 i 60 wartościach, podaje się pod wzorem (CMP-6.11)"
+conventions = [
+    "dwustronny i centralny przy każdym poziomie ufności c, każdy ogon (1 - c) / 2; górna granica przy c = 0,68 to jednostronna górna granica KZGW przy beta = 84 % (c = 2 beta - 1); wszystkie poziomy jednego wywołania z jednego obliczenia",
+    "bootstrap parametryczny, przedział percentylowy Efrona i Tibshiraniego (1993, rozdz. 13): B = 999 prób po n wartości z dopasowanego rozkładu, default_rng biblioteki numpy z ziarnem 20261118, te same próby i ponowne dopasowania co wartości krytyczne A² dopasowania (ADR-0048)",
+    "kwantyl empiryczny typu 6 Hyndmana i Fana (1996), pozycje i / (K + 1): metoda 'weibull' biblioteki numpy, typ 6 funkcji quantile w R (empiryczne granice lmomco); przy K = 999 granice przy c = 0,95 to 25. ponowne dopasowanie od każdego końca, a przy 0,68 — 160., wartość ((B + 1) alfa)-ta Efrona i Tibshiraniego; poziom poza zasięgiem K dopasowań, (K + 1)(1 - c) / 2 < 1, przyjmuje najmniejsze i największe",
+    "próbę, której L-momentów rozkład nie może przyjąć, pomija się, a nie losuje ponownie (qua2ci.simple pakietu lmomco losuje ponownie), i liczy: samples to liczba K zachowanych; mniej niż 990 oznacza odmowę (enough_refits)",
+    "ponowne dopasowania funkcją fit_l_moments, kwantyle z isf biblioteki scipy przy prawdopodobieństwie przewyższenia 1/T, jak w specyfikacjach kwantyli; parametry w konwencji scipy (c rozkładu GEV to -xi Colesa)",
+    "variable discharge (przepływ albo inna wielkość nigdy poniżej 0, np. wysokość opadu): granica poniżej 0 jest luką, z komunikatem interval_not_computed (below_physical_range), który podaje jej okresy powtarzalności i poziomy; stage: bez tej reguły",
+]
+assumptions = [
+    "dopasowany rozkład zastępuje rozkład populacji: przedział to rozrzut estymatora L-momentów w próbach po n wartości z tego rozkładu",
+    "ekstrema roczne są niezależne i mają jednakowy rozkład",
+]
+
+[formulas.quantile_interval_bootstrap.variables]
+distribution = "Rozkład: logarytmiczno-normalny o parametrze położenia 0, GEV, Pearsona typu III lub trójparametrowy rozkład Weibulla z scipy.stats"
+shape = "Parametr kształtu: s rozkładu logarytmiczno-normalnego, c rozkładu GEV (znak jak w scipy, k Hoskinga, -xi Colesa), skośność rozkładu Pearsona III, parametr kształtu rozkładu Weibulla"
+loc = "Parametr położenia"
+scale = "Parametr skali"
+size = "Liczba wartości próby, do której dopasowano rozkład"
+return_periods_years = "Okresy powtarzalności: kwantyl T-letni jest przewyższany z prawdopodobieństwem 1/T w roku"
+confidence_levels = "Poziomy ufności, różne: każdy przedział jest dwustronny i centralny, każdy ogon (1 - c) / 2"
+variable = "Rodzaj ekstremów: przepływ albo inna wielkość nigdy poniżej 0, np. wysokość opadu, albo stan wody, którego 0 jest zerem wodowskazu"
+
+[formulas.quantile_interval_bootstrap.outputs]
+lower = "Dolna granica dla każdego poziomu (wiersz na poziom, w podanej kolejności) i okresu powtarzalności; luka tam, gdzie granica przepływu byłaby poniżej 0"
+upper = "Górna granica, jak dolna"
+samples = "Zachowane próby bootstrapu: dopasowane ponownie metodą L-momentów"
+
+[formulas.quantile_interval_bootstrap.constants]
+samples = "Liczba prób bootstrapu"
+seed = "Ziarno generatora liczb losowych"
+least_kept = "Najmniejsza liczba zachowanych prób, przy której przedział jest wyznaczany"
+
+[formulas.quantile_interval_bootstrap.constraints]
+shape_of_the_distribution = "shape > 0 dla rozkładu logarytmiczno-normalnego (s) i Weibulla (k)"
+enough_values = "n >= 3: L-skośność próby wymaga 3 wartości"
+distinct_levels = "poziomy ufności są różne"
+enough_refits = "co najmniej K_min = 990 z B = 999 prób daje się dopasować ponownie metodą L-momentów"
+
+[formulas.quantile_interval_delta]
+en_sha256 = "ea53243a9970ad1ef90bcfb5936ea7039677c0dd637c7f2671ef723805e46253"
+title = "Przedział ufności kwantyli dopasowania metodą największej wiarygodności, wyznaczany metodą delta (KZGW 2017)"
+validation = "brak: przedział estymatora; jego pokrycie, symulowane z rozkładów, które dopasowuje, przy 30 i 60 wartościach, podaje się pod wzorem (CMP-6.11)"
+conventions = [
+    "dwustronny i centralny przy każdym poziomie ufności c, każdy ogon (1 - c) / 2; górna granica przy c = 0,68 to jednostronna górna granica KZGW przy beta = 84 % (c = 2 beta - 1); wszystkie poziomy jednego wywołania z jednego obliczenia",
+    "metoda delta w postaci stosowanej przez KZGW (2017): granica nośnika ustalona na swoim oszacowaniu (loc - 2 scale / G rozkładu Pearsona III, loc rozkładu Weibulla, loc rozkładu logarytmiczno-normalnego, 0 w dopasowaniach Hydrologa) i informacja oczekiwana dwóch pozostałych parametrów w postaci jawnej: dla rozkładu Pearsona III lambda i alfa rozkładu gamma, dla rozkładu Weibulla ln(x - loc) jako rozkładu Gumbela minimów, dla rozkładu logarytmiczno-normalnego średniej i odchylenia standardowego rozkładu normalnego ln(x - loc), z przedziałem wyznaczanym w tej skali; dla GEV informacja obserwowana jego trzech parametrów",
+    "parametry z fit_maximum_likelihood: s rozkładu logarytmiczno-normalnego z dzielnikiem N (wzór 2.6 KZGW dzieli przez N - 1); N to liczba wartości",
+    "u_beta = 0,994 KZGW przy beta = 84 % to z przy c = 0,68, bez zaokrąglenia 0,99446",
+    "wzór 3.27 dla rozkładu Pearsona III przekształcony tak, by uniknąć skracania się wyrazów rzędu lambda przy G -> 0: dK/dG z różnic centralnych pearson3.isf biblioteki scipy względem G, z krokami 1e-3 i 5e-4 połączonymi ekstrapolacją Richardsona, dla |G| >= 0,01, a poniżej z rozwinięcia Cornisha–Fishera kwantyla rozkładu gamma do G**3; lambda (lambda psi'(lambda) - 1) z szeregu asymptotycznego powyżej lambda = 10; ujemne G przez rozkład lustrzany, tym samym wyrażeniem",
+    "wzór 3.57 dla rozkładu Weibulla zastosowany do kwantyla powyżej granicy, Q_T - loc (kwantyla dwuparametrowego, dla którego go wyprowadzono); przykład 3.4 KZGW stosuje go do Q_T (5,24 wobec 4,88 m3/s przy p = 10 %), więc przykład 3.4 nie jest przypadkiem referencyjnym, dopóki nie zostanie przeczytana praca Heo i in. (2001), źródło wzoru 3.57 (CMP-5.2; źródło niedostępne publicznie 2026-11-25)",
+    "informacja obserwowana rozkładu GEV z różnic centralnych logarytmu wiarygodności próby standaryzowanej (tej, na której szuka fit_maximum_likelihood), z krokami 1e-4 dla c i loc oraz 1e-4 razy scale dla parametru skali, 19 obliczeń; genextreme biblioteki scipy z c = -xi; regularna, gdy c < 0,5, a macierz informacji jest dodatnio określona (Smith 1985), w przeciwnym razie odmowa (regular_likelihood)",
+    "tam, gdzie KZGW odczytuje granicę z wykresu (przykłady 3.2, 3.4) albo ze swojego wzoru na kwantyl (wzór 3.36), Hydrolog ustala własne oszacowanie; wzory 2.9 i 3.41 KZGW mnożą cały kwantyl jego trójparametrowego rozkładu logarytmiczno-normalnego (granica 19,6 mm w tabeli 2.3, 0,384 m3/s w przykładzie 3.3), a rozkład logarytmiczno-normalny Hydrologa ma granicę 0, przy której oba się zgadzają (przypadki referencyjne przyjmują loc 0 i skalę drukowanego kwantyla)",
+    "minima (stats low-flow): rozkład GEV zanegowanych minimów z parametrem położenia z fisher_tippett_minima, kwantyl minimów przy prawdopodobieństwie nieprzewyższenia 1/T",
+    "variable discharge (przepływ albo inna wielkość nigdy poniżej 0, np. wysokość opadu): granica poniżej 0 jest luką, z komunikatem interval_not_computed (below_physical_range), który podaje jej okresy powtarzalności i poziomy; stage: bez tej reguły",
+]
+assumptions = [
+    "estymator ma rozkład bliski normalnemu z wariancją z teorii asymptotycznej: przybliżenie dla 30–60 wartości, którego pokrycie się symuluje (CMP-6.11)",
+    "ekstrema roczne są niezależne i mają jednakowy rozkład",
+]
+
+[formulas.quantile_interval_delta.variables]
+values = "Próba, do której dopasowano rozkład metodą największej wiarygodności: maksima roczne albo minima roczne (extremes minima)"
+distribution = "Rozkład: logarytmiczno-normalny o parametrze położenia 0, GEV, Pearsona typu III lub trójparametrowy rozkład Weibulla z scipy.stats"
+shape = "Parametr kształtu: s rozkładu logarytmiczno-normalnego, c rozkładu GEV (znak jak w scipy, k Hoskinga, -xi Colesa), skośność rozkładu Pearsona III, parametr kształtu rozkładu Weibulla"
+loc = "Parametr położenia"
+scale = "Parametr skali"
+return_periods_years = "Okresy powtarzalności: kwantyl T-letni jest przewyższany z prawdopodobieństwem 1/T w roku"
+confidence_levels = "Poziomy ufności, różne: każdy przedział jest dwustronny i centralny, każdy ogon (1 - c) / 2"
+variable = "Rodzaj ekstremów: przepływ albo inna wielkość nigdy poniżej 0, np. wysokość opadu, albo stan wody, którego 0 jest zerem wodowskazu"
+extremes = "Maksima albo minima dopasowane jako rozkład GEV zanegowanych minimów (fisher_tippett_minima: jego parametr położenia odnosi się do minimów)"
+
+[formulas.quantile_interval_delta.outputs]
+lower = "Dolna granica dla każdego poziomu (wiersz na poziom, w podanej kolejności) i okresu powtarzalności; luka tam, gdzie granica przepływu byłaby poniżej 0"
+upper = "Górna granica, jak dolna"
+
+[formulas.quantile_interval_delta.constants]
+gamma_prime_2 = "Wartość pochodnej funkcji gamma w punkcie dwa"
+
+[formulas.quantile_interval_delta.constraints]
+shape_of_the_distribution = "shape > 0 dla rozkładu logarytmiczno-normalnego (s) i Weibulla (k)"
+enough_values = "N > p, liczba parametrów dopasowania: N >= 3 dla rozkładu logarytmiczno-normalnego, N >= 4 dla pozostałych"
+values_not_all_equal = "min(x) < max(x)"
+shape_of_a_likelihood_maximum = "kształty, przy których poszukiwanie fit_maximum_likelihood znajduje maksimum: GEV -1 < c < 1, Pearson III |G| < 2, Weibull 1 < k < 50"
+minima_of_the_gev = "minima tylko jako rozkład GEV zanegowanych minimów"
+distinct_levels = "poziomy ufności są różne"
+regular_likelihood = "rozkład GEV regularny w punkcie: c < 0,5 (xi > -0,5) i dodatnio określona macierz informacji obserwowanej"
+
 [formulas.plotting_positions]
 en_sha256 = "c4e1869c5f65fce7fca968122fc0ba1381adb1607ebcc182006905262d59e572"
 title = "Pozycje wykreślne maksimów rocznych: prawdopodobieństwa przewyższenia i okresy powtarzalności"
@@ -2195,7 +2286,7 @@ exact_product = "Graniczny iloczyn liczebności prób dla testu dokładnego"
 exact_size = "m n < 10000, granica testu dokładnego w R: ścieżki są liczone na siatce m n punktów"
 
 [formulas.exceedance_values]
-en_sha256 = "c8b2d09e85c6e10e4e352d8e0ab7b50a403f9f9a825c52d074b1a6135beaee05"
+en_sha256 = "f2289cd946ba53cc0e901c6d21e0b8bcd4138435314f970f8eb03bd80fae9575"
 title = "Wartości krzywej sum czasów trwania osiągane lub przekraczane przez p % dni (pozycje Weibulla, interpolacja liniowa)"
 validation = "brak: estymacja nieparametryczna z samego obserwowanego szeregu; Vogel i Fennessey (1994) porównują jej własności próbkowe, a nie zgodność z obserwacjami"
 conventions = [
@@ -2209,7 +2300,7 @@ conventions = [
 ]
 assumptions = [
     "wartości pochodzą z jednej stacji i jednego okresu: krzywa opisuje ten okres (krzywa z całego okresu obserwacji według Vogela i Fennesseya), a nie klimat",
-    "niezależność dni nie jest wymagana: krzywa ma charakter opisowy, a jej przedziały ufności (Vogel i Fennessey, § 5) nie są obliczane",
+    "niezależność dni nie jest wymagana: krzywa ma charakter opisowy i nie ma przedziału ufności; ma go stojąca obok niej medianowa krzywa roczna, której lata uznaje się za niezależne (specyfikacja duration_curve_annual_median_interval)",
 ]
 
 [formulas.exceedance_values.variables]
@@ -2221,6 +2312,38 @@ exceedance_values = "Wartość osiągana lub przekraczana w każdym z podanych p
 
 [formulas.exceedance_values.constraints]
 has_values = "n >= 1: co najmniej jeden dzień z wartością"
+
+[formulas.duration_curve_annual_median_interval]
+en_sha256 = "88a08402a6adba61de48e51a8c12547843a3ba87b255bd2ffed5f666a1dd0ee3"
+title = "Medianowa roczna krzywa sum czasów trwania i jej przedział ufności ze statystyk pozycyjnych (pokrycie dwumianowe, lata niezależne)"
+validation = "brak: przedział estymatora; jego pokrycie, symulowane z wartości rocznych o rozkładzie logarytmiczno-normalnym przy 30 i 60 latach, podaje się pod wzorem (CMP-6.11)"
+conventions = [
+    "dwustronny i centralny przy każdym poziomie ufności c: statystyki pozycyjne Q_p(k) i Q_p(N + 1 - k) N wartości rocznych danego procentu, k-ta od każdego końca, z największym k >= 1, którego pokrycie 1 - 2 F(k - 1) wynosi co najmniej c, F to dystrybuanta rozkładu dwumianowego N prób z prawdopodobieństwem 1/2 (lata poniżej prawdziwej mediany): każdy ogon najwyżej (1 - c) / 2 (Helsel i Hirsch 2002, wzory 3.2–3.3)",
+    "statystyki pozycyjne, niezależne od rozkładu: pokrycie jest dokładne dla ciągłego rozkładu wartości rocznych; nie jest to wzór (10) Vogela i Fennesseya (1994, s. 497), którego granice, kwantyle alfa/2 i 1 - alfa/2 Q_p,2 n wartości rocznych, obejmują wartość jednego roku, a nie medianę, i nie zwężają się wraz ze wzrostem n",
+    "pokrycie porównuje się z c dokładnie, w liczbach całkowitych: poziom równy pokryciu przyjmuje jego parę (c = 0,75 przy N = 3: wartość najmniejsza i największa); Helsel i Hirsch (2002, s. 71) biorą ogon najbliższy (1 - c) / 2, co może zostawić pokrycie poniżej c",
+    "poziom, którego nie osiąga nawet k = 1, 1 - 2^(1 - N) < c (mniej niż 6 lat przy c = 0,95, 5 przy 0,90, 3 przy 0,68), nie ma granic: jego wiersze lower i upper są lukami, a duration_curve podaje jego przedział jako niewyznaczony, z komunikatem interval_not_computed (too_few_complete_years)",
+    "mediana nieparzystej liczby wartości to wartość środkowa, parzystej — średnia dwóch środkowych, liczona jako suma ich połówek, tak aby wartości bliskie największej liczbie zmiennoprzecinkowej nie powodowały przepełnienia: Q_0.5,2 ze wzoru (3) Vogela i Fennesseya i numpy.median",
+    "wartości równe: równe wartości roczne zachowują każda swoją rangę; przy wartościach równych pokrycie wynosi co najmniej dwumianowe, bo P(Q < M) <= 1/2 <= P(Q <= M) w medianie M",
+    "luki: brak; wartości roczne to krzywe pełnych lat hydrologicznych (Tier B annual_duration_curves), a luka jest odrzucana",
+    "wartości w dowolnej jednostce: mediana i granice w tej samej jednostce (m3/s w dokumentach, cm dla stanów wody)",
+    "wszystkie poziomy jednego wywołania z jednego sortowania wartości każdego procentu; wiersze lower i upper następują w podanej kolejności poziomów",
+]
+assumptions = [
+    "N wartości rocznych danego procentu jest niezależnych i ma jednakowy rozkład: lata uznaje się za niezależne, tak jak Vogel i Fennessey (1994, s. 496) traktują n wartości Q_p(i) jako próbę losową; autokorelacja kolejnych lat, np. przy suszach trwających kilka lat, obniżyłaby pokrycie poniżej c",
+    "przedział dotyczy medianowej krzywej rocznej, krzywej typowego roku (Vogel i Fennessey 1994, s. 496), a nie krzywej z całego okresu (specyfikacja exceedance_values), która przedziału nie ma",
+]
+
+[formulas.duration_curve_annual_median_interval.variables]
+annual_values = "Wartości krzywych rocznych: wiersz na każdy pełny rok hydrologiczny i, w dowolnej kolejności, kolumna na każdy procent przewyższenia p (Q_p(i) Vogela i Fennesseya, każda z dni swojego roku)"
+confidence_levels = "Poziomy ufności, różne: każdy przedział jest dwustronny i centralny, każdy ogon najwyżej (1 - c) / 2"
+
+[formulas.duration_curve_annual_median_interval.outputs]
+median = "Medianowa krzywa roczna: dla każdego procentu mediana N wartości rocznych, w jednostce szeregu"
+lower = "Dolna granica każdej mediany, wiersz na poziom w podanej kolejności: k-ta najmniejsza wartość roczna; luka tam, gdzie N lat nie osiąga poziomu"
+upper = "Górna granica: k-ta największa wartość roczna; luka jak w dolnej"
+
+[formulas.duration_curve_annual_median_interval.constraints]
+distinct_levels = "poziomy ufności są różne"
 
 [formulas.lyne_hollick]
 en_sha256 = "ad8a9bdd862dfdf9a4a8bff629f17a7b5caaeaebaa9736814e3b354979defe14"

@@ -923,15 +923,18 @@ quantiles need at least 30 years).
   density infinite at a bound placed on a value) gets no parameters: a sample that fails a
   precondition of the method is a `validation_error` (`precondition_failed`, `details.constraint`
   `likelihood_has_a_maximum` here), and among several it is left out with the notice
-  `distribution_left_out` (reason `unbounded_likelihood`). `stats low-flow`:
+  `distribution_left_out` (reason `unbounded_likelihood`). Each fit has the confidence interval
+  of its quantiles at each `--confidence-level` (below). `stats low-flow`:
   low-flow quantiles from annual minima, the Fisher-Tippett distribution by maximum likelihood
-  from at least 4 complete years; a quantile of a discharge below 0 is `null`, with the notice
-  `negative_quantiles`. `stats low-flow-sequences`: drought sequences below a threshold.
+  from at least 4 complete years, with their confidence interval; a quantile of a discharge below
+  0 is `null`, with the notice `negative_quantiles`. `stats low-flow-sequences`: drought
+  sequences below a threshold.
 - `stats characteristic`: first- and second-degree characteristic values (WQ ... NQ of each year
   and half-year, WWQ ... NNQ of the period; from a daily series the extremes of the daily values,
   milder than IMGW-PIB's published ones, which `--half-year-file` gives); `stats daily` and
   `stats monthly`: day-of-year and monthly statistics; `stats duration-curve`: the duration curve
-  with the days of each class; `stats runoff-volume`: annual and monthly runoff volumes.
+  with the days of each class, and the median annual curve of the complete hydrological years
+  with its confidence interval; `stats runoff-volume`: annual and monthly runoff volumes.
 - `stats mann-kendall`: monotonic trend test with Sen's slope, Conover's intercept and Gilbert's
   1 - alpha interval of the slope (per year with `--year-column` or inline `--years`, otherwise
   per step); `stats homogeneity`: the homogeneity of annual maxima
@@ -1010,6 +1013,64 @@ only is named in `incomplete_years`, and `result.source` says where the values c
 ```bash
 hydrolog stats flood-frequency --half-year-file tests/fixtures/station_half_years.csv --first-year 2020 --last-year 2023 --json
 ```
+
+**Confidence intervals** ([ADR-0074](decisions/0074-intervals-of-the-quantiles-and-of-the-median-annual-flow-duration-curve.md)).
+`stats flood-frequency`, `stats low-flow` and `stats duration-curve` take `--confidence-level`:
+one level or a comma-separated list of distinct levels in (0, 1) (a number or a list in MCP and
+`run_command`), 0.95 by default. Every interval is two-sided and central; the upper bound at
+0.68 is KZGW 2017's one-sided upper bound at β = 84 %. The result gains `intervals`, one entry
+per level in the order asked: `confidence_level`, `ci_method`, `ci_lower` and `ci_upper` aligned
+with `quantiles` (with `curve_exceedance_percents` for the duration curve), and `ci_samples`.
+Each fit of `stats flood-frequency` has its own (`distributions[i].intervals`): an L-moments fit
+the percentile interval of the 999 parametric bootstrap refits that also give
+`ad_critical_values` (`parametric_bootstrap`, `ci_samples` the refits kept), a maximum-likelihood
+fit KZGW's delta method (`delta`); the method of moments and least squares have none.
+`stats low-flow` has one in `fisher_tippett.intervals` (the delta method on the negated minima),
+and `stats duration-curve` one at the top level for the median annual curve
+`annual_median_values` (`order_statistics` of the complete hydrological years: 6 years at 0.95,
+3 at 0.68). An interval not computed keeps its `confidence_level` with `ci_method`, `ci_lower`,
+`ci_upper` and `ci_samples` `null`, and an element of `ci_lower` or `ci_upper` is `null` where a
+bound of a discharge or a precipitation would lie below 0; the notice `interval_not_computed`
+says why (`details.reason` `fit_method`, `bootstrap_failures`, `nonregular_fit` for a GEV with
+ξ ≤ −0.5, `too_few_complete_years`, `below_physical_range`).
+
+```bash
+hydrolog stats flood-frequency --input-file tests/fixtures/annual_maxima.csv --value-column Qmax --distribution gev --return-periods 10,100 --confidence-level 0.95,0.68 --json
+```
+
+```json output
+{"result": {"distributions": [{"distribution_name": "gev", "fit_method": "l_moments", "intervals": [{"confidence_level": 0.95, "ci_method": "parametric_bootstrap", "ci_lower": ["...", "..."], "ci_upper": ["...", "..."], "ci_samples": 999}, {"confidence_level": 0.68, "ci_method": "parametric_bootstrap", "ci_samples": 999}]}]}}
+```
+
+```bash
+hydrolog stats low-flow --input-file tests/fixtures/daily_flows_15y.csv --value-column Q --date-column date --return-periods 2,10 --json
+```
+
+```json output
+{"result": {"fisher_tippett": {"return_periods": [2.0, 10.0], "intervals": [{"confidence_level": 0.95, "ci_method": "delta", "ci_samples": null}]}}}
+```
+
+```bash
+hydrolog stats duration-curve --input-file tests/fixtures/daily_flows_15y.csv --value-column Q --date-column date --confidence-level 0.95,0.68 --json
+```
+
+```json output
+{"result": {"intervals": [{"confidence_level": 0.95, "ci_method": "order_statistics"}, {"confidence_level": 0.68, "ci_method": "order_statistics"}]}}
+```
+
+The CSV of an Obserwator analyses export (`obserwator-analyses-export/1`) has a row per scalar
+leaf of Hydrolog's `result`, named by its JSON Pointer in the column `path`, so the intervals
+arrive as the rows `/distributions/<i>/intervals/<j>/ci_lower/<k>` and `…/ci_upper/<k>` (fit i,
+level j in the order asked, return period k as in `/distributions/<i>/return_periods/<k>`),
+`/distributions/<i>/intervals/<j>/confidence_level`, `…/ci_method` and `…/ci_samples` of
+`stats flood-frequency`; `/fisher_tippett/intervals/<j>/…` of `stats low-flow`; and
+`/intervals/<j>/ci_lower/<k>`, `/intervals/<j>/ci_upper/<k>` and `/annual_median_values/<k>` of
+`stats duration-curve`, k as in `/curve_exceedance_percents/<k>`. A `null` (a bound not computed)
+is an empty `value`. The CSV that the GUI's Statystyka przepływów saves has the columns
+`<distribution>_<fit_method>_ci95_lower_m3s` and `…_ci95_upper_m3s` per level beside each
+combination's `<distribution>_<fit_method>_m3s` (`ci68` at 0.68, `ci68.3` at 0.683), and
+Wszystkie polecenia's CSV of `stats low-flow` or `stats duration-curve` the columns `ci95_lower`
+and `ci95_upper` beside `quantiles` or `annual_median_values`.
 
 ### Many calls in one process: `commands batch`
 
@@ -1346,6 +1407,10 @@ print(equal_area_slope([0.0, 1000.0, 2000.0], [300.0, 302.0, 340.0]))  # 0.011; 
 maxima = np.loadtxt("tests/fixtures/annual_maxima.csv", delimiter=",", skiprows=1, usecols=1)
 gev = FloodFrequencyAnalysis(maxima, return_periods=np.array([10.0, 100.0])).fit_gev()
 print(gev.distribution_name, gev.quantiles, mann_kendall_test(maxima).trend_detected)
+bounded = FloodFrequencyAnalysis(maxima, np.array([10.0, 100.0]), confidence_level=[0.95, 0.68])
+for interval in bounded.fit_gev().intervals:  # one per level, in the order given
+    print(interval.confidence_level, interval.ci_method, interval.ci_lower, interval.ci_upper)
+# 0.95 parametric_bootstrap [169.1... 211.0...] [230.4... 438.5...], then 0.68: the 999 refits of the fit
 every_fit = FloodFrequencyAnalysis(maxima).fit_all(fit_method="all")  # L-moments by default
 print([(key, fit.aic) for key, fit in every_fit.items()])  # "gev/l_moments", ...: AIC order
 years = np.loadtxt("tests/fixtures/annual_maxima.csv", delimiter=",", skiprows=1, usecols=0)
@@ -1359,6 +1424,16 @@ print(fit.a, fit.b, fit.h0, fit.r_squared)
 texture = classify_usda_texture(clay=20, sand=40, silt=40)
 print(texture, texture_to_hsg(texture))
 ```
+
+`confidence_level=` (one level or a sequence of distinct levels in (0, 1), 0.95 by default) is
+taken by `FloodFrequencyAnalysis` (with `discharge=False` for a stage, whose bounds may lie below
+0), `LowFlowAnalysis`, `fit_fisher_tippett_minima` and `duration_curve`; their results carry
+`intervals`, a list of `ConfidenceInterval` (`hydrolog.statistics.intervals`), and the
+`DurationCurve` also `annual_median_values`. A fit by moments or least squares, a GEV with
+ξ ≤ −0.5 or too few complete years give an entry with `ci_method` `None` and a Python warning
+`IntervalNotComputed` (a `UserWarning`, the notice `interval_not_computed`). The formulas are public:
+`quantile_interval_bootstrap`, `quantile_interval_delta` (`hydrolog.statistics.intervals`) and
+`annual_median_interval` (`hydrolog.statistics.duration`).
 
 The hydrological signatures of the CAMELS data sets have no command:
 `fdc_slope`, `high_flow_days` and `low_flow_days` (a `FlowDays`: days per year and the mean length of
@@ -1583,7 +1658,7 @@ short welcome that links it (`instrukcja/` under the GUI's address).
 |---|---|---|
 | Hydrogram zlewni | the design hydrograph of one watershed in three steps (watershed, hyetograph, model): empty on a first visit, checked for what the chosen model needs (an empty required field is an error, a value outside its applicability range a warning on its field), then recomputed after every change; under PMAXTP the depth is fetched from IMGW-PIB for the point, probability, duration and method given, not typed; Nash by Lutz estimates n and K in the same run; the guide's worked example is Kamiennik at Świerzawa | `hydrograph generate` (with `nash_estimation` for Nash by Lutz), `precip pmaxtp` for the PMAXTP depth |
 | Sieć i trasowanie | a network of subcatchments, reaches, reservoirs, junctions and an outlet, built on a canvas as in HEC-HMS's basin model editor or opened from a file or a hand-off: the network's rainfall first, then the elements, then each subcatchment in Hydrogram zlewni's three steps; checked as it is edited and routed by „Oblicz sieć” ([below](#building-a-network-in-sieć)); the guide's worked example is `hydrolog.testing.example_network_document()` | `route schematic` (the layout of the structure and Hydrolog's check), `route network`, `precip pmaxtp` for a PMAXTP depth |
-| Statystyka przepływów | flood frequency of annual maxima or of a daily series (the example: 26 annual maxima, 1998 to 2023) and the homogeneity of the series | `stats flood-frequency`, `stats homogeneity` |
+| Statystyka przepływów | flood frequency of annual maxima or of a daily series (the example: 26 annual maxima, 1998 to 2023), with the 95 % confidence interval of the quantiles as „[dolna–górna]” in the tiles and a band under the active curve, and the homogeneity of the series | `stats flood-frequency`, `stats homogeneity` |
 | Kalkulatory | the time of concentration by six methods for the watershed of Hydrogram zlewni, and fifteen single calculators | `tc watershed` and fifteen others |
 | Wszystkie polecenia | a form for every command of the catalog | all but `gui serve`, `config show`, `commands guide` and `commands batch` |
 
