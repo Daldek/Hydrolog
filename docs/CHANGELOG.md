@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.10.0] - 2026-11-25
+
+Interval estimates beside the point estimates (Nogat ECO-091, plan `2026-11-24-interval-estimation`, step H1) and five hydrological signatures with CAMELS-PL 2.1.0 as reference cases (Nogat plan `2026-11-22-camels-pl`, step 5), released with Nogat's release set candidate-16.
 
 ### Added
 
@@ -22,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The coverage of the intervals, simulated nightly (Nogat CMP-6.11).** Tests marked `nightly`, excluded from the default run and from `scripts/gate.sh`, simulate each interval at 30 and 60 values and at 0.95 and 0.68 with the seed 20261125 and at least 1,000 samples per setting; the CI job `nightly` runs them at 02:00 UTC (and on `workflow_dispatch`), and `uv run pytest -m nightly` before each release. Their records, `tests/fixtures/formulas/interval-coverage.json`, are listed under each formula in `docs/FORMULAS.md`.
 - **`mpmath` is a development dependency** (the exact oracles of the interval specs at 50 digits, Nogat CMP-6.2).
 - **`hydrolog.nogat_formulas` is copied again from Nogat `6920f91`** (develop, 2026-11-25, standard 1.3, CMP-6.11 and ECO-091): it adds `assert_coverage`, `assert_interval_properties`, the record `Coverage` and the coverage in `formulas_markdown`; `schemas/nogat/README.md` gives its SHA-256.
+
+### Changed
+
+- **The extras `pmaxtp`, `gui` and `all` install Obserwator 3.3.0** (Nogat release set candidate-16, REL-5.3): `[tool.uv.sources]` pins commit `0f8fd3144657a76c785b6bc6156690196c73d01b` of Obserwator's `chore/release-3.3.0` instead of the tag `v3.2.1`, until Obserwator 3.3.0 is tagged; the range `obserwator>=3.1.0,<4` is unchanged and admits it. Obserwator 3.3.0 changes nothing Hydrolog uses (`fetch_pmaxtp` and the three errors it catches). `uv.lock` updated.
 
 ## [0.9.1] - 2026-11-24
 
@@ -1576,3 +1582,4 @@ Requires optional dependencies: `pip install hydrolog[visualization]`
 | **0.8.1** | 2026-11-18 | Defect fixes after 0.8.0: rating curves (overflow, implausible fits), low-flow thresholds, the SCS unit hydrograph of a long step, warnings issued again, GUI time axis |
 | **0.9.0** | 2026-11-22 | Formulas declared by specs with `formula_versions` (Nogat's computation standard), gross formula defects fixed (Euler II, Kirpich, NRCS, maximum likelihood, least squares), notice `outside_applicability`, file names `hydrolog_<content>_<qualifiers>.<ext>`, ČHMÚ as `chmu`, Nogat standard 1.1 |
 | **0.9.1** | 2026-11-24 | Obserwator 3.2.1 in the extras `pmaxtp`, `gui` and `all` (Nogat release set candidate-13) |
+| **0.10.0** | 2026-11-25 | Interval estimates of the flood, precipitation and low-flow quantiles and of the median annual duration curve (`confidence_level`, notice `interval_not_computed`, bands in the GUI), five CAMELS signatures with CAMELS-PL 2.1.0 as reference cases, Obserwator 3.3.0 in the extras (Nogat release set candidate-16) |
