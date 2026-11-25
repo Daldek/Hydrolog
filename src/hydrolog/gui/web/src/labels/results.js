@@ -23,6 +23,12 @@ export const results = {
   plan: "Plan zapisu",
   truncated: "Pokazano {shown} z {rows}; całość w CSV i JSON.",
   more: "Pokaż wszystkie wiersze",
+  /**
+   * The ends of an interval of an estimate (ECO-091: an `intervals` list), as arrays of the
+   * table and the CSV and as the band of the chart.
+   */
+  interval: "przedział ufności {level}\u00a0%",
+  intervalEnds: { lower: "dolna granica przedziału ufności {level}\u00a0%", upper: "górna granica przedziału ufności {level}\u00a0%" },
   /** Short names of the tiles (a field without one shows its label or name). */
   tiles: {
     a: "a",

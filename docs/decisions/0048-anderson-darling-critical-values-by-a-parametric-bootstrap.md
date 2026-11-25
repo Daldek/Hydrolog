@@ -4,6 +4,8 @@
 - Date: 2026-11-18
 - Amended by [ADR-0055](0055-the-frequency-estimators-refuse-by-preconditions-and-search-within-bounds.md)
   (2026-11-19): A² is the formula `anderson_darling` with a spec; its critical values are unchanged
+- Amended by [ADR-0074](0074-intervals-of-the-quantiles-and-of-the-median-annual-flow-duration-curve.md)
+  (2026-11-25): the same 999 refits of an L-moments fit also give the percentile interval of its quantiles
 - Builds on: the audit of the computation standard of 2026-11-18 (TRIAGE T30, flood frequency §1.5)
 - Amends: [ADR-0021](0021-fit-methods-of-flood-frequency.md) (the goodness of fit of every fit)
 

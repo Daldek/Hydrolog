@@ -1220,6 +1220,85 @@ class TestValidateCommand:
             validate_command("nope nope", {})
 
 
+LEVELS = _command(
+    options=(
+        _opt(
+            "levels",
+            "number_or_list",
+            default=0.95,
+            exclusive_minimum=0,
+            exclusive_maximum=1,
+        ),
+    ),
+)
+
+
+class TestNumberOrList:
+    """``number_or_list``: one number or a list, each form kept as given."""
+
+    def test_a_number_stays_a_number_and_a_list_a_list(self):
+        number = validate_command(LEVELS, {"levels": 0.9})["levels"]
+        assert number == 0.9 and type(number) is float
+        assert validate_command(LEVELS, {"levels": (0.95, 0.68)})["levels"] == [
+            0.95,
+            0.68,
+        ]
+        assert validate_command(LEVELS, {"levels": [0.5]})["levels"] == [0.5]
+        assert validate_command(LEVELS, {})["levels"] == 0.95
+
+    def test_the_bounds_hold_for_the_number_and_for_each_item(self):
+        high = _invalid(LEVELS, {"levels": 1})
+        assert high.details["reason"] == "exclusive_maximum"
+        assert "index" not in high.details
+        low = _invalid(LEVELS, {"levels": [0.5, 0]})
+        assert (low.details["reason"], low.details["index"]) == (
+            "exclusive_minimum",
+            1,
+        )
+        nan = _invalid(LEVELS, {"levels": [float("nan")]})
+        assert nan.details["reason"] == "not_finite"
+
+    @pytest.mark.parametrize(
+        ("value", "expected", "index"),
+        [
+            ("0.9", "number or array of numbers", None),
+            (True, "number or array of numbers", None),
+            ({"a": 0.9}, "number or array of numbers", None),
+            ([0.9, "x"], "number", 1),
+            ([0.9, False], "number", 1),
+        ],
+    )
+    def test_anything_else_is_a_type_error(self, value, expected, index):
+        error = _invalid(LEVELS, {"levels": value})
+        assert error.details["reason"] == "type"
+        assert error.details["expected"] == expected
+        assert error.details.get("index") == index
+
+    def test_an_empty_list_is_empty(self):
+        assert _invalid(LEVELS, {"levels": []}).details["reason"] == "empty"
+
+    def test_the_input_schema_accepts_both_forms_of_distinct_levels(self):
+        from jsonschema import Draft202012Validator
+
+        schema = input_schema(LEVELS)
+        Draft202012Validator.check_schema(schema)
+        validator = Draft202012Validator(schema)
+        for good in (0.95, [0.95, 0.68], [0.5]):
+            assert validator.is_valid({"levels": good}), good
+        for bad in (1, 0, [], [0.95, 0.95], [0.5, 1.5], "0.95"):
+            assert not validator.is_valid({"levels": bad}), bad
+        assert schema["properties"]["levels"]["default"] == 0.95
+
+    def test_the_commands_document_gives_the_number_form(self):
+        """commands-1 has one JSON type per option: a number, with its bounds."""
+        entry = command_schema(LEVELS).to_dict()["commands"][0]
+        (option,) = entry["options"]
+        assert option["type"] == "number"
+        assert "items" not in option
+        assert option["default"] == 0.95
+        assert (option["exclusive_minimum"], option["exclusive_maximum"]) == (0, 1)
+
+
 # --- running --------------------------------------------------------------------------
 
 

@@ -158,6 +158,39 @@ class TestLists:
         assert caught.value.details["expected"] == "array of numbers"
         assert "invalid JSON" in str(caught.value)
 
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("0.95", 0.95),
+            (" 0.9 ", 0.9),
+            ("0.95,0.68", [0.95, 0.68]),
+            ("0.95, 0.68 ,0.5", [0.95, 0.68, 0.5]),
+            ("[0.95, 0.68]", [0.95, 0.68]),
+            ("[0.95]", [0.95]),
+        ],
+    )
+    def test_number_or_list_keeps_the_form_of_the_text(self, text, expected):
+        """A number without a comma is a number; a comma or ``[`` makes a list."""
+        value = parse_option_value(_option("number_or_list"), text)
+        assert value == expected
+        assert type(value) is type(expected)
+
+    @pytest.mark.parametrize(
+        ("text", "expected", "index"),
+        [
+            ("x", "number", None),
+            ("0.95,", "number", 1),
+            ("0.95,x", "number", 1),
+            ("[0.95", "number or array of numbers", None),
+        ],
+    )
+    def test_number_or_list_bad_text(self, text, expected, index):
+        with pytest.raises(InvalidParameterError) as caught:
+            parse_option_value(_option("number_or_list"), text)
+        details = caught.value.details
+        assert (details["reason"], details["expected"]) == ("type", expected)
+        assert details.get("index") == index
+
 
 class TestJson:
     """``object`` and ``object_list`` are JSON text."""

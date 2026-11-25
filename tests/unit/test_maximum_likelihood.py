@@ -356,11 +356,12 @@ def test_stats_low_flow_leaves_out_negative_discharges_not_stages(tmp_path):
 
     discharge = outputs["Q"]["result"]["fisher_tippett"]["quantiles"]
     assert discharge == [pytest.approx(library["Q"].quantiles[0], rel=1e-12), None]
-    [notice] = outputs["Q"]["notices"]
+    # the intervals of the quantiles add their own notice (interval_not_computed)
+    [notice] = [n for n in outputs["Q"]["notices"] if n["code"] == "negative_quantiles"]
     assert (notice["code"], notice["level"]) == ("negative_quantiles", "warning")
     assert notice["details"]["return_periods"] == [100.0]
     stage = outputs["H"]["result"]["fisher_tippett"]["quantiles"]
-    assert outputs["H"]["notices"] == []
+    assert "negative_quantiles" not in [n["code"] for n in outputs["H"]["notices"]]
     assert stage == pytest.approx(library["H"].quantiles.tolist(), rel=1e-12)
     assert stage[1] < 0.0
 

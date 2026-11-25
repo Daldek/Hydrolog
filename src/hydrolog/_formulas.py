@@ -108,6 +108,7 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.statistics.meteo_snow",
     "hydrolog.statistics._climate",
     "hydrolog.statistics.frequency",
+    "hydrolog.statistics.intervals",
     "hydrolog.statistics._types",
     "hydrolog.statistics.low_flows",
     "hydrolog.statistics.stationarity",

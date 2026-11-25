@@ -78,6 +78,7 @@ _ADDED_FIELDS: dict[str, tuple[str, ...]] = {
     ),
     "hydrolog-stats-flood-frequency/1": ("fit_method", "source"),
     "hydrolog-stats-low-flow/1": ("source",),
+    "hydrolog-stats-duration-curve/1": ("annual_median_values", "intervals"),
     "hydrolog-stats-homogeneity/1": ("source", "hydrological_years"),
     "hydrolog-stats-characteristic/1": (
         "labels",

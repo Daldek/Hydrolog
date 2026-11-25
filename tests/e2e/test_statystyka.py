@@ -76,6 +76,19 @@ NAMES = {
     "pearson3": "Pearson III",
     "weibull": "Weibull",
 }
+NBSP = "\u00a0"
+ENDS = ("_m3s", "_ci95_lower_m3s", "_ci95_upper_m3s")
+"""The CSV columns of a combination: its quantiles and the ends of its 95 % interval."""
+
+
+def bracket(fit: dict[str, Any], period: float) -> str:
+    """Return the tile's interval of ``fit`` at ``period``: "[201,2–560,8]"."""
+    (entry,) = fit["intervals"]
+    at = fit["return_periods"].index(period)
+    low, high = (
+        f"{entry[end][at]:.1f}".replace(".", ",") for end in ("ci_lower", "ci_upper")
+    )
+    return f"[{low}–{high}]"
 
 
 def shown_fits(
@@ -383,6 +396,7 @@ def test_one_run_fits_every_combination_and_the_filters_only_show_them(
     expect(legend.locator("span:not(.legend-break)")).to_have_text(
         [
             "Maksima roczne",
+            re.compile(r"^przedział ufności 95\s%$"),
             "Rozkłady:",
             "GEV",
             "Log-normalny",
@@ -600,14 +614,20 @@ def test_ticked_distributions_add_their_quantiles_to_the_table_and_the_csv(
     )
     assert name == "hydrolog_quantiles_maksima-roczne.csv"
     header, *lines = [line.split(",") for line in data.decode("utf-8").splitlines()]
+    # Each combination's quantiles, then the ends of its interval at the level asked
+    names = [f"{fit['distribution_name']}_{fit['fit_method']}" for fit in shown]
     assert header == [
         "return_period_years",
         "exceedance_probability",
-        *(f"{fit['distribution_name']}_{fit['fit_method']}_m3s" for fit in shown),
+        *(f"{name}{end}" for name in names for end in ENDS),
     ]
     assert [float(line[0]) for line in lines] == DEFAULT_PERIODS
-    for column, fit in enumerate(shown, start=2):
-        assert [float(line[column]) for line in lines] == fit["quantiles"]
+    for column, fit in enumerate(shown):
+        (entry,) = fit["intervals"]
+        at = 2 + len(ENDS) * column
+        assert [float(line[at]) for line in lines] == fit["quantiles"]
+        assert [float(line[at + 1]) for line in lines] == entry["ci_lower"]
+        assert [float(line[at + 2]) for line in lines] == entry["ci_upper"]
 
     # Every row can leave the quantile table, the best one too: a note instead of the
     # columns, and the CSV keeps the periods with their probabilities only
@@ -695,6 +715,74 @@ def test_a_clicked_row_drives_the_tiles_the_plot_and_the_comparison(tab: Tab) ->
         expect(
             shape.locator('path.ser.active[data-series="gev/l_moments"]')
         ).to_have_count(1)
+
+
+def test_the_active_combinations_interval_is_a_band_and_brackets_its_tiles(
+    tab: Tab,
+) -> None:
+    page = open_section(tab)
+    highlight(page, "100")
+    result = compute(page).json()["result"]
+    best = shown_fits(result)[0]
+    (entry,) = best["intervals"]
+    method = (entry["confidence_level"], entry["ci_method"])
+    assert method == (0.95, "parametric_bootstrap")
+    right = page.locator(RIGHT)
+    chart = page.locator(PROBABILITY)
+    caption = right.locator(".st-interval")
+
+    # The best one's interval: brackets under its quantiles, a caption naming the level
+    # and the method, one band on the probability plot alone, read with the curve at
+    # T = 100
+    expect(right.locator('.kpi[data-key="q-100"] .v')).to_have_text("324,9 m³/s")
+    tile = right.locator('.kpi[data-key="q-100"] .ci')
+    expect(tile).to_have_text(bracket(best, 100.0))
+    expect(right.locator('.kpi[data-key="q-10"] .ci')).to_have_text(bracket(best, 10.0))
+    expect(caption).to_have_text(
+        re.compile(
+            r"^\[dolna–górna\]: przedział ufności 95\s% \(bootstrap parametryczny\)$"
+        )
+    )
+    expect(chart.locator('path.band.s1[data-series="interval"]')).to_have_count(1)
+    for other in (DENSITY, DISTRIBUTION):
+        expect(page.locator(other).locator("path.band")).to_have_count(0)
+    chart.focus()
+    page.keyboard.press("End")
+    for _ in range(6):  # the dense grid's 0,1 % back to 1 %
+        page.keyboard.press("ArrowLeft")
+    live = page.locator(f"{SECTION} .st-chart .chart-sr")
+    expect(live).to_contain_text("T = 100 lat")
+    expect(live).to_contain_text(
+        f"przedział ufności 95{NBSP}%: {bracket(best, 100.0)[1:-1]}{NBSP}m³/s"
+    )
+
+    # Maximum likelihood shown, its GEV the active one: the delta method's interval
+    chip(page, "methods", "Największa wiarygodność").click()
+    mle = lowest_aic(shown_fits(result, ("l_moments", "mle")))
+    assert key(mle) == "gev/mle" and mle["intervals"][0]["ci_method"] == "delta"
+    expect(tile).to_have_text(bracket(mle, 100.0))
+    expect(caption).to_have_text(re.compile(r"\(metoda delta\)$"))
+    expect(chart.locator("path.band")).to_have_count(1)
+
+    # Moments shown: a notice per combination says why it has no interval; one made
+    # active shows its quantiles alone, without a caption or a band
+    chip(page, "methods", "Momenty").click()
+    methods = ("l_moments", "mle", "moments")
+    shown = shown_fits(result, methods)
+    moments = [fit for fit in shown if fit["fit_method"] == "moments"]
+    worded = right.locator('.notes li[data-code="interval_not_computed"]')
+    expect(worded).to_have_count(len(moments))
+    expect(worded.first).to_contain_text(
+        "dla metody momentów i najmniejszych kwadratów przedział ufności nie jest "
+        "wyznaczany"
+    )
+    expect(worded.first).not_to_contain_text("(EN)")
+    rows = right.get_by_role("region", name="Rozkłady").locator("tbody tr")
+    rows.nth(shown.index(moments[0])).locator("th").click()
+    expect(right.locator('.kpi[data-key="q-100"] .v')).to_be_visible()
+    expect(right.locator(".kpi .ci")).to_have_count(0)
+    expect(caption).to_have_count(0)
+    expect(chart.locator("path.band")).to_have_count(0)
 
 
 def test_a_daily_series_takes_its_date_column(tab: Tab) -> None:

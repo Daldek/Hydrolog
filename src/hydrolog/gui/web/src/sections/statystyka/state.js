@@ -17,7 +17,7 @@
 
 import { api } from "../../api.js";
 import { LINE_COLUMNS } from "../../attribution.js";
-import { num, parseNumber } from "../../format.js";
+import { exact, num, parseNumber } from "../../format.js";
 import { useEffect, useState } from "../../html.js";
 import { readTable } from "../../controls/series-field.js";
 import { describeError } from "../../labels/errors.js";
@@ -501,6 +501,45 @@ export function percentAt(fit, period) {
 }
 
 /**
+ * The interval of a combination the results show (ECO-091): the first entry of its
+ * `intervals` (one per confidence level asked, in that order; the section asks the
+ * command's default) whose bounds Hydrolog computed. Moments and least squares have none,
+ * nor has a fit whose bootstrap or delta method failed: their entries keep the level only.
+ *
+ * @param {object|null} fit a fitted distribution of the result (or of the curves' run)
+ * @returns {{confidence_level: number, ci_method: string, ci_lower: (number|null)[],
+ *   ci_upper: (number|null)[]}|null} the entry, null when no level is computed
+ */
+export function shownInterval(fit) {
+  const entries = fit && Array.isArray(fit.intervals) ? fit.intervals : [];
+  return entries.find((entry) => entry.ci_method && Array.isArray(entry.ci_lower) && Array.isArray(entry.ci_upper)) || null;
+}
+
+/**
+ * The ends of a combination's shown interval at a return period.
+ *
+ * @param {object} fit a fitted distribution of the result
+ * @param {number} period the return period [years]
+ * @returns {{lower: number|null, upper: number|null}|null} the ends (one null where Hydrolog
+ *   left it out: below 0), null without an interval or without the period
+ */
+export function boundsAt(fit, period) {
+  const entry = shownInterval(fit);
+  const index = (fit.return_periods || []).findIndex((value) => Math.abs(value - period) < 1e-9);
+  return entry && index >= 0 ? { lower: entry.ci_lower[index], upper: entry.ci_upper[index] } : null;
+}
+
+/**
+ * A confidence level in per cent as the texts write it: 0.95 gives "95", 0.683 "68,3".
+ *
+ * @param {number} level the confidence level, in (0, 1)
+ * @returns {string} the per cent
+ */
+export function levelPercent(level) {
+  return exact(level * 100);
+}
+
+/**
  * The key of a fitted combination of a distribution and a fit method, as the library keys
  * the fits of every method: "gev/l_moments".
  *
@@ -523,8 +562,11 @@ export function shownFits(fits, shown) {
   return fits.filter((fit) => shown.distributions.includes(fit.distribution_name) && shown.methods.includes(fit.fit_method));
 }
 
-/** The notices naming one combination in their details: a fit outside its support, one left out. */
-const COMBINATION_NOTICES = new Set(["outside_support", "distribution_left_out"]);
+/**
+ * The notices naming one combination in their details: a fit outside its support, one left
+ * out, an interval not computed (ECO-091).
+ */
+const COMBINATION_NOTICES = new Set(["outside_support", "distribution_left_out", "interval_not_computed"]);
 
 /**
  * The notices of a run for the combinations shown: a notice naming a combination

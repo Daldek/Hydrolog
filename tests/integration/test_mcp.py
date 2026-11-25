@@ -289,6 +289,25 @@ class TestSchemas:
         )
         assert "alternatives" not in properties["distribution"]["description"]
 
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "hydrolog_stats_flood_frequency",
+            "hydrolog_stats_low_flow",
+            "hydrolog_stats_duration_curve",
+        ],
+    )
+    def test_a_confidence_level_is_one_level_or_distinct_levels(self, name):
+        schema = tools_by_name()[name].input_schema
+        validator = Draft202012Validator(schema)
+        level = schema["properties"]["confidence_level"]
+
+        assert level["default"] == 0.95
+        for good in (0.95, [0.95, 0.68]):
+            assert validator.is_valid({"confidence_level": good}), good
+        for bad in (1, [], [0.95, 0.95], [0.95, 1.2], "0.95"):
+            assert not validator.is_valid({"confidence_level": bad}), bad
+
     def test_the_output_schema_is_the_vendored_result_schema_made_self_contained(self):
         expected = inline_refs(vendored("result-1.schema.json"))
         expected.pop("$id")

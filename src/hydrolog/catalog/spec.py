@@ -14,22 +14,24 @@ groups, defaults) live in :mod:`hydrolog.catalog.dispatch`.
 
 Option types
 ------------
-================  ==========================  ==================================
-type              accepted value              normalized value
-================  ==========================  ==================================
-``number``        int or float (not bool)     ``float`` (finite)
-``integer``       int, or float without       ``int``
-                  fractional part (not bool)
-``string``        non-blank ``str``           the same ``str``
-``boolean``       ``bool``                    ``bool``
-``choice``        ``str`` from ``choices``    the same ``str``
-``number_list``   non-empty list of numbers   ``list[float]`` (bounds per item)
-``string_list``   non-empty list of strings   ``list[str]``
-``object_list``   non-empty list of objects   ``list[dict]`` (JSON-native)
-``path``          non-blank ``str`` or        ``str`` (resolved later by
-                  ``os.PathLike``             :func:`~hydrolog.catalog.run_command`)
-``object``        JSON object                 ``dict`` (JSON-native deep copy)
-================  ==========================  ==================================
+==================  ==========================  ==================================
+type                accepted value              normalized value
+==================  ==========================  ==================================
+``number``          int or float (not bool)     ``float`` (finite)
+``integer``         int, or float without       ``int``
+                    fractional part (not bool)
+``string``          non-blank ``str``           the same ``str``
+``boolean``         ``bool``                    ``bool``
+``choice``          ``str`` from ``choices``    the same ``str``
+``number_list``     non-empty list of numbers   ``list[float]`` (bounds per item)
+``number_or_list``  a number, or a non-empty    ``float``, or ``list[float]``
+                    list of numbers             (bounds per item)
+``string_list``     non-empty list of strings   ``list[str]``
+``object_list``     non-empty list of objects   ``list[dict]`` (JSON-native)
+``path``            non-blank ``str`` or        ``str`` (resolved later by
+                    ``os.PathLike``             :func:`~hydrolog.catalog.run_command`)
+``object``          JSON object                 ``dict`` (JSON-native deep copy)
+==================  ==========================  ==================================
 
 Only JSON-native values are accepted (no numeric strings): the CLI and the MCP server
 convert their text input before validation.
@@ -38,6 +40,10 @@ Notes
 -----
 ``string_list`` and ``object_list`` extend the eight types of the design spec: they
 are needed for inline dates and for inline lists of stations or network segments.
+``number_or_list`` is one value or several distinct values of the same quantity (the
+confidence levels of an interval estimate): the form given is kept, so a number stays
+a number. Its JSON Schema says the items are distinct (``uniqueItems``); the operation
+enforces that, with the reason of its own domain.
 """
 
 from __future__ import annotations
@@ -62,6 +68,7 @@ OptionType = Literal[
     "boolean",
     "choice",
     "number_list",
+    "number_or_list",
     "string_list",
     "object_list",
     "path",
@@ -96,7 +103,7 @@ ERROR_CODE_NAMES: Final[tuple[str, ...]] = (
 )
 """Registry codes a command can declare in :attr:`Command.errors`."""
 
-_NUMERIC_TYPES: Final = ("number", "integer", "number_list")
+_NUMERIC_TYPES: Final = ("number", "integer", "number_list", "number_or_list")
 _OPTION_NAME = re.compile(r"[a-z][a-z0-9_]*")
 _COMMAND_NAME = re.compile(r"[a-z][a-z0-9]* [a-z][a-z0-9]*(?:-[a-z0-9]+)*")
 _RESULT_SCHEMA = re.compile(r"hydrolog-[a-z][a-z0-9-]*/[1-9][0-9]*")
@@ -110,6 +117,7 @@ _EXPECTED: Final[Mapping[str, str]] = {
     "boolean": "boolean",
     "choice": "string",
     "number_list": "array of numbers",
+    "number_or_list": "number or array of numbers",
     "string_list": "array of strings",
     "object_list": "array of objects",
     "path": "string (path)",
@@ -117,6 +125,7 @@ _EXPECTED: Final[Mapping[str, str]] = {
 }
 _ITEM_EXPECTED: Final[Mapping[str, str]] = {
     "number_list": "number",
+    "number_or_list": "number",
     "string_list": "string",
     "object_list": "object",
 }
@@ -367,6 +376,14 @@ def _number_list(
     return [_number(option, item, i) for i, item in enumerate(_items(option, value))]
 
 
+def _number_or_list(
+    option: Option, value: object, index: int | None = None
+) -> float | list[float]:
+    if isinstance(value, list | tuple):
+        return _number_list(option, value)
+    return _number(option, value)
+
+
 def _string_list(option: Option, value: object, index: int | None = None) -> list[str]:
     return [_string(option, item, i) for i, item in enumerate(_items(option, value))]
 
@@ -384,6 +401,7 @@ _NORMALIZERS: Final[Mapping[str, Callable[..., Any]]] = {
     "boolean": _boolean,
     "choice": _choice,
     "number_list": _number_list,
+    "number_or_list": _number_or_list,
     "string_list": _string_list,
     "object_list": _object_list,
     "path": _path,
@@ -445,9 +463,10 @@ class Option:
     choices : tuple of str, optional
         Allowed values; required for ``choice`` and forbidden for other types.
     minimum, maximum : float, optional
-        Inclusive bounds of ``number``/``integer``/``number_list`` (per item).
+        Inclusive bounds of ``number``/``integer``/``number_list``/``number_or_list``
+        (per item of a list).
     exclusive_minimum, exclusive_maximum : float, optional
-        Exclusive bounds (per item of ``number_list``); ``exclusive_minimum`` is not
+        Exclusive bounds (per item of a list); ``exclusive_minimum`` is not
         combinable with ``minimum``, ``exclusive_maximum`` not with ``maximum``.
     unit : str, optional
         Unit of the value (``"km"``, ``"m/m"``, ``"mm"``, ``"min"``, ``"km2"``,
@@ -637,8 +656,10 @@ class Option:
         Returns
         -------
         dict
-            Property schema: ``type`` and constraints (``minimum``, ``maximum``,
-            ``exclusiveMinimum``, ``exclusiveMaximum``, ``enum``, ``minItems``...),
+            Property schema: ``type`` (``anyOf`` number/array for
+            ``number_or_list``) and constraints (``minimum``, ``maximum``,
+            ``exclusiveMinimum``, ``exclusiveMaximum``, ``enum``, ``minItems``,
+            ``uniqueItems``...),
             ``description`` (with the unit in brackets when the text does not name
             it), ``default`` and for paths ``x-hydrolog-type`` (and
             ``x-hydrolog-writes``).
@@ -666,6 +687,18 @@ class Option:
                 "type": "array",
                 "items": {"type": "number", **bounds},
                 "minItems": 1,
+            }
+        elif self.type == "number_or_list":
+            schema = {
+                "anyOf": [
+                    {"type": "number", **bounds},
+                    {
+                        "type": "array",
+                        "items": {"type": "number", **bounds},
+                        "minItems": 1,
+                        "uniqueItems": True,
+                    },
+                ]
             }
         elif self.type == "string_list":
             schema = {

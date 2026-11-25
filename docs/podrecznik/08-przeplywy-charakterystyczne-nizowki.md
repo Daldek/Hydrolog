@@ -197,7 +197,7 @@ prawdopodobieństwa: dni nie są niezależne, a sezonowość i susze kilku lat d
 > **Założenia**
 >
 > - wartości pochodzą z jednej stacji i jednego okresu: krzywa opisuje ten okres (krzywa z całego okresu obserwacji według Vogela i Fennesseya), a nie klimat
-> - niezależność dni nie jest wymagana: krzywa ma charakter opisowy, a jej przedziały ufności (Vogel i Fennessey, § 5) nie są obliczane
+> - niezależność dni nie jest wymagana: krzywa ma charakter opisowy i nie ma przedziału ufności; ma go stojąca obok niej medianowa krzywa roczna, której lata uznaje się za niezależne (specyfikacja duration_curve_annual_median_interval)
 >
 > **Zgodność z obserwacjami według źródeł:** brak: estymacja nieparametryczna z samego obserwowanego szeregu; Vogel i Fennessey (1994) porównują jej własności próbkowe, a nie zgodność z obserwacjami
 >
@@ -264,6 +264,85 @@ Zastosowania: przepływy niskie i średnie z krzywej ($Q_{70\%}$, $Q_{90\%}$, $Q
 niżówek (p. 8.3) i wskaźniki zasobów, porównanie zlewni (krzywa stroma — reżim zmienny, płaska — wyrównany
 przez retencję), ocena, przez ile dni w roku dostępny jest przepływ potrzebny do poboru wody.
 
+### Medianowa krzywa roczna i jej przedział ufności
+
+Krzywa z całego okresu nie ma przedziału ufności, bo dni nie są niezależne. Vogel i Fennessey (1994)
+stawiają obok niej interpretację roczną: krzywą każdego pełnego roku hydrologicznego, liczoną z dni tego
+roku, i dla każdego procentu medianę $N$ wartości rocznych, czyli medianową krzywą roczną, krzywą
+typowego roku. Lata, w przeciwieństwie do dni, można uznać za niezależne, więc mediana ma przedział
+ufności ze statystyk pozycyjnych (Helsel i Hirsch 2002, § 3.3.1): $k$-tą najmniejszą i $k$-tą
+największą z $N$ wartości rocznych, z największym $k$, przy którym prawdopodobieństwo dwumianowe objęcia
+mediany wynosi co najmniej $c$. Przedział nie zależy od rozkładu wartości rocznych. Wymaga co najmniej
+6 pełnych lat przy poziomie 0,95 i 3 przy 0,68; przy mniejszej liczbie lat wynik ma uwagę
+`interval_not_computed` (przyczyna `too_few_complete_years`). Polecenie `stats duration-curve` podaje
+medianową krzywą roczną w polu `annual_median_values`, a jej przedział w `intervals` (`ci_method`
+`order_statistics`), oba w punktach `curve_exceedance_percents`; poziomy wybiera `--confidence-level`
+(domyślnie 0,95, także lista, np. `0.95,0.68`).
+
+Nie jest to wzór (10) Vogela i Fennesseya: jego granice, kwantyle samych wartości rocznych, opisują
+rozrzut wartości jednego roku, a nie niepewność mediany, i nie zwężają się wraz z liczbą lat.
+
+<!-- spec:duration_curve_annual_median_interval -->
+
+<a id="spec-duration_curve_annual_median_interval"></a>
+
+> **Medianowa roczna krzywa sum czasów trwania i jej przedział ufności ze statystyk pozycyjnych (pokrycie dwumianowe, lata niezależne)** · specyfikacja [`duration_curve_annual_median_interval`](../FORMULAS.md#duration_curve_annual_median_interval) · wersja wzoru 1 · status: **sprawdzony na przypadkach referencyjnych** (`referenced`)
+>
+> $$
+> Q_{p,0{,}5} = \tfrac{1}{2}\bigl(Q_{p,(\lfloor (N+1)/2 \rfloor)} + Q_{p,(\lceil (N+1)/2 \rceil)}\bigr),\quad \bigl[Q_{p,(k)},\ Q_{p,(N+1-k)}\bigr],\quad k = \max\Bigl\{k \ge 1 : 1 - 2\sum_{j=0}^{k-1}\binom{N}{j}\,2^{-N} \ge c\Bigr\}
+> $$
+>
+> **Dane wejściowe**
+>
+> | Symbol | Argument | Znaczenie | Jednostka | Zakres fizyczny | Zakres stosowalności | Zakres typowy |
+> |---|---|---|---|---|---|---|
+> | $Q_p(i)$ | `annual_values` (tablica) | Wartości krzywych rocznych: wiersz na każdy pełny rok hydrologiczny i, w dowolnej kolejności, kolumna na każdy procent przewyższenia p (Q_p(i) Vogela i Fennesseya, każda z dni swojego roku) | m³/s | (−∞; ∞) | nie podano w źródłach | [1,24; 522] (źr. 3) |
+> | $c$ | `confidence_levels` (ciąg) | Poziomy ufności, różne: każdy przedział jest dwustronny i centralny, każdy ogon najwyżej (1 - c) / 2 | – | (0; 1) | nie podano w źródłach | [0,68; 0,95] (źr. 4) |
+>
+> **Wyniki**
+>
+> | Symbol | Wynik | Znaczenie | Jednostka | Zakres fizyczny |
+> |---|---|---|---|---|
+> | $Q_{p,0{,}5}$ | `median` (ciąg) | Medianowa krzywa roczna: dla każdego procentu mediana N wartości rocznych, w jednostce szeregu | m³/s | (−∞; ∞) |
+> | $Q_{p,(k)}$ | `lower` (ciąg) | Dolna granica każdej mediany, wiersz na poziom w podanej kolejności: k-ta najmniejsza wartość roczna; luka tam, gdzie N lat nie osiąga poziomu | m³/s | (−∞; ∞) |
+> | $Q_{p,(N+1-k)}$ | `upper` (ciąg) | Górna granica: k-ta największa wartość roczna; luka jak w dolnej | m³/s | (−∞; ∞) |
+>
+> **Warunki**
+>
+> | Warunek | Nazwa | Gdy nie jest spełniony | Źródło |
+> |---|---|---|---|
+> | poziomy ufności są różne | `distinct_levels` | odmowa obliczeń: wzór jest nieokreślony | (źr. 4) |
+>
+> **Konwencje**
+>
+> - dwustronny i centralny przy każdym poziomie ufności c: statystyki pozycyjne Q_p(k) i Q_p(N + 1 - k) N wartości rocznych danego procentu, k-ta od każdego końca, z największym k >= 1, którego pokrycie 1 - 2 F(k - 1) wynosi co najmniej c, F to dystrybuanta rozkładu dwumianowego N prób z prawdopodobieństwem 1/2 (lata poniżej prawdziwej mediany): każdy ogon najwyżej (1 - c) / 2 (Helsel i Hirsch 2002, wzory 3.2–3.3)
+> - statystyki pozycyjne, niezależne od rozkładu: pokrycie jest dokładne dla ciągłego rozkładu wartości rocznych; nie jest to wzór (10) Vogela i Fennesseya (1994, s. 497), którego granice, kwantyle alfa/2 i 1 - alfa/2 Q_p,2 n wartości rocznych, obejmują wartość jednego roku, a nie medianę, i nie zwężają się wraz ze wzrostem n
+> - pokrycie porównuje się z c dokładnie, w liczbach całkowitych: poziom równy pokryciu przyjmuje jego parę (c = 0,75 przy N = 3: wartość najmniejsza i największa); Helsel i Hirsch (2002, s. 71) biorą ogon najbliższy (1 - c) / 2, co może zostawić pokrycie poniżej c
+> - poziom, którego nie osiąga nawet k = 1, 1 - 2^(1 - N) < c (mniej niż 6 lat przy c = 0,95, 5 przy 0,90, 3 przy 0,68), nie ma granic: jego wiersze lower i upper są lukami, a duration_curve podaje jego przedział jako niewyznaczony, z komunikatem interval_not_computed (too_few_complete_years)
+> - mediana nieparzystej liczby wartości to wartość środkowa, parzystej — średnia dwóch środkowych, liczona jako suma ich połówek, tak aby wartości bliskie największej liczbie zmiennoprzecinkowej nie powodowały przepełnienia: Q_0.5,2 ze wzoru (3) Vogela i Fennesseya i numpy.median
+> - wartości równe: równe wartości roczne zachowują każda swoją rangę; przy wartościach równych pokrycie wynosi co najmniej dwumianowe, bo P(Q < M) <= 1/2 <= P(Q <= M) w medianie M
+> - luki: brak; wartości roczne to krzywe pełnych lat hydrologicznych (Tier B annual_duration_curves), a luka jest odrzucana
+> - wartości w dowolnej jednostce: mediana i granice w tej samej jednostce (m3/s w dokumentach, cm dla stanów wody)
+> - wszystkie poziomy jednego wywołania z jednego sortowania wartości każdego procentu; wiersze lower i upper następują w podanej kolejności poziomów
+>
+> **Założenia**
+>
+> - N wartości rocznych danego procentu jest niezależnych i ma jednakowy rozkład: lata uznaje się za niezależne, tak jak Vogel i Fennessey (1994, s. 496) traktują n wartości Q_p(i) jako próbę losową; autokorelacja kolejnych lat, np. przy suszach trwających kilka lat, obniżyłaby pokrycie poniżej c
+> - przedział dotyczy medianowej krzywej rocznej, krzywej typowego roku (Vogel i Fennessey 1994, s. 496), a nie krzywej z całego okresu (specyfikacja exceedance_values), która przedziału nie ma
+>
+> **Zgodność z obserwacjami według źródeł:** brak: przedział estymatora; jego pokrycie, symulowane z wartości rocznych o rozkładzie logarytmiczno-normalnym przy 30 i 60 latach, podaje się pod wzorem (CMP-6.11)
+>
+> **Źródła** (opisy w brzmieniu specyfikacji)
+>
+> 1. Vogel, R.M. and Fennessey, N.M. (1994). Flow-duration curves. I: New interpretation and confidence intervals. Journal of Water Resources Planning and Management 120(4), 485-504 (the authors' copy), pp. 494-497: 'Annual Interpretation of Flow-Duration Curves', the FDC of each of the n years from its own daily flows by Q_p,2 and, per exceedance probability, the median of the n annual values, the median annual FDC (p. 494), the distribution of daily flow in a typical year (p. 496); 'Confidence Intervals for Quantiles of Flow-Duration Curves', the n values Q_p(i) treated as a random sample (p. 496) and their interval, eqs. (10a)-(10b) (p. 497) <https://sites.tufts.edu/richardvogel/files/2019/04/flowDuration1.pdf>
+> 2. Helsel, D.R. and Hirsch, R.M. (2002). Statistical Methods in Water Resources. Techniques of Water-Resources Investigations of the U.S. Geological Survey, book 4, chapter A3 (superseded by Techniques and Methods 4-A3, 2020), sect. 3.3.1, pp. 70-72, eqs. 3.2-3.3: the nonparametric interval of the median between the R_l-th observations from each end, R_l = x' + 1 and R_u = n - x', x' the critical value of the binomial distribution with p = 0.5 at alpha/2 (table B5); example 2, 25 arsenic concentrations: 4.8 <= C_0.5 <= 110 at alpha = 0.044 <https://pubs.usgs.gov/twri/twri4a3/twri4a3.pdf>
+> 3. IMGW-PIB, public hydrological data: the half-yearly characteristic flows (polr_Q) of station 150160180 Kłodzko on the Nysa Kłodzka, hydrological years 1971-2015 (1997 absent), the lowest flow NNQ 1.24 m3/s (2015) and the highest WWQ 522 m3/s (2006), between which its daily mean flows lie <https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/>
+> 4. Nogat (2026). Decisions of the ecosystem, ECO-091: Intervals beside point estimates, computed by Hydrolog, shown by Obserwator, two-sided and central at each confidence_level asked; Obserwator stores 0.95 and 0.68 <https://github.com/Daldek/Nogat/blob/main/standards/DECISIONS.md>
+>
+> Funkcja `hydrolog.statistics.duration.annual_median_interval`. Ramka wygenerowana ze specyfikacji przez `scripts/generate_handbook.py`; nie edytuj jej ręcznie.
+
+<!-- /spec:duration_curve_annual_median_interval -->
+
 ### Przykład 8.2: krzywa czasu trwania, Świerzawa 1991–2020
 
 ```sh
@@ -280,6 +359,19 @@ $Q_{70\%}$ = 0,55 m³/s posłuży jako próg niżówki w p. 8.3. Najliczniejsza
 obejmuje przepływy od 0,655 do 0,776 m³/s (1356 dni, 12,4 %). To samo polecenie bez `--bin-method log`
 tworzy klasy szerokości 10 m³/s, z których najniższa obejmuje 99,3 % dni — tabela klas jest wtedy
 bezużyteczna, choć wartości krzywej są te same.
+
+Medianowa krzywa roczna tych 30 lat (to samo polecenie z `--confidence-level 0.95,0.68`; pola
+`annual_median_values` i `intervals`, odczytane w procentach tabeli):
+
+| $p$ [% dni] | 1 | 5 | 10 | 30 | 50 | 70 | 90 | 95 | 99 |
+|---|---|---|---|---|---|---|---|---|---|
+| mediana roczna [m³/s] | 8,31 | 2,92 | 2,06 | 1,10 | 0,70 | 0,53 | 0,40 | 0,35 | 0,31 |
+| przedział 95 % [m³/s] | 5,15–10,20 | 2,56–3,38 | 1,66–2,33 | 0,92–1,20 | 0,61–0,79 | 0,40–0,63 | 0,31–0,53 | 0,26–0,50 | 0,23–0,46 |
+
+W środkowym zakresie (10–70 %) medianowa krzywa roczna prawie pokrywa się z krzywą z całego okresu;
+w niskich przepływach jest wyraźnie wyższa ($Q_{95\%}$ typowego roku 0,35 m³/s wobec 0,26 m³/s), bo krzywa
+z całego okresu zbiera dni najsuchszych lat, których typowy rok nie ma. Przy 30 latach granicami
+przedziału 95 % są 10. i 21. wartość roczna (pokrycie 0,957), a przedziału 68 % 12. i 19. (pokrycie 0,800).
 
 ## 8.3. Niżówki: metoda progowa, czas trwania i deficyt
 
@@ -535,6 +627,18 @@ W polskiej praktyce do minimów stosowano metodę Gumbela opartą na III typie r
 (Wałęga i in. 2014); urzędowo zalecanego rozkładu minimów rocznych w przeglądzie literatury do tego
 podręcznika nie znaleziono.
 
+### Przedział ufności kwantyli minimów
+
+Polecenie `hydrolog stats low-flow` podaje przedział ufności kwantyli $NQ_T$ (pole
+`fisher_tippett.intervals`, opcja `--confidence-level`, domyślnie 0,95). Liczy go metoda delta
+z informacji obserwowanej rozkładu GEV zanegowanych minimów, tak jak dla dopasowania GEV metodą
+największej wiarygodności w rozdziale 7 (ramka `quantile_interval_delta` z `extremes` `minima`, p. 7.8);
+granice zanegowanej próby neguje się i zamienia miejscami. Granica przepływu poniżej zera jest pusta
+(`null`, uwaga `interval_not_computed`, przyczyna `below_physical_range`), tak jak kwantyl
+(`negative_quantiles`). Metoda delta wymaga regularnej wiarygodności: przy $c \ge 0{,}5$, czyli przy
+minimach z wyraźnym dolnym ograniczeniem, przedziału nie ma (przyczyna `nonregular_fit`). Tak jest
+w obu przykładach tego podrozdziału.
+
 ### Puste kwantyle
 
 Hydrolog nie wymusza nieujemnego dolnego ograniczenia: dopasowany rozkład może sięgać poniżej zera,
@@ -564,8 +668,10 @@ $S = -6$, $p = 0{,}929$: brak trendu. Dopasowanie:
 hydrolog stats low-flow --input-file docs/podrecznik/dane/kaczawa_swierzawa_Q_dobowe_1961_2025.csv --value-column Q --date-column date --first-year 1991 --last-year 2020
 ```
 
-Parametry: $c = 0{,}566$, położenie 0,3527 m³/s, skala 0,1527 m³/s; kształt dodatni, więc minima mają
-dolne ograniczenie.
+Parametry: $c = 0{,}566$, położenie 0,3527 m³/s, skala 0,1527 m³/s; kształt dodatni, więc minima mają
+dolne ograniczenie. Kształt przekracza 0,5, więc wynik nie ma przedziału ufności (uwaga
+`interval_not_computed`, przyczyna `nonregular_fit`); to samo dotyczy całego zapisu 1961–2025
+($c = 0{,}595$) i charakterystyk półrocznych z lat 1991–2020 ($c = 0{,}540$).
 
 | $T$ [lata] | 2 | 5 | 10 | 20 | 50 | 100 | 500 | 1000 |
 |---|---|---|---|---|---|---|---|---|
@@ -590,8 +696,9 @@ hydrolog stats low-flow --half-year-file docs/podrecznik/dane/czarna_woda_bukown
 | $Q_T$ [m³/s] | 0,217 | 0,109 | 0,064 | 0,035 | 0,0095 | `null` | `null` | `null` |
 
 Uwaga `negative_quantiles` podaje, że dopasowany rozkład osiąga przepływ 0 średnio raz na 82,6 roku, więc
-kwantyle 100, 500 i 1000 lat byłyby ujemne i zostały pominięte. Najniższe minima roczne okresu są
-bardzo bliskie zera: 0,004 m³/s w 2018 r. i 0,023 m³/s w 2006 r.
+kwantyle 100, 500 i 1000 lat byłyby ujemne i zostały pominięte. Najniższe minima roczne okresu są
+bardzo bliskie zera: 0,004 m³/s w 2018 r. i 0,023 m³/s w 2006 r. Kształt $c = 0{,}501$ leży tuż powyżej
+0,5, więc przedziału ufności nie ma (`nonregular_fit`).
 
 Cały zapis 1973–2025 (50 lat):
 
@@ -599,8 +706,9 @@ Cały zapis 1973–2025 (50 lat):
 hydrolog stats low-flow --half-year-file docs/podrecznik/dane/czarna_woda_bukowna_Q_polroczne_1973_2025.csv
 ```
 
-daje $Q_{100} = 0{,}0089$ m³/s, a puste są tylko kwantyle 500 i 1000 lat (zero raz na 348,7 roku). Wynik
-zależy więc mocno od okresu. Przyczynę pokazuje test trendu minimów całego zapisu:
+daje $Q_{100} = 0{,}0089$ m³/s, a puste są tylko kwantyle 500 i 1000 lat (zero raz na 348,7 roku), znów bez
+przedziału ufności ($c = 0{,}641$). Wynik zależy więc mocno od okresu. Przyczynę pokazuje test trendu
+minimów całego zapisu:
 
 ```sh
 hydrolog stats mann-kendall --values 0.82,0.4,0.18,0.27,0.43,0.35,0.21,0.78,0.28,0.22,0.1,0.47,0.25,0.32,0.62,0.51,0.18,0.26,0.48,0.2,0.35,0.25,0.25,0.2,0.25,0.56,0.23,0.05,0.2,0.31,0.023,0.21,0.15,0.22,0.33,0.44,0.38,0.28,0.24,0.07,0.38,0.13,0.004,0.06,0.07,0.18,0.03,0.021,0.16,0.14 --years 1973,1974,1975,1976,1977,1978,1979,1980,1981,1982,1983,1984,1985,1986,1987,1988,1989,1990,1991,1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025
@@ -1356,6 +1464,7 @@ daje 0,650.
   ekstrema nie. Do celów prawnych ($SNQ$) i porównań z publikacjami IMGW-PIB używaj charakterystyk
   IMGW-PIB z co najmniej 20, a najlepiej 30 lat.
 - Krzywa czasu trwania opisuje okres, a nie prawdopodobieństwo; dla przepływów stosuj klasy logarytmiczne.
+  Przedział ufności ma medianowa krzywa roczna (lata niezależne), nie krzywa z całego okresu.
 - Liczby i deficyty niżówek zależą od progu i reguł łączenia; podawaj je razem z wynikiem.
 - Rozkład minimów zakłada brak trendu; puste kwantyle i trend minimów są sygnałem, że analiza częstości
   nie opisuje obecnych warunków.
@@ -1379,6 +1488,9 @@ daje 0,650.
 - Fleig A.K., Tallaksen L.M., Hisdal H., Demuth S. (2006). A global evaluation of streamflow drought
   characteristics. *Hydrology and Earth System Sciences* 10, 535–552.
   https://hess.copernicus.org/articles/10/535/2006/
+- Helsel D.R., Hirsch R.M. (2002). *Statistical Methods in Water Resources*. Techniques of
+  Water-Resources Investigations of the U.S. Geological Survey, book 4, chapter A3.
+  https://pubs.usgs.gov/twri/twri4a3/twri4a3.pdf
 - IMGW-PIB (2023). *Rocznik hydrologiczny 2022*. Instytut Meteorologii i Gospodarki Wodnej – Państwowy
   Instytut Badawczy, Warszawa (definicje przepływów charakterystycznych, s. 5–8).
 - IMGW-PIB. *Słownik dla mediów — najważniejsze pojęcia i zwroty w hydrologii*.

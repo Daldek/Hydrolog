@@ -32,6 +32,7 @@ __all__ = [
     "DistributionLeftOut",
     "HydrologWarning",
     "IncompleteYears",
+    "IntervalNotComputed",
     "IuhPeakUndefined",
     "KsTestApproximate",
     "NegativeQuantiles",
@@ -504,6 +505,79 @@ class NegativeQuantiles(HydrologWarning):
     keys = ("return_periods", "zero_return_period")
 
 
+class IntervalNotComputed(HydrologWarning):
+    """An interval of an estimate, or one bound of it, is not computed (null).
+
+    The entries of ``intervals`` (ECO-091) whose method, bounds and samples are null,
+    or the bounds a discharge or a precipitation cannot take. Details: the ``reason``,
+    the ``confidence_levels`` it concerns, the ``distribution`` and ``fit_method`` of
+    the fit (``None`` for the median annual flow-duration curve), the
+    ``return_periods`` [years] whose bound is null (``below_physical_range`` only, else
+    ``None``), and for ``too_few_complete_years`` the ``complete_years`` of the series
+    and the ``required_years`` of each level (else ``None``). The reasons:
+
+    - ``fit_method``: the method of moments and least squares have no interval;
+    - ``bootstrap_failures``: fewer bootstrap samples of an L-moments fit could be
+      refitted than the spec ``quantile_interval_bootstrap`` needs;
+    - ``nonregular_fit``: a maximum-likelihood GEV whose likelihood is not regular
+      (spec ``quantile_interval_delta``);
+    - ``too_few_complete_years``: the median annual flow-duration curve has fewer
+      complete hydrological years than its order statistics need at the level;
+    - ``below_physical_range``: a bound of a discharge or a precipitation below 0.
+    """
+
+    template = (
+        "The interval at confidence level(s) {confidence_levels} is not computed "
+        "(null): {reason}."
+    )
+    keys = (
+        "reason",
+        "confidence_levels",
+        "distribution",
+        "fit_method",
+        "return_periods",
+        "complete_years",
+        "required_years",
+    )
+    _texts: ClassVar[Mapping[str, str]] = {
+        "fit_method": (
+            "The {distribution} distribution fitted by {fit_method} has no "
+            "confidence interval (an L-moments fit has the parametric bootstrap, a "
+            "maximum-likelihood fit the delta method): its intervals at confidence "
+            "level(s) {confidence_levels} are null."
+        ),
+        "bootstrap_failures": (
+            "Too few bootstrap samples of the {distribution} distribution fitted by "
+            "{fit_method} could be refitted: its intervals at confidence level(s) "
+            "{confidence_levels} are not computed (null)."
+        ),
+        "nonregular_fit": (
+            "The likelihood of the {distribution} distribution fitted by {fit_method} "
+            "is not regular at its estimate (a GEV shape xi of -0.5 or less, scipy's "
+            "c of 0.5 or more, or an observed information that is not positive "
+            "definite): its intervals at confidence level(s) {confidence_levels} are "
+            "not computed (null)."
+        ),
+        "too_few_complete_years": (
+            "The median annual flow-duration curve has {complete_years} complete "
+            "hydrological year(s); its interval at confidence level(s) "
+            "{confidence_levels} needs {required_years}: not computed (null)."
+        ),
+        "below_physical_range": (
+            "Bounds of the {distribution} distribution fitted by {fit_method} at the "
+            "return periods {return_periods} and confidence level(s) "
+            "{confidence_levels} lie below 0, which a discharge or a precipitation "
+            "never takes: they are left out (null)."
+        ),
+    }
+
+    @classmethod
+    def message_of(cls, details: Mapping[str, Any]) -> str:
+        """Return the message worded for its ``reason``, else the template."""
+        text = cls._texts.get(str(details["reason"]))
+        return render(cls.template if text is None else text, details)
+
+
 class IncompleteYears(HydrologWarning):
     """Hydrological years with a day without a value were skipped.
 
@@ -611,6 +685,7 @@ LIBRARY_WARNINGS: Final[tuple[type[HydrologWarning], ...]] = (
     DistributionLeftOut,
     OutsideSupport,
     NegativeQuantiles,
+    IntervalNotComputed,
     IncompleteYears,
     UnknownHietogramType,
     UhModelMismatch,

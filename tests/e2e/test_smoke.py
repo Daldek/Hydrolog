@@ -262,6 +262,9 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
         ("statystyka-years", "n_years"),
     ]:
         read(key, tiles.locator(f'.kpi[data-key="{tile}"] .v'))
+    # The confidence intervals of the two quantiles, in brackets under them
+    for key, tile in [("statystyka-q1-ci", "q-100"), ("statystyka-q10-ci", "q-10")]:
+        read(key, tiles.locator(f'.kpi[data-key="{tile}"] .ci'))
 
     # Kalkulatory: the six tc methods for Hydrogram's watershed and the overland fields
     page = reopen(tab, "#kalkulatory")

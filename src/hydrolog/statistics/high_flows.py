@@ -20,7 +20,8 @@ from __future__ import annotations
 import math
 import warnings
 from collections import OrderedDict
-from dataclasses import dataclass
+from collections.abc import Sequence
+from dataclasses import dataclass, field
 from typing import Final, Literal, cast, get_args
 
 import numpy as np
@@ -31,6 +32,7 @@ from hydrolog._ranges import typical_range
 from hydrolog._serialization import JsonResultMixin
 from hydrolog._warnings import (
     DistributionLeftOut,
+    IntervalNotComputed,
     KsTestApproximate,
     OutsideSupport,
     ShortRecord,
@@ -41,9 +43,7 @@ from hydrolog.statistics._types import EmpiricalFrequency, compute_plotting_posi
 from hydrolog.statistics.frequency import (
     _DISTRIBUTIONS,
     _a_squared,
-    _by_l_moments,
     _maximum_likelihood,
-    _within_l_moments,
     akaike_information_criterion,
     anderson_darling,
     fit_l_moments,
@@ -55,6 +55,15 @@ from hydrolog.statistics.frequency import (
     pearson3_quantiles,
     weibull_quantiles,
 )
+from hydrolog.statistics.intervals import (
+    ConfidenceInterval,
+    _bootstrap_refits,
+    confidence_levels,
+    interval_entries,
+    intervals_not_computed,
+    quantile_interval_bootstrap,
+    quantile_interval_delta,
+)
 
 _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0])
 _MIN_RELIABLE_YEARS = 10  # below it the estimates may be unreliable
@@ -63,10 +72,6 @@ _KZGW_MIN_YEARS = int(cast(float, typical_range("flood_frequency", "years").mini
 
 _AD_LEVELS: Final = {"15%": 0.15, "10%": 0.10, "5%": 0.05, "2.5%": 0.025, "1%": 0.01}
 """Significance levels of the critical values of A²."""
-_AD_REPLICATES: Final = 999
-"""Samples of the parametric bootstrap of the critical values of A²."""
-_AD_SEED: Final = 20261118
-"""Seed of that bootstrap, so that a sample always gets the same critical values."""
 
 FitMethod = Literal["mle", "moments", "l_moments", "least_squares"]
 FIT_METHODS: tuple[str, ...] = get_args(FitMethod)
@@ -136,6 +141,14 @@ class FrequencyAnalysisResult(JsonResultMixin):
         parameters (spec ``akaike_information_criterion``); infinite, without the
         formula, when an annual maximum lies outside the support of the fitted
         distribution.
+    intervals : list of ConfidenceInterval
+        The interval of ``quantiles`` at each confidence level asked, in the order
+        asked (ECO-091): an L-moments fit by the parametric bootstrap of the samples
+        of ``ad_critical_values`` (spec ``quantile_interval_bootstrap``), a
+        maximum-likelihood fit by the delta method (spec
+        ``quantile_interval_delta``); not computed (null, the warning
+        ``interval_not_computed``) for the method of moments and least squares,
+        for too few refits or a GEV whose likelihood is not regular.
     """
 
     distribution_name: str
@@ -151,6 +164,7 @@ class FrequencyAnalysisResult(JsonResultMixin):
     ad_statistic: float
     ad_critical_values: dict[str, float] | None
     aic: float
+    intervals: list[ConfidenceInterval] = field(default_factory=list)
 
 
 def _ad_critical_values(
@@ -162,30 +176,22 @@ def _ad_critical_values(
     narrower than for a distribution given in advance (case 0 of Stephens 1974,
     whose 5 % point 2.492 such a fit almost never reaches) and depends on the
     distribution, the method of estimation, the sample size and the shape. So the
-    critical values are those of this fit: ``_AD_REPLICATES`` samples of ``size``
-    values drawn from the fitted distribution, each refitted by L-moments, give the
-    A² whose upper quantiles 1 - level are the critical values (the parametric
-    bootstrap of Stute, González Manteiga and Presedo Quindimil 1993; the seed is
-    fixed). A sample that the L-moments cannot fit is left out.
+    critical values are those of this fit: the samples of ``size`` values drawn
+    from the fitted distribution, each refitted by L-moments, give the A² whose
+    upper quantiles 1 - level are the critical values (the parametric bootstrap of
+    Stute, González Manteiga and Presedo Quindimil 1993). The samples, their number,
+    the seed and the refits are those of the spec ``quantile_interval_bootstrap``,
+    which reads the interval of the quantiles from the same refits (ADR-0074). A
+    sample that the L-moments cannot fit is left out.
     """
-    distribution = _DISTRIBUTIONS[name]
-    rng = np.random.default_rng(_AD_SEED)
-    samples = np.sort(
-        distribution.rvs(*parameters, size=(_AD_REPLICATES, size), random_state=rng),
-        axis=1,
-    )
-    # Drawn from a continuous distribution, the samples have distinct values (and
-    # those of the log-normal positive ones): only their L-moments can fail.
-    kept = [
-        row for row, sample in enumerate(samples) if _within_l_moments(name, sample)
-    ]
-    if not kept:
+    refits = _bootstrap_refits(name, *parameters, size)
+    if not refits.kept.size:
         return None
-    refits = [_by_l_moments(name, samples[row]) for row in kept]
-    columns = zip(*refits, strict=True)
-    shape, loc, scale = (np.array(column)[:, None] for column in columns)
+    shape, loc, scale = (refits.parameters[:, k, None] for k in range(3))
     with np.errstate(all="ignore"):
-        statistics = _a_squared(distribution.cdf(samples[kept], shape, loc, scale))
+        statistics = _a_squared(
+            _DISTRIBUTIONS[name].cdf(refits.samples[refits.kept], shape, loc, scale)
+        )
     return {
         label: float(np.quantile(statistics, 1.0 - level))
         for label, level in _AD_LEVELS.items()
@@ -213,12 +219,21 @@ class FloodFrequencyAnalysis:
     return_periods : NDArray[np.float64] or None, optional
         Return periods *T* (years).  Defaults to
         ``[2, 5, 10, 20, 50, 100, 500, 1000]``.
+    confidence_level : float or sequence of float, optional
+        The confidence level, or distinct levels, of the intervals of the quantiles,
+        each in (0, 1), by default 0.95; every fit gives an interval per level, in
+        the order given (``intervals``).
+    discharge : bool, optional
+        Whether the maxima are discharges or another quantity never below 0, such as
+        precipitation depths (the default): a bound of an interval below 0 is then
+        NaN with the warning ``interval_not_computed`` (``below_physical_range``).
+        False for a variable without that limit, such as a stage.
 
     Raises
     ------
     InvalidParameterError
         If *annual_maxima* is empty or holds a value that is not finite (NaN or
-        infinity).
+        infinity), or a confidence level is not in (0, 1) or is given twice.
 
     Warns
     -----
@@ -279,6 +294,16 @@ class FloodFrequencyAnalysis:
     keeps its quantiles and its AIC is infinite, so it ranks after every fit with a
     finite AIC.
 
+    The interval of the quantiles of each fit (``intervals``, ECO-091) is two-sided
+    and central at each level: an L-moments fit's by a parametric bootstrap, the
+    percentile interval of the 999 refits that give ``ad_critical_values`` (spec
+    ``quantile_interval_bootstrap``); a maximum-likelihood fit's by the delta method
+    of KZGW (2017) (spec ``quantile_interval_delta``). The method of moments and
+    least squares have none: their intervals are null with the warning
+    ``interval_not_computed`` (``fit_method``), as are those of an L-moments fit with
+    fewer than 990 refits (``bootstrap_failures``) and of a maximum-likelihood GEV
+    whose likelihood is not regular (``nonregular_fit``).
+
     Examples
     --------
     >>> import numpy as np
@@ -294,6 +319,9 @@ class FloodFrequencyAnalysis:
         self,
         annual_maxima: NDArray[np.float64],
         return_periods: NDArray[np.float64] | None = None,
+        *,
+        confidence_level: float | Sequence[float] = 0.95,
+        discharge: bool = True,
     ) -> None:
         if len(annual_maxima) == 0:
             raise InvalidParameterError("annual_maxima must not be empty.")
@@ -319,6 +347,8 @@ class FloodFrequencyAnalysis:
             if return_periods is not None
             else _DEFAULT_RETURN_PERIODS.copy()
         )
+        self._levels = confidence_levels(confidence_level)
+        self._variable = "discharge" if discharge else "stage"
 
     # ------------------------------------------------------------------
     # Public methods
@@ -705,4 +735,68 @@ class FloodFrequencyAnalysis:
             ad_statistic=ad_stat,
             ad_critical_values=ad_critical,
             aic=aic,
+            intervals=self._intervals(name, fit_method, (shape, loc, scale)),
         )
+
+    def _intervals(
+        self, name: str, fit_method: str, parameters: tuple[float, float, float]
+    ) -> list[ConfidenceInterval]:
+        """Return the intervals of a fit's quantiles at the levels asked (ECO-091).
+
+        An L-moments fit by the spec ``quantile_interval_bootstrap`` (the refits of
+        its ``ad_critical_values``), a maximum-likelihood fit by the spec
+        ``quantile_interval_delta``; the other methods, too few refits and a GEV
+        whose likelihood is not regular give intervals not computed, with the
+        warning ``interval_not_computed``.
+        """
+        levels = self._levels
+        reason = "fit_method"
+        try:
+            if fit_method == "l_moments":
+                reason = "bootstrap_failures"
+                found = quantile_interval_bootstrap(
+                    name,
+                    *parameters,
+                    self._data.size,
+                    self._return_periods,
+                    levels,
+                    self._variable,
+                )
+                return interval_entries(
+                    levels,
+                    "parametric_bootstrap",
+                    found.lower,
+                    found.upper,
+                    found.samples,
+                )
+            if fit_method == "mle":
+                reason = "nonregular_fit"
+                delta = quantile_interval_delta(
+                    self._data,
+                    name,
+                    *parameters,
+                    self._return_periods,
+                    levels,
+                    self._variable,
+                    "maxima",
+                )
+                return interval_entries(levels, "delta", delta.lower, delta.upper)
+        except InvalidParameterError as exc:
+            if exc.details.get("constraint") not in (
+                "enough_refits",
+                "regular_likelihood",
+            ):
+                raise
+        warnings.warn(
+            IntervalNotComputed(
+                reason=reason,
+                confidence_levels=list(levels),
+                distribution=name,
+                fit_method=fit_method,
+                return_periods=None,
+                complete_years=None,
+                required_years=None,
+            ),
+            stacklevel=4,
+        )
+        return intervals_not_computed(levels)

@@ -181,6 +181,18 @@ class TestHelpParsers:
         assert "(domyślnie: tak)" in text
         assert "(domyślnie: 2,5)" in text
 
+    def test_a_number_or_a_list_is_spelled_as_both(self):
+        command = _command(_option("levels", "number_or_list", default=0.95))
+        text = build_command_parser(command, "en").format_help()
+        assert "--levels N[,N2,...]" in text
+        assert "(default: 0.95)" in text
+        assert parse_command_line(command, ["--levels", "0.9"]).options == {
+            "levels": 0.9
+        }
+        assert parse_command_line(command, ["--levels", "0.95,0.68"]).options == {
+            "levels": [0.95, 0.68]
+        }
+
     def test_percent_signs_survive(self):
         command = _command(
             Option("share", "number", "Share of 100% area", "Udział 100% powierzchni")

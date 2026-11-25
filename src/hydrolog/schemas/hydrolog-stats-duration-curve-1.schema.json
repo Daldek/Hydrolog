@@ -91,6 +91,12 @@
     },
     "modal_class": {
       "type": "object"
+    },
+    "annual_median_values": {
+      "type": "array"
+    },
+    "intervals": {
+      "type": "array"
     }
   }
 }

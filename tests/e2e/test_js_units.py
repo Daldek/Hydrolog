@@ -1185,6 +1185,113 @@ def test_result_view_draws_months_and_years_as_the_x_axis(page: Any) -> None:
     assert got["years"] == [["hydrological_years", ["annual_minima"]]]
 
 
+def test_intervals_are_bracketed_worded_and_drawn_beside_their_estimates(
+    page: Any,
+) -> None:
+    got = js(
+        page,
+        """const curve = {command: 'stats duration-curve', result: {
+          curve_exceedance_percents: [1, 50, 99], curve_values: [9.5, 3.1, 0.8],
+          annual_median_values: [9.1, 3.0, null],
+          intervals: [
+            {confidence_level: 0.95, ci_method: 'order_statistics',
+             ci_lower: [7.2, 2.5, null], ci_upper: [11.4, 3.6, null], ci_samples: null},
+            {confidence_level: 0.683, ci_method: null, ci_lower: null, ci_upper: null,
+             ci_samples: null}]}};
+        const low = {command: 'stats low-flow', result: {fisher_tippett: {
+          return_periods: [2, 10], quantiles: [1.2, 0.8],
+          intervals: [{confidence_level: 0.95, ci_method: 'delta',
+            ci_lower: [1.0, null], ci_upper: [1.4, 1.0], ci_samples: null}]}}};
+        const a = rv.analyzeResult(curve);
+        const [group] = a.series;
+        const spec = rv.seriesChartSpec(group);
+        const notice = (details) => notices.describeNotice(
+          {code: 'interval_not_computed', message: 'EN', details}).text;
+        return {
+          brackets: [f.intervalText(356.2, 498.4, 0), f.intervalText(0.6 - 0.9, 1.35),
+                     f.intervalText(-0.001, 1.35), f.intervalText(null, 2),
+                     f.intervalText(1, NaN)],
+          ys: group.ys.map((y) => [y.key, y.label]),
+          records: a.records.map((r) => [r.key, r.columns]),
+          csv: rv.resultCsv(a, group),
+          series: spec.series.map((s) => [s.id, s.kind, s.cls, s.label, s.data[1]]),
+          nested: rv.analyzeResult(low).series[0].ys.map((y) => [y.key, y.values]),
+          words: [
+            notice({reason: 'fit_method', confidence_levels: [0.95],
+                    distribution: 'gev', fit_method: 'moments', return_periods: null}),
+            notice({reason: 'fit_method'}),
+            notice({reason: 'below_physical_range', confidence_levels: [0.95],
+                    distribution: 'gev', fit_method: 'mle',
+                    return_periods: [500, 1000]}),
+            notice({reason: 'nonregular_fit', confidence_levels: [0.95],
+                    distribution: 'fisher_tippett', fit_method: 'mle'}),
+            notice({reason: 'too_few_complete_years', confidence_levels: [0.95],
+                    complete_years: 4, required_years: [6]}),
+            notice({reason: 'unheard_of', confidence_levels: [0.95]}),
+          ],
+        };""",
+    )
+    # „412 [356–498]”: an en dash; an end below zero takes the minus sign and a spaced
+    # dash that does not break; a missing end leaves the estimate alone
+    assert got["brackets"] == [
+        "[356–498]",
+        f"[{MINUS}0,30{NBSP}–{NBSP}1,35]",
+        "[0,00–1,35]",
+        None,
+        None,
+    ]
+    # The ends of each computed level join their estimates, named by the level; the
+    # level not computed has none, and the list stays a table of its methods
+    assert got["ys"] == [
+        ["curve_values", "Krzywa czasu trwania"],
+        ["annual_median_values", "Mediana roczna krzywej czasu trwania"],
+        ["ci95_lower", f"dolna granica przedziału ufności 95{NBSP}%"],
+        ["ci95_upper", f"górna granica przedziału ufności 95{NBSP}%"],
+    ]
+    assert got["records"] == [["intervals", ["confidence_level", "ci_method"]]]
+    assert got["csv"].splitlines() == [
+        "curve_exceedance_percents,curve_values,annual_median_values,"
+        "ci95_lower,ci95_upper",
+        "1,9.5,9.1,7.2,11.4",
+        "50,3.1,3,2.5,3.6",
+        "99,0.8,,,",
+    ]
+    # The chart: the lines in their order's colours, the band in its estimate's
+    assert got["series"] == [
+        ["curve_values", "line", "s1", "Krzywa czasu trwania", [50, 3.1]],
+        [
+            "annual_median_values",
+            "line",
+            "s2",
+            "Mediana roczna krzywej czasu trwania",
+            [50, 3],
+        ],
+        ["ci95", "band", "s2", f"przedział ufności 95{NBSP}%", [50, 2.5, 3.6]],
+    ]
+    assert got["nested"] == [
+        ["fisher_tippett.return_periods", [2, 10]],
+        ["fisher_tippett.quantiles", [1.2, 0.8]],
+        ["fisher_tippett.ci95_lower", [1.0, None]],
+        ["fisher_tippett.ci95_upper", [1.4, 1.0]],
+    ]
+    assert got["words"] == [
+        "Rozkład GEV dopasowany metodą momentów: dla metody momentów i najmniejszych "
+        "kwadratów przedział ufności nie jest wyznaczany.",
+        "Dla metody momentów i najmniejszych kwadratów przedział ufności nie jest "
+        "wyznaczany.",
+        "Rozkład GEV dopasowany metodą największej wiarygodności: granice przedziału "
+        "ufności okresów 500, 1000 lat przy poziomie ufności 0,95 byłyby ujemne, a "
+        "przepływ ani opad nie bywa ujemny, więc je pominięto.",
+        "Rozkład Fishera–Tippetta dopasowany metodą największej wiarygodności: "
+        "przedziału ufności nie wyznaczono, bo wiarygodność nie jest regularna w "
+        f"oszacowaniu (kształt GEV ξ ≤ {MINUS}0,5 albo macierz informacji, która nie "
+        "jest dodatnio określona) i metoda delta go nie daje.",
+        "Mediana roczna krzywej czasu trwania: pełnych lat hydrologicznych jest 4, a "
+        "jej przedział ufności przy poziomie ufności 0,95 wymaga 6: nie wyznaczono go.",
+        "Przedziału ufności przy poziomie ufności 0,95 nie wyznaczono.",
+    ]
+
+
 # --- Sieć's canvas: editor/geometry.js, editor/edits.js -----------------------
 
 

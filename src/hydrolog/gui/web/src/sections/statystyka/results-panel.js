@@ -12,7 +12,7 @@
 
 import { Attribution, linesOf } from "../../attribution.js";
 import { Chart } from "../../charts/chart.js";
-import { auto, num, plural } from "../../format.js";
+import { auto, intervalText, num, plural } from "../../format.js";
 import { Notices } from "../../forms/result-view.js";
 import { html, useMemo } from "../../html.js";
 import { t } from "../../labels/common.js";
@@ -25,14 +25,17 @@ import { axisRanges, curveClass, densitySpec, distributionSpec, methodName, name
 import {
   AXES,
   axisLimits,
+  boundsAt,
   COMMAND,
   FIT_METHODS,
   fitKey,
+  levelPercent,
   percentAt,
   quantileAt,
   secondPeriod,
   shortNumber,
   shownFits,
+  shownInterval,
   shownNotices,
   tickedFits,
 } from "./state.js";
@@ -226,8 +229,10 @@ export function CenterBody({ run, tab, shown, stressed, active, chartSvg, axes, 
 
 /**
  * The tiles: the active combination („najlepszy” when it is the best shown; its method
- * below the distribution), its stressed quantile (none for „brak”) and another one, the
- * length.
+ * below the distribution), its stressed quantile (none for „brak”) and another one, each
+ * with its confidence interval in brackets under it („[256,7–447,2]”, ECO-091) when
+ * Hydrolog computed both ends, the length; under them, while a bracket is shown, the
+ * caption naming its level and method.
  *
  * @param {{result: object, fit: object|null, best: string|null, stressed: number|null,
  *   second: number|null}} props the result, the active combination (null when none is
@@ -235,19 +240,27 @@ export function CenterBody({ run, tab, shown, stressed, active, chartSvg, axes, 
  * @returns {object} the tiles
  */
 function Tiles({ result, fit, best, stressed, second }) {
-  const tile = (key, label, value, unit, hi = false, sub = null) => html`
+  const tile = (key, label, value, unit, hi = false, sub = null, bracket = null) => html`
     <div class=${`kpi${hi ? " hi" : ""}`} data-key=${key}>
       <div class="k">${label}</div>
       <div class="v">${value}${unit ? html` <span class="u">${unit}</span>` : null}</div>
+      ${bracket ? html`<div class="ci">${bracket}</div>` : null}
       ${sub ? html`<div class="sub">${sub}</div>` : null}
     </div>
   `;
+  const bracketAt = (period) => {
+    const bounds = boundsAt(fit, period);
+    return bounds ? intervalText(bounds.lower, bounds.upper, 1) : null;
+  };
   const quantile = (period, hi) => {
     const q = quantileAt(fit, period);
-    return q === null ? null : tile(`q-${period}`, quantileLabel(fit, period), num(q, 1), "m³/s", hi);
+    return q === null ? null : tile(`q-${period}`, quantileLabel(fit, period), num(q, 1), "m³/s", hi, null, bracketAt(period));
   };
   const [count, ...word] = plural(result.n_years, texts.yearForms).split(" ");
   const label = fit && fitKey(fit) === best ? texts.results.bestDistribution : texts.results.distribution;
+  const periods = fit ? [stressed, second].filter((period) => period !== null && quantileAt(fit, period) !== null) : [];
+  const entry = periods.some((period) => bracketAt(period)) ? shownInterval(fit) : null;
+  const method = entry && Object.hasOwn(texts.results.intervalMethods, entry.ci_method) ? texts.results.intervalMethods[entry.ci_method] : entry?.ci_method;
   return html`
     <div class="summary">
       ${fit ? tile("distribution", label, distributionName(fit.distribution_name), null, false, methodName(fit.fit_method)) : null}
@@ -255,6 +268,7 @@ function Tiles({ result, fit, best, stressed, second }) {
       ${fit && second !== null ? quantile(second, false) : null}
       ${tile("n_years", texts.results.length, count, word.join(" "))}
     </div>
+    ${entry ? html`<p class="note st-interval">${t(texts.results.interval, { level: levelPercent(entry.confidence_level), method })}</p>` : null}
   `;
 }
 

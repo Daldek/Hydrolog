@@ -27,11 +27,15 @@ export const statsInfo = {
     symbols: { years: "Długość szeregu N" },
     note:
       "<p>Q&nbsp;1% jest przewyższany średnio raz na 100 lat, ale w każdym roku z prawdopodobieństwem 1&nbsp;%. Kwantyl " +
-      "dla <i>T</i> dużo dłuższego niż szereg to ekstrapolacja, tym mniej pewna, im dłuższe <i>T</i>.</p>",
+      "dla <i>T</i> dużo dłuższego niż szereg to ekstrapolacja, tym mniej pewna, im dłuższe <i>T</i>. Przedział ufności " +
+      "95&nbsp;% kwantyla, w kafelkach „[dolna–górna]” i pasmo na wykresie, obejmowałby prawdziwy kwantyl w około 95&nbsp;% " +
+      "powtórzeń obserwacji tej samej długości: dla L-momentów z bootstrapu parametrycznego, dla największej wiarygodności " +
+      "metodą delta; metody momentów i najmniejszych kwadratów go nie dają.</p>",
     guide: "metoda-stats-flood-frequency",
     sources:
       "KZGW 2017 (Aktualizacja metodyki obliczania przepływów i opadów maksymalnych); " +
-      "Coles 2001 (An Introduction to Statistical Modeling of Extreme Values)",
+      "Coles 2001 (An Introduction to Statistical Modeling of Extreme Values); " +
+      "Efron i Tibshirani 1993 (An Introduction to the Bootstrap)",
   },
   "stats-distributions": {
     title: "Rozkłady maksimów rocznych",
@@ -106,7 +110,7 @@ export const statsInfo = {
     intro:
       "<p>Wykres prawdopodobieństwa przewyższenia na siatce Gumbela: oś pozioma jest liniowa w zmiennej zredukowanej " +
       "<i>u</i>, a jej podpisy to <i>p</i> i <i>T</i> = 1/<i>p</i>. Punkty to maksima roczne w położeniu Weibulla, " +
-      "linie to rozkłady.</p>",
+      "linie to rozkłady, a pasmo wokół aktywnej linii to przedział ufności jej kwantyli.</p>",
     formula:
       '<math display="block"><mi>u</mi><mo>=</mo><mo>−</mo><mi>ln</mi><mo>(</mo><mo>−</mo><mi>ln</mi><mo>(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo>)</mo><mo>)</mo><mo>,</mo><mspace width="1em"></mspace><msub><mi>p</mi><mi>i</mi></msub><mo>=</mo><mfrac><mi>i</mi><mrow><mi>n</mi><mo>+</mo><mn>1</mn></mrow></mfrac></math>',
     vars: [

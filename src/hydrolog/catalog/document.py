@@ -56,6 +56,10 @@ _STANDARD_TYPES: Final[Mapping[str, str]] = {
     "boolean": "boolean",
     "choice": "string",
     "number_list": "array",
+    # commands-1 gives one JSON type per option: a number or a list is described by
+    # its scalar form; the list form is in the description and in the JSON Schema
+    # (``anyOf``) of input_schema.
+    "number_or_list": "number",
     "string_list": "array",
     "object_list": "array",
     "path": "string",

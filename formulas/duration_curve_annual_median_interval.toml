@@ -1,0 +1,230 @@
+schema = "nogat-formula-card/1"
+name = "duration_curve_annual_median_interval"
+title = "Median annual flow-duration curve and its confidence interval by order statistics (binomial coverage, the years independent)"
+function = "hydrolog.statistics.duration.annual_median_interval"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "Q_p(1) <= ... <= Q_p(N) the N annual values of a percentage p in order; their median Q_p,0.5 = Q_p((N + 1) / 2) for N odd, (Q_p(N / 2) + Q_p(N / 2 + 1)) / 2 for N even; per confidence level c the bounds Q_p(k) and Q_p(N + 1 - k) with the largest k >= 1 such that 1 - 2 F(k - 1) >= c, F(j) the sum of C(N, i) 2^-N for i = 0 to j; without such k no bounds"
+latex = "Q_{p,0.5} = \\tfrac{1}{2}\\bigl(Q_{p,(\\lfloor (N+1)/2 \\rfloor)} + Q_{p,(\\lceil (N+1)/2 \\rceil)}\\bigr),\\quad \\bigl[Q_{p,(k)},\\ Q_{p,(N+1-k)}\\bigr],\\quad k = \\max\\Bigl\\{k \\ge 1 : 1 - 2\\sum_{j=0}^{k-1}\\binom{N}{j}\\,2^{-N} \\ge c\\Bigr\\}"
+validation = "none: an interval of an estimator; its coverage, simulated from log-normal annual values at 30 and 60 years, is reported under the formula (CMP-6.11)"
+conventions = ["two-sided and central at each confidence level c: the order statistics Q_p(k) and Q_p(N + 1 - k) of the N annual values of a percentage, the k-th from each end, with the largest k >= 1 whose coverage 1 - 2 F(k - 1) is at least c, F the binomial distribution function of N trials with probability 1/2 (the years below the true median): each tail at most (1 - c) / 2 (Helsel and Hirsch 2002, eqs. 3.2-3.3)", "order statistics, distribution-free: the coverage is exact for a continuous distribution of the annual values; not eq. (10) of Vogel and Fennessey (1994, p. 497), whose bounds, the alpha/2 and 1 - alpha/2 quantiles Q_p,2 of the n annual values, bracket the value of one year rather than the median and do not narrow as n grows", "the coverage is compared with c exactly, in integers: a level equal to a coverage takes its pair (c = 0.75 at N = 3: the smallest and the largest value); Helsel and Hirsch (2002, p. 71) take the tail nearest (1 - c) / 2, which may leave the coverage below c", "a level that even k = 1 cannot reach, 1 - 2^(1 - N) < c (fewer than 6 years at c = 0.95, 5 at 0.90, 3 at 0.68), has no bounds: its rows of lower and upper are gaps, and duration_curve gives its interval as not computed with the notice interval_not_computed (too_few_complete_years)", "the median of an odd count is the middle value, of an even count the mean of the two middle values, taken as the sum of their halves so that values near the largest float do not overflow: Q_0.5,2 of Vogel and Fennessey's eq. (3) and numpy.median", "ties: equal annual values keep a rank each; with ties the coverage is at least the binomial one, as P(Q < M) <= 1/2 <= P(Q <= M) at the median M", "gaps: none; the annual values are the curves of the complete hydrological years (Tier B annual_duration_curves), and a gap is refused", "the values in any unit: the median and the bounds in that unit (m3/s in the documents, cm for stages)", "every level of one call from one sort of each percentage's values; the rows of lower and upper follow the levels in the order given"]
+assumptions = ["the N annual values of a percentage are independent and identically distributed: the years are taken as independent, as Vogel and Fennessey (1994, p. 496) treat the n values Q_p(i) as a random sample; a serial correlation of the years, as in droughts of several years, would lower the coverage below c", "the interval is that of the median annual curve, the curve of a typical year (Vogel and Fennessey 1994, p. 496), not of the period-of-record curve (spec exceedance_values), which has none"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/duration-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+annual_values = 1
+
+[[properties.scalings]]
+name = "unit_of_the_series"
+
+[properties.scalings.inputs]
+annual_values = 1.0
+
+[properties.scalings.outputs]
+median = 1.0
+lower = 1.0
+upper = 1.0
+
+[properties.scalings.tolerance]
+reason = "the curve runs on the values divided by a power of two, so doubling them changes no rounding; a value below the normal floats keeps fewer bits"
+abs = 1e-300
+rel = 4.5e-16
+
+[[properties.limits]]
+name = "exact_binomial"
+text = "the bounds of every N from 1 to 60 years and of twelve from 61 to 200 are the order statistics that the binomial coverage in exact rational arithmetic chooses, at usual levels, at levels equal to a coverage and at the float above each"
+
+[[properties.limits]]
+name = "fewest_years"
+text = "a level has bounds from the fewest years whose smallest and largest values reach it on: 6 at c = 0.95, 5 at 0.90, 3 at 0.68"
+
+[[properties.limits]]
+name = "too_few_years"
+text = "five years reach 0.90 and 0.68 with their smallest and largest values, not 0.95: the rows of that level alone are gaps"
+
+[[properties.limits]]
+name = "median_of_an_even_count"
+text = "the median of an even count is the mean of the two middle values, Q_0.5,2 of Vogel and Fennessey's eq. (3)"
+
+[properties.limits.source]
+citation = "Vogel, R.M. and Fennessey, N.M. (1994). Flow-duration curves. I: New interpretation and confidence intervals. Journal of Water Resources Planning and Management 120(4), 485-504 (the authors' copy)"
+access = "open"
+locator = "pp. 488-489, eqs. (2a) and (3): Q_p,2 = (1 - theta) q(i) + theta q(i+1) with i = [(n + 1) p] and theta = (n + 1) p - i, the ordered observations q(i) plotted at the Weibull position p_i = i / (n + 1)"
+url = "https://sites.tufts.edu/richardvogel/files/2019/04/flowDuration1.pdf"
+
+[[properties.limits]]
+name = "equal_values"
+text = "equal annual values (ties) give that value as the median and as both bounds"
+
+[[properties.limits]]
+name = "one_year"
+text = "one year gives its values as the median and no bounds at any level: its only pair, k = 1, covers with probability 0"
+
+[[properties.symmetries]]
+name = "mirror"
+text = "the negated values give the negated median and the negated bounds swapped: the k-th smallest of them is minus the k-th largest"
+
+[properties.symmetries.tolerance]
+reason = "negation is exact and rounding to nearest is symmetric about zero"
+abs = 0.0
+
+[[properties.symmetries]]
+name = "order_of_the_years"
+text = "the years in reverse order give the same median and bounds"
+
+[properties.symmetries.tolerance]
+reason = "the order statistics and the halves of the middle ones do not depend on the order of the years or of the levels"
+abs = 0.0
+
+[[properties.symmetries]]
+name = "order_of_the_levels"
+text = "the levels in reverse order give the rows of the bounds in reverse order"
+
+[properties.symmetries.tolerance]
+reason = "the order statistics and the halves of the middle ones do not depend on the order of the years or of the levels"
+abs = 0.0
+
+[[sources]]
+citation = "Vogel, R.M. and Fennessey, N.M. (1994). Flow-duration curves. I: New interpretation and confidence intervals. Journal of Water Resources Planning and Management 120(4), 485-504 (the authors' copy)"
+access = "open"
+locator = "pp. 494-497: 'Annual Interpretation of Flow-Duration Curves', the FDC of each of the n years from its own daily flows by Q_p,2 and, per exceedance probability, the median of the n annual values, the median annual FDC (p. 494), the distribution of daily flow in a typical year (p. 496); 'Confidence Intervals for Quantiles of Flow-Duration Curves', the n values Q_p(i) treated as a random sample (p. 496) and their interval, eqs. (10a)-(10b) (p. 497)"
+url = "https://sites.tufts.edu/richardvogel/files/2019/04/flowDuration1.pdf"
+
+[[sources]]
+citation = "Helsel, D.R. and Hirsch, R.M. (2002). Statistical Methods in Water Resources. Techniques of Water-Resources Investigations of the U.S. Geological Survey, book 4, chapter A3 (superseded by Techniques and Methods 4-A3, 2020)"
+access = "open"
+locator = "sect. 3.3.1, pp. 70-72, eqs. 3.2-3.3: the nonparametric interval of the median between the R_l-th observations from each end, R_l = x' + 1 and R_u = n - x', x' the critical value of the binomial distribution with p = 0.5 at alpha/2 (table B5); example 2, 25 arsenic concentrations: 4.8 <= C_0.5 <= 110 at alpha = 0.044"
+url = "https://pubs.usgs.gov/twri/twri4a3/twri4a3.pdf"
+
+[[variables]]
+name = "annual_values"
+symbol = "Q_p(i)"
+unit = "m3/s"
+kind = "real_array"
+description = "The values of the annual curves: a row per complete hydrological year i, in any order, a column per exceedance percentage p (Q_p(i) of Vogel and Fennessey, each from the days of its year)."
+applicability = "unstated"
+gaps_allowed = false
+dims = 2
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the curve is homogeneous in the unit of the series (its scaling), so any bound tests its arithmetic: a million m3/s exceeds the discharge of every river, and a stage below its gauge's zero or a temperature may be negative, so the same bound holds below 0"
+
+[variables.typical]
+low = 1.24
+low_inclusive = true
+high = 522.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "IMGW-PIB, public hydrological data: the half-yearly characteristic flows (polr_Q) of station 150160180 Kłodzko on the Nysa Kłodzka, hydrological years 1971-2015 (1997 absent)"
+access = "open"
+locator = "the lowest flow NNQ 1.24 m3/s (2015) and the highest WWQ 522 m3/s (2006), between which its daily mean flows lie"
+url = "https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/"
+
+[[variables]]
+name = "confidence_levels"
+symbol = "c"
+unit = "-"
+kind = "real_array"
+description = "Confidence levels, distinct: each interval is two-sided and central, each tail at most (1 - c) / 2."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+low = 0.0
+low_inclusive = false
+high = 1.0
+high_inclusive = false
+
+[variables.typical]
+low = 0.68
+low_inclusive = true
+high = 0.95
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Nogat (2026). Decisions of the ecosystem, ECO-091: Intervals beside point estimates, computed by Hydrolog, shown by Obserwator"
+access = "open"
+locator = "two-sided and central at each confidence_level asked; Obserwator stores 0.95 and 0.68"
+url = "https://github.com/Daldek/Nogat/blob/main/standards/DECISIONS.md"
+
+[[constraints]]
+name = "distinct_levels"
+class = "precondition"
+text = "the confidence levels are distinct"
+
+[constraints.source]
+citation = "Nogat (2026). Decisions of the ecosystem, ECO-091: Intervals beside point estimates, computed by Hydrolog, shown by Obserwator"
+access = "open"
+locator = "two-sided and central at each confidence_level asked; Obserwator stores 0.95 and 0.68"
+url = "https://github.com/Daldek/Nogat/blob/main/standards/DECISIONS.md"
+
+[[outputs]]
+name = "median"
+unit = "m3/s"
+kind = "real_array"
+symbol = "Q_{p,0.5}"
+description = "The median annual curve: per percentage the median of the N annual values, in the unit of the series."
+gaps_allowed = false
+
+[outputs.physical]
+
+[[outputs]]
+name = "lower"
+unit = "m3/s"
+kind = "real_array"
+symbol = "Q_{p,(k)}"
+description = "The lower bound of each median, a row per level in the order given: the k-th smallest annual value; a gap where N years cannot reach the level."
+gaps_allowed = true
+
+[outputs.physical]
+
+[[outputs]]
+name = "upper"
+unit = "m3/s"
+kind = "real_array"
+symbol = "Q_{p,(N+1-k)}"
+description = "The upper bound: the k-th largest annual value; a gap as the lower."
+gaps_allowed = true
+
+[outputs.physical]
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "range case confidence_levels-physical_high_inside: a level just below 1 needs 54 years, so the 10 of the typical point leave its rows gaps and the other level's bounds finite"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type case annual_values-nan_element: a gap is refused; limit too_few_years: a level the years cannot reach leaves gaps in its own rows only"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "limit exact_binomial: the binomial tail, a sum of up to N / 2 terms C(N, j) 2^-N, is summed in integers and matches the fractions up to N = 200"
+
+[[oracles]]
+kind = "exact"
+description = "the coverage P(k <= B <= N - k) of B ~ Bin(N, 1/2) in exact rational arithmetic (fractions) and its pair, the largest k with a coverage of at least c, for every N from 1 to 60 and twelve from 61 to 200"
+test = "tests/unit/test_formulas_duration.py (limit exact_binomial)"
+conventions = []
+
+[[oracles]]
+kind = "established"
+description = "scipy.stats.quantile_test(x, p=0.5).confidence_interval(c), two-sided (SciPy 1.18), and numpy.median"
+test = "tests/unit/test_formulas_duration.py (test_the_interval_is_scipys_quantile_test)"
+conventions = ["both the order statistics of ranks k and N + 1 - k of the binomial distribution with probability 1/2, each tail at most (1 - c) / 2", "where a tail equals (1 - c) / 2 exactly, scipy takes the lower bound one rank further out (none below the smallest value) and keeps the upper; the test draws levels that are no coverage"]

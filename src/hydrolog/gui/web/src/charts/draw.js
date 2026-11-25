@@ -43,7 +43,8 @@ function headingText(layout, x, spec) {
 }
 
 /**
- * The lines of the readout at an index of the master series.
+ * The lines of the readout at an index of the master series; a band reads as its two ends
+ * („przedział ufności 95 %: 356–498 m³/s”), as the kit's readout does.
  *
  * @param {object} spec the chart spec
  * @param {ReturnType<typeof chartLayout>} layout
@@ -54,40 +55,50 @@ function headingText(layout, x, spec) {
  */
 function readoutAt(spec, layout, geometries, master, index) {
   const at = master.kind === "bars" ? (master.spans[index][0] + master.spans[index][1]) / 2 : master.px[index];
+  const where = master.kind === "bars" ? master.spans[index][0] : at;
   const x = master.xs[index];
   const rows = [];
   for (const geometry of geometries) {
     if (geometry.series.readout === false) continue;
-    const value =
-      geometry === master
-        ? master.values[index]
-        : valueAt(geometry, master.kind === "bars" ? master.spans[index][0] : at);
-    if (value === null || !Number.isFinite(value)) continue;
     const axisSpec = geometry.axis === "y2" ? layout.y2 : layout.y;
     const format = spec.readout?.value;
-    const number =
-      typeof format === "function"
-        ? format(value, geometry.series)
-        : readoutNumber(value, geometry.series.digits ?? axisSpec.digits);
+    const text = (value) =>
+      typeof format === "function" ? format(value, geometry.series) : readoutNumber(value, geometry.series.digits ?? axisSpec.digits);
     const unit = geometry.series.unit ?? axisSpec.unit;
     const label = geometry.series.label ?? geometry.series.id;
-    const scale = axisSpec.scale;
+    const suffix = unit ? `\u00a0${unit}` : "";
+    if (geometry.kind === "band") {
+      const own = geometry === master;
+      const high = own ? geometry.values[index] : valueAt(geometry, where);
+      const low = own ? geometry.lows[index] : valueAt({ ...geometry, values: geometry.lows }, where);
+      if (!Number.isFinite(low) || !Number.isFinite(high)) continue;
+      rows.push({ id: geometry.series.id, cls: geometry.cls, kind: "band", text: `${label}: ${text(low)}–${text(high)}${suffix}`, py: null });
+      continue;
+    }
+    const value = geometry === master ? master.values[index] : valueAt(geometry, where);
+    if (value === null || !Number.isFinite(value)) continue;
     rows.push({
       id: geometry.series.id,
       cls: geometry.cls,
       kind: geometry.kind,
-      text: `${label}: ${number}${unit ? `\u00a0${unit}` : ""}`,
-      py: geometry.kind === "bars" ? null : scale(value),
+      text: `${label}: ${text(value)}${suffix}`,
+      py: geometry.kind === "bars" ? null : axisSpec.scale(value),
     });
   }
   return { heading: headingText(layout, x, spec), at, rows };
 }
 
+/** The series the readout steps over: `readout.series`, else the first line, else a band. */
 function pickMaster(spec, geometries) {
   const wanted = spec.readout?.series;
   const usable = geometries.filter((geometry) => geometry.px.length && geometry.kind !== "hbars");
   if (wanted) return usable.find((geometry) => geometry.series.id === wanted) ?? null;
-  return usable.find((geometry) => geometry.kind !== "bars") ?? usable[0] ?? null;
+  return (
+    usable.find((geometry) => geometry.kind !== "bars" && geometry.kind !== "band") ??
+    usable.find((geometry) => geometry.kind === "band") ??
+    usable[0] ??
+    null
+  );
 }
 
 function legendItems(spec, geometries) {
@@ -99,6 +110,7 @@ function legendItems(spec, geometries) {
 
 function swatch(item) {
   if (item.kind === "bars" || item.kind === "hbars" || item.kind === "box") return htmlEl("i", { class: `sw ${item.cls ?? ""}`.trim() });
+  if (item.kind === "band") return htmlEl("i", { class: `sw band ${item.cls ?? "s1"}` });
   if (item.kind === "points") return htmlEl("i", { class: "sw-dot" });
   if (item.kind === "rug") return htmlEl("i", { class: "sw-rug" });
   if (item.kind === "stroke") {
