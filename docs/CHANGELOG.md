@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-11-24
+
+A patch release with Nogat's release set candidate-13: it changes only the Obserwator it installs.
+
+### Changed
+
+- **The extras `pmaxtp`, `gui` and `all` install Obserwator 3.2.1** (Nogat release set candidate-15, REL-2.4, REL-5.1): `[tool.uv.sources]` pins the tag `v3.2.1` instead of `v3.1.0`; the range `obserwator>=3.1.0,<4` is unchanged and admits it. Obserwator 3.2.0 and 3.2.1 change nothing Hydrolog uses (`fetch_pmaxtp` and its errors). `uv.lock` updated.
+
 ## [0.9.0] - 2026-11-22
 
 Gross formula defects (Nogat CMP-9.1), found by the literature research of the formulas of 2026-11-18, among them the Euler type II storm ([ADR-0042](decisions/0042-the-euler-type-ii-storm-from-a-depth-duration-curve.md)). They were held back from a patch release on 2026-11-18 and are released in 0.9.0, with the formulas declared by specs: each formula gets its spec and a `formula_version`, family by family, from this release on ([ADR-0050](decisions/0050-formulas-declared-by-specs.md)); an entry about a formula without one concerns every release up to 0.8.1 and says how to find and recompute the results it changes.
@@ -1549,3 +1557,4 @@ Requires optional dependencies: `pip install hydrolog[visualization]`
 | **0.8.0** | 2026-11-16 | First joint release of the Nogat ecosystem: Stable API: command catalog, CLI from catalog, MCP server, HSG (`hydrolog.soil`), result serialization, calculation fixes |
 | **0.8.1** | 2026-11-18 | Defect fixes after 0.8.0: rating curves (overflow, implausible fits), low-flow thresholds, the SCS unit hydrograph of a long step, warnings issued again, GUI time axis |
 | **0.9.0** | 2026-11-22 | Formulas declared by specs with `formula_versions` (Nogat's computation standard), gross formula defects fixed (Euler II, Kirpich, NRCS, maximum likelihood, least squares), notice `outside_applicability`, file names `hydrolog_<content>_<qualifiers>.<ext>`, ČHMÚ as `chmu`, Nogat standard 1.1 |
+| **0.9.1** | 2026-11-24 | Obserwator 3.2.1 in the extras `pmaxtp`, `gui` and `all` (Nogat release set candidate-13) |
